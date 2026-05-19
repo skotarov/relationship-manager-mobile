@@ -75,6 +75,7 @@ class MainActivity : AppCompatActivity() {
         requestFullScreenIntentPermissionIfNeeded()
         hydrateFields()
         refreshPermissionSummary()
+        renderBuildVersion()
 
         binding.openAppPermissionsButton.setOnClickListener {
             openAppPermissionSettings()
@@ -98,9 +99,14 @@ class MainActivity : AppCompatActivity() {
             openFormDirect()
         }
 
-        binding.testNotificationButton.setOnClickListener {
+        binding.testStartPopupButton.setOnClickListener {
             saveConfig()
-            fetchLookupAndNotify()
+            testStartPopup()
+        }
+
+        binding.testEndPopupButton.setOnClickListener {
+            saveConfig()
+            testEndPopup()
         }
     }
 
@@ -182,7 +188,7 @@ class MainActivity : AppCompatActivity() {
         openWebView(url)
     }
 
-    private fun fetchLookupAndNotify() {
+    private fun testStartPopup() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
         if (config.baseUrl.isBlank() || phone.isBlank()) {
@@ -190,23 +196,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        binding.testNotificationButton.isEnabled = false
-        binding.statusText.visibility = View.VISIBLE
-        setStatus("Търся информация за $phone …")
+        binding.testStartPopupButton.isEnabled = false
+        setStatus("Тест: зареждам popup при старт за $phone …")
 
         executor.execute {
             runCatching {
                 val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
                 CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
-                    if (displayName.isNullOrBlank()) {
-                        lookup
-                    } else {
-                        lookup.copy(title = displayName)
-                    }
+                    if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
                 }
             }.onSuccess { result ->
                 runOnUiThread {
-                    binding.testNotificationButton.isEnabled = true
+                    binding.testStartPopupButton.isEnabled = true
                     CallReportRuntime.showLookupNotification(
                         context = this,
                         result = result,
@@ -214,11 +215,49 @@ class MainActivity : AppCompatActivity() {
                         phone = phone,
                         direction = directionValue(),
                     )
-                    setStatus("Notification е обновен с lookup данните.")
+                    setStatus("Показан е тестов popup при старт.")
                 }
             }.onFailure { throwable ->
                 runOnUiThread {
-                    binding.testNotificationButton.isEnabled = true
+                    binding.testStartPopupButton.isEnabled = true
+                    setStatus("Lookup грешка: ${throwable.message}")
+                }
+            }
+        }
+    }
+
+    private fun testEndPopup() {
+        val config = ConfigStore.load(this)
+        val phone = phoneValue()
+        if (config.baseUrl.isBlank() || phone.isBlank()) {
+            setStatus("Попълни Base URL и телефон.")
+            return
+        }
+
+        binding.testEndPopupButton.isEnabled = false
+        setStatus("Тест: зареждам popup след край за $phone …")
+
+        executor.execute {
+            runCatching {
+                val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+                CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
+                    if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
+                }
+            }.onSuccess { result ->
+                runOnUiThread {
+                    binding.testEndPopupButton.isEnabled = true
+                    CallReportRuntime.showPostCallPromptNotification(
+                        context = this,
+                        formUrl = result.openFormUrl,
+                        phone = phone,
+                        direction = directionValue(),
+                        title = result.title,
+                    )
+                    setStatus("Показан е тестов popup след край.")
+                }
+            }.onFailure { throwable ->
+                runOnUiThread {
+                    binding.testEndPopupButton.isEnabled = true
                     setStatus("Lookup грешка: ${throwable.message}")
                 }
             }
@@ -232,6 +271,10 @@ class MainActivity : AppCompatActivity() {
     private fun setStatus(message: String) {
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
+    }
+
+    private fun renderBuildVersion() {
+        binding.buildVersionText.text = "Версия: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) • ${BuildConfig.BUILD_TIME}"
     }
 
     private fun refreshPermissionSummary() {
