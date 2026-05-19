@@ -39,9 +39,16 @@ class CallScreeningBridgeService : CallScreeningService() {
                 if (!ContactGroupFilter.shouldNotify(this, number, config)) {
                     return@execute
                 }
+                val displayName = ContactGroupFilter.resolveDisplayName(this, number)
 
                 CallReportRuntime.ensureNotificationChannel(this)
-                val result = CallReportRuntime.fetchLookup(config, number, direction)
+                val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                    if (displayName.isNullOrBlank()) {
+                        lookup
+                    } else {
+                        lookup.copy(title = displayName)
+                    }
+                }
                 CallReportRuntime.showLookupNotification(
                     context = this,
                     result = result,
