@@ -23,7 +23,7 @@ object CallReportRuntime {
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
     private const val LOCAL_CALL_MATCH_LIMIT = HISTORY_LIMIT + 1
-    private const val LOCAL_CALL_SCAN_LIMIT = 200
+    private const val LOCAL_CALL_SCAN_LIMIT = 5000
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -119,8 +119,18 @@ object CallReportRuntime {
         phone: String = "",
         direction: String = "",
     ) {
+        val config = ConfigStore.load(context)
+        val fullLogUrl = buildEndpoint(
+            baseUrl = config.baseUrl,
+            path = "/broker/callreport/history.php",
+            params = linkedMapOf(
+                "phone" to phone,
+                "direction" to direction,
+                "access_token" to config.accessToken,
+            )
+        )
         val openIntent = Intent(context, WebViewActivity::class.java)
-            .putExtra(WebViewActivity.EXTRA_URL, result.openFormUrl)
+            .putExtra(WebViewActivity.EXTRA_URL, fullLogUrl)
             .putExtra(WebViewActivity.EXTRA_PHONE, phone)
             .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
         val pendingIntent = PendingIntent.getActivity(
@@ -153,7 +163,7 @@ object CallReportRuntime {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .addAction(0, context.getString(R.string.open_form), pendingIntent)
+            .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
         if (fullscreen) {
             builder.setFullScreenIntent(pendingIntent, true)
         }
