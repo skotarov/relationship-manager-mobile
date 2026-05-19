@@ -36,6 +36,9 @@ class CallScreeningBridgeService : CallScreeningService() {
                 if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
                     return@execute
                 }
+                if (!ContactGroupFilter.shouldNotify(this, number, config)) {
+                    return@execute
+                }
 
                 CallReportRuntime.ensureNotificationChannel(this)
                 val result = CallReportRuntime.fetchLookup(config, number, direction)
