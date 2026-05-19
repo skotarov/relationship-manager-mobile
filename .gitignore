@@ -1,0 +1,16 @@
+# Android
+.gradle/
+**/build/
+local.properties
+captures/
+*.apk
+*.aab
+
+# Secrets
+broker/callreport/.access-token
+
+# Editors / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
