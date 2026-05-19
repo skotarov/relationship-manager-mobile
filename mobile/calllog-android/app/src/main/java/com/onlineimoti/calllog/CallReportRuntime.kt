@@ -87,9 +87,17 @@ object CallReportRuntime {
         )
     }
 
-    fun showLookupNotification(context: Context, result: LookupResult, fullscreen: Boolean = false) {
+    fun showLookupNotification(
+        context: Context,
+        result: LookupResult,
+        fullscreen: Boolean = false,
+        phone: String = "",
+        direction: String = "",
+    ) {
         val openIntent = Intent(context, WebViewActivity::class.java)
             .putExtra(WebViewActivity.EXTRA_URL, result.openFormUrl)
+            .putExtra(WebViewActivity.EXTRA_PHONE, phone)
+            .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
         val pendingIntent = PendingIntent.getActivity(
             context,
             1001,
@@ -119,6 +127,9 @@ object CallReportRuntime {
         }
         val notification = builder.build()
 
+        if (phone.isNotBlank()) {
+            CallPopupTracker.markPopupOpened(context, phone, direction)
+        }
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
     }
 }
