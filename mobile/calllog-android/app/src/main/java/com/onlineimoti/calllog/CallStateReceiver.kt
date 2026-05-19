@@ -29,6 +29,12 @@ class CallStateReceiver : BroadcastReceiver() {
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
+
+        if (state == TelephonyManager.EXTRA_STATE_IDLE) {
+            handleCallEnded(context)
+            return
+        }
+
         if (number.isBlank()) {
             return
         }
@@ -37,6 +43,7 @@ class CallStateReceiver : BroadcastReceiver() {
             TelephonyManager.EXTRA_STATE_RINGING -> "in"
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 if (CallStateDeduper.wasRecentlyHandled(context, number, "in")) {
+                    CallLifecycleStore.markActive(context, number, "in")
                     return
                 }
                 "out"
@@ -44,10 +51,33 @@ class CallStateReceiver : BroadcastReceiver() {
             else -> return
         }
 
+        CallLifecycleStore.markActive(context, number, direction)
+
         if (!CallStateDeduper.markHandled(context, number, direction)) {
             return
         }
 
+        showLookup(context, number, direction, fullscreen = direction == "in")
+    }
+
+    private fun handleCallEnded(context: Context) {
+        val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
+        if (CallPopupTracker.isPopupOpenFor(context, endedCall.number)) {
+            return
+        }
+        if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) {
+            return
+        }
+
+        showLookup(
+            context = context,
+            number = endedCall.number,
+            direction = endedCall.direction,
+            fullscreen = true,
+        )
+    }
+
+    private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
         val pendingResult = goAsync()
         EXECUTOR.execute {
             try {
@@ -68,7 +98,13 @@ class CallStateReceiver : BroadcastReceiver() {
                         lookup.copy(title = displayName)
                     }
                 }
-                CallReportRuntime.showLookupNotification(context, result)
+                CallReportRuntime.showLookupNotification(
+                    context = context,
+                    result = result,
+                    fullscreen = fullscreen,
+                    phone = number,
+                    direction = direction,
+                )
             } catch (_: Throwable) {
             } finally {
                 pendingResult.finish()
@@ -108,7 +144,8 @@ class CallStateReceiver : BroadcastReceiver() {
         }
 
         private fun normalizeNumber(number: String): String {
-            return number.filter { it.isDigit() }
+            val digits = number.filter { it.isDigit() }
+            return if (digits.length > 9) digits.takeLast(9) else digits
         }
     }
 
