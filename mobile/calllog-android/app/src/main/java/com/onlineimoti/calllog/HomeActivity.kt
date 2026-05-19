@@ -111,7 +111,7 @@ class HomeActivity : AppCompatActivity() {
             ).apply {
                 leftMargin = dp(8)
             }
-            setOnClickListener { openPromptForCall(call) }
+            setOnClickListener { openFormForCall(call) }
         })
 
         card.addView(row)
@@ -129,7 +129,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun openPromptForCall(call: PhoneCallRecord) {
+    private fun openFormForCall(call: PhoneCallRecord) {
         val config = ConfigStore.load(this)
         if (config.baseUrl.isBlank()) {
             binding.homeStatusText.text = "Първо попълни Base URL в Настройки."
@@ -138,7 +138,7 @@ class HomeActivity : AppCompatActivity() {
 
         val formUrl = buildEndpoint(
             baseUrl = config.baseUrl,
-            path = "/broker/callreport/form.php",
+            path = config.formPath,
             params = linkedMapOf(
                 "phone" to call.number,
                 "direction" to call.direction,
@@ -149,11 +149,10 @@ class HomeActivity : AppCompatActivity() {
         )
 
         startActivity(
-            Intent(this, PostCallPromptActivity::class.java)
-                .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, formUrl)
-                .putExtra(PostCallPromptActivity.EXTRA_PHONE, call.number)
-                .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallPromptActivity.EXTRA_TITLE, call.displayName)
+            Intent(this, WebViewActivity::class.java)
+                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
+                .putExtra(WebViewActivity.EXTRA_PHONE, call.number)
+                .putExtra(WebViewActivity.EXTRA_DIRECTION, call.direction)
         )
     }
 
