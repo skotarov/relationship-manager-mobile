@@ -37,10 +37,16 @@
             android:exported="false"
             android:launchMode="singleTop" />
         <activity
+            android:name=".RecentCallsActivity"
+            android:exported="false" />
+        <activity
             android:name=".WebViewActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
+            android:exported="false" />
+        <activity
+            android:name=".HomeActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
