@@ -1,13 +1,17 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.CallLog
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -17,6 +21,7 @@ object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val LOOKUP_NOTIFICATION_ID = 2001
     private const val HISTORY_LIMIT = 5
+    private const val LOCAL_CALL_COUNT_READ_LIMIT = HISTORY_LIMIT + 1
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -84,7 +89,7 @@ object CallReportRuntime {
         }
         val lines = buildList {
             if (previousCallCount >= 0) {
-                add("Предишни разговори: $previousCallCount")
+                add("В Call Report: $previousCallCount записани")
             }
             addAll(serverLines)
             addAll(recentLines.take(HISTORY_LIMIT))
@@ -123,16 +128,22 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val localCallCountLine = localCallCountLine(context, phone)
+        val visibleLines = buildList {
+            add(result.subtitle)
+            if (localCallCountLine.isNotBlank()) {
+                add(localCallCountLine)
+            }
+            addAll(result.lines.take(HISTORY_LIMIT + 2))
+        }.filter { it.isNotBlank() }
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
-            .setContentText(result.subtitle)
+            .setContentText(visibleLines.firstOrNull() ?: result.subtitle)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    listOf(result.subtitle)
-                        .plus(result.lines.take(HISTORY_LIMIT + 2))
-                        .filter { it.isNotBlank() }
-                        .joinToString("\n")
+                    visibleLines.joinToString("\n")
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -149,5 +160,64 @@ object CallReportRuntime {
             CallPopupTracker.markPopupOpened(context, phone, direction)
         }
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
+    }
+
+    private fun localCallCountLine(context: Context, phone: String): String {
+        if (phone.isBlank()) {
+            return ""
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            return ""
+        }
+
+        val count = runCatching {
+            countLocalCallsForPhone(context, phone)
+        }.getOrDefault(0)
+        val label = if (count > HISTORY_LIMIT) "${HISTORY_LIMIT}+" else count.toString()
+        return "В телефона: $label разговора"
+    }
+
+    private fun countLocalCallsForPhone(context: Context, phone: String): Int {
+        val digits = normalizePhone(phone)
+        if (digits.isBlank()) {
+            return 0
+        }
+
+        val projection = arrayOf(CallLog.Calls.NUMBER)
+        val sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $LOCAL_CALL_COUNT_READ_LIMIT"
+        var count = 0
+
+        context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder,
+        )?.use { cursor ->
+            val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            while (cursor.moveToNext() && count < LOCAL_CALL_COUNT_READ_LIMIT) {
+                val callNumber = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
+                if (samePhone(digits, callNumber)) {
+                    count += 1
+                }
+            }
+        }
+
+        return count
+    }
+
+    private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
+        val normalizedCandidate = normalizePhone(candidate)
+        if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) {
+            return false
+        }
+        return normalizedPhone == normalizedCandidate ||
+            normalizedPhone.endsWith(normalizedCandidate) ||
+            normalizedCandidate.endsWith(normalizedPhone)
+    }
+
+    private fun normalizePhone(phone: String): String {
+        val digits = phone.filter { it.isDigit() }
+        return if (digits.length > 9) digits.takeLast(9) else digits
     }
 }
