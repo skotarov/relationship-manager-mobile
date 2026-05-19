@@ -16,6 +16,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CallLog">
         <receiver
+            android:name=".NotificationDismissReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
             android:name=".CallStateReceiver"
             android:enabled="true"
             android:exported="false">
