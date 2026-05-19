@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">CallLog</string>
+    <string name="notification_channel_name">Call Report</string>
+    <string name="notification_channel_description">Caller lookup and quick open</string>
+    <string name="open_form">Отвори</string>
+    <string name="save_settings">Запази настройките</string>
+    <string name="open_form_direct">Отвори формата</string>
+    <string name="test_notification">Тествай notification</string>
+</resources>
