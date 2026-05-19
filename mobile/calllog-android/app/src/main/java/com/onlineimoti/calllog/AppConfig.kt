@@ -10,7 +10,7 @@ data class AppConfig(
 )
 
 object ConfigStore {
-    private const val PREFS = "calllog_prefs"
+    private const val PREFS = "callreport_prefs"
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_CONTACT_GROUPS = "contact_groups"
@@ -19,7 +19,7 @@ object ConfigStore {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return AppConfig(
             baseUrl = prefs.getString(KEY_BASE_URL, "https://onlineimoti.com")!!.trim(),
-            accessToken = prefs.getString(KEY_ACCESS_TOKEN, "")!!.trim(),
+            accessToken = prefs.getString(KEY_ACCESS_TOKEN, BuildConfig.DEFAULT_ACCESS_TOKEN)!!.trim(),
             contactGroups = prefs.getString(KEY_CONTACT_GROUPS, "")!!.trim(),
         )
     }
