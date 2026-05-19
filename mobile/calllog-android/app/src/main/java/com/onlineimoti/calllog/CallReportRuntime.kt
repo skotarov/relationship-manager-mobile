@@ -87,7 +87,7 @@ object CallReportRuntime {
         )
     }
 
-    fun showLookupNotification(context: Context, result: LookupResult) {
+    fun showLookupNotification(context: Context, result: LookupResult, fullscreen: Boolean = false) {
         val openIntent = Intent(context, WebViewActivity::class.java)
             .putExtra(WebViewActivity.EXTRA_URL, result.openFormUrl)
         val pendingIntent = PendingIntent.getActivity(
@@ -97,7 +97,7 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
             .setContentText(result.subtitle)
@@ -114,7 +114,10 @@ object CallReportRuntime {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_form), pendingIntent)
-            .build()
+        if (fullscreen) {
+            builder.setFullScreenIntent(pendingIntent, true)
+        }
+        val notification = builder.build()
 
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
     }
