@@ -55,6 +55,9 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
                     return@execute
                 }
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
+                    return@execute
+                }
 
                 CallReportRuntime.ensureNotificationChannel(context)
                 val result = CallReportRuntime.fetchLookup(config, number, direction)
