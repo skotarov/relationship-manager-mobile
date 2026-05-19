@@ -56,6 +56,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:hint="Път до lookup файла">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/lookupPathInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:text="/broker/callreport/lookup.php" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:hint="Път до form файла">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/formPathInput"
