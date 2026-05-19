@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     ) { granted ->
         val text = if (granted) "Разрешението за notifications е дадено." else "Notifications остават забранени."
         setStatus(text)
+        refreshPermissionSummary()
     }
 
     private val phonePermissionsLauncher = registerForActivityResult(
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             setStatus("Без достъп до телефон, call log и contacts няма да работи коректно филтърът за познати номера.")
         }
+        refreshPermissionSummary()
     }
 
     private val callScreeningRoleLauncher = registerForActivityResult(
@@ -46,6 +48,7 @@ class MainActivity : AppCompatActivity() {
         if (hasCallScreeningRole()) {
             setStatus("Call screening role е активирана.")
         }
+        refreshPermissionSummary()
     }
 
     private val fullscreenIntentSettingsLauncher = registerForActivityResult(
@@ -54,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         if (canUseFullScreenIntent()) {
             setStatus("Разрешението за full-screen call popup е дадено.")
         }
+        refreshPermissionSummary()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +71,19 @@ class MainActivity : AppCompatActivity() {
         requestCallScreeningRoleIfNeeded()
         requestFullScreenIntentPermissionIfNeeded()
         hydrateFields()
+        refreshPermissionSummary()
+
+        binding.openAppPermissionsButton.setOnClickListener {
+            openAppPermissionSettings()
+        }
+
+        binding.openCallScreeningButton.setOnClickListener {
+            requestCallScreeningRoleIfNeeded()
+        }
+
+        binding.openFullscreenIntentButton.setOnClickListener {
+            requestFullScreenIntentPermissionIfNeeded()
+        }
 
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
@@ -82,6 +99,11 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             fetchLookupAndNotify()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshPermissionSummary()
     }
 
     private fun hydrateFields() {
@@ -171,7 +193,14 @@ class MainActivity : AppCompatActivity() {
 
         executor.execute {
             runCatching {
-                CallReportRuntime.fetchLookup(config, phone, directionValue())
+                val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
+                CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
+                    if (displayName.isNullOrBlank()) {
+                        lookup
+                    } else {
+                        lookup.copy(title = displayName)
+                    }
+                }
             }.onSuccess { result ->
                 runOnUiThread {
                     binding.testNotificationButton.isEnabled = true
@@ -194,6 +223,51 @@ class MainActivity : AppCompatActivity() {
     private fun setStatus(message: String) {
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
+    }
+
+    private fun refreshPermissionSummary() {
+        val notificationsGranted = hasNotificationPermission()
+        val phoneGranted = hasPermission(Manifest.permission.READ_PHONE_STATE)
+        val callLogGranted = hasPermission(Manifest.permission.READ_CALL_LOG)
+        val contactsGranted = hasPermission(Manifest.permission.READ_CONTACTS)
+        val callScreeningGranted = hasCallScreeningRole()
+        val fullscreenGranted = canUseFullScreenIntent()
+
+        binding.permissionsSummaryText.text = listOf(
+            "Notifications: ${permissionStateLabel(notificationsGranted)}",
+            "Phone: ${permissionStateLabel(phoneGranted)}",
+            "Call log: ${permissionStateLabel(callLogGranted)}",
+            "Contacts: ${permissionStateLabel(contactsGranted)}",
+            "Call screening: ${permissionStateLabel(callScreeningGranted)}",
+            "Full-screen popup: ${permissionStateLabel(fullscreenGranted)}",
+        ).joinToString("\n")
+
+        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted
+        binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
+        binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
+        binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
+    }
+
+    private fun permissionStateLabel(active: Boolean): String {
+        return if (active) "активно" else "липсва"
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return true
+        }
+        return hasPermission(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun openAppPermissionSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        startActivity(intent)
     }
 
     private fun hasCallScreeningRole(): Boolean {
