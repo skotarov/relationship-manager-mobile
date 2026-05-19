@@ -36,6 +36,15 @@ object PhoneCallReader {
             return emptyList()
         }
 
+        val safeLimit = limit.coerceIn(1, 50)
+        return runCatching {
+            readRecentCalls(context, safeLimit)
+        }.getOrElse {
+            emptyList()
+        }
+    }
+
+    private fun readRecentCalls(context: Context, safeLimit: Int): List<PhoneCallRecord> {
         val projection = arrayOf(
             CallLog.Calls.NUMBER,
             CallLog.Calls.CACHED_NAME,
@@ -43,8 +52,7 @@ object PhoneCallReader {
             CallLog.Calls.DATE,
             CallLog.Calls.DURATION,
         )
-        val safeLimit = limit.coerceIn(1, 50)
-        val sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $safeLimit"
+        val sortOrder = "${CallLog.Calls.DATE} DESC"
 
         return buildList {
             context.contentResolver.query(
@@ -60,7 +68,7 @@ object PhoneCallReader {
                 val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
 
-                while (cursor.moveToNext()) {
+                while (cursor.moveToNext() && size < safeLimit) {
                     val number = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                     val cachedName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
                     val type = if (typeIndex >= 0) cursor.getInt(typeIndex) else 0
