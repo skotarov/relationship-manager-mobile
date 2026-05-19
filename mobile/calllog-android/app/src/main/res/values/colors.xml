@@ -1,6 +1,8 @@
 <resources>
-    <color name="calllog_bg">#F3EEE6</color>
-    <color name="calllog_surface">#FFFDF8</color>
-    <color name="calllog_text">#1E1A17</color>
-    <color name="calllog_accent">#8F3D16</color>
+    <color name="calllog_bg">#F4F4F5</color>
+    <color name="calllog_surface">#FFFFFF</color>
+    <color name="calllog_text">#202124</color>
+    <color name="calllog_muted_text">#6B7280</color>
+    <color name="calllog_border">#DADCE0</color>
+    <color name="calllog_accent">#6B7280</color>
 </resources>
