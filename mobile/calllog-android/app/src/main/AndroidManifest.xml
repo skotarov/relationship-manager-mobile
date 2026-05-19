@@ -10,9 +10,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/ic_callreport_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@android:drawable/sym_def_app_icon"
+        android:roundIcon="@drawable/ic_callreport_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.CallLog">
         <receiver
