@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.CallLog
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -181,6 +182,25 @@ object CallReportRuntime {
         if (formUrl.isBlank()) {
             return
         }
+        if (Settings.canDrawOverlays(context)) {
+            context.startService(
+                Intent(context, PostCallOverlayService::class.java)
+                    .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
+                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+            )
+            return
+        }
+        showPostCallFallbackNotification(context, formUrl, phone, direction, title)
+    }
+
+    private fun showPostCallFallbackNotification(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String,
+    ) {
         ensureNotificationChannel(context)
 
         val openFormIntent = Intent(context, WebViewActivity::class.java)
