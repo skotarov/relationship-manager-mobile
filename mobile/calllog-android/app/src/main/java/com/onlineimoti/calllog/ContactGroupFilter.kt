@@ -16,23 +16,34 @@ object ContactGroupFilter {
         return contact.groups.any { normalizeGroupName(it) in allowedGroups }
     }
 
+    fun resolveDisplayName(context: Context, phoneNumber: String): String? {
+        return findContact(context, phoneNumber)?.displayName?.takeIf { it.isNotBlank() }
+    }
+
     private fun findContact(context: Context, phoneNumber: String): ContactRecord? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return null
         }
 
         val resolver = context.contentResolver
-        val contactId = resolver.query(
+        val contact = resolver.query(
             ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
                 .appendPath(phoneNumber)
                 .build(),
-            arrayOf(ContactsContract.PhoneLookup._ID),
+            arrayOf(
+                ContactsContract.PhoneLookup._ID,
+                ContactsContract.PhoneLookup.DISPLAY_NAME,
+            ),
             null,
             null,
             null
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
-                cursor.getLong(0)
+                ContactRecord(
+                    displayName = cursor.getString(1).orEmpty(),
+                    groups = emptyList(),
+                    contactId = cursor.getLong(0),
+                )
             } else {
                 null
             }
@@ -44,7 +55,7 @@ object ContactGroupFilter {
             arrayOf(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID),
             "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
             arrayOf(
-                contactId.toString(),
+                contact.contactId.toString(),
                 ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE
             ),
             null
@@ -55,7 +66,7 @@ object ContactGroupFilter {
         }
 
         if (groupIds.isEmpty()) {
-            return ContactRecord(emptyList())
+            return contact
         }
 
         val placeholders = groupIds.joinToString(",") { "?" }
@@ -72,7 +83,7 @@ object ContactGroupFilter {
             }
         }
 
-        return ContactRecord(groups)
+        return contact.copy(groups = groups)
     }
 
     private fun parseAllowedGroups(rawGroups: String): Set<String> {
@@ -87,6 +98,8 @@ object ContactGroupFilter {
     }
 
     private data class ContactRecord(
+        val displayName: String,
         val groups: List<String>,
+        val contactId: Long,
     )
 }
