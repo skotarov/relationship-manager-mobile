@@ -66,11 +66,10 @@ class CallStateReceiver : BroadcastReceiver() {
             return
         }
 
-        showLookup(
+        showPostCallPrompt(
             context = context,
             number = endedCall.number,
             direction = endedCall.direction,
-            fullscreen = true,
         )
     }
 
@@ -102,6 +101,40 @@ class CallStateReceiver : BroadcastReceiver() {
                     phone = number,
                     direction = direction,
                 )
+            } catch (_: Throwable) {
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private fun showPostCallPrompt(context: Context, number: String, direction: String) {
+        val pendingResult = goAsync()
+        EXECUTOR.execute {
+            try {
+                val config = ConfigStore.load(context)
+                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                    return@execute
+                }
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
+                    return@execute
+                }
+                val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+                val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                    if (displayName.isBlank()) {
+                        lookup
+                    } else {
+                        lookup.copy(title = displayName)
+                    }
+                }
+
+                val promptIntent = Intent(context, PostCallPromptActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, result.openFormUrl)
+                    .putExtra(PostCallPromptActivity.EXTRA_PHONE, number)
+                    .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallPromptActivity.EXTRA_TITLE, result.title)
+                context.startActivity(promptIntent)
             } catch (_: Throwable) {
             } finally {
                 pendingResult.finish()
