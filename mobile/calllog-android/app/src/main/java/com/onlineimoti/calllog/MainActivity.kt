@@ -35,6 +35,12 @@ class MainActivity : AppCompatActivity() {
         requestNextPermissionStep()
     }
 
+    private val overlaySettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (Settings.canDrawOverlays(this)) setStatus("Разрешението за кръгла floating икона е дадено.")
+        refreshPermissionSummary()
+        requestNextPermissionStep()
+    }
+
     private val fullscreenIntentSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (canUseFullScreenIntent()) setStatus("Разрешението за full-screen call report popup е дадено.")
         refreshPermissionSummary()
@@ -131,6 +137,10 @@ class MainActivity : AppCompatActivity() {
             !hasPermission(Manifest.permission.READ_CONTACTS) -> {
                 setStatus("Разреши Contacts, за да показваме имена вместо само номера.")
                 singlePermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            }
+            !Settings.canDrawOverlays(this) -> {
+                setStatus("Разреши Display over other apps, за да може вторият popup да е кръгла floating икона.")
+                requestOverlayPermissionIfNeeded()
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
                 setStatus("Активирай Call screening, ако Android го предложи, за по-надежден popup при разговор.")
@@ -268,6 +278,7 @@ class MainActivity : AppCompatActivity() {
         val phoneGranted = hasPermission(Manifest.permission.READ_PHONE_STATE)
         val callLogGranted = hasPermission(Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(Manifest.permission.READ_CONTACTS)
+        val overlayGranted = Settings.canDrawOverlays(this)
         val callScreeningGranted = hasCallScreeningRole()
         val fullscreenGranted = canUseFullScreenIntent()
 
@@ -276,6 +287,7 @@ class MainActivity : AppCompatActivity() {
             "Phone" to phoneGranted,
             "Call report log" to callLogGranted,
             "Contacts" to contactsGranted,
+            "Floating icon" to overlayGranted,
             "Call screening" to callScreeningGranted,
             "Full-screen popup" to fullscreenGranted,
         )
@@ -289,7 +301,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSummaryText.text = builder
 
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted
+        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !overlayGranted
         binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
         binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
         binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
@@ -300,13 +312,21 @@ class MainActivity : AppCompatActivity() {
     private fun hasPermission(permission: String): Boolean = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun openAppPermissionSettings() {
-        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:$packageName") })
+        startPermissionFlow()
     }
 
     private fun hasCallScreeningRole(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val roleManager = getSystemService(RoleManager::class.java) ?: return false
         return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+    }
+
+    private fun requestOverlayPermissionIfNeeded() {
+        if (Settings.canDrawOverlays(this)) {
+            requestNextPermissionStep()
+            return
+        }
+        overlaySettingsLauncher.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply { data = Uri.parse("package:$packageName") })
     }
 
     private fun requestCallScreeningRoleIfNeeded() {
