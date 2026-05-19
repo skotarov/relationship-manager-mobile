@@ -32,6 +32,11 @@
             </intent-filter>
         </service>
         <activity
+            android:name=".PostCallPromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop" />
+        <activity
             android:name=".WebViewActivity"
             android:exported="false" />
         <activity
