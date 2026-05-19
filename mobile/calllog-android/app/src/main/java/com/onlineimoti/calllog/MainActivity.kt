@@ -32,10 +32,11 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         val phoneStateGranted = result[Manifest.permission.READ_PHONE_STATE] == true
         val callLogGranted = result[Manifest.permission.READ_CALL_LOG] == true
-        if (phoneStateGranted && callLogGranted) {
-            setStatus("Достъпът до телефонните събития е разрешен.")
+        val contactsGranted = result[Manifest.permission.READ_CONTACTS] == true
+        if (phoneStateGranted && callLogGranted && contactsGranted) {
+            setStatus("Достъпът до телефон, call log и contacts е разрешен.")
         } else {
-            setStatus("Без достъп до телефон и call log няма автоматично известяване при обаждане.")
+            setStatus("Без достъп до телефон, call log и contacts няма да работи коректно филтърът за познати номера.")
         }
     }
 
@@ -87,12 +88,14 @@ class MainActivity : AppCompatActivity() {
         val config = ConfigStore.load(this)
         binding.baseUrlInput.setText(config.baseUrl)
         binding.accessTokenInput.setText(config.accessToken)
+        binding.contactGroupsInput.setText(config.contactGroups)
     }
 
     private fun saveConfig(): AppConfig {
         val config = AppConfig(
             baseUrl = binding.baseUrlInput.text?.toString().orEmpty(),
             accessToken = binding.accessTokenInput.text?.toString().orEmpty(),
+            contactGroups = binding.contactGroupsInput.text?.toString().orEmpty(),
         )
         ConfigStore.save(this, config)
         return ConfigStore.load(this)
@@ -115,6 +118,9 @@ class MainActivity : AppCompatActivity() {
             }
             if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
                 add(Manifest.permission.READ_CALL_LOG)
+            }
+            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                add(Manifest.permission.READ_CONTACTS)
             }
         }
         if (missingPermissions.isEmpty()) {
