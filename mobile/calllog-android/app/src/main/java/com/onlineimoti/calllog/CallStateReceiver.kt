@@ -128,13 +128,13 @@ class CallStateReceiver : BroadcastReceiver() {
                     }
                 }
 
-                val promptIntent = Intent(context, PostCallPromptActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, result.openFormUrl)
-                    .putExtra(PostCallPromptActivity.EXTRA_PHONE, number)
-                    .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, direction)
-                    .putExtra(PostCallPromptActivity.EXTRA_TITLE, result.title)
-                context.startActivity(promptIntent)
+                CallReportRuntime.showPostCallPromptNotification(
+                    context = context,
+                    formUrl = result.openFormUrl,
+                    phone = number,
+                    direction = direction,
+                    title = result.title,
+                )
             } catch (_: Throwable) {
             } finally {
                 pendingResult.finish()
