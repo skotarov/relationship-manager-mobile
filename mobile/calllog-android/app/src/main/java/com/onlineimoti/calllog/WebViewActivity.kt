@@ -12,6 +12,8 @@ import com.onlineimoti.calllog.databinding.ActivityWebViewBinding
 
 class WebViewActivity : AppCompatActivity() {
     private lateinit var binding: ActivityWebViewBinding
+    private var popupPhone: String = ""
+    private var popupDirection: String = ""
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,6 +22,8 @@ class WebViewActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val url = intent.getStringExtra(EXTRA_URL).orEmpty()
+        popupPhone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
+        popupDirection = intent.getStringExtra(EXTRA_DIRECTION).orEmpty()
         if (url.isBlank()) {
             finish()
             return
@@ -46,7 +50,16 @@ class WebViewActivity : AppCompatActivity() {
         binding.webView.loadUrl(url)
     }
 
+    override fun onDestroy() {
+        if (popupPhone.isNotBlank()) {
+            CallPopupTracker.markPopupClosed(this, popupPhone, popupDirection)
+        }
+        super.onDestroy()
+    }
+
     companion object {
         const val EXTRA_URL = "url"
+        const val EXTRA_PHONE = "phone"
+        const val EXTRA_DIRECTION = "direction"
     }
 }
