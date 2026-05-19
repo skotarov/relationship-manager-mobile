@@ -44,7 +44,7 @@ object CallReportRuntime {
     fun fetchLookup(config: AppConfig, phone: String, direction: String): LookupResult {
         val url = buildEndpoint(
             baseUrl = config.baseUrl,
-            path = "/broker/callreport/lookup.php",
+            path = config.lookupPath,
             params = linkedMapOf(
                 "phone" to phone,
                 "direction" to direction,
@@ -122,7 +122,7 @@ object CallReportRuntime {
         val config = ConfigStore.load(context)
         val fullLogUrl = buildEndpoint(
             baseUrl = config.baseUrl,
-            path = "/broker/callreport/history.php",
+            path = config.historyPath,
             params = linkedMapOf(
                 "phone" to phone,
                 "direction" to direction,
