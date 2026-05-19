@@ -23,43 +23,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
 
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        val text = if (granted) "Разрешението за notifications е дадено." else "Notifications остават забранени."
-        setStatus(text)
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        setStatus(if (granted) "Разрешението за notifications е дадено." else "Notifications остават забранени.")
         refreshPermissionSummary()
     }
 
-    private val phonePermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        val phoneStateGranted = result[Manifest.permission.READ_PHONE_STATE] == true
-        val callLogGranted = result[Manifest.permission.READ_CALL_LOG] == true
-        val contactsGranted = result[Manifest.permission.READ_CONTACTS] == true
-        if (phoneStateGranted && callLogGranted && contactsGranted) {
-            setStatus("Достъпът до телефон, call report log и contacts е разрешен.")
-        } else {
-            setStatus("Без достъп до телефон, call report log и contacts няма да работи коректно филтърът за познати номера.")
-        }
+    private val phonePermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        val ok = result[Manifest.permission.READ_PHONE_STATE] == true &&
+            result[Manifest.permission.READ_CALL_LOG] == true &&
+            result[Manifest.permission.READ_CONTACTS] == true
+        setStatus(if (ok) "Достъпът до телефон, call report log и contacts е разрешен." else "Без достъп до телефон, call report log и contacts няма да работи коректно.")
         refreshPermissionSummary()
     }
 
-    private val callScreeningRoleLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (hasCallScreeningRole()) {
-            setStatus("Call screening role е активирана.")
-        }
+    private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (hasCallScreeningRole()) setStatus("Call screening role е активирана.")
         refreshPermissionSummary()
     }
 
-    private val fullscreenIntentSettingsLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        if (canUseFullScreenIntent()) {
-            setStatus("Разрешението за full-screen call report popup е дадено.")
-        }
+    private val fullscreenIntentSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (canUseFullScreenIntent()) setStatus("Разрешението за full-screen call report popup е дадено.")
         refreshPermissionSummary()
     }
 
@@ -77,36 +60,28 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionSummary()
         renderBuildVersion()
 
-        binding.openAppPermissionsButton.setOnClickListener {
-            openAppPermissionSettings()
-        }
-
-        binding.openCallScreeningButton.setOnClickListener {
-            requestCallScreeningRoleIfNeeded()
-        }
-
-        binding.openFullscreenIntentButton.setOnClickListener {
-            requestFullScreenIntentPermissionIfNeeded()
-        }
-
+        binding.openAppPermissionsButton.setOnClickListener { openAppPermissionSettings() }
+        binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
+        binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Настройките са записани локално.")
         }
-
         binding.openFormButton.setOnClickListener {
             saveConfig()
             openFormDirect()
         }
-
         binding.testStartPopupButton.setOnClickListener {
             saveConfig()
             testStartPopup()
         }
-
         binding.testEndPopupButton.setOnClickListener {
             saveConfig()
             testEndPopup()
+        }
+        binding.testFullLogButton.setOnClickListener {
+            saveConfig()
+            openFullLogDirect()
         }
     }
 
@@ -120,6 +95,9 @@ class MainActivity : AppCompatActivity() {
         binding.baseUrlInput.setText(config.baseUrl)
         binding.accessTokenInput.setText(config.accessToken)
         binding.contactGroupsInput.setText(config.contactGroups)
+        binding.formPathInput.setText(config.formPath)
+        binding.historyPathInput.setText(config.historyPath)
+        binding.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
     }
 
     private fun saveConfig(): AppConfig {
@@ -127,46 +105,32 @@ class MainActivity : AppCompatActivity() {
             baseUrl = binding.baseUrlInput.text?.toString().orEmpty(),
             accessToken = binding.accessTokenInput.text?.toString().orEmpty(),
             contactGroups = binding.contactGroupsInput.text?.toString().orEmpty(),
+            formPath = binding.formPathInput.text?.toString().orEmpty(),
+            historyPath = binding.historyPathInput.text?.toString().orEmpty(),
+            postCallPromptTimeoutSeconds = binding.postCallTimeoutInput.text?.toString()?.toIntOrNull()
+                ?: ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS,
         )
         ConfigStore.save(this, config)
         return ConfigStore.load(this)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun requestPhonePermissionsIfNeeded() {
         val missingPermissions = buildList {
-            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-                add(Manifest.permission.READ_PHONE_STATE)
-            }
-            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-                add(Manifest.permission.READ_CALL_LOG)
-            }
-            if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                add(Manifest.permission.READ_CONTACTS)
-            }
+            if (!hasPermission(Manifest.permission.READ_PHONE_STATE)) add(Manifest.permission.READ_PHONE_STATE)
+            if (!hasPermission(Manifest.permission.READ_CALL_LOG)) add(Manifest.permission.READ_CALL_LOG)
+            if (!hasPermission(Manifest.permission.READ_CONTACTS)) add(Manifest.permission.READ_CONTACTS)
         }
-        if (missingPermissions.isEmpty()) {
-            return
-        }
-        phonePermissionsLauncher.launch(missingPermissions.toTypedArray())
+        if (missingPermissions.isNotEmpty()) phonePermissionsLauncher.launch(missingPermissions.toTypedArray())
     }
 
-    private fun directionValue(): String {
-        return if (binding.directionIn.isChecked) "in" else "out"
-    }
-
-    private fun phoneValue(): String {
-        return binding.phoneInput.text?.toString()?.trim().orEmpty()
-    }
+    private fun directionValue(): String = if (binding.directionIn.isChecked) "in" else "out"
+    private fun phoneValue(): String = binding.phoneInput.text?.toString()?.trim().orEmpty()
 
     private fun openFormDirect() {
         val config = ConfigStore.load(this)
@@ -175,17 +139,18 @@ class MainActivity : AppCompatActivity() {
             setStatus("Попълни Base URL и телефон.")
             return
         }
+        openWebView(buildFormUrl(config, phone, directionValue()))
+    }
 
-        val url = buildEndpoint(
-            baseUrl = config.baseUrl,
-            path = "/broker/callreport/form.php",
-            params = linkedMapOf(
-                "phone" to phone,
-                "direction" to directionValue(),
-                "access_token" to config.accessToken,
-            )
-        )
-        openWebView(url)
+    private fun openFullLogDirect() {
+        val config = ConfigStore.load(this)
+        val phone = phoneValue()
+        if (config.baseUrl.isBlank() || phone.isBlank()) {
+            setStatus("Попълни Base URL и телефон.")
+            return
+        }
+        openWebView(buildHistoryUrl(config, phone, directionValue()))
+        setStatus("Отворен е тестов пълен лог.")
     }
 
     private fun testStartPopup() {
@@ -195,10 +160,8 @@ class MainActivity : AppCompatActivity() {
             setStatus("Попълни Base URL и телефон.")
             return
         }
-
         binding.testStartPopupButton.isEnabled = false
         setStatus("Тест: зареждам popup при старт за $phone …")
-
         executor.execute {
             runCatching {
                 val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
@@ -208,13 +171,7 @@ class MainActivity : AppCompatActivity() {
             }.onSuccess { result ->
                 runOnUiThread {
                     binding.testStartPopupButton.isEnabled = true
-                    CallReportRuntime.showLookupNotification(
-                        context = this,
-                        result = result,
-                        fullscreen = true,
-                        phone = phone,
-                        direction = directionValue(),
-                    )
+                    CallReportRuntime.showLookupNotification(this, result, fullscreen = true, phone = phone, direction = directionValue())
                     setStatus("Показан е тестов popup при старт.")
                 }
             }.onFailure { throwable ->
@@ -233,10 +190,8 @@ class MainActivity : AppCompatActivity() {
             setStatus("Попълни Base URL и телефон.")
             return
         }
-
         binding.testEndPopupButton.isEnabled = false
         setStatus("Тест: зареждам popup след край за $phone …")
-
         executor.execute {
             runCatching {
                 val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
@@ -248,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                     binding.testEndPopupButton.isEnabled = true
                     CallReportRuntime.showPostCallPromptNotification(
                         context = this,
-                        formUrl = result.openFormUrl,
+                        formUrl = buildFormUrl(config, phone, directionValue()),
                         phone = phone,
                         direction = directionValue(),
                         title = result.title,
@@ -263,6 +218,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun buildFormUrl(config: AppConfig, phone: String, direction: String): String = buildEndpoint(
+        baseUrl = config.baseUrl,
+        path = config.formPath,
+        params = linkedMapOf("phone" to phone, "direction" to direction, "access_token" to config.accessToken),
+    )
+
+    private fun buildHistoryUrl(config: AppConfig, phone: String, direction: String): String = buildEndpoint(
+        baseUrl = config.baseUrl,
+        path = config.historyPath,
+        params = linkedMapOf("phone" to phone, "direction" to direction, "access_token" to config.accessToken),
+    )
 
     private fun openWebView(url: String) {
         startActivity(Intent(this, WebViewActivity::class.java).putExtra(WebViewActivity.EXTRA_URL, url))
@@ -297,19 +264,9 @@ class MainActivity : AppCompatActivity() {
         val builder = SpannableStringBuilder()
         rows.forEachIndexed { index, row ->
             val start = builder.length
-            val line = "${row.first}: ${permissionStateLabel(row.second)}"
-            builder.append(line)
-            if (!row.second) {
-                builder.setSpan(
-                    ForegroundColorSpan(missingColor),
-                    start,
-                    builder.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-            }
-            if (index < rows.lastIndex) {
-                builder.append('\n')
-            }
+            builder.append("${row.first}: ${permissionStateLabel(row.second)}")
+            if (!row.second) builder.setSpan(ForegroundColorSpan(missingColor), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (index < rows.lastIndex) builder.append('\n')
         }
         binding.permissionsSummaryText.text = builder
 
@@ -319,71 +276,35 @@ class MainActivity : AppCompatActivity() {
         binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
     }
 
-    private fun permissionStateLabel(active: Boolean): String {
-        return if (active) "активно" else "липсва"
-    }
-
-    private fun hasNotificationPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            return true
-        }
-        return hasPermission(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    private fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun permissionStateLabel(active: Boolean): String = if (active) "активно" else "липсва"
+    private fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasPermission(Manifest.permission.POST_NOTIFICATIONS)
+    private fun hasPermission(permission: String): Boolean = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun openAppPermissionSettings() {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.parse("package:$packageName")
-        }
-        startActivity(intent)
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:$packageName") })
     }
 
     private fun hasCallScreeningRole(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return false
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val roleManager = getSystemService(RoleManager::class.java) ?: return false
         return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
     }
 
     private fun requestCallScreeningRoleIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return
-        }
-        if (hasCallScreeningRole()) {
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || hasCallScreeningRole()) return
         val roleManager = getSystemService(RoleManager::class.java) ?: return
-        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
-            return
-        }
-        callScreeningRoleLauncher.launch(
-            roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
-        )
+        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) return
+        callScreeningRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
     }
 
     private fun canUseFullScreenIntent(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            return true
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
         val notificationManager = getSystemService(NotificationManager::class.java) ?: return false
         return notificationManager.canUseFullScreenIntent()
     }
 
     private fun requestFullScreenIntentPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            return
-        }
-        if (canUseFullScreenIntent()) {
-            return
-        }
-
-        val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-            data = Uri.parse("package:$packageName")
-        }
-        fullscreenIntentSettingsLauncher.launch(intent)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || canUseFullScreenIntent()) return
+        fullscreenIntentSettingsLauncher.launch(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply { data = Uri.parse("package:$packageName") })
     }
 }
