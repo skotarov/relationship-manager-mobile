@@ -23,7 +23,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Локален Android wrapper за lookup notification и remote WebView форма."
+            android:text="Настройки на Android wrapper-а за lookup notification и remote WebView форма."
             android:textColor="@color/calllog_muted_text"
             android:textSize="15sp" />
 
@@ -192,12 +192,20 @@
                 </RadioGroup>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/testNotificationButton"
+                    android:id="@+id/testStartPopupButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
-                    android:text="@string/test_notification" />
+                    android:text="Тест: popup при старт" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/testEndPopupButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Тест: popup след край" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/openFormButton"
@@ -223,7 +231,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="22dp"
             android:gravity="center"
-            android:text="Версия: 2026-05-19 15:20"
             android:textColor="@color/calllog_muted_text"
             android:textSize="12sp" />
 
