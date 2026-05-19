@@ -9,6 +9,9 @@ import android.os.Build
 import android.os.Bundle
 import android.app.role.RoleManager
 import android.provider.Settings
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -35,9 +38,9 @@ class MainActivity : AppCompatActivity() {
         val callLogGranted = result[Manifest.permission.READ_CALL_LOG] == true
         val contactsGranted = result[Manifest.permission.READ_CONTACTS] == true
         if (phoneStateGranted && callLogGranted && contactsGranted) {
-            setStatus("Достъпът до телефон, call log и contacts е разрешен.")
+            setStatus("Достъпът до телефон, call report log и contacts е разрешен.")
         } else {
-            setStatus("Без достъп до телефон, call log и contacts няма да работи коректно филтърът за познати номера.")
+            setStatus("Без достъп до телефон, call report log и contacts няма да работи коректно филтърът за познати номера.")
         }
         refreshPermissionSummary()
     }
@@ -55,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (canUseFullScreenIntent()) {
-            setStatus("Разрешението за full-screen call popup е дадено.")
+            setStatus("Разрешението за full-screen call report popup е дадено.")
         }
         refreshPermissionSummary()
     }
@@ -204,7 +207,13 @@ class MainActivity : AppCompatActivity() {
             }.onSuccess { result ->
                 runOnUiThread {
                     binding.testNotificationButton.isEnabled = true
-                    CallReportRuntime.showLookupNotification(this, result, fullscreen = true)
+                    CallReportRuntime.showLookupNotification(
+                        context = this,
+                        result = result,
+                        fullscreen = true,
+                        phone = phone,
+                        direction = directionValue(),
+                    )
                     setStatus("Notification е обновен с lookup данните.")
                 }
             }.onFailure { throwable ->
@@ -233,14 +242,33 @@ class MainActivity : AppCompatActivity() {
         val callScreeningGranted = hasCallScreeningRole()
         val fullscreenGranted = canUseFullScreenIntent()
 
-        binding.permissionsSummaryText.text = listOf(
-            "Notifications: ${permissionStateLabel(notificationsGranted)}",
-            "Phone: ${permissionStateLabel(phoneGranted)}",
-            "Call log: ${permissionStateLabel(callLogGranted)}",
-            "Contacts: ${permissionStateLabel(contactsGranted)}",
-            "Call screening: ${permissionStateLabel(callScreeningGranted)}",
-            "Full-screen popup: ${permissionStateLabel(fullscreenGranted)}",
-        ).joinToString("\n")
+        val rows = listOf(
+            "Notifications" to notificationsGranted,
+            "Phone" to phoneGranted,
+            "Call report log" to callLogGranted,
+            "Contacts" to contactsGranted,
+            "Call screening" to callScreeningGranted,
+            "Full-screen popup" to fullscreenGranted,
+        )
+        val missingColor = ContextCompat.getColor(this, R.color.calllog_error)
+        val builder = SpannableStringBuilder()
+        rows.forEachIndexed { index, row ->
+            val start = builder.length
+            val line = "${row.first}: ${permissionStateLabel(row.second)}"
+            builder.append(line)
+            if (!row.second) {
+                builder.setSpan(
+                    ForegroundColorSpan(missingColor),
+                    start,
+                    builder.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+            if (index < rows.lastIndex) {
+                builder.append('\n')
+            }
+        }
+        binding.permissionsSummaryText.text = builder
 
         val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted
         binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
