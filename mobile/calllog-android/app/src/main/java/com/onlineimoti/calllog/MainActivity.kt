@@ -1,10 +1,14 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.app.role.RoleManager
+import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -35,6 +39,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val callScreeningRoleLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (hasCallScreeningRole()) {
+            setStatus("Call screening role е активирана.")
+        }
+    }
+
+    private val fullscreenIntentSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (canUseFullScreenIntent()) {
+            setStatus("Разрешението за full-screen call popup е дадено.")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -43,6 +63,8 @@ class MainActivity : AppCompatActivity() {
         CallReportRuntime.ensureNotificationChannel(this)
         requestNotificationPermissionIfNeeded()
         requestPhonePermissionsIfNeeded()
+        requestCallScreeningRoleIfNeeded()
+        requestFullScreenIntentPermissionIfNeeded()
         hydrateFields()
 
         binding.saveSettingsButton.setOnClickListener {
@@ -147,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             }.onSuccess { result ->
                 runOnUiThread {
                     binding.testNotificationButton.isEnabled = true
-                    CallReportRuntime.showLookupNotification(this, result)
+                    CallReportRuntime.showLookupNotification(this, result, fullscreen = true)
                     setStatus("Notification е обновен с lookup данните.")
                 }
             }.onFailure { throwable ->
@@ -166,5 +188,51 @@ class MainActivity : AppCompatActivity() {
     private fun setStatus(message: String) {
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
+    }
+
+    private fun hasCallScreeningRole(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return false
+        }
+        val roleManager = getSystemService(RoleManager::class.java) ?: return false
+        return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+    }
+
+    private fun requestCallScreeningRoleIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return
+        }
+        if (hasCallScreeningRole()) {
+            return
+        }
+        val roleManager = getSystemService(RoleManager::class.java) ?: return
+        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+            return
+        }
+        callScreeningRoleLauncher.launch(
+            roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
+        )
+    }
+
+    private fun canUseFullScreenIntent(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return true
+        }
+        val notificationManager = getSystemService(NotificationManager::class.java) ?: return false
+        return notificationManager.canUseFullScreenIntent()
+    }
+
+    private fun requestFullScreenIntentPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return
+        }
+        if (canUseFullScreenIntent()) {
+            return
+        }
+
+        val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+            data = Uri.parse("package:$packageName")
+        }
+        fullscreenIntentSettingsLauncher.launch(intent)
     }
 }
