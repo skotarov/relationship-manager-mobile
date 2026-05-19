@@ -20,8 +20,10 @@ import java.net.URL
 object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val LOOKUP_NOTIFICATION_ID = 2001
+    private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
-    private const val LOCAL_CALL_COUNT_READ_LIMIT = HISTORY_LIMIT + 1
+    private const val LOCAL_CALL_MATCH_LIMIT = HISTORY_LIMIT + 1
+    private const val LOCAL_CALL_SCAN_LIMIT = 200
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -130,17 +132,18 @@ object CallReportRuntime {
 
         val localCallCountLine = localCallCountLine(context, phone)
         val visibleLines = buildList {
-            add(result.subtitle)
             if (localCallCountLine.isNotBlank()) {
                 add(localCallCountLine)
             }
+            add(result.subtitle)
             addAll(result.lines.take(HISTORY_LIMIT + 2))
         }.filter { it.isNotBlank() }
 
+        val contentText = visibleLines.firstOrNull() ?: result.subtitle
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
-            .setContentText(visibleLines.firstOrNull() ?: result.subtitle)
+            .setContentText(contentText)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     visibleLines.joinToString("\n")
@@ -162,12 +165,58 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
     }
 
+    fun showPostCallPromptNotification(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String,
+    ) {
+        if (formUrl.isBlank()) {
+            return
+        }
+        ensureNotificationChannel(context)
+
+        val promptIntent = Intent(context, PostCallPromptActivity::class.java)
+            .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, formUrl)
+            .putExtra(PostCallPromptActivity.EXTRA_PHONE, phone)
+            .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, direction)
+            .putExtra(PostCallPromptActivity.EXTRA_TITLE, title)
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            2002,
+            promptIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.sym_call_incoming)
+            .setContentTitle("Да запиша ли бележка?")
+            .setContentText(title.ifBlank { phone })
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    listOf(title.ifBlank { phone }, "Разговорът приключи. Запиши бележка или пропусни.")
+                        .filter { it.isNotBlank() }
+                        .joinToString("\n")
+                )
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setFullScreenIntent(pendingIntent, true)
+            .addAction(0, "Запиши/пропусни", pendingIntent)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
+    }
+
     private fun localCallCountLine(context: Context, phone: String): String {
         if (phone.isBlank()) {
             return ""
         }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-            return ""
+            return "В телефона: няма разрешение"
         }
 
         val count = runCatching {
@@ -184,8 +233,9 @@ object CallReportRuntime {
         }
 
         val projection = arrayOf(CallLog.Calls.NUMBER)
-        val sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $LOCAL_CALL_COUNT_READ_LIMIT"
+        val sortOrder = "${CallLog.Calls.DATE} DESC"
         var count = 0
+        var scanned = 0
 
         context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
@@ -195,7 +245,8 @@ object CallReportRuntime {
             sortOrder,
         )?.use { cursor ->
             val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
-            while (cursor.moveToNext() && count < LOCAL_CALL_COUNT_READ_LIMIT) {
+            while (cursor.moveToNext() && scanned < LOCAL_CALL_SCAN_LIMIT && count < LOCAL_CALL_MATCH_LIMIT) {
+                scanned += 1
                 val callNumber = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                 if (samePhone(digits, callNumber)) {
                     count += 1
