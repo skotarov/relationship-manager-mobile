@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CallLog</string>
+    <string name="app_name">Call Report</string>
     <string name="notification_channel_name">Call Report</string>
     <string name="notification_channel_description">Caller lookup and quick open</string>
     <string name="open_form">Отвори</string>
