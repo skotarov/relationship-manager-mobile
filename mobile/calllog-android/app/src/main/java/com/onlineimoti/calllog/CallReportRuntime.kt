@@ -20,7 +20,7 @@ import java.net.URL
 object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val LOOKUP_NOTIFICATION_ID = 2001
-    private const val POST_CALL_NOTIFICATION_ID = 2002
+    const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
     private const val LOCAL_CALL_MATCH_LIMIT = HISTORY_LIMIT + 1
     private const val LOCAL_CALL_SCAN_LIMIT = 5000
@@ -154,11 +154,7 @@ object CallReportRuntime {
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
             .setContentText(contentText)
-            .setStyle(
-                NotificationCompat.BigTextStyle().bigText(
-                    visibleLines.joinToString("\n")
-                )
-            )
+            .setStyle(NotificationCompat.BigTextStyle().bigText(visibleLines.joinToString("\n")))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
@@ -187,25 +183,33 @@ object CallReportRuntime {
         }
         ensureNotificationChannel(context)
 
-        val promptIntent = Intent(context, PostCallPromptActivity::class.java)
-            .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, formUrl)
-            .putExtra(PostCallPromptActivity.EXTRA_PHONE, phone)
-            .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, direction)
-            .putExtra(PostCallPromptActivity.EXTRA_TITLE, title)
-        val pendingIntent = PendingIntent.getActivity(
+        val openFormIntent = Intent(context, WebViewActivity::class.java)
+            .putExtra(WebViewActivity.EXTRA_URL, formUrl)
+            .putExtra(WebViewActivity.EXTRA_PHONE, phone)
+            .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
+        val openFormPendingIntent = PendingIntent.getActivity(
             context,
             2002,
-            promptIntent,
+            openFormIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val skipIntent = Intent(context, NotificationDismissReceiver::class.java)
+            .putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_ID, POST_CALL_NOTIFICATION_ID)
+        val skipPendingIntent = PendingIntent.getBroadcast(
+            context,
+            2003,
+            skipIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle("Да запиша ли бележка?")
+            .setContentTitle("Бележка след разговора")
             .setContentText(title.ifBlank { phone })
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    listOf(title.ifBlank { phone }, "Разговорът приключи. Запиши бележка или пропусни.")
+                    listOf(title.ifBlank { phone }, "Разговорът приключи.")
                         .filter { it.isNotBlank() }
                         .joinToString("\n")
                 )
@@ -213,9 +217,10 @@ object CallReportRuntime {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setFullScreenIntent(pendingIntent, true)
-            .addAction(0, "Запиши/пропусни", pendingIntent)
+            .setContentIntent(openFormPendingIntent)
+            .setFullScreenIntent(openFormPendingIntent, true)
+            .addAction(0, "Запиши бележка", openFormPendingIntent)
+            .addAction(0, "Пропусни", skipPendingIntent)
             .build()
 
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
