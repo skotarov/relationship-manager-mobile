@@ -46,6 +46,6 @@ jobs:
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: calllog-debug-apk
-          path: mobile/calllog-android/app/build/outputs/apk/debug/app-debug.apk
+          name: callreport-debug-apk
+          path: mobile/calllog-android/app/build/outputs/apk/debug/callreport-debug.apk
           if-no-files-found: error
