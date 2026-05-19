@@ -16,6 +16,7 @@ import java.net.URL
 object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val LOOKUP_NOTIFICATION_ID = 2001
+    private const val HISTORY_LIMIT = 5
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
@@ -40,6 +41,7 @@ object CallReportRuntime {
             params = linkedMapOf(
                 "phone" to phone,
                 "direction" to direction,
+                "history_limit" to HISTORY_LIMIT.toString(),
                 "access_token" to config.accessToken,
             )
         )
@@ -64,12 +66,28 @@ object CallReportRuntime {
 
         val json = org.json.JSONObject(body)
         val linesJson = json.optJSONArray("lines")
-        val lines = buildList {
+        val serverLines = buildList {
             if (linesJson != null) {
                 for (index in 0 until linesJson.length()) {
                     add(linesJson.optString(index))
                 }
             }
+        }
+        val previousCallCount = json.optInt("previous_call_count", -1)
+        val recentLinesJson = json.optJSONArray("recent_call_lines")
+        val recentLines = buildList {
+            if (recentLinesJson != null) {
+                for (index in 0 until recentLinesJson.length()) {
+                    add(recentLinesJson.optString(index))
+                }
+            }
+        }
+        val lines = buildList {
+            if (previousCallCount >= 0) {
+                add("Предишни разговори: $previousCallCount")
+            }
+            addAll(serverLines)
+            addAll(recentLines.take(HISTORY_LIMIT))
         }
 
         val openFormUrl = json.optString("open_form_url")
@@ -112,7 +130,7 @@ object CallReportRuntime {
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
                     listOf(result.subtitle)
-                        .plus(result.lines.take(3))
+                        .plus(result.lines.take(HISTORY_LIMIT + 2))
                         .filter { it.isNotBlank() }
                         .joinToString("\n")
                 )
