@@ -62,9 +62,6 @@ class CallStateReceiver : BroadcastReceiver() {
 
     private fun handleCallEnded(context: Context) {
         val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
-        if (CallPopupTracker.isPopupOpenFor(context, endedCall.number)) {
-            return
-        }
         if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) {
             return
         }
