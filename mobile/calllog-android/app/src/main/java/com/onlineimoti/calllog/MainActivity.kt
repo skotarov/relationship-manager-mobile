@@ -22,28 +22,23 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
+    private var isPermissionFlowRunning = false
 
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        setStatus(if (granted) "Разрешението за notifications е дадено." else "Notifications остават забранени.")
+    private val singlePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
         refreshPermissionSummary()
-    }
-
-    private val phonePermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        val ok = result[Manifest.permission.READ_PHONE_STATE] == true &&
-            result[Manifest.permission.READ_CALL_LOG] == true &&
-            result[Manifest.permission.READ_CONTACTS] == true
-        setStatus(if (ok) "Достъпът до телефон, call report log и contacts е разрешен." else "Без достъп до телефон, call report log и contacts няма да работи коректно.")
-        refreshPermissionSummary()
+        requestNextPermissionStep()
     }
 
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (hasCallScreeningRole()) setStatus("Call screening role е активирана.")
         refreshPermissionSummary()
+        requestNextPermissionStep()
     }
 
     private val fullscreenIntentSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (canUseFullScreenIntent()) setStatus("Разрешението за full-screen call report popup е дадено.")
         refreshPermissionSummary()
+        isPermissionFlowRunning = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,15 +47,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         CallReportRuntime.ensureNotificationChannel(this)
-        requestNotificationPermissionIfNeeded()
-        requestPhonePermissionsIfNeeded()
-        requestCallScreeningRoleIfNeeded()
-        requestFullScreenIntentPermissionIfNeeded()
         hydrateFields()
         refreshPermissionSummary()
         renderBuildVersion()
+        startPermissionFlow()
 
-        binding.openAppPermissionsButton.setOnClickListener { openAppPermissionSettings() }
+        binding.openAppPermissionsButton.setOnClickListener { startPermissionFlow() }
         binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
         binding.saveSettingsButton.setOnClickListener {
@@ -116,19 +108,44 @@ class MainActivity : AppCompatActivity() {
         return ConfigStore.load(this)
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    private fun startPermissionFlow() {
+        if (isPermissionFlowRunning) return
+        isPermissionFlowRunning = true
+        requestNextPermissionStep()
     }
 
-    private fun requestPhonePermissionsIfNeeded() {
-        val missingPermissions = buildList {
-            if (!hasPermission(Manifest.permission.READ_PHONE_STATE)) add(Manifest.permission.READ_PHONE_STATE)
-            if (!hasPermission(Manifest.permission.READ_CALL_LOG)) add(Manifest.permission.READ_CALL_LOG)
-            if (!hasPermission(Manifest.permission.READ_CONTACTS)) add(Manifest.permission.READ_CONTACTS)
+    private fun requestNextPermissionStep() {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
+                setStatus("Разреши notifications, за да могат popup-ите да се показват.")
+                singlePermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            !hasPermission(Manifest.permission.READ_PHONE_STATE) -> {
+                setStatus("Разреши Phone, за да засичаме начало и край на разговор.")
+                singlePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+            }
+            !hasPermission(Manifest.permission.READ_CALL_LOG) -> {
+                setStatus("Разреши Call log, за да виждаме последните разговори.")
+                singlePermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+            }
+            !hasPermission(Manifest.permission.READ_CONTACTS) -> {
+                setStatus("Разреши Contacts, за да показваме имена вместо само номера.")
+                singlePermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
+                setStatus("Активирай Call screening, ако Android го предложи, за по-надежден popup при разговор.")
+                requestCallScreeningRoleIfNeeded()
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
+                setStatus("Разреши Full-screen popup от системния екран.")
+                requestFullScreenIntentPermissionIfNeeded()
+            }
+            else -> {
+                isPermissionFlowRunning = false
+                setStatus("Основните разрешения са проверени.")
+                refreshPermissionSummary()
+            }
         }
-        if (missingPermissions.isNotEmpty()) phonePermissionsLauncher.launch(missingPermissions.toTypedArray())
     }
 
     private fun directionValue(): String = if (binding.directionIn.isChecked) "in" else "out"
@@ -293,9 +310,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestCallScreeningRoleIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || hasCallScreeningRole()) return
-        val roleManager = getSystemService(RoleManager::class.java) ?: return
-        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || hasCallScreeningRole()) {
+            isPermissionFlowRunning = false
+            refreshPermissionSummary()
+            return
+        }
+        val roleManager = getSystemService(RoleManager::class.java) ?: run {
+            isPermissionFlowRunning = false
+            return
+        }
+        if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
+            isPermissionFlowRunning = false
+            refreshPermissionSummary()
+            return
+        }
         callScreeningRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
     }
 
@@ -306,7 +334,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestFullScreenIntentPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || canUseFullScreenIntent()) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || canUseFullScreenIntent()) {
+            isPermissionFlowRunning = false
+            refreshPermissionSummary()
+            return
+        }
         fullscreenIntentSettingsLauncher.launch(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply { data = Uri.parse("package:$packageName") })
     }
 }
