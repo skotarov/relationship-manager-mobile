@@ -32,7 +32,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:hint="Base URL">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/baseUrlInput"
                 android:layout_width="match_parent"
@@ -46,7 +45,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:hint="Access token">
-
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/accessTokenInput"
                 android:layout_width="match_parent"
@@ -58,8 +56,46 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Групи за познати контакти">
+            android:hint="Път до form файла">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/formPathInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:text="/broker/callreport/form.php" />
+        </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Път до full/history log файла">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/historyPathInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textUri"
+                android:text="/broker/callreport/history.php" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Секунди за auto-close на popup след край">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/postCallTimeoutInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:text="10" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Групи за познати контакти">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/contactGroupsInput"
                 android:layout_width="match_parent"
@@ -72,7 +108,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Остави празно за popup само при непознати номера. За познати въведи group names, разделени със запетая."
+            android:text="Остави групите празни за popup само при непознати номера. За познати въведи group names, разделени със запетая."
             android:textColor="@color/calllog_muted_text"
             android:textSize="13sp" />
 
@@ -98,14 +134,12 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:orientation="vertical">
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/openAppPermissionsButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Отвори Permissions" />
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/openCallScreeningButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -113,7 +147,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Активирай Call screening" />
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/openFullscreenIntentButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -140,13 +173,11 @@
             app:cardElevation="1dp"
             app:strokeColor="@color/calllog_border"
             app:strokeWidth="1dp">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="16dp">
-
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -154,13 +185,11 @@
                     android:textColor="@color/calllog_text"
                     android:textSize="16sp"
                     android:textStyle="bold" />
-
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:hint="Телефон за тест">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/phoneInput"
                         android:layout_width="match_parent"
@@ -168,20 +197,17 @@
                         android:inputType="phone"
                         android:text="0876442321" />
                 </com.google.android.material.textfield.TextInputLayout>
-
                 <RadioGroup
                     android:id="@+id/directionGroup"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
                     android:orientation="horizontal">
-
                     <RadioButton
                         android:id="@+id/directionIn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Входящо" />
-
                     <RadioButton
                         android:id="@+id/directionOut"
                         android:layout_width="wrap_content"
@@ -190,7 +216,6 @@
                         android:checked="true"
                         android:text="Изходящо" />
                 </RadioGroup>
-
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/testStartPopupButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -198,7 +223,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:text="Тест: popup при старт" />
-
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/testEndPopupButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -206,7 +230,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:text="Тест: popup след край" />
-
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/testFullLogButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Тест: пълен лог" />
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/openFormButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
