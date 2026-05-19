@@ -30,6 +30,8 @@ class CallScreeningBridgeService : CallScreeningService() {
             else -> return
         }
 
+        CallLifecycleStore.markActive(this, number, direction)
+
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(this)
@@ -52,7 +54,9 @@ class CallScreeningBridgeService : CallScreeningService() {
                 CallReportRuntime.showLookupNotification(
                     context = this,
                     result = result,
-                    fullscreen = direction == "in"
+                    fullscreen = direction == "in",
+                    phone = number,
+                    direction = direction,
                 )
             } catch (_: Throwable) {
             }
