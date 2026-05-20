@@ -30,7 +30,7 @@ class CallScreeningBridgeService : CallScreeningService() {
             else -> return
         }
 
-        CallLifecycleStore.markActive(this, number, direction)
+        ActiveCallStore.recordStarted(this, number, direction)
 
         EXECUTOR.execute {
             try {
@@ -54,9 +54,7 @@ class CallScreeningBridgeService : CallScreeningService() {
                 CallReportRuntime.showLookupNotification(
                     context = this,
                     result = result,
-                    fullscreen = direction == "in",
-                    phone = number,
-                    direction = direction,
+                    fullscreen = direction == "in"
                 )
             } catch (_: Throwable) {
             }

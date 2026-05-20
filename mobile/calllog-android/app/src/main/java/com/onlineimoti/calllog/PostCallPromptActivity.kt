@@ -1,84 +1,72 @@
 package com.onlineimoti.calllog
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import com.onlineimoti.calllog.databinding.ActivityPostCallPromptBinding
 
 class PostCallPromptActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPostCallPromptBinding
     private val handler = Handler(Looper.getMainLooper())
-    private var formUrl: String = ""
-    private var phone: String = ""
-    private var direction: String = ""
-    private var title: String = ""
-    private var timeoutSeconds: Int = ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS
-
-    private val autoDismissRunnable = Runnable {
-        finish()
-    }
+    private var finishRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
         binding = ActivityPostCallPromptBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        formUrl = intent.getStringExtra(EXTRA_FORM_URL).orEmpty()
-        phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
-        direction = intent.getStringExtra(EXTRA_DIRECTION).orEmpty()
-        title = intent.getStringExtra(EXTRA_TITLE).orEmpty()
-        timeoutSeconds = ConfigStore.load(this).postCallPromptTimeoutSeconds
+        val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
+        val displayName = intent.getStringExtra(EXTRA_DISPLAY_NAME).orEmpty().ifBlank { phone }
+        val formUrl = intent.getStringExtra(EXTRA_FORM_URL).orEmpty()
+        val timeoutSeconds = intent.getIntExtra(
+            EXTRA_TIMEOUT_SECONDS,
+            AppConfig.DEFAULT_POST_CALL_AUTO_CLOSE_SECONDS
+        ).coerceAtLeast(1)
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
 
-        if (formUrl.isBlank()) {
-            finish()
-            return
+        if (notificationId > 0) {
+            NotificationManagerCompat.from(this).cancel(notificationId)
         }
 
-        binding.postCallTitleText.text = "Да запиша ли бележка?"
-        binding.postCallSubtitleText.text = buildSubtitle()
+        binding.promptTitle.text = getString(R.string.post_call_prompt_title)
+        binding.promptSubtitle.text = getString(R.string.post_call_prompt_body, displayName)
+        binding.promptMeta.text = getString(R.string.post_call_prompt_timeout, timeoutSeconds)
 
-        binding.writeNoteButton.setOnClickListener {
-            handler.removeCallbacks(autoDismissRunnable)
-            startActivity(
-                Intent(this, WebViewActivity::class.java)
-                    .putExtra(WebViewActivity.EXTRA_URL, formUrl)
-                    .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-                    .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-            )
-            finish()
-        }
-
-        binding.skipNoteButton.setOnClickListener {
-            handler.removeCallbacks(autoDismissRunnable)
+        binding.saveNoteButton.setOnClickListener {
+            if (formUrl.isNotBlank()) {
+                startActivity(WebViewActivity.intent(this, formUrl))
+            }
             finish()
         }
 
-        handler.postDelayed(autoDismissRunnable, timeoutSeconds * 1000L)
+        binding.skipButton.setOnClickListener {
+            finish()
+        }
+
+        finishRunnable = Runnable { finish() }.also { runnable ->
+            handler.postDelayed(runnable, timeoutSeconds * 1000L)
+        }
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(autoDismissRunnable)
+        finishRunnable?.let(handler::removeCallbacks)
+        finishRunnable = null
         super.onDestroy()
     }
 
-    private fun buildSubtitle(): String {
-        val person = title.ifBlank { phone }
-        val directionLabel = when (direction) {
-            "in" -> "входящ разговор"
-            "out" -> "изходящ разговор"
-            else -> "разговор"
-        }
-        return listOf(person, directionLabel, "затваря се след ${timeoutSeconds} сек")
-            .filter { it.isNotBlank() }
-            .joinToString(" • ")
-    }
-
     companion object {
-        const val EXTRA_FORM_URL = "form_url"
         const val EXTRA_PHONE = "phone"
         const val EXTRA_DIRECTION = "direction"
-        const val EXTRA_TITLE = "title"
+        const val EXTRA_DISPLAY_NAME = "display_name"
+        const val EXTRA_FORM_URL = "form_url"
+        const val EXTRA_TIMEOUT_SECONDS = "timeout_seconds"
+        const val EXTRA_NOTIFICATION_ID = "notification_id"
     }
 }
