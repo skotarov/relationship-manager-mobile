@@ -93,6 +93,8 @@ class MainActivity : AppCompatActivity() {
         binding.baseUrlInput.setText(config.baseUrl)
         binding.accessTokenInput.setText(config.accessToken)
         binding.contactGroupsInput.setText(config.contactGroups)
+        binding.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
+        binding.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         binding.lookupPathInput.setText(config.lookupPath)
         binding.formPathInput.setText(config.formPath)
         binding.historyPathInput.setText(config.historyPath)
@@ -104,6 +106,8 @@ class MainActivity : AppCompatActivity() {
             baseUrl = binding.baseUrlInput.text?.toString().orEmpty(),
             accessToken = binding.accessTokenInput.text?.toString().orEmpty(),
             contactGroups = binding.contactGroupsInput.text?.toString().orEmpty(),
+            notifyUnknownContacts = binding.notifyUnknownContactsCheckBox.isChecked,
+            notifyKnownContacts = binding.notifyKnownContactsCheckBox.isChecked,
             lookupPath = binding.lookupPathInput.text?.toString().orEmpty(),
             formPath = binding.formPathInput.text?.toString().orEmpty(),
             historyPath = binding.historyPathInput.text?.toString().orEmpty(),
