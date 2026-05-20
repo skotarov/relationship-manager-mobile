@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.provider.CallLog
 import android.provider.Settings
@@ -181,6 +182,10 @@ object CallReportRuntime {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
+            .setColor(Color.rgb(32, 33, 36))
+            .setColorized(false)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
         if (fullscreen) {
@@ -286,23 +291,28 @@ object CallReportRuntime {
             return "В телефона: няма разрешение"
         }
 
-        val count = runCatching {
-            countLocalCallsForPhone(context, phone)
-        }.getOrDefault(0)
-        val label = if (count > HISTORY_LIMIT) "${HISTORY_LIMIT}+" else count.toString()
-        return "В телефона: $label разговора"
+        val stats = runCatching {
+            localCallStatsForPhone(context, phone)
+        }.getOrDefault(LocalCallStats())
+        val label = if (stats.count > HISTORY_LIMIT) "${HISTORY_LIMIT}+" else stats.count.toString()
+        val lastCallText = stats.lastStartedAtMs
+            .takeIf { it > 0L }
+            ?.let { " • последен: ${relativeAgo(it)}" }
+            .orEmpty()
+        return "В телефона: $label разговора$lastCallText"
     }
 
-    private fun countLocalCallsForPhone(context: Context, phone: String): Int {
+    private fun localCallStatsForPhone(context: Context, phone: String): LocalCallStats {
         val digits = normalizePhone(phone)
         if (digits.isBlank()) {
-            return 0
+            return LocalCallStats()
         }
 
-        val projection = arrayOf(CallLog.Calls.NUMBER)
+        val projection = arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.DATE)
         val sortOrder = "${CallLog.Calls.DATE} DESC"
         var count = 0
         var scanned = 0
+        var lastStartedAtMs = 0L
 
         context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
@@ -312,16 +322,34 @@ object CallReportRuntime {
             sortOrder,
         )?.use { cursor ->
             val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
             while (cursor.moveToNext() && scanned < LOCAL_CALL_SCAN_LIMIT && count < LOCAL_CALL_MATCH_LIMIT) {
                 scanned += 1
                 val callNumber = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                 if (samePhone(digits, callNumber)) {
                     count += 1
+                    if (lastStartedAtMs <= 0L && dateIndex >= 0) {
+                        lastStartedAtMs = cursor.getLong(dateIndex)
+                    }
                 }
             }
         }
 
-        return count
+        return LocalCallStats(count = count, lastStartedAtMs = lastStartedAtMs)
+    }
+
+    private fun relativeAgo(startedAtMs: Long): String {
+        val diffMs = (System.currentTimeMillis() - startedAtMs).coerceAtLeast(0L)
+        val minutes = diffMs / 60_000L
+        val hours = diffMs / 3_600_000L
+        val days = diffMs / 86_400_000L
+
+        return when {
+            minutes < 1L -> "преди малко"
+            minutes < 60L -> "преди $minutes ${if (minutes == 1L) "минута" else "минути"}"
+            hours < 24L -> "преди $hours ${if (hours == 1L) "час" else "часа"}"
+            else -> "преди $days ${if (days == 1L) "ден" else "дни"}"
+        }
     }
 
     private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
@@ -338,4 +366,9 @@ object CallReportRuntime {
         val digits = phone.filter { it.isDigit() }
         return if (digits.length > 9) digits.takeLast(9) else digits
     }
+
+    private data class LocalCallStats(
+        val count: Int = 0,
+        val lastStartedAtMs: Long = 0L,
+    )
 }
