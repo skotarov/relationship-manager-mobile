@@ -3,14 +3,13 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 
 class CallStateReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(context: Context, intent: android.content.Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
             return
         }
@@ -85,8 +84,17 @@ class CallStateReceiver : BroadcastReceiver() {
                     return@execute
                 }
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
+                val title = displayName.ifNullOrBlank { "Зарежда се информация…" }
 
                 CallReportRuntime.ensureNotificationChannel(context)
+                CallReportRuntime.showLoadingLookupNotification(
+                    context = context,
+                    phone = number,
+                    direction = direction,
+                    title = title,
+                    fullscreen = fullscreen,
+                )
+
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
                     if (displayName.isNullOrBlank()) {
                         lookup
@@ -97,7 +105,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 CallReportRuntime.showLookupNotification(
                     context = context,
                     result = result,
-                    fullscreen = fullscreen,
+                    fullscreen = false,
                     phone = number,
                     direction = direction,
                 )
@@ -119,6 +127,24 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) {
                     return@execute
                 }
+
+                val fallbackFormUrl = buildEndpoint(
+                    baseUrl = config.baseUrl,
+                    path = config.formPath,
+                    params = linkedMapOf(
+                        "phone" to number,
+                        "direction" to direction,
+                        "access_token" to config.accessToken,
+                    )
+                )
+                CallReportRuntime.showImmediatePostCallPrompt(
+                    context = context,
+                    formUrl = fallbackFormUrl,
+                    phone = number,
+                    direction = direction,
+                    title = "Бележка след разговора",
+                )
+
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
                     if (displayName.isBlank()) {
@@ -130,7 +156,7 @@ class CallStateReceiver : BroadcastReceiver() {
 
                 CallReportRuntime.showPostCallPromptNotification(
                     context = context,
-                    formUrl = result.openFormUrl,
+                    formUrl = result.openFormUrl.ifBlank { fallbackFormUrl },
                     phone = number,
                     direction = direction,
                     title = result.title,
@@ -140,6 +166,10 @@ class CallStateReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
+    }
+
+    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
+        return if (this.isNullOrBlank()) fallback() else this
     }
 
     private object CallStateDeduper {
