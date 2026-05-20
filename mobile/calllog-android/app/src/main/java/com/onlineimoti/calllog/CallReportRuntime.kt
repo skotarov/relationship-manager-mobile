@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.provider.CallLog
 import android.provider.Settings
@@ -27,9 +28,7 @@ object CallReportRuntime {
     private const val LOCAL_CALL_SCAN_LIMIT = 5000
 
     fun ensureNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -59,51 +58,35 @@ object CallReportRuntime {
         connection.connectTimeout = 7000
         connection.readTimeout = 7000
         connection.setRequestProperty("Accept", "application/json")
-        if (config.accessToken.isNotBlank()) {
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
-        }
+        if (config.accessToken.isNotBlank()) connection.setRequestProperty("X-Callreport-Token", config.accessToken)
 
         val responseCode = connection.responseCode
         val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
-        val body = stream.use { input ->
-            BufferedReader(InputStreamReader(input)).readText()
-        }
-        if (responseCode !in 200..299) {
-            throw IllegalStateException("HTTP $responseCode: $body")
-        }
+        val body = stream.use { input -> BufferedReader(InputStreamReader(input)).readText() }
+        if (responseCode !in 200..299) throw IllegalStateException("HTTP $responseCode: $body")
 
         val json = org.json.JSONObject(body)
         val linesJson = json.optJSONArray("lines")
         val serverLines = buildList {
             if (linesJson != null) {
-                for (index in 0 until linesJson.length()) {
-                    add(linesJson.optString(index))
-                }
+                for (index in 0 until linesJson.length()) add(linesJson.optString(index))
             }
         }
         val previousCallCount = json.optInt("previous_call_count", -1)
         val recentLinesJson = json.optJSONArray("recent_call_lines")
         val recentLines = buildList {
             if (recentLinesJson != null) {
-                for (index in 0 until recentLinesJson.length()) {
-                    add(recentLinesJson.optString(index))
-                }
+                for (index in 0 until recentLinesJson.length()) add(recentLinesJson.optString(index))
             }
         }
         val lines = buildList {
-            if (previousCallCount >= 0) {
-                add("В Call Report: $previousCallCount записани")
-            }
+            if (previousCallCount >= 0) add("В Call Report: $previousCallCount записани")
             addAll(serverLines)
             addAll(recentLines.take(HISTORY_LIMIT))
         }
 
         val openFormUrl = json.optString("open_form_url")
-        val resolvedFormUrl = if (openFormUrl.startsWith("http")) {
-            openFormUrl
-        } else {
-            config.baseUrl.trim().trimEnd('/') + openFormUrl
-        }
+        val resolvedFormUrl = if (openFormUrl.startsWith("http")) openFormUrl else config.baseUrl.trim().trimEnd('/') + openFormUrl
 
         return LookupResult(
             title = json.optString("title", phone),
@@ -126,13 +109,7 @@ object CallReportRuntime {
             lines = listOf("Зарежда се информация от Call Report…"),
             openFormUrl = "",
         )
-        showLookupNotification(
-            context = context,
-            result = placeholder,
-            fullscreen = fullscreen,
-            phone = phone,
-            direction = direction,
-        )
+        showLookupNotification(context, placeholder, fullscreen, phone, direction)
     }
 
     fun showLookupNotification(
@@ -163,16 +140,15 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val localCallCountLine = localCallCountLine(context, phone)
+        val localSummary = localCallSummary(context, phone)
         val visibleLines = buildList {
-            if (localCallCountLine.isNotBlank()) {
-                add(localCallCountLine)
-            }
+            if (localSummary.countLine.isNotBlank()) add(localSummary.countLine)
+            if (localSummary.lastLine.isNotBlank()) add(localSummary.lastLine)
             add(result.subtitle)
             addAll(result.lines.take(HISTORY_LIMIT + 2))
         }.filter { it.isNotBlank() }
 
-        val contentText = visibleLines.firstOrNull() ?: result.subtitle
+        val contentText = localSummary.compactLine.ifBlank { visibleLines.firstOrNull() ?: result.subtitle }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
@@ -181,16 +157,16 @@ object CallReportRuntime {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
+            .setColor(Color.rgb(32, 33, 36))
+            .setColorized(false)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
-        if (fullscreen) {
-            builder.setFullScreenIntent(pendingIntent, true)
-        }
+        if (fullscreen) builder.setFullScreenIntent(pendingIntent, true)
         val notification = builder.build()
 
-        if (phone.isNotBlank()) {
-            CallPopupTracker.markPopupOpened(context, phone, direction)
-        }
+        if (phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
     }
 
@@ -211,9 +187,7 @@ object CallReportRuntime {
         direction: String,
         title: String,
     ) {
-        if (formUrl.isBlank()) {
-            return
-        }
+        if (formUrl.isBlank()) return
         if (Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
@@ -261,9 +235,7 @@ object CallReportRuntime {
             .setContentText(phone)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    listOf(phone, "Натисни, за да запишеш бележка.")
-                        .filter { it.isNotBlank() }
-                        .joinToString("\n")
+                    listOf(phone, "Натисни, за да запишеш бележка.").filter { it.isNotBlank() }.joinToString("\n")
                 )
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -278,64 +250,80 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
     }
 
-    private fun localCallCountLine(context: Context, phone: String): String {
-        if (phone.isBlank()) {
-            return ""
-        }
+    private fun localCallSummary(context: Context, phone: String): LocalCallSummary {
+        if (phone.isBlank()) return LocalCallSummary()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-            return "В телефона: няма разрешение"
+            return LocalCallSummary(countLine = "В телефона: няма разрешение", compactLine = "Няма разрешение за телефонния log")
         }
 
-        val count = runCatching {
-            countLocalCallsForPhone(context, phone)
-        }.getOrDefault(0)
-        val label = if (count > HISTORY_LIMIT) "${HISTORY_LIMIT}+" else count.toString()
-        return "В телефона: $label разговора"
+        val stats = runCatching { localCallStatsForPhone(context, phone) }.getOrDefault(LocalCallStats())
+        val countLabel = if (stats.count > HISTORY_LIMIT) "${HISTORY_LIMIT}+" else stats.count.toString()
+        val countLine = "В телефона: $countLabel разговора"
+        val lastLine = stats.lastStartedAtMs
+            .takeIf { it > 0L }
+            ?.let { "Последен разговор: ${relativeAgo(it)}" }
+            .orEmpty()
+        val compactLine = if (lastLine.isNotBlank()) "${relativeAgo(stats.lastStartedAtMs)} • $countLabel разговора" else countLine
+        return LocalCallSummary(countLine = countLine, lastLine = lastLine, compactLine = compactLine)
     }
 
-    private fun countLocalCallsForPhone(context: Context, phone: String): Int {
+    private fun localCallStatsForPhone(context: Context, phone: String): LocalCallStats {
         val digits = normalizePhone(phone)
-        if (digits.isBlank()) {
-            return 0
-        }
+        if (digits.isBlank()) return LocalCallStats()
 
-        val projection = arrayOf(CallLog.Calls.NUMBER)
+        val projection = arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.DATE)
         val sortOrder = "${CallLog.Calls.DATE} DESC"
         var count = 0
         var scanned = 0
+        var lastStartedAtMs = 0L
 
-        context.contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
-            projection,
-            null,
-            null,
-            sortOrder,
-        )?.use { cursor ->
+        context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, null, null, sortOrder)?.use { cursor ->
             val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
             while (cursor.moveToNext() && scanned < LOCAL_CALL_SCAN_LIMIT && count < LOCAL_CALL_MATCH_LIMIT) {
                 scanned += 1
                 val callNumber = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                 if (samePhone(digits, callNumber)) {
                     count += 1
+                    if (lastStartedAtMs <= 0L && dateIndex >= 0) lastStartedAtMs = cursor.getLong(dateIndex)
                 }
             }
         }
+        return LocalCallStats(count = count, lastStartedAtMs = lastStartedAtMs)
+    }
 
-        return count
+    private fun relativeAgo(startedAtMs: Long): String {
+        val diffMs = (System.currentTimeMillis() - startedAtMs).coerceAtLeast(0L)
+        val minutes = diffMs / 60_000L
+        val hours = diffMs / 3_600_000L
+        val days = diffMs / 86_400_000L
+        return when {
+            minutes < 1L -> "преди малко"
+            minutes < 60L -> "преди $minutes ${if (minutes == 1L) "минута" else "минути"}"
+            hours < 24L -> "преди $hours ${if (hours == 1L) "час" else "часа"}"
+            else -> "преди $days ${if (days == 1L) "ден" else "дни"}"
+        }
     }
 
     private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
         val normalizedCandidate = normalizePhone(candidate)
-        if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) {
-            return false
-        }
-        return normalizedPhone == normalizedCandidate ||
-            normalizedPhone.endsWith(normalizedCandidate) ||
-            normalizedCandidate.endsWith(normalizedPhone)
+        if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) return false
+        return normalizedPhone == normalizedCandidate || normalizedPhone.endsWith(normalizedCandidate) || normalizedCandidate.endsWith(normalizedPhone)
     }
 
     private fun normalizePhone(phone: String): String {
         val digits = phone.filter { it.isDigit() }
         return if (digits.length > 9) digits.takeLast(9) else digits
     }
+
+    private data class LocalCallStats(
+        val count: Int = 0,
+        val lastStartedAtMs: Long = 0L,
+    )
+
+    private data class LocalCallSummary(
+        val countLine: String = "",
+        val lastLine: String = "",
+        val compactLine: String = "",
+    )
 }
