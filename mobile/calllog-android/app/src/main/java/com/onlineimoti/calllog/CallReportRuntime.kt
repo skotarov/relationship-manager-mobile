@@ -113,6 +113,28 @@ object CallReportRuntime {
         )
     }
 
+    fun showLoadingLookupNotification(
+        context: Context,
+        phone: String,
+        direction: String,
+        title: String = "Зарежда се информация…",
+        fullscreen: Boolean = false,
+    ) {
+        val placeholder = LookupResult(
+            title = title,
+            subtitle = phone,
+            lines = listOf("Зарежда се информация от Call Report…"),
+            openFormUrl = "",
+        )
+        showLookupNotification(
+            context = context,
+            result = placeholder,
+            fullscreen = fullscreen,
+            phone = phone,
+            direction = direction,
+        )
+    }
+
     fun showLookupNotification(
         context: Context,
         result: LookupResult,
@@ -172,6 +194,16 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
     }
 
+    fun showImmediatePostCallPrompt(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String = "Бележка след разговора",
+    ) {
+        showPostCallPromptNotification(context, formUrl, phone, direction, title)
+    }
+
     fun showPostCallPromptNotification(
         context: Context,
         formUrl: String,
@@ -225,11 +257,11 @@ object CallReportRuntime {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle("Бележка след разговора")
-            .setContentText(title.ifBlank { phone })
+            .setContentTitle(title.ifBlank { "Бележка след разговора" })
+            .setContentText(phone)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    listOf(title.ifBlank { phone }, "Разговорът приключи.")
+                    listOf(phone, "Натисни, за да запишеш бележка.")
                         .filter { it.isNotBlank() }
                         .joinToString("\n")
                 )
