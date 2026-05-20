@@ -6,4 +6,5 @@
     <color name="calllog_border">#DADCE0</color>
     <color name="calllog_accent">#6B7280</color>
     <color name="calllog_error">#B3261E</color>
+    <color name="callreport_icon_background">#000000</color>
 </resources>
