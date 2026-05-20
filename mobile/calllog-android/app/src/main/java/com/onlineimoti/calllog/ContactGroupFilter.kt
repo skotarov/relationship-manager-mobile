@@ -8,11 +8,20 @@ import androidx.core.content.ContextCompat
 
 object ContactGroupFilter {
     fun shouldNotify(context: Context, phoneNumber: String, config: AppConfig): Boolean {
-        val contact = findContact(context, phoneNumber) ?: return true
-        val allowedGroups = parseAllowedGroups(config.contactGroups)
-        if (allowedGroups.isEmpty()) {
+        val contact = findContact(context, phoneNumber)
+        if (contact == null) {
+            return config.notifyUnknownContacts
+        }
+
+        if (!config.notifyKnownContacts) {
             return false
         }
+
+        val allowedGroups = parseAllowedGroups(config.contactGroups)
+        if (allowedGroups.isEmpty()) {
+            return true
+        }
+
         return contact.groups.any { normalizeGroupName(it) in allowedGroups }
     }
 

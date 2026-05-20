@@ -1,16 +1,14 @@
-import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-val defaultAccessToken = providers.gradleProperty("CALLREPORT_DEFAULT_ACCESS_TOKEN")
-    .orElse(System.getenv("CALLREPORT_DEFAULT_ACCESS_TOKEN") ?: "")
-    .get()
-    .replace("\\", "\\\\")
-    .replace("\"", "\\\"")
-val buildTimeUtc = Instant.now().toString()
+val githubRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 2
+val buildTime = OffsetDateTime.now(ZoneOffset.UTC).toString()
+val defaultAccessToken = System.getenv("CALLREPORT_DEFAULT_TOKEN").orEmpty()
 
 android {
     namespace = "com.onlineimoti.calllog"
@@ -20,10 +18,11 @@ android {
         applicationId = "com.onlineimoti.calllog"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = githubRunNumber
+        versionName = "0.2.$githubRunNumber"
+
+        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
         buildConfigField("String", "DEFAULT_ACCESS_TOKEN", "\"$defaultAccessToken\"")
-        buildConfigField("String", "BUILD_TIME_UTC", "\"$buildTimeUtc\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +34,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "callreport-${buildType.name}.apk"
         }
     }
 
@@ -52,8 +58,6 @@ android {
         buildConfig = true
     }
 }
-
-setProperty("archivesBaseName", "callreport")
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")

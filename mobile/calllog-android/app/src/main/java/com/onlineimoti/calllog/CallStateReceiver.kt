@@ -3,14 +3,13 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 
 class CallStateReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(context: Context, intent: android.content.Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
             return
         }
@@ -29,39 +28,9 @@ class CallStateReceiver : BroadcastReceiver() {
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
+
         if (state == TelephonyManager.EXTRA_STATE_IDLE) {
-            val pendingResult = goAsync()
-            EXECUTOR.execute {
-                try {
-                    val session = ActiveCallStore.peek(context) ?: return@execute
-                    val recentCall = RecentCallsRepository.findLatestMatchingCall(
-                        context = context,
-                        number = session.number,
-                        sinceMs = session.startedAtMs - 120_000L,
-                    ) ?: return@execute
-                    if (!ActiveCallStore.shouldPromptFor(context, recentCall)) {
-                        return@execute
-                    }
-
-                    val config = ConfigStore.load(context)
-                    if (config.baseUrl.isBlank()) {
-                        return@execute
-                    }
-
-                    ActiveCallStore.markPrompted(context, recentCall)
-                    CallReportRuntime.ensureNotificationChannel(context)
-                    CallReportRuntime.showPostCallPrompt(
-                        context = context,
-                        call = recentCall,
-                        config = config,
-                        fullscreen = true,
-                    )
-                } catch (_: Throwable) {
-                } finally {
-                    ActiveCallStore.clear(context)
-                    pendingResult.finish()
-                }
-            }
+            handleCallEnded(context)
             return
         }
 
@@ -73,6 +42,7 @@ class CallStateReceiver : BroadcastReceiver() {
             TelephonyManager.EXTRA_STATE_RINGING -> "in"
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 if (CallStateDeduper.wasRecentlyHandled(context, number, "in")) {
+                    CallLifecycleStore.markActive(context, number, "in")
                     return
                 }
                 "out"
@@ -80,12 +50,29 @@ class CallStateReceiver : BroadcastReceiver() {
             else -> return
         }
 
+        CallLifecycleStore.markActive(context, number, direction)
+
         if (!CallStateDeduper.markHandled(context, number, direction)) {
             return
         }
 
-        ActiveCallStore.recordStarted(context, number, direction)
+        showLookup(context, number, direction, fullscreen = direction == "in")
+    }
 
+    private fun handleCallEnded(context: Context) {
+        val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
+        if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) {
+            return
+        }
+
+        showPostCallPrompt(
+            context = context,
+            number = endedCall.number,
+            direction = endedCall.direction,
+        )
+    }
+
+    private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
         val pendingResult = goAsync()
         EXECUTOR.execute {
             try {
@@ -97,8 +84,17 @@ class CallStateReceiver : BroadcastReceiver() {
                     return@execute
                 }
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
+                val title = displayName.ifNullOrBlank { "Зарежда се информация…" }
 
                 CallReportRuntime.ensureNotificationChannel(context)
+                CallReportRuntime.showLoadingLookupNotification(
+                    context = context,
+                    phone = number,
+                    direction = direction,
+                    title = title,
+                    fullscreen = fullscreen,
+                )
+
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
                     if (displayName.isNullOrBlank()) {
                         lookup
@@ -106,12 +102,74 @@ class CallStateReceiver : BroadcastReceiver() {
                         lookup.copy(title = displayName)
                     }
                 }
-                CallReportRuntime.showLookupNotification(context, result)
+                CallReportRuntime.showLookupNotification(
+                    context = context,
+                    result = result,
+                    fullscreen = false,
+                    phone = number,
+                    direction = direction,
+                )
             } catch (_: Throwable) {
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    private fun showPostCallPrompt(context: Context, number: String, direction: String) {
+        val pendingResult = goAsync()
+        EXECUTOR.execute {
+            try {
+                val config = ConfigStore.load(context)
+                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                    return@execute
+                }
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
+                    return@execute
+                }
+
+                val fallbackFormUrl = buildEndpoint(
+                    baseUrl = config.baseUrl,
+                    path = config.formPath,
+                    params = linkedMapOf(
+                        "phone" to number,
+                        "direction" to direction,
+                        "access_token" to config.accessToken,
+                    )
+                )
+                CallReportRuntime.showImmediatePostCallPrompt(
+                    context = context,
+                    formUrl = fallbackFormUrl,
+                    phone = number,
+                    direction = direction,
+                    title = "Бележка след разговора",
+                )
+
+                val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+                val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                    if (displayName.isBlank()) {
+                        lookup
+                    } else {
+                        lookup.copy(title = displayName)
+                    }
+                }
+
+                CallReportRuntime.showPostCallPromptNotification(
+                    context = context,
+                    formUrl = result.openFormUrl.ifBlank { fallbackFormUrl },
+                    phone = number,
+                    direction = direction,
+                    title = result.title,
+                )
+            } catch (_: Throwable) {
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
+        return if (this.isNullOrBlank()) fallback() else this
     }
 
     private object CallStateDeduper {
@@ -146,7 +204,8 @@ class CallStateReceiver : BroadcastReceiver() {
         }
 
         private fun normalizeNumber(number: String): String {
-            return number.filter { it.isDigit() }
+            val digits = number.filter { it.isDigit() }
+            return if (digits.length > 9) digits.takeLast(9) else digits
         }
     }
 

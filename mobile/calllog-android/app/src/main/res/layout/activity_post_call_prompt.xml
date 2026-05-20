@@ -12,9 +12,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/calllog_surface"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="2dp"
-        app:strokeColor="@color/calllog_divider"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="3dp"
+        app:strokeColor="@color/calllog_border"
         app:strokeWidth="1dp">
 
         <LinearLayout
@@ -23,61 +23,38 @@
             android:orientation="vertical"
             android:padding="22dp">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_note_lines"
-                android:tint="@color/calllog_note" />
-
             <TextView
-                android:id="@+id/promptTitle"
+                android:id="@+id/postCallTitleText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:text="Да запиша ли бележка?"
                 android:textColor="@color/calllog_text"
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/promptSubtitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/calllog_text_secondary"
-                android:textSize="15sp" />
-
-            <TextView
-                android:id="@+id/promptMeta"
+                android:id="@+id/postCallSubtitleText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:textColor="@color/calllog_note"
-                android:textSize="13sp" />
+                android:textColor="@color/calllog_muted_text"
+                android:textSize="15sp" />
 
-            <LinearLayout
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/writeNoteButton"
+                style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:gravity="end"
-                android:orientation="horizontal">
+                android:layout_marginTop="22dp"
+                android:text="Запиши бележка" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/skipButton"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/skip" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/saveNoteButton"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:text="@string/save_note" />
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/skipNoteButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Пропусни" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
-
 </LinearLayout>

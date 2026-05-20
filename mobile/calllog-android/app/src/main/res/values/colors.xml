@@ -1,13 +1,10 @@
 <resources>
-    <color name="calllog_bg">#F5F7FB</color>
+    <color name="calllog_bg">#F4F4F5</color>
     <color name="calllog_surface">#FFFFFF</color>
-    <color name="calllog_text">#152033</color>
-    <color name="calllog_text_secondary">#607086</color>
-    <color name="calllog_divider">#D9E1EC</color>
-    <color name="calllog_accent">#0B66D0</color>
-    <color name="calllog_incoming">#1C9A5F</color>
-    <color name="calllog_outgoing">#2B6EE7</color>
-    <color name="calllog_missed">#D53A3A</color>
-    <color name="calllog_note">#516174</color>
-    <color name="calllog_chip_bg">#EEF4FC</color>
+    <color name="calllog_text">#202124</color>
+    <color name="calllog_muted_text">#6B7280</color>
+    <color name="calllog_border">#DADCE0</color>
+    <color name="calllog_accent">#6B7280</color>
+    <color name="calllog_error">#B3261E</color>
+    <color name="callreport_icon_background">#000000</color>
 </resources>
