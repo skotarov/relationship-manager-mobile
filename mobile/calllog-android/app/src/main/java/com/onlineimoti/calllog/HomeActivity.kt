@@ -11,9 +11,14 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
+import java.util.concurrent.Executors
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
+    private val executor = Executors.newSingleThreadExecutor()
+    private var pageIndex = 0
+    private var currentCalls: List<PhoneCallRecord> = emptyList()
+    private var serverNotesByNumber: Map<String, String> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,6 +27,18 @@ class HomeActivity : AppCompatActivity() {
 
         binding.settingsButton.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
+        }
+        binding.previousCallsButton.setOnClickListener {
+            if (pageIndex > 0) {
+                pageIndex -= 1
+                renderCalls()
+            }
+        }
+        binding.nextCallsButton.setOnClickListener {
+            if (currentCalls.size >= PAGE_SIZE) {
+                pageIndex += 1
+                renderCalls()
+            }
         }
     }
 
@@ -32,24 +49,77 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         binding.homeCallsContainer.removeAllViews()
+        serverNotesByNumber = emptyMap()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
+            binding.paginationContainer.visibility = android.view.View.GONE
             return
         }
 
-        val calls = PhoneCallReader.recentCalls(this, limit = 20)
-        if (calls.isEmpty()) {
-            binding.homeStatusText.text = "Няма намерени разговори."
+        currentCalls = PhoneCallReader.recentCalls(
+            context = this,
+            limit = PAGE_SIZE,
+            offset = pageIndex * PAGE_SIZE,
+        )
+        if (currentCalls.isEmpty()) {
+            binding.homeStatusText.text = if (pageIndex == 0) "Няма намерени разговори." else "Няма повече разговори."
+            binding.previousCallsButton.isEnabled = pageIndex > 0
+            binding.nextCallsButton.isEnabled = false
+            binding.pageText.text = "Стр. ${pageIndex + 1}"
+            binding.paginationContainer.visibility = android.view.View.VISIBLE
             return
         }
 
-        binding.homeStatusText.text = "Последни ${calls.size} разговора"
-        calls.forEach { call ->
-            binding.homeCallsContainer.addView(compactCallRow(call))
+        binding.homeStatusText.text = "Разговори ${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + currentCalls.size}"
+        binding.previousCallsButton.isEnabled = pageIndex > 0
+        binding.nextCallsButton.isEnabled = currentCalls.size >= PAGE_SIZE
+        binding.pageText.text = "Стр. ${pageIndex + 1}"
+        binding.paginationContainer.visibility = android.view.View.VISIBLE
+        currentCalls.forEach { call ->
+            binding.homeCallsContainer.addView(compactCallRow(call, serverNotesByNumber[noteKey(call.number)]))
+        }
+        loadServerNotesForCurrentPage()
+    }
+
+    private fun renderCurrentPageWithNotes() {
+        binding.homeCallsContainer.removeAllViews()
+        currentCalls.forEach { call ->
+            binding.homeCallsContainer.addView(compactCallRow(call, serverNotesByNumber[noteKey(call.number)]))
         }
     }
 
-    private fun compactCallRow(call: PhoneCallRecord): MaterialCardView {
+    private fun loadServerNotesForCurrentPage() {
+        val config = ConfigStore.load(this)
+        if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+            return
+        }
+
+        val visibleNumbers = currentCalls.map { it.number }.distinctBy { noteKey(it) }
+        if (visibleNumbers.isEmpty()) {
+            return
+        }
+
+        binding.homeStatusText.text = "${binding.homeStatusText.text} • зареждам бележки…"
+        executor.execute {
+            val notes = linkedMapOf<String, String>()
+            visibleNumbers.forEach { number ->
+                runCatching {
+                    CallReportRuntime.fetchLookup(config, number, "").lines
+                        .firstOrNull { line -> isUsefulServerNote(line) }
+                        .orEmpty()
+                }.getOrDefault("").takeIf { it.isNotBlank() }?.let { note ->
+                    notes[noteKey(number)] = note
+                }
+            }
+            runOnUiThread {
+                serverNotesByNumber = notes
+                binding.homeStatusText.text = "Разговори ${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + currentCalls.size}"
+                renderCurrentPageWithNotes()
+            }
+        }
+    }
+
+    private fun compactCallRow(call: PhoneCallRecord, serverNote: String? = null): MaterialCardView {
         val card = MaterialCardView(this).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
@@ -98,6 +168,15 @@ class HomeActivity : AppCompatActivity() {
             textSize = 12.5f
             maxLines = 1
         })
+        if (!serverNote.isNullOrBlank()) {
+            textColumn.addView(TextView(this).apply {
+                text = "📝 $serverNote"
+                setTextColor(getColor(R.color.calllog_muted_text))
+                textSize = 12.5f
+                maxLines = 2
+                setPadding(0, dp(3), 0, 0)
+            })
+        }
         row.addView(textColumn)
 
         row.addView(MaterialButton(this).apply {
@@ -156,7 +235,26 @@ class HomeActivity : AppCompatActivity() {
         )
     }
 
+    private fun isUsefulServerNote(line: String): Boolean {
+        val normalized = line.trim()
+        if (normalized.isBlank()) {
+            return false
+        }
+        return !normalized.startsWith("В Call Report:") &&
+            !normalized.startsWith("Предишни разговори:") &&
+            !normalized.startsWith("В телефона:")
+    }
+
+    private fun noteKey(number: String): String {
+        val digits = number.filter { it.isDigit() }
+        return if (digits.length > 9) digits.takeLast(9) else digits
+    }
+
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 20
     }
 }
