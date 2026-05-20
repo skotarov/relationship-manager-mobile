@@ -31,20 +31,21 @@ object PhoneCallReader {
         return recentCalls(context, limit = 1).firstOrNull()
     }
 
-    fun recentCalls(context: Context, limit: Int = 20): List<PhoneCallRecord> {
+    fun recentCalls(context: Context, limit: Int = 20, offset: Int = 0): List<PhoneCallRecord> {
         if (!hasCallLogPermission(context)) {
             return emptyList()
         }
 
         val safeLimit = limit.coerceIn(1, 50)
+        val safeOffset = offset.coerceAtLeast(0)
         return runCatching {
-            readRecentCalls(context, safeLimit)
+            readRecentCalls(context, safeLimit, safeOffset)
         }.getOrElse {
             emptyList()
         }
     }
 
-    private fun readRecentCalls(context: Context, safeLimit: Int): List<PhoneCallRecord> {
+    private fun readRecentCalls(context: Context, safeLimit: Int, safeOffset: Int): List<PhoneCallRecord> {
         val projection = arrayOf(
             CallLog.Calls.NUMBER,
             CallLog.Calls.CACHED_NAME,
@@ -68,24 +69,31 @@ object PhoneCallReader {
                 val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
 
+                var skipped = 0
                 while (cursor.moveToNext() && size < safeLimit) {
                     val number = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
+                    if (number.isBlank()) {
+                        continue
+                    }
+                    if (skipped < safeOffset) {
+                        skipped += 1
+                        continue
+                    }
+
                     val cachedName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
                     val type = if (typeIndex >= 0) cursor.getInt(typeIndex) else 0
                     val startedAt = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L
                     val duration = if (durationIndex >= 0) cursor.getLong(durationIndex) else 0L
 
-                    if (number.isNotBlank()) {
-                        add(
-                            PhoneCallRecord(
-                                number = number,
-                                name = cachedName,
-                                direction = directionFromType(type),
-                                startedAt = startedAt,
-                                durationSeconds = duration,
-                            )
+                    add(
+                        PhoneCallRecord(
+                            number = number,
+                            name = cachedName,
+                            direction = directionFromType(type),
+                            startedAt = startedAt,
+                            durationSeconds = duration,
                         )
-                    }
+                    )
                 }
             }
         }
