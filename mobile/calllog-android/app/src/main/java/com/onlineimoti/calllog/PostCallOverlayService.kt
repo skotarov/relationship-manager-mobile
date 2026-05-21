@@ -134,6 +134,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun showNoteEditor() {
+        handler.removeCallbacksAndMessages(null)
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
