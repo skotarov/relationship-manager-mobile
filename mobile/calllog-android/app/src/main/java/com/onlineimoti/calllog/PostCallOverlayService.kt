@@ -16,7 +16,6 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -99,7 +98,6 @@ class PostCallOverlayService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(17, 24, 39))
         })
-
         card.addView(TextView(this).apply {
             text = labelValue("Разговори", callsValue)
             textSize = 15f
@@ -119,8 +117,8 @@ class PostCallOverlayService : Service() {
             setPadding(0, dp(4), 0, dp(10))
         })
 
-        val extraLine = lines.firstOrNull { it.isNotBlank() } ?: subtitle
-        if (extraLine.isNotBlank()) {
+        val extraLine = lines.firstOrNull { it.isMeaningfulPopupLine() } ?: subtitle.takeIf { it.isMeaningfulPopupLine() }
+        if (!extraLine.isNullOrBlank()) {
             card.addView(TextView(this).apply {
                 text = extraLine
                 textSize = 13f
@@ -129,21 +127,16 @@ class PostCallOverlayService : Service() {
             })
         }
 
-        card.addView(buttonRow {
-            addView(actionButton("CRM лог") { openCrmLog() })
-            addView(actionButton("Бележка") { openFormOrWarn() })
-        })
-        card.addView(buttonRow {
-            addView(actionButton("Тел. история") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
-            addView(actionButton("История номер") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
-        })
-        card.addView(buttonRow {
-            addView(actionButton("Локален лог") { openLocalNumberLog() })
-            addView(actionButton("Затвори") { stopSelf() })
+        card.addView(iconRow {
+            addView(iconAction("▣", "CRM") { openCrmLog() })
+            addView(iconAction("✎", "Бележка") { openFormOrWarn() })
+            addView(iconAction("☎", "Тел.") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
+            addView(iconAction("👤", "Номер") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
+            addView(iconAction("≡", "Локал") { openLocalNumberLog() })
+            addView(iconAction("×", "Затвори") { stopSelf() })
         })
 
         val scroll = ScrollView(this).apply { addView(card) }
-
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -209,9 +202,7 @@ class PostCallOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved < dp(8)) {
-                        openForm()
-                    }
+                    if (moved < dp(8)) openForm()
                     true
                 }
                 else -> false
@@ -222,25 +213,48 @@ class PostCallOverlayService : Service() {
         windowManager?.addView(bubble, params)
     }
 
-    private fun buttonRow(block: LinearLayout.() -> Unit): LinearLayout {
+    private fun iconRow(block: LinearLayout.() -> Unit): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(5), 0, 0)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(6), 0, 0)
             block()
         }
     }
 
-    private fun actionButton(label: String, action: () -> Unit): Button {
-        return Button(this).apply {
-            text = label
-            isAllCaps = false
-            textSize = 13f
-            setOnClickListener { action() }
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginEnd = dp(4)
-                marginStart = dp(4)
-            }
+    private fun iconAction(icon: String, label: String, action: () -> Unit): LinearLayout {
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(3), 0, dp(3), 0)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
+        val circle = TextView(this).apply {
+            text = icon
+            textSize = 19f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.rgb(55, 65, 81))
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+            setOnClickListener { action() }
+        }
+        val caption = TextView(this).apply {
+            text = label
+            textSize = 10f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(75, 85, 99))
+            maxLines = 1
+            setPadding(0, dp(3), 0, 0)
+            setOnClickListener { action() }
+        }
+        wrapper.addView(circle)
+        wrapper.addView(caption)
+        wrapper.setOnClickListener { action() }
+        return wrapper
     }
 
     private fun openForm() {
@@ -264,18 +278,14 @@ class PostCallOverlayService : Service() {
 
     private fun openCrmLog() {
         val config = ConfigStore.load(this)
-        if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+        if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
             showServerTokenRequired()
             return
         }
         val url = buildEndpoint(
             baseUrl = config.baseUrl,
             path = config.historyPath,
-            params = linkedMapOf(
-                "phone" to phone,
-                "direction" to direction,
-                "access_token" to config.accessToken,
-            )
+            params = linkedMapOf("phone" to phone, "direction" to direction, "access_token" to config.accessToken),
         )
         startActivity(
             Intent(this, WebViewActivity::class.java)
@@ -333,6 +343,12 @@ class PostCallOverlayService : Service() {
         builder.append(": ")
         builder.append(value)
         return builder
+    }
+
+    private fun String.isMeaningfulPopupLine(): Boolean {
+        val value = trim()
+        if (value.isBlank()) return false
+        return !value.startsWith("Локален режим", ignoreCase = true)
     }
 
     private fun dp(value: Int): Int {
