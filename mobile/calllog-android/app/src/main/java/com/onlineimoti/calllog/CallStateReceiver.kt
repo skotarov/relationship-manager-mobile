@@ -86,7 +86,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 CallReportRuntime.ensureNotificationChannel(context)
 
                 if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-                    CallReportRuntime.showLookupNotification(
+                    LookupPopupPresenter.show(
                         context = context,
                         result = LookupResult(
                             title = title,
@@ -116,7 +116,7 @@ class CallStateReceiver : BroadcastReceiver() {
                         lookup.copy(title = displayName)
                     }
                 }
-                CallReportRuntime.showLookupNotification(
+                LookupPopupPresenter.show(
                     context = context,
                     result = result,
                     fullscreen = false,
@@ -125,7 +125,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 )
             } catch (_: Throwable) {
                 CallReportRuntime.ensureNotificationChannel(context)
-                CallReportRuntime.showLookupNotification(
+                LookupPopupPresenter.show(
                     context = context,
                     result = LookupResult(
                         title = number,
