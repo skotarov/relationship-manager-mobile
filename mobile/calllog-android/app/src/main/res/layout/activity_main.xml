@@ -23,73 +23,88 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Настройки на Android wrapper-а за lookup notification и remote WebView форма."
+            android:text="Настройки на Android wrapper-а за call popup-и, локална история и server WebView форма."
             android:textColor="@color/calllog_muted_text"
             android:textSize="15sp" />
 
-        <com.google.android.material.textfield.TextInputLayout
+        <CheckBox
+            android:id="@+id/remoteEnabledCheckBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:hint="Base URL">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/baseUrlInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:text="https://onlineimoti.com" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:checked="true"
+            android:text="Сървър" />
 
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
+            android:id="@+id/remoteSettingsGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="Access token">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/accessTokenInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textNoSuggestions" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="Път до lookup файла">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/lookupPathInput"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:text="/broker/callreport/lookup.php" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="8dp"
+                android:hint="Base URL">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/baseUrlInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri"
+                    android:text="https://onlineimoti.com" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="Път до form файла">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/formPathInput"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:text="/broker/callreport/form.php" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="12dp"
+                android:hint="Access token">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/accessTokenInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textNoSuggestions" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="Път до full/history log файла">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/historyPathInput"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:text="/broker/callreport/history.php" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="12dp"
+                android:hint="Път до lookup файла">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/lookupPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/lookup.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Път до form файла">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/formPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/form.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="Път до full/history log файла">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/historyPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/history.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
@@ -216,14 +231,6 @@
                 android:text="Разреши Full-screen popup" />
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveSettingsButton"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="@string/save_settings" />
-
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -306,6 +313,14 @@
                     android:text="@string/open_form_direct" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveSettingsButton"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/save_settings" />
 
         <TextView
             android:id="@+id/statusText"
