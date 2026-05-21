@@ -20,9 +20,7 @@ class CallScreeningBridgeService : CallScreeningService() {
 
         val handle: Uri = callDetails.handle ?: return
         val number = handle.schemeSpecificPart?.trim().orEmpty()
-        if (number.isBlank()) {
-            return
-        }
+        if (number.isBlank()) return
 
         val direction = when (callDetails.callDirection) {
             Call.Details.DIRECTION_INCOMING -> "in"
@@ -35,19 +33,17 @@ class CallScreeningBridgeService : CallScreeningService() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(this)
-                if (!ContactGroupFilter.shouldNotify(this, number, config)) {
-                    return@execute
-                }
+                if (!ContactGroupFilter.shouldNotify(this, number, config)) return@execute
                 val displayName = ContactGroupFilter.resolveDisplayName(this, number)
                 val title = displayName.ifNullOrBlank { number }
 
                 CallReportRuntime.ensureNotificationChannel(this)
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                if (!remoteReady(config)) {
                     LookupPopupPresenter.show(
                         context = this,
                         result = LookupResult(
                             title = title,
-                            subtitle = "Локален режим — няма access token",
+                            subtitle = "Локален режим — без сървърни данни",
                             lines = emptyList(),
                             openFormUrl = "",
                         ),
@@ -59,11 +55,7 @@ class CallScreeningBridgeService : CallScreeningService() {
                 }
 
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
-                    if (displayName.isNullOrBlank()) {
-                        lookup
-                    } else {
-                        lookup.copy(title = displayName)
-                    }
+                    if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
                 }
                 LookupPopupPresenter.show(
                     context = this,
@@ -88,6 +80,10 @@ class CallScreeningBridgeService : CallScreeningService() {
                 )
             }
         }
+    }
+
+    private fun remoteReady(config: AppConfig): Boolean {
+        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
     }
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
