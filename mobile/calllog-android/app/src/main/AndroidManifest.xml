@@ -40,6 +40,11 @@
             </intent-filter>
         </service>
         <activity
+            android:name=".SystemCallHistoryActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true" />
+        <activity
             android:name=".PostCallPromptActivity"
             android:excludeFromRecents="true"
             android:exported="false"
