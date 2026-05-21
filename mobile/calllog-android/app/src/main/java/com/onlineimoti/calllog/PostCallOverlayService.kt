@@ -112,10 +112,6 @@ class PostCallOverlayService : Service() {
             addView(actionButton("История номер") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
         })
         card.addView(buttonRow {
-            addView(actionButton("Сърч деф.") { openSystemHistory(SystemCallHistoryActivity.MODE_SEARCH_DEFAULT) })
-            addView(actionButton("Сърч Google") { openSystemHistory(SystemCallHistoryActivity.MODE_SEARCH_GOOGLE) })
-        })
-        card.addView(buttonRow {
             addView(actionButton("Локален лог") { openLocalNumberLog() })
             addView(actionButton("Затвори") { stopSelf() })
         })
