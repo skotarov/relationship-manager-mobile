@@ -158,14 +158,16 @@ object CallReportRuntime {
         )
         val systemHistoryIntent = Intent(context, SystemCallHistoryActivity::class.java)
             .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
+            .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL)
         val systemHistoryPendingIntent = PendingIntent.getActivity(
             context,
             1004,
             systemHistoryIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val filteredHistoryIntent = Intent(context, RecentCallsActivity::class.java)
-            .putExtra(RecentCallsActivity.EXTRA_PHONE_FILTER, phone)
+        val filteredHistoryIntent = Intent(context, SystemCallHistoryActivity::class.java)
+            .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
+            .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_NUMBER)
         val filteredHistoryPendingIntent = PendingIntent.getActivity(
             context,
             1005,
