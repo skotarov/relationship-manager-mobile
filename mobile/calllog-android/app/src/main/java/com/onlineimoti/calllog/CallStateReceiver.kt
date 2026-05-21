@@ -10,21 +10,11 @@ import java.util.concurrent.Executors
 
 class CallStateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: android.content.Intent) {
-        if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
-            return
-        }
+        if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
 
-        val hasPhoneState = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.READ_PHONE_STATE
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCallLog = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.READ_CALL_LOG
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!hasPhoneState || !hasCallLog) {
-            return
-        }
+        val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        val hasCallLog = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+        if (!hasPhoneState || !hasCallLog) return
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
@@ -33,10 +23,7 @@ class CallStateReceiver : BroadcastReceiver() {
             handleCallEnded(context)
             return
         }
-
-        if (number.isBlank()) {
-            return
-        }
+        if (number.isBlank()) return
 
         val direction = when (state) {
             TelephonyManager.EXTRA_STATE_RINGING -> "in"
@@ -51,25 +38,18 @@ class CallStateReceiver : BroadcastReceiver() {
         }
 
         CallLifecycleStore.markActive(context, number, direction)
-
-        if (!CallStateDeduper.markHandled(context, number, direction)) {
-            return
-        }
-
+        if (!CallStateDeduper.markHandled(context, number, direction)) return
         showLookup(context, number, direction, fullscreen = direction == "in")
     }
 
     private fun handleCallEnded(context: Context) {
         val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
-        if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) {
-            return
-        }
+        if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) return
+        showPostCallPrompt(context, endedCall.number, endedCall.direction)
+    }
 
-        showPostCallPrompt(
-            context = context,
-            number = endedCall.number,
-            direction = endedCall.direction,
-        )
+    private fun remoteReady(config: AppConfig): Boolean {
+        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
     }
 
     private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
@@ -77,15 +57,13 @@ class CallStateReceiver : BroadcastReceiver() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(context)
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
-                    return@execute
-                }
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
                 val title = displayName.ifNullOrBlank { number }
 
                 CallReportRuntime.ensureNotificationChannel(context)
 
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                if (!remoteReady(config)) {
                     LookupPopupPresenter.show(
                         context = context,
                         result = LookupResult(
@@ -115,11 +93,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 )
 
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
-                    if (displayName.isNullOrBlank()) {
-                        lookup
-                    } else {
-                        lookup.copy(title = displayName)
-                    }
+                    if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
                 }
                 LookupPopupPresenter.show(
                     context = context,
@@ -153,11 +127,9 @@ class CallStateReceiver : BroadcastReceiver() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(context)
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
-                    return@execute
-                }
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
 
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                if (!remoteReady(config)) {
                     CallReportRuntime.showImmediatePostCallPrompt(
                         context = context,
                         formUrl = "",
@@ -187,11 +159,7 @@ class CallStateReceiver : BroadcastReceiver() {
 
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
-                    if (displayName.isBlank()) {
-                        lookup
-                    } else {
-                        lookup.copy(title = displayName)
-                    }
+                    if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
                 }
 
                 CallReportRuntime.showPostCallPromptNotification(
@@ -231,16 +199,11 @@ class CallStateReceiver : BroadcastReceiver() {
             val lastAt = prefs.getLong(KEY_LAST_AT, 0L)
             val lastNumber = prefs.getString(KEY_LAST_NUMBER, "").orEmpty()
             val lastDirection = prefs.getString(KEY_LAST_DIRECTION, "").orEmpty()
-            return lastDirection == direction &&
-                normalizeNumber(lastNumber) == normalizeNumber(number) &&
-                System.currentTimeMillis() - lastAt < WINDOW_MS
+            return lastDirection == direction && normalizeNumber(lastNumber) == normalizeNumber(number) && System.currentTimeMillis() - lastAt < WINDOW_MS
         }
 
         fun markHandled(context: Context, number: String, direction: String): Boolean {
-            if (wasRecentlyHandled(context, number, direction)) {
-                return false
-            }
-
+            if (wasRecentlyHandled(context, number, direction)) return false
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putString(KEY_LAST_NUMBER, number)
