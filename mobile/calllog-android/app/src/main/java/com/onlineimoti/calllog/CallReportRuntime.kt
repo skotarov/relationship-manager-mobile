@@ -5,12 +5,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Build
 import android.provider.Settings
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.StyleSpan
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -26,9 +22,7 @@ object CallReportRuntime {
     private const val HISTORY_LIMIT = 5
 
     fun ensureNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -64,9 +58,7 @@ object CallReportRuntime {
 
         val responseCode = connection.responseCode
         val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
-        val body = stream.use { input ->
-            BufferedReader(InputStreamReader(input)).readText()
-        }
+        val body = stream.use { input -> BufferedReader(InputStreamReader(input)).readText() }
         if (responseCode !in 200..299) {
             throw IllegalStateException("HTTP $responseCode: $body")
         }
@@ -75,24 +67,18 @@ object CallReportRuntime {
         val linesJson = json.optJSONArray("lines")
         val serverLines = buildList {
             if (linesJson != null) {
-                for (index in 0 until linesJson.length()) {
-                    add(linesJson.optString(index))
-                }
+                for (index in 0 until linesJson.length()) add(linesJson.optString(index))
             }
         }
         val previousCallCount = json.optInt("previous_call_count", -1)
         val recentLinesJson = json.optJSONArray("recent_call_lines")
         val recentLines = buildList {
             if (recentLinesJson != null) {
-                for (index in 0 until recentLinesJson.length()) {
-                    add(recentLinesJson.optString(index))
-                }
+                for (index in 0 until recentLinesJson.length()) add(recentLinesJson.optString(index))
             }
         }
         val lines = buildList {
-            if (previousCallCount >= 0) {
-                add("В Call Report: $previousCallCount записани")
-            }
+            if (previousCallCount >= 0) add("В Call Report: $previousCallCount записани")
             addAll(serverLines)
             addAll(recentLines.take(HISTORY_LIMIT))
         }
@@ -119,15 +105,14 @@ object CallReportRuntime {
         title: String = "Зарежда се информация…",
         fullscreen: Boolean = false,
     ) {
-        val placeholder = LookupResult(
-            title = title,
-            subtitle = phone,
-            lines = listOf("Зарежда се информация от Call Report…"),
-            openFormUrl = "",
-        )
         showLookupNotification(
             context = context,
-            result = placeholder,
+            result = LookupResult(
+                title = title,
+                subtitle = phone,
+                lines = listOf("Зарежда се информация от Call Report…"),
+                openFormUrl = "",
+            ),
             fullscreen = fullscreen,
             phone = phone,
             direction = direction,
@@ -161,22 +146,20 @@ object CallReportRuntime {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val systemHistoryIntent = Intent(context, SystemCallHistoryActivity::class.java)
-            .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
-            .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL)
         val systemHistoryPendingIntent = PendingIntent.getActivity(
             context,
             1004,
-            systemHistoryIntent,
+            Intent(context, SystemCallHistoryActivity::class.java)
+                .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
+                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val filteredHistoryIntent = Intent(context, SystemCallHistoryActivity::class.java)
-            .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
-            .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_NUMBER)
         val filteredHistoryPendingIntent = PendingIntent.getActivity(
             context,
             1005,
-            filteredHistoryIntent,
+            Intent(context, SystemCallHistoryActivity::class.java)
+                .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
+                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_NUMBER),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -193,16 +176,24 @@ object CallReportRuntime {
         val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
         val noteValue = contactNote.ifBlank { "няма" }
 
-        val style = NotificationCompat.InboxStyle()
-            .addLine(labelValue("Разговори", callsValue))
-            .addLine(labelValue("Последно", lastValue))
-            .addLine(labelValue("Бележка", noteValue))
+        val contentViews = RemoteViews(context.packageName, R.layout.notification_lookup_system).apply {
+            setTextViewText(R.id.lookupTitleText, notificationTitle)
+            setTextViewText(R.id.lookupCallsText, "Разговори: $callsValue")
+            setTextViewText(R.id.lookupLastText, "Последно: $lastValue")
+            setTextViewText(R.id.lookupNoteText, "Бележка: $noteValue")
+            setOnClickPendingIntent(R.id.lookupTitleText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupCallsText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupLastText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteText, pendingIntent)
+        }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
-            .setContentText("Бележка: $noteValue")
-            .setStyle(style)
+            .setContentText("Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue")
+            .setCustomContentView(contentViews)
+            .setCustomBigContentView(contentViews)
+            .setCustomHeadsUpContentView(contentViews)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
@@ -210,15 +201,10 @@ object CallReportRuntime {
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
             .addAction(0, "Тел. история", systemHistoryPendingIntent)
             .addAction(0, "История номер", filteredHistoryPendingIntent)
-        if (fullscreen) {
-            builder.setFullScreenIntent(pendingIntent, true)
-        }
-        val notification = builder.build()
+        if (fullscreen) builder.setFullScreenIntent(pendingIntent, true)
 
-        if (phone.isNotBlank()) {
-            CallPopupTracker.markPopupOpened(context, phone, direction)
-        }
-        NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, notification)
+        if (phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
+        NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, builder.build())
     }
 
     fun showImmediatePostCallPrompt(
@@ -277,13 +263,11 @@ object CallReportRuntime {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-
-        val skipIntent = Intent(context, NotificationDismissReceiver::class.java)
-            .putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_ID, POST_CALL_NOTIFICATION_ID)
         val skipPendingIntent = PendingIntent.getBroadcast(
             context,
             2003,
-            skipIntent,
+            Intent(context, NotificationDismissReceiver::class.java)
+                .putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_ID, POST_CALL_NOTIFICATION_ID),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -303,6 +287,7 @@ object CallReportRuntime {
             .setContentTitle(titleText)
             .setContentText(phone)
             .setCustomContentView(contentViews)
+            .setCustomHeadsUpContentView(contentViews)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
@@ -313,15 +298,5 @@ object CallReportRuntime {
             .build()
 
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
-    }
-
-    private fun labelValue(label: String, value: String): SpannableStringBuilder {
-        val builder = SpannableStringBuilder()
-        val start = builder.length
-        builder.append(label)
-        builder.setSpan(StyleSpan(Typeface.BOLD), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.append(": ")
-        builder.append(value)
-        return builder
     }
 }
