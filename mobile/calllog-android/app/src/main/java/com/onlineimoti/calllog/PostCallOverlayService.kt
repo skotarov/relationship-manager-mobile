@@ -50,11 +50,7 @@ class PostCallOverlayService : Service() {
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
             MODE_LOOKUP -> showLookupPopup()
             else -> {
-                if (formUrl.isBlank()) {
-                    showLookupPopup()
-                } else {
-                    showBubble()
-                }
+                showBubble()
                 val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
                 handler.postDelayed({ stopSelf() }, timeout * 1000L)
             }
@@ -144,8 +140,8 @@ class PostCallOverlayService : Service() {
 
         val size = dp(58)
         val bubble = TextView(this).apply {
-            text = "≡"
-            textSize = 28f
+            text = "✎"
+            textSize = 30f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
