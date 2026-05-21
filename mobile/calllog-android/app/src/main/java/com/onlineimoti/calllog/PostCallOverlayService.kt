@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -50,10 +51,10 @@ class PostCallOverlayService : Service() {
             MODE_LOOKUP -> showLookupPopup()
             else -> {
                 if (formUrl.isBlank()) {
-                    stopSelf()
-                    return START_NOT_STICKY
+                    showLookupPopup()
+                } else {
+                    showBubble()
                 }
-                showBubble()
                 val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
                 handler.postDelayed({ stopSelf() }, timeout * 1000L)
             }
@@ -102,19 +103,19 @@ class PostCallOverlayService : Service() {
             })
         }
 
-        card.addView(buttonRow("CRM лог", "Бележка") {
+        card.addView(buttonRow {
             addView(actionButton("CRM лог") { openCrmLog() })
-            addView(actionButton("Бележка") { openFormOrCrm() })
+            addView(actionButton("Бележка") { openFormOrWarn() })
         })
-        card.addView(buttonRow("Тел. история", "История номер") {
+        card.addView(buttonRow {
             addView(actionButton("Тел. история") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
             addView(actionButton("История номер") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
         })
-        card.addView(buttonRow("Сърч деф.", "Сърч Google") {
+        card.addView(buttonRow {
             addView(actionButton("Сърч деф.") { openSystemHistory(SystemCallHistoryActivity.MODE_SEARCH_DEFAULT) })
             addView(actionButton("Сърч Google") { openSystemHistory(SystemCallHistoryActivity.MODE_SEARCH_GOOGLE) })
         })
-        card.addView(buttonRow("Локален лог", "Затвори") {
+        card.addView(buttonRow {
             addView(actionButton("Локален лог") { openLocalNumberLog() })
             addView(actionButton("Затвори") { stopSelf() })
         })
@@ -201,7 +202,7 @@ class PostCallOverlayService : Service() {
         windowManager?.addView(bubble, params)
     }
 
-    private fun buttonRow(left: String, right: String, block: LinearLayout.() -> Unit): LinearLayout {
+    private fun buttonRow(block: LinearLayout.() -> Unit): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(5), 0, 0)
@@ -223,6 +224,10 @@ class PostCallOverlayService : Service() {
     }
 
     private fun openForm() {
+        if (formUrl.isBlank()) {
+            showServerTokenRequired()
+            return
+        }
         startActivity(
             Intent(this, WebViewActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -233,16 +238,20 @@ class PostCallOverlayService : Service() {
         stopSelf()
     }
 
-    private fun openFormOrCrm() {
+    private fun openFormOrWarn() {
         if (formUrl.isNotBlank()) {
             openForm()
         } else {
-            openCrmLog()
+            showServerTokenRequired()
         }
     }
 
     private fun openCrmLog() {
         val config = ConfigStore.load(this)
+        if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+            showServerTokenRequired()
+            return
+        }
         val url = buildEndpoint(
             baseUrl = config.baseUrl,
             path = config.historyPath,
@@ -279,6 +288,10 @@ class PostCallOverlayService : Service() {
                 .putExtra(RecentCallsActivity.EXTRA_PHONE_FILTER, phone)
         )
         stopSelf()
+    }
+
+    private fun showServerTokenRequired() {
+        Toast.makeText(this, "За CRM/бележка е нужен access token", Toast.LENGTH_SHORT).show()
     }
 
     private fun removeOverlay() {
