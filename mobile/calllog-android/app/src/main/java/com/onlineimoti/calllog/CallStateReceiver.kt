@@ -101,12 +101,17 @@ class CallStateReceiver : BroadcastReceiver() {
                     return@execute
                 }
 
-                CallReportRuntime.showLoadingLookupNotification(
+                LookupPopupPresenter.show(
                     context = context,
+                    result = LookupResult(
+                        title = title,
+                        subtitle = "Зарежда се информация от Call Report…",
+                        lines = emptyList(),
+                        openFormUrl = "",
+                    ),
+                    fullscreen = fullscreen,
                     phone = number,
                     direction = direction,
-                    title = title,
-                    fullscreen = fullscreen,
                 )
 
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
