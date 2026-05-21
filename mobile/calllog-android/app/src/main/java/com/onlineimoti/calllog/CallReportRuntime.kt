@@ -17,13 +17,16 @@ import java.net.URL
 
 object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
+    private const val PASSIVE_CHANNEL_ID = "callreport_lookup_passive"
     private const val LOOKUP_NOTIFICATION_ID = 2001
+    private const val LOOKUP_SHADE_NOTIFICATION_ID = 2004
     const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.notification_channel_name),
@@ -31,8 +34,15 @@ object CallReportRuntime {
         ).apply {
             description = context.getString(R.string.notification_channel_description)
         }
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val passiveChannel = NotificationChannel(
+            PASSIVE_CHANNEL_ID,
+            "Call Report в панела",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Тиха информация в панела с известия, когато custom popup-ът е активен."
+        }
         manager.createNotificationChannel(channel)
+        manager.createNotificationChannel(passiveChannel)
     }
 
     fun fetchLookup(config: AppConfig, phone: String, direction: String): LookupResult {
@@ -126,6 +136,53 @@ object CallReportRuntime {
         phone: String = "",
         direction: String = "",
     ) {
+        showLookupNotificationInternal(
+            context = context,
+            result = result,
+            fullscreen = fullscreen,
+            phone = phone,
+            direction = direction,
+            channelId = CHANNEL_ID,
+            notificationId = LOOKUP_NOTIFICATION_ID,
+            priority = NotificationCompat.PRIORITY_HIGH,
+            headsUp = true,
+            markPopup = true,
+        )
+    }
+
+    fun showLookupShadeNotification(
+        context: Context,
+        result: LookupResult,
+        phone: String = "",
+        direction: String = "",
+    ) {
+        showLookupNotificationInternal(
+            context = context,
+            result = result,
+            fullscreen = false,
+            phone = phone,
+            direction = direction,
+            channelId = PASSIVE_CHANNEL_ID,
+            notificationId = LOOKUP_SHADE_NOTIFICATION_ID,
+            priority = NotificationCompat.PRIORITY_LOW,
+            headsUp = false,
+            markPopup = false,
+        )
+    }
+
+    private fun showLookupNotificationInternal(
+        context: Context,
+        result: LookupResult,
+        fullscreen: Boolean,
+        phone: String,
+        direction: String,
+        channelId: String,
+        notificationId: Int,
+        priority: Int,
+        headsUp: Boolean,
+        markPopup: Boolean,
+    ) {
+        ensureNotificationChannel(context)
         val config = ConfigStore.load(context)
         val fullLogUrl = buildEndpoint(
             baseUrl = config.baseUrl,
@@ -187,24 +244,24 @@ object CallReportRuntime {
             setOnClickPendingIntent(R.id.lookupNoteText, pendingIntent)
         }
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
             .setContentText("Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue")
             .setCustomContentView(contentViews)
             .setCustomBigContentView(contentViews)
-            .setCustomHeadsUpContentView(contentViews)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
             .addAction(0, "Тел. история", systemHistoryPendingIntent)
             .addAction(0, "История номер", filteredHistoryPendingIntent)
+        if (headsUp) builder.setCustomHeadsUpContentView(contentViews)
         if (fullscreen) builder.setFullScreenIntent(pendingIntent, true)
 
-        if (phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
-        NotificationManagerCompat.from(context).notify(LOOKUP_NOTIFICATION_ID, builder.build())
+        if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
+        NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
     fun showImmediatePostCallPrompt(
