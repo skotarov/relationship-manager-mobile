@@ -133,6 +133,7 @@ class PostCallOverlayService : Service() {
             addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         })
 
+        val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
         val scroll = ScrollView(this).apply { addView(card) }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -142,9 +143,38 @@ class PostCallOverlayService : Service() {
             android.graphics.PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
-            y = dp(135)
+            x = prefs.getInt(KEY_LOOKUP_POPUP_X, 0)
+            y = prefs.getInt(KEY_LOOKUP_POPUP_Y, dp(135))
             width = resources.displayMetrics.widthPixels - dp(20)
+        }
+
+        scroll.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = params.x
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                    params.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceAtLeast(0)
+                    windowManager?.updateViewLayout(scroll, params)
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
+                    if (moved >= dp(8)) {
+                        prefs.edit()
+                            .putInt(KEY_LOOKUP_POPUP_X, params.x)
+                            .putInt(KEY_LOOKUP_POPUP_Y, params.y)
+                            .apply()
+                    }
+                    true
+                }
+                else -> false
+            }
         }
 
         overlayView = scroll
@@ -341,5 +371,8 @@ class PostCallOverlayService : Service() {
         const val EXTRA_SUBTITLE = "subtitle"
         const val EXTRA_LINES = "lines"
         private const val LOOKUP_POPUP_TIMEOUT_MS = 30_000L
+        private const val LOOKUP_POPUP_POSITION_PREFS = "lookup_popup_position"
+        private const val KEY_LOOKUP_POPUP_X = "lookup_popup_x"
+        private const val KEY_LOOKUP_POPUP_Y = "lookup_popup_y"
     }
 }
