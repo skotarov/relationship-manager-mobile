@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CallLog
+import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.widget.Toast
 
@@ -16,13 +17,13 @@ class SystemCallHistoryActivity : Activity() {
         val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         val mode = intent.getStringExtra(EXTRA_MODE).orEmpty()
         val opened = when (mode) {
-            MODE_NUMBER -> openNumberHistory(phone)
-            MODE_SEARCH_DEFAULT -> openNumberHistory(phone)
-            MODE_SEARCH_GOOGLE -> openNumberHistory(phone)
+            MODE_NUMBER -> openContactForPhone(phone)
+            MODE_SEARCH_DEFAULT -> openContactForPhone(phone)
+            MODE_SEARCH_GOOGLE -> openContactForPhone(phone)
             else -> openSystemCallHistory(phone)
         }
         if (!opened) {
-            Toast.makeText(this, "Не успях да отворя телефонната история", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Не успях да отворя контакта/историята", Toast.LENGTH_SHORT).show()
         }
         finish()
     }
@@ -43,29 +44,20 @@ class SystemCallHistoryActivity : Activity() {
         return startFirstWorking(intents)
     }
 
-    private fun openNumberHistory(phone: String): Boolean {
+    private fun openContactForPhone(phone: String): Boolean {
         if (phone.isBlank()) {
             return openSystemCallHistory(phone)
         }
 
-        val defaultDialerPackage = getDefaultDialerPackageName()
-        val filterUri = Uri.withAppendedPath(CallLog.Calls.CONTENT_FILTER_URI, phone)
-        val encodedFilterUri = Uri.parse("content://call_log/calls/filter/${Uri.encode(phone)}")
+        val contactUri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phone))
+        val telUri = Uri.fromParts("tel", phone, null)
 
-        val intents = buildList {
-            defaultDialerPackage?.let { packageName ->
-                add(callLogFilterIntent(filterUri, packageName, withType = false))
-                add(callLogFilterIntent(filterUri, packageName, withType = true))
-                add(callLogFilterIntent(encodedFilterUri, packageName, withType = false))
-                add(callLogFilterIntent(encodedFilterUri, packageName, withType = true))
-            }
-            add(callLogFilterIntent(filterUri, packageName = null, withType = false))
-            add(callLogFilterIntent(filterUri, packageName = null, withType = true))
-            add(callLogFilterIntent(encodedFilterUri, packageName = null, withType = false))
-            add(callLogFilterIntent(encodedFilterUri, packageName = null, withType = true))
-            add(dialIntent(phone, defaultDialerPackage))
-            add(dialIntent(phone, packageName = null))
-        }
+        val intents = listOf(
+            Intent(Intent.ACTION_VIEW, contactUri).apply { putCommonFlags() },
+            Intent(ContactsContract.Intents.SHOW_OR_CREATE_CONTACT, telUri).apply { putCommonFlags() },
+            Intent(Intent.ACTION_VIEW, telUri).apply { putCommonFlags() },
+            dialIntent(phone, packageName = null),
+        )
 
         return startFirstWorking(intents)
     }
@@ -84,18 +76,6 @@ class SystemCallHistoryActivity : Activity() {
     private fun getDefaultDialerPackageName(): String? {
         val telecomManager = getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
         return telecomManager?.defaultDialerPackage?.takeIf { it.isNotBlank() }
-    }
-
-    private fun callLogFilterIntent(uri: Uri, packageName: String?, withType: Boolean): Intent {
-        return Intent(Intent.ACTION_VIEW).apply {
-            if (withType) {
-                setDataAndType(uri, CallLog.Calls.CONTENT_TYPE)
-            } else {
-                data = uri
-            }
-            packageName?.let { setPackage(it) }
-            putCommonFlags()
-        }
     }
 
     private fun callLogByTypeIntent(packageName: String?): Intent {
