@@ -86,7 +86,7 @@ class PostCallOverlayService : Service() {
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setPadding(dp(12), dp(10), dp(8), dp(10))
             background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
             elevation = dp(16).toFloat()
         }
@@ -97,9 +97,22 @@ class PostCallOverlayService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(17, 24, 39))
         })
-        card.addView(keyValueRow("Разговори", callsValue, topPadding = dp(6)))
-        card.addView(keyValueRow("Последно", lastValue, topPadding = dp(2)))
-        card.addView(keyValueRow("Бележка", noteValue, topPadding = dp(2), bottomPadding = dp(6)))
+
+        val infoAndCloseRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
+            setPadding(0, dp(6), 0, 0)
+        }
+        val infoColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        infoColumn.addView(keyValueRow("Разговори", callsValue))
+        infoColumn.addView(keyValueRow("Последно", lastValue, topPadding = dp(2)))
+        infoColumn.addView(keyValueRow("Бележка", noteValue, topPadding = dp(2)))
+        infoAndCloseRow.addView(infoColumn)
+        infoAndCloseRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
+        card.addView(infoAndCloseRow)
 
         val extraLine = lines.firstOrNull { it.isMeaningfulPopupLine() } ?: subtitle.takeIf { it.isMeaningfulPopupLine() }
         if (!extraLine.isNullOrBlank()) {
@@ -107,13 +120,9 @@ class PostCallOverlayService : Service() {
                 text = extraLine
                 textSize = 12f
                 setTextColor(Color.rgb(75, 85, 99))
-                setPadding(0, 0, 0, dp(4))
+                setPadding(0, dp(2), 0, 0)
             })
         }
-
-        card.addView(iconRow {
-            addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
-        })
 
         val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
         val scroll = ScrollView(this).apply { addView(card) }
@@ -222,10 +231,10 @@ class PostCallOverlayService : Service() {
         windowManager?.addView(bubble, params)
     }
 
-    private fun keyValueRow(label: String, value: String, topPadding: Int = 0, bottomPadding: Int = 0): LinearLayout {
+    private fun keyValueRow(label: String, value: String, topPadding: Int = 0): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, topPadding, 0, bottomPadding)
+            setPadding(0, topPadding, 0, 0)
             addView(TextView(this@PostCallOverlayService).apply {
                 text = label
                 textSize = 14f
@@ -242,15 +251,6 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun iconRow(block: LinearLayout.() -> Unit): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            setPadding(0, dp(4), 0, 0)
-            block()
-        }
-    }
-
     private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton {
         return ImageButton(this).apply {
             setImageResource(drawableRes)
@@ -258,8 +258,8 @@ class PostCallOverlayService : Service() {
             scaleType = android.widget.ImageView.ScaleType.CENTER
             setPadding(dp(9), dp(9), dp(9), dp(9))
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
-                marginStart = dp(3)
-                marginEnd = dp(3)
+                marginStart = dp(6)
+                marginEnd = dp(0)
             }
             setOnClickListener { action() }
         }
