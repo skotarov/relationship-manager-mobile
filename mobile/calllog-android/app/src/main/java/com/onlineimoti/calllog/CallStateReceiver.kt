@@ -77,16 +77,30 @@ class CallStateReceiver : BroadcastReceiver() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(context)
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-                    return@execute
-                }
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) {
                     return@execute
                 }
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
-                val title = displayName.ifNullOrBlank { "Зарежда се информация…" }
+                val title = displayName.ifNullOrBlank { number }
 
                 CallReportRuntime.ensureNotificationChannel(context)
+
+                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                    CallReportRuntime.showLookupNotification(
+                        context = context,
+                        result = LookupResult(
+                            title = title,
+                            subtitle = "Локален режим — няма access token",
+                            lines = emptyList(),
+                            openFormUrl = "",
+                        ),
+                        fullscreen = fullscreen,
+                        phone = number,
+                        direction = direction,
+                    )
+                    return@execute
+                }
+
                 CallReportRuntime.showLoadingLookupNotification(
                     context = context,
                     phone = number,
@@ -110,6 +124,19 @@ class CallStateReceiver : BroadcastReceiver() {
                     direction = direction,
                 )
             } catch (_: Throwable) {
+                CallReportRuntime.ensureNotificationChannel(context)
+                CallReportRuntime.showLookupNotification(
+                    context = context,
+                    result = LookupResult(
+                        title = number,
+                        subtitle = "Локален режим",
+                        lines = emptyList(),
+                        openFormUrl = "",
+                    ),
+                    fullscreen = fullscreen,
+                    phone = number,
+                    direction = direction,
+                )
             } finally {
                 pendingResult.finish()
             }
