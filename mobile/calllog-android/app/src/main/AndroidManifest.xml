@@ -16,6 +16,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CallLog">
+        <provider
+            android:name=".DebugDefaultsProvider"
+            android:authorities="${applicationId}.debugdefaults"
+            android:exported="false"
+            android:initOrder="1" />
         <service
             android:name=".PostCallOverlayService"
             android:exported="false" />
