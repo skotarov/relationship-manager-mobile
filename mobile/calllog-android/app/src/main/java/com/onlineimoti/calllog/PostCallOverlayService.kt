@@ -91,7 +91,7 @@ class PostCallOverlayService : Service() {
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(8), dp(10))
+            setPadding(dp(16), dp(14), dp(12), dp(14))
             background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
             elevation = dp(22).toFloat()
             translationZ = dp(8).toFloat()
@@ -107,7 +107,7 @@ class PostCallOverlayService : Service() {
         val infoAndCloseRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
-            setPadding(0, dp(6), 0, 0)
+            setPadding(0, dp(7), 0, 0)
         }
         val infoColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -126,7 +126,7 @@ class PostCallOverlayService : Service() {
                 text = extraLine
                 textSize = 12f
                 setTextColor(Color.rgb(75, 85, 99))
-                setPadding(0, dp(2), 0, 0)
+                setPadding(0, dp(3), 0, 0)
             })
         }
 
@@ -143,7 +143,7 @@ class PostCallOverlayService : Service() {
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+            setPadding(dp(18), dp(16), dp(18), dp(16))
             background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
             elevation = dp(22).toFloat()
             translationZ = dp(8).toFloat()
@@ -173,10 +173,10 @@ class PostCallOverlayService : Service() {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             setSingleLine(false)
             gravity = Gravity.TOP or Gravity.START
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(10)
+                topMargin = dp(12)
             }
         }
         card.addView(noteInput)
@@ -184,7 +184,7 @@ class PostCallOverlayService : Service() {
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
-            setPadding(0, dp(10), 0, 0)
+            setPadding(0, dp(12), 0, 0)
         }
         actions.addView(textAction("Запази") {
             val saved = ContactNoteReader.saveNoteForPhone(this, phone, noteInput.text?.toString().orEmpty())
