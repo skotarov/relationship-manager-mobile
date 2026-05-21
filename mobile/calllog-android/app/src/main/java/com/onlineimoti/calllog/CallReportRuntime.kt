@@ -156,6 +156,14 @@ object CallReportRuntime {
             openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val systemHistoryIntent = Intent(context, SystemCallHistoryActivity::class.java)
+            .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
+        val systemHistoryPendingIntent = PendingIntent.getActivity(
+            context,
+            1004,
+            systemHistoryIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val localCallCountLine = LocalCallStatsProvider.buildLine(context, phone)
         val visibleLines = buildList {
@@ -177,6 +185,7 @@ object CallReportRuntime {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
+            .addAction(0, "Тел. история", systemHistoryPendingIntent)
         if (fullscreen) {
             builder.setFullScreenIntent(pendingIntent, true)
         }
