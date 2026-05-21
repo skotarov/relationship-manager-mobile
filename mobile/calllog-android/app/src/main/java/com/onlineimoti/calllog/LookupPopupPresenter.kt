@@ -14,6 +14,12 @@ object LookupPopupPresenter {
     ) {
         val config = ConfigStore.load(context)
         if (config.useCustomStartPopup && Settings.canDrawOverlays(context)) {
+            CallReportRuntime.showLookupShadeNotification(
+                context = context,
+                result = result,
+                phone = phone,
+                direction = direction,
+            )
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOOKUP)
