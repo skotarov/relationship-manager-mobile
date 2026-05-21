@@ -236,6 +236,7 @@ object CallReportRuntime {
             setOnClickPendingIntent(R.id.lookupLastValueText, notePendingIntent)
             setOnClickPendingIntent(R.id.lookupNoteLabelText, notePendingIntent)
             setOnClickPendingIntent(R.id.lookupNoteValueText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteIconText, notePendingIntent)
         }
 
         val builder = NotificationCompat.Builder(context, channelId)
