@@ -16,10 +16,12 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -128,12 +130,12 @@ class PostCallOverlayService : Service() {
         }
 
         card.addView(iconRow {
-            addView(iconAction("▣") { openCrmLog() })
-            addView(iconAction("✎") { openFormOrWarn() })
-            addView(iconAction("☎") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
-            addView(iconAction("👤") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
-            addView(iconAction("≡") { openLocalNumberLog() })
-            addView(iconAction("×") { stopSelf() })
+            addView(iconAction(R.drawable.ic_popup_crm) { openCrmLog() })
+            addView(iconAction(R.drawable.ic_popup_note) { openFormOrWarn() })
+            addView(iconAction(R.drawable.ic_popup_history) { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
+            addView(iconAction(R.drawable.ic_popup_person) { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
+            addView(iconAction(R.drawable.ic_popup_local) { openLocalNumberLog() })
+            addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         })
 
         val scroll = ScrollView(this).apply { addView(card) }
@@ -222,21 +224,15 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun iconAction(icon: String, action: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = icon
-            textSize = 20f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(31, 41, 55))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.TRANSPARENT)
-                setStroke(dp(1), Color.rgb(55, 65, 81))
-            }
-            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
-                marginStart = dp(4)
-                marginEnd = dp(4)
+    private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton {
+        return ImageButton(this).apply {
+            setImageResource(drawableRes)
+            background = ContextCompat.getDrawable(this@PostCallOverlayService, R.drawable.popup_icon_circle_bg)
+            scaleType = android.widget.ImageView.ScaleType.CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
+                marginStart = dp(5)
+                marginEnd = dp(5)
             }
             setOnClickListener { action() }
         }
