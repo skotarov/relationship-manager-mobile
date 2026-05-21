@@ -130,11 +130,6 @@ class PostCallOverlayService : Service() {
         }
 
         card.addView(iconRow {
-            addView(iconAction(R.drawable.ic_popup_crm) { openCrmLog() })
-            addView(iconAction(R.drawable.ic_popup_note) { openFormOrWarn() })
-            addView(iconAction(R.drawable.ic_popup_history) { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
-            addView(iconAction(R.drawable.ic_popup_person) { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
-            addView(iconAction(R.drawable.ic_popup_local) { openLocalNumberLog() })
             addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         })
 
@@ -218,7 +213,7 @@ class PostCallOverlayService : Service() {
     private fun iconRow(block: LinearLayout.() -> Unit): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+            gravity = Gravity.END
             setPadding(0, dp(4), 0, 0)
             block()
         }
@@ -230,7 +225,7 @@ class PostCallOverlayService : Service() {
             background = ContextCompat.getDrawable(this@PostCallOverlayService, R.drawable.popup_icon_circle_bg)
             scaleType = android.widget.ImageView.ScaleType.CENTER
             setPadding(dp(9), dp(9), dp(9), dp(9))
-            layoutParams = LinearLayout.LayoutParams(dp(50), dp(50)).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
                 marginStart = dp(3)
                 marginEnd = dp(3)
             }
