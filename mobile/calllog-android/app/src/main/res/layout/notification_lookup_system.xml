@@ -20,36 +20,84 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
-    <TextView
-        android:id="@+id/lookupCallsText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="1dp"
-        android:ellipsize="end"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="#1F2937"
-        android:textSize="11sp" />
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/lookupCallsLabelText"
+            android:layout_width="72dp"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="Разговори"
+            android:textColor="#6B7280"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/lookupCallsValueText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="#1F2937"
+            android:textSize="11sp" />
+    </LinearLayout>
 
-    <TextView
-        android:id="@+id/lookupLastText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="1dp"
-        android:ellipsize="end"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="#1F2937"
-        android:textSize="11sp" />
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/lookupLastLabelText"
+            android:layout_width="72dp"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="Последно"
+            android:textColor="#6B7280"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/lookupLastValueText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="#1F2937"
+            android:textSize="11sp" />
+    </LinearLayout>
 
-    <TextView
-        android:id="@+id/lookupNoteText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="1dp"
-        android:ellipsize="end"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="#1F2937"
-        android:textSize="11sp" />
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/lookupNoteLabelText"
+            android:layout_width="72dp"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="Бележка"
+            android:textColor="#6B7280"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/lookupNoteValueText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="#1F2937"
+            android:textSize="11sp" />
+    </LinearLayout>
 </LinearLayout>
