@@ -90,7 +90,7 @@ class CallStateReceiver : BroadcastReceiver() {
                         context = context,
                         result = LookupResult(
                             title = title,
-                            subtitle = "Локален режим — няма access token",
+                            subtitle = "Локален режим — без сървърни данни",
                             lines = emptyList(),
                             openFormUrl = "",
                         ),
@@ -153,10 +153,18 @@ class CallStateReceiver : BroadcastReceiver() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(context)
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
                     return@execute
                 }
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) {
+
+                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                    CallReportRuntime.showImmediatePostCallPrompt(
+                        context = context,
+                        formUrl = "",
+                        phone = number,
+                        direction = direction,
+                        title = "Локални действия след разговора",
+                    )
                     return@execute
                 }
 
@@ -194,6 +202,13 @@ class CallStateReceiver : BroadcastReceiver() {
                     title = result.title,
                 )
             } catch (_: Throwable) {
+                CallReportRuntime.showImmediatePostCallPrompt(
+                    context = context,
+                    formUrl = "",
+                    phone = number,
+                    direction = direction,
+                    title = "Локални действия след разговора",
+                )
             } finally {
                 pendingResult.finish()
             }
