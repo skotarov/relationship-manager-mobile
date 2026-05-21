@@ -18,7 +18,7 @@ class SystemCallHistoryActivity : Activity() {
         val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         val mode = intent.getStringExtra(EXTRA_MODE).orEmpty()
         val opened = if (mode == MODE_NUMBER) {
-            openNumberHistoryInInstalledDialer(phone)
+            openNumberHistoryInGooglePhone(phone)
         } else {
             openSystemCallHistory(phone)
         }
@@ -51,39 +51,54 @@ class SystemCallHistoryActivity : Activity() {
         return startFirstWorking(intents)
     }
 
-    private fun openNumberHistoryInInstalledDialer(phone: String): Boolean {
+    private fun openNumberHistoryInGooglePhone(phone: String): Boolean {
         if (phone.isBlank()) {
             return openSystemCallHistory(phone)
         }
 
-        val packagesToTry = buildList {
-            getDefaultDialerPackageName()?.let { add(it) }
-            add("com.google.android.dialer")
-            add("com.android.dialer")
-            add("com.miui.dialer")
-            add("com.samsung.android.dialer")
-            add("com.google.android.contacts")
-            add("com.android.contacts")
-        }.distinct()
-
-        val packagedIntents = packagesToTry.flatMap { packageName ->
-            numberHistoryIntents(phone, packageName)
+        val googlePhoneIntents = numberHistoryIntents(phone, GOOGLE_PHONE_PACKAGE) +
+            googleDialerActivityIntents(phone)
+        if (startFirstWorking(googlePhoneIntents)) {
+            return true
         }
-        val genericIntents = numberHistoryIntents(phone, packageName = null)
 
-        return startFirstWorking(packagedIntents + genericIntents)
+        Toast.makeText(this, "Google Phone не отвори история за номера — пробвам резервен вариант", Toast.LENGTH_SHORT).show()
+
+        val fallbackPackages = buildList {
+            add("com.google.android.contacts")
+            add("com.android.dialer")
+            add("com.android.contacts")
+            getDefaultDialerPackageName()?.let { add(it) }
+        }.distinct().filterNot { it == GOOGLE_PHONE_PACKAGE }
+
+        val fallbackIntents = fallbackPackages.flatMap { packageName ->
+            numberHistoryIntents(phone, packageName)
+        } + numberHistoryIntents(phone, packageName = null)
+
+        return startFirstWorking(fallbackIntents)
+    }
+
+    private fun googleDialerActivityIntents(phone: String): List<Intent> {
+        return listOf(
+            Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(CallLog.Calls.CONTENT_FILTER_URI, phone)).apply {
+                setClassName(GOOGLE_PHONE_PACKAGE, "com.google.android.dialer.extensions.GoogleDialtactsActivity")
+                putPhoneHints(phone)
+            },
+            Intent(Intent.ACTION_SEARCH).apply {
+                setClassName(GOOGLE_PHONE_PACKAGE, "com.google.android.dialer.extensions.GoogleDialtactsActivity")
+                putExtra(SearchManager.QUERY, phone)
+                putPhoneHints(phone)
+            },
+            Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null)).apply {
+                setClassName(GOOGLE_PHONE_PACKAGE, "com.google.android.dialer.extensions.GoogleDialtactsActivity")
+                putPhoneHints(phone)
+            },
+        )
     }
 
     private fun numberHistoryIntents(phone: String, packageName: String?): List<Intent> {
         val encodedPhone = Uri.encode(phone)
         return buildList {
-            add(
-                Intent(Intent.ACTION_SEARCH).apply {
-                    packageName?.let { setPackage(it) }
-                    putExtra(SearchManager.QUERY, phone)
-                    putPhoneHints(phone)
-                }
-            )
             add(
                 Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(CallLog.Calls.CONTENT_FILTER_URI, phone)).apply {
                     packageName?.let { setPackage(it) }
@@ -93,6 +108,13 @@ class SystemCallHistoryActivity : Activity() {
             add(
                 Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls/filter/$encodedPhone")).apply {
                     packageName?.let { setPackage(it) }
+                    putPhoneHints(phone)
+                }
+            )
+            add(
+                Intent(Intent.ACTION_SEARCH).apply {
+                    packageName?.let { setPackage(it) }
+                    putExtra(SearchManager.QUERY, phone)
                     putPhoneHints(phone)
                 }
             )
@@ -183,5 +205,6 @@ class SystemCallHistoryActivity : Activity() {
         const val EXTRA_MODE = "mode"
         const val MODE_GENERAL = "general"
         const val MODE_NUMBER = "number"
+        private const val GOOGLE_PHONE_PACKAGE = "com.google.android.dialer"
     }
 }
