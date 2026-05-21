@@ -183,24 +183,15 @@ object CallReportRuntime {
         markPopup: Boolean,
     ) {
         ensureNotificationChannel(context)
-        val config = ConfigStore.load(context)
-        val fullLogUrl = buildEndpoint(
-            baseUrl = config.baseUrl,
-            path = config.historyPath,
-            params = linkedMapOf(
-                "phone" to phone,
-                "direction" to direction,
-                "access_token" to config.accessToken,
-            )
-        )
-        val openIntent = Intent(context, WebViewActivity::class.java)
-            .putExtra(WebViewActivity.EXTRA_URL, fullLogUrl)
-            .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-            .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-        val pendingIntent = PendingIntent.getActivity(
+        val noteIntent = Intent(context, PostCallOverlayService::class.java)
+            .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+            .putExtra(PostCallOverlayService.EXTRA_TITLE, result.title)
+        val notePendingIntent = PendingIntent.getService(
             context,
             1001,
-            openIntent,
+            noteIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val systemHistoryPendingIntent = PendingIntent.getActivity(
@@ -238,13 +229,13 @@ object CallReportRuntime {
             setTextViewText(R.id.lookupCallsValueText, callsValue)
             setTextViewText(R.id.lookupLastValueText, lastValue)
             setTextViewText(R.id.lookupNoteValueText, noteValue)
-            setOnClickPendingIntent(R.id.lookupTitleText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupCallsLabelText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupCallsValueText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupLastLabelText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupLastValueText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteLabelText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteValueText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupTitleText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupCallsLabelText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupCallsValueText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupLastLabelText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupLastValueText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteLabelText, notePendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteValueText, notePendingIntent)
         }
 
         val builder = NotificationCompat.Builder(context, channelId)
@@ -256,12 +247,12 @@ object CallReportRuntime {
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
+            .setContentIntent(notePendingIntent)
+            .addAction(0, "Бележка", notePendingIntent)
             .addAction(0, "Тел. история", systemHistoryPendingIntent)
             .addAction(0, "История номер", filteredHistoryPendingIntent)
         if (headsUp) builder.setCustomHeadsUpContentView(contentViews)
-        if (fullscreen) builder.setFullScreenIntent(pendingIntent, true)
+        if (fullscreen) builder.setFullScreenIntent(notePendingIntent, true)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
@@ -308,19 +299,15 @@ object CallReportRuntime {
     ) {
         ensureNotificationChannel(context)
 
-        val openIntent = if (formUrl.isNotBlank()) {
-            Intent(context, WebViewActivity::class.java)
-                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
-                .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-                .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-        } else {
-            Intent(context, RecentCallsActivity::class.java)
-                .putExtra(RecentCallsActivity.EXTRA_PHONE_FILTER, phone)
-        }
-        val openPendingIntent = PendingIntent.getActivity(
+        val noteIntent = Intent(context, PostCallOverlayService::class.java)
+            .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+            .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+        val openPendingIntent = PendingIntent.getService(
             context,
             2002,
-            openIntent,
+            noteIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val skipPendingIntent = PendingIntent.getBroadcast(
