@@ -152,6 +152,10 @@ class MainActivity : AppCompatActivity() {
                 setStatus("Разреши Contacts, за да показваме имена вместо само номера.")
                 singlePermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
             }
+            !hasPermission(Manifest.permission.WRITE_CONTACTS) -> {
+                setStatus("Разреши Contacts write, за да записваме бележката към контакта.")
+                singlePermissionLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+            }
             !Settings.canDrawOverlays(this) -> {
                 setStatus("Разреши Display over other apps, за custom popup режимите.")
                 requestOverlayPermissionIfNeeded()
@@ -292,6 +296,7 @@ class MainActivity : AppCompatActivity() {
         val phoneGranted = hasPermission(Manifest.permission.READ_PHONE_STATE)
         val callLogGranted = hasPermission(Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(Manifest.permission.READ_CONTACTS)
+        val contactsWriteGranted = hasPermission(Manifest.permission.WRITE_CONTACTS)
         val overlayGranted = Settings.canDrawOverlays(this)
         val callScreeningGranted = hasCallScreeningRole()
         val fullscreenGranted = canUseFullScreenIntent()
@@ -300,7 +305,8 @@ class MainActivity : AppCompatActivity() {
             "Notifications" to notificationsGranted,
             "Phone" to phoneGranted,
             "Call report log" to callLogGranted,
-            "Contacts" to contactsGranted,
+            "Contacts read" to contactsGranted,
+            "Contacts write" to contactsWriteGranted,
             "Floating icon" to overlayGranted,
             "Call screening" to callScreeningGranted,
             "Full-screen popup" to fullscreenGranted,
@@ -315,7 +321,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSummaryText.text = builder
 
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !overlayGranted
+        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !overlayGranted
         binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
         binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
         binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
