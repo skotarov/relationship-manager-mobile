@@ -5,8 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Build
 import android.provider.Settings
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.StyleSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.io.BufferedReader
@@ -175,21 +179,24 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val localCallCountLine = LocalCallStatsProvider.buildLine(context, phone)
-        val visibleLines = buildList {
-            if (localCallCountLine.isNotBlank()) {
-                add(localCallCountLine)
-            }
-            add(result.subtitle)
-            addAll(result.lines.take(HISTORY_LIMIT + 2))
-        }.filter { it.isNotBlank() }
+        val localCallCountLine = LocalCallStatsProvider.buildLine(context, phone).ifBlank { "Локална телефонна история" }
+        val contactNote = ContactNoteReader.noteForPhone(context, phone)
+        val line2 = contactNote.ifBlank { result.subtitle.ifBlank { phone } }
+        val line3 = result.lines.firstOrNull { it.isNotBlank() }
+            ?: result.subtitle.takeIf { it.isNotBlank() && it != line2 }
+            ?: "Натисни бутон за действие."
+        val bigText = buildSystemPopupText(
+            boldLine = localCallCountLine,
+            secondLine = line2,
+            thirdLine = line3,
+        )
+        val contentText = contactNote.ifBlank { line2 }
 
-        val contentText = visibleLines.firstOrNull() ?: result.subtitle
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
             .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(visibleLines.joinToString("\n")))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
@@ -304,5 +311,17 @@ object CallReportRuntime {
             .build()
 
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
+    }
+
+    private fun buildSystemPopupText(boldLine: String, secondLine: String, thirdLine: String): SpannableStringBuilder {
+        val builder = SpannableStringBuilder()
+        val boldStart = builder.length
+        builder.append(boldLine)
+        builder.setSpan(StyleSpan(Typeface.BOLD), boldStart, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.append('\n')
+        builder.append(secondLine)
+        builder.append('\n')
+        builder.append(thirdLine)
+        return builder
     }
 }
