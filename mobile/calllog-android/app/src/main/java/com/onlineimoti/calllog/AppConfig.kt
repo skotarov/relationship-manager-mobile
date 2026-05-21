@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 
 data class AppConfig(
+    val remoteEnabled: Boolean,
     val baseUrl: String,
     val accessToken: String,
     val contactGroups: String,
@@ -19,6 +20,7 @@ data class AppConfig(
 
 object ConfigStore {
     private const val PREFS = "callreport_prefs"
+    private const val KEY_REMOTE_ENABLED = "remote_enabled"
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_CONTACT_GROUPS = "contact_groups"
@@ -39,6 +41,7 @@ object ConfigStore {
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return AppConfig(
+            remoteEnabled = prefs.getBoolean(KEY_REMOTE_ENABLED, true),
             baseUrl = prefs.getString(KEY_BASE_URL, "https://onlineimoti.com")!!.trim(),
             accessToken = prefs.getString(KEY_ACCESS_TOKEN, BuildConfig.DEFAULT_ACCESS_TOKEN)!!.trim(),
             contactGroups = prefs.getString(KEY_CONTACT_GROUPS, "")!!.trim(),
@@ -56,6 +59,7 @@ object ConfigStore {
     fun save(context: Context, config: AppConfig) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
+            .putBoolean(KEY_REMOTE_ENABLED, config.remoteEnabled)
             .putString(KEY_BASE_URL, config.baseUrl.trim().trimEnd('/'))
             .putString(KEY_ACCESS_TOKEN, config.accessToken.trim())
             .putString(KEY_CONTACT_GROUPS, config.contactGroups.trim())
@@ -72,9 +76,7 @@ object ConfigStore {
 
     private fun normalizePath(path: String, defaultPath: String): String {
         val trimmed = path.trim()
-        if (trimmed.isBlank()) {
-            return defaultPath
-        }
+        if (trimmed.isBlank()) return defaultPath
         return if (trimmed.startsWith('/')) trimmed else "/$trimmed"
     }
 }
@@ -84,9 +86,7 @@ fun buildEndpoint(baseUrl: String, path: String, params: Map<String, String>): S
     val normalizedPath = if (path.startsWith('/')) path else "/$path"
     val builder = Uri.parse(base + normalizedPath).buildUpon().clearQuery()
     params.forEach { (key, value) ->
-        if (value.isNotBlank()) {
-            builder.appendQueryParameter(key, value)
-        }
+        if (value.isNotBlank()) builder.appendQueryParameter(key, value)
     }
     return builder.build().toString()
 }
