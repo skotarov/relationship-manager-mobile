@@ -1,12 +1,14 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.app.SearchManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CallLog
+import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.widget.Toast
 
@@ -14,7 +16,13 @@ class SystemCallHistoryActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
-        if (!openSystemCallHistory(phone)) {
+        val mode = intent.getStringExtra(EXTRA_MODE).orEmpty()
+        val opened = if (mode == MODE_NUMBER) {
+            openNumberHistoryInInstalledDialer(phone)
+        } else {
+            openSystemCallHistory(phone)
+        }
+        if (!opened) {
             Toast.makeText(this, "Не успях да отворя телефонната история", Toast.LENGTH_SHORT).show()
         }
         finish()
@@ -40,6 +48,76 @@ class SystemCallHistoryActivity : Activity() {
             }
         }
 
+        return startFirstWorking(intents)
+    }
+
+    private fun openNumberHistoryInInstalledDialer(phone: String): Boolean {
+        if (phone.isBlank()) {
+            return openSystemCallHistory(phone)
+        }
+
+        val packagesToTry = buildList {
+            getDefaultDialerPackageName()?.let { add(it) }
+            add("com.google.android.dialer")
+            add("com.android.dialer")
+            add("com.miui.dialer")
+            add("com.samsung.android.dialer")
+            add("com.google.android.contacts")
+            add("com.android.contacts")
+        }.distinct()
+
+        val packagedIntents = packagesToTry.flatMap { packageName ->
+            numberHistoryIntents(phone, packageName)
+        }
+        val genericIntents = numberHistoryIntents(phone, packageName = null)
+
+        return startFirstWorking(packagedIntents + genericIntents)
+    }
+
+    private fun numberHistoryIntents(phone: String, packageName: String?): List<Intent> {
+        val encodedPhone = Uri.encode(phone)
+        return buildList {
+            add(
+                Intent(Intent.ACTION_SEARCH).apply {
+                    packageName?.let { setPackage(it) }
+                    putExtra(SearchManager.QUERY, phone)
+                    putPhoneHints(phone)
+                }
+            )
+            add(
+                Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(CallLog.Calls.CONTENT_FILTER_URI, phone)).apply {
+                    packageName?.let { setPackage(it) }
+                    putPhoneHints(phone)
+                }
+            )
+            add(
+                Intent(Intent.ACTION_VIEW, Uri.parse("content://call_log/calls/filter/$encodedPhone")).apply {
+                    packageName?.let { setPackage(it) }
+                    putPhoneHints(phone)
+                }
+            )
+            add(
+                Intent(Intent.ACTION_VIEW, CallLog.Calls.CONTENT_URI.buildUpon()
+                    .appendQueryParameter("number", phone)
+                    .appendQueryParameter("phone", phone)
+                    .appendQueryParameter("query", phone)
+                    .build()
+                ).apply {
+                    packageName?.let { setPackage(it) }
+                    putPhoneHints(phone)
+                }
+            )
+            add(
+                Intent(ContactsContract.Intents.SHOW_OR_CREATE_CONTACT, Uri.fromParts("tel", phone, null)).apply {
+                    packageName?.let { setPackage(it) }
+                    putPhoneHints(phone)
+                }
+            )
+            add(dialIntent(phone, packageName))
+        }
+    }
+
+    private fun startFirstWorking(intents: List<Intent>): Boolean {
         return intents.any { candidate ->
             runCatching {
                 startActivity(candidate)
@@ -96,9 +174,14 @@ class SystemCallHistoryActivity : Activity() {
         putExtra("number", phone)
         putExtra("query", phone)
         putExtra("search_query", phone)
+        putExtra("EXTRA_PHONE_NUMBER", phone)
+        putExtra("EXTRA_CALL_LOG_FILTER", phone)
     }
 
     companion object {
         const val EXTRA_PHONE = "phone"
+        const val EXTRA_MODE = "mode"
+        const val MODE_GENERAL = "general"
+        const val MODE_NUMBER = "number"
     }
 }
