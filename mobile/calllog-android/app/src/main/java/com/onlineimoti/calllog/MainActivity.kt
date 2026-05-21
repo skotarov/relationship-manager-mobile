@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity() {
                 singlePermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
             }
             !Settings.canDrawOverlays(this) -> {
-                setStatus("Разреши Display over other apps, за да може вторият popup да е кръгла floating икона.")
+                setStatus("Разреши Display over other apps, за да може popup-ът да е custom overlay.")
                 requestOverlayPermissionIfNeeded()
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
@@ -168,8 +168,8 @@ class MainActivity : AppCompatActivity() {
     private fun openFormDirect() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || phone.isBlank()) {
-            setStatus("Попълни Base URL и телефон.")
+        if (config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
+            setStatus("За директна server форма попълни Base URL, access token и телефон.")
             return
         }
         openWebView(buildFormUrl(config, phone, directionValue()))
@@ -178,8 +178,8 @@ class MainActivity : AppCompatActivity() {
     private fun openFullLogDirect() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || phone.isBlank()) {
-            setStatus("Попълни Base URL и телефон.")
+        if (config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
+            setStatus("За server лог попълни Base URL, access token и телефон.")
             return
         }
         openWebView(buildHistoryUrl(config, phone, directionValue()))
@@ -189,29 +189,30 @@ class MainActivity : AppCompatActivity() {
     private fun testStartPopup() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || phone.isBlank()) {
-            setStatus("Попълни Base URL и телефон.")
+        if (phone.isBlank()) {
+            setStatus("Попълни телефон.")
             return
         }
         binding.testStartPopupButton.isEnabled = false
-        setStatus("Тест: зареждам popup при старт за $phone …")
+        setStatus("Тест: показвам popup при старт за $phone …")
         executor.execute {
-            runCatching {
-                val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
-                CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
-                    if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
+            val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
+            val title = displayName.ifNullOrBlank { phone }
+            val result = if (config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()) {
+                runCatching {
+                    CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
+                        if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
+                    }
+                }.getOrElse {
+                    LookupResult(title, "Локален режим", emptyList(), "")
                 }
-            }.onSuccess { result ->
-                runOnUiThread {
-                    binding.testStartPopupButton.isEnabled = true
-                    CallReportRuntime.showLookupNotification(this, result, fullscreen = true, phone = phone, direction = directionValue())
-                    setStatus("Показан е тестов popup при старт.")
-                }
-            }.onFailure { throwable ->
-                runOnUiThread {
-                    binding.testStartPopupButton.isEnabled = true
-                    setStatus("Lookup грешка: ${throwable.message}")
-                }
+            } else {
+                LookupResult(title, "Локален режим — без сървърни данни", emptyList(), "")
+            }
+            runOnUiThread {
+                binding.testStartPopupButton.isEnabled = true
+                LookupPopupPresenter.show(this, result, fullscreen = true, phone = phone, direction = directionValue())
+                setStatus("Показан е тестов popup при старт.")
             }
         }
     }
@@ -219,35 +220,30 @@ class MainActivity : AppCompatActivity() {
     private fun testEndPopup() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || phone.isBlank()) {
-            setStatus("Попълни Base URL и телефон.")
+        if (phone.isBlank()) {
+            setStatus("Попълни телефон.")
             return
         }
         binding.testEndPopupButton.isEnabled = false
-        setStatus("Тест: зареждам popup след край за $phone …")
+        setStatus("Тест: показвам popup след край за $phone …")
         executor.execute {
-            runCatching {
-                val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-                CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
-                    if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
-                }
-            }.onSuccess { result ->
-                runOnUiThread {
-                    binding.testEndPopupButton.isEnabled = true
-                    CallReportRuntime.showPostCallPromptNotification(
-                        context = this,
-                        formUrl = buildFormUrl(config, phone, directionValue()),
-                        phone = phone,
-                        direction = directionValue(),
-                        title = result.title,
-                    )
-                    setStatus("Показан е тестов popup след край.")
-                }
-            }.onFailure { throwable ->
-                runOnUiThread {
-                    binding.testEndPopupButton.isEnabled = true
-                    setStatus("Lookup грешка: ${throwable.message}")
-                }
+            val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
+            val title = displayName.ifNullOrBlank { "Локални действия след разговора" }
+            val formUrl = if (config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()) {
+                buildFormUrl(config, phone, directionValue())
+            } else {
+                ""
+            }
+            runOnUiThread {
+                binding.testEndPopupButton.isEnabled = true
+                CallReportRuntime.showPostCallPromptNotification(
+                    context = this,
+                    formUrl = formUrl,
+                    phone = phone,
+                    direction = directionValue(),
+                    title = title,
+                )
+                setStatus("Показан е тестов popup след край.")
             }
         }
     }
@@ -364,5 +360,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
         fullscreenIntentSettingsLauncher.launch(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply { data = Uri.parse("package:$packageName") })
+    }
+
+    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
+        return if (this.isNullOrBlank()) fallback() else this
     }
 }
