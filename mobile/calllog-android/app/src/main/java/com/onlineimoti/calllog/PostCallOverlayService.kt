@@ -9,6 +9,9 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -70,32 +73,59 @@ class PostCallOverlayService : Service() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
+        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+        val titleText = when {
+            displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
+            displayName.isNotBlank() -> displayName
+            title.isNotBlank() && title != phone -> "$title • $phone"
+            else -> phone.ifBlank { title.ifBlank { "Call Report" } }
+        }
+        val summary = LocalCallStatsProvider.summarize(this, phone)
+        val contactNote = ContactNoteReader.noteForPhone(this, phone)
+        val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
+        val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
+        val noteValue = contactNote.ifBlank { "няма" }
+
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = roundedRect(Color.rgb(249, 250, 251), dp(22), Color.rgb(209, 213, 219), dp(1))
-            elevation = dp(10).toFloat()
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
+            elevation = dp(16).toFloat()
         }
 
         card.addView(TextView(this).apply {
-            text = title.ifBlank { phone.ifBlank { "Call Report" } }
+            text = titleText
             textSize = 20f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(17, 24, 39))
         })
 
-        val localLine = LocalCallStatsProvider.buildLine(this, phone)
-        val infoLines = buildList {
-            if (localLine.isNotBlank()) add(localLine)
-            if (subtitle.isNotBlank()) add(subtitle)
-            addAll(lines.filter { it.isNotBlank() }.take(6))
-        }
-        if (infoLines.isNotEmpty()) {
+        card.addView(TextView(this).apply {
+            text = labelValue("Разговори", callsValue)
+            textSize = 15f
+            setTextColor(Color.rgb(31, 41, 55))
+            setPadding(0, dp(10), 0, 0)
+        })
+        card.addView(TextView(this).apply {
+            text = labelValue("Последно", lastValue)
+            textSize = 15f
+            setTextColor(Color.rgb(31, 41, 55))
+            setPadding(0, dp(4), 0, 0)
+        })
+        card.addView(TextView(this).apply {
+            text = labelValue("Бележка", noteValue)
+            textSize = 15f
+            setTextColor(Color.rgb(31, 41, 55))
+            setPadding(0, dp(4), 0, dp(10))
+        })
+
+        val extraLine = lines.firstOrNull { it.isNotBlank() } ?: subtitle
+        if (extraLine.isNotBlank()) {
             card.addView(TextView(this).apply {
-                text = infoLines.joinToString("\n")
-                textSize = 14f
+                text = extraLine
+                textSize = 13f
                 setTextColor(Color.rgb(75, 85, 99))
-                setPadding(0, dp(8), 0, dp(10))
+                setPadding(0, 0, 0, dp(8))
             })
         }
 
@@ -112,9 +142,7 @@ class PostCallOverlayService : Service() {
             addView(actionButton("Затвори") { stopSelf() })
         })
 
-        val scroll = ScrollView(this).apply {
-            addView(card)
-        }
+        val scroll = ScrollView(this).apply { addView(card) }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -125,8 +153,8 @@ class PostCallOverlayService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = 0
-            y = dp(80)
-            width = resources.displayMetrics.widthPixels - dp(24)
+            y = dp(135)
+            width = resources.displayMetrics.widthPixels - dp(20)
         }
 
         overlayView = scroll
@@ -231,11 +259,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun openFormOrWarn() {
-        if (formUrl.isNotBlank()) {
-            openForm()
-        } else {
-            showServerTokenRequired()
-        }
+        if (formUrl.isNotBlank()) openForm() else showServerTokenRequired()
     }
 
     private fun openCrmLog() {
@@ -299,6 +323,16 @@ class PostCallOverlayService : Service() {
             setColor(color)
             setStroke(strokeWidth, strokeColor)
         }
+    }
+
+    private fun labelValue(label: String, value: String): SpannableStringBuilder {
+        val builder = SpannableStringBuilder()
+        val start = builder.length
+        builder.append(label)
+        builder.setSpan(StyleSpan(Typeface.BOLD), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.append(": ")
+        builder.append(value)
+        return builder
     }
 
     private fun dp(value: Int): Int {
