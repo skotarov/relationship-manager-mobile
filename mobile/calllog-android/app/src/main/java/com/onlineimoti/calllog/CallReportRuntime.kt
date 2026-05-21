@@ -235,13 +235,16 @@ object CallReportRuntime {
 
         val contentViews = RemoteViews(context.packageName, R.layout.notification_lookup_system).apply {
             setTextViewText(R.id.lookupTitleText, notificationTitle)
-            setTextViewText(R.id.lookupCallsText, "Разговори: $callsValue")
-            setTextViewText(R.id.lookupLastText, "Последно: $lastValue")
-            setTextViewText(R.id.lookupNoteText, "Бележка: $noteValue")
+            setTextViewText(R.id.lookupCallsValueText, callsValue)
+            setTextViewText(R.id.lookupLastValueText, lastValue)
+            setTextViewText(R.id.lookupNoteValueText, noteValue)
             setOnClickPendingIntent(R.id.lookupTitleText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupCallsText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupLastText, pendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupCallsLabelText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupCallsValueText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupLastLabelText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupLastValueText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteLabelText, pendingIntent)
+            setOnClickPendingIntent(R.id.lookupNoteValueText, pendingIntent)
         }
 
         val builder = NotificationCompat.Builder(context, channelId)
