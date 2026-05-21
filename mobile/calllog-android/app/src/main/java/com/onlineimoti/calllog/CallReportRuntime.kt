@@ -195,8 +195,8 @@ object CallReportRuntime {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(0, context.getString(R.string.open_full_log), pendingIntent)
-            .addAction(0, "Сърч деф.", systemHistoryPendingIntent)
-            .addAction(0, "Сърч Google", filteredHistoryPendingIntent)
+            .addAction(0, "Тел. история", systemHistoryPendingIntent)
+            .addAction(0, "История номер", filteredHistoryPendingIntent)
         if (fullscreen) {
             builder.setFullScreenIntent(pendingIntent, true)
         }
