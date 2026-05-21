@@ -108,6 +108,30 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:text="Вид на popup-ите"
+            android:textColor="@color/calllog_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <CheckBox
+            android:id="@+id/useCustomStartPopupCheckBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:checked="true"
+            android:text="Първият popup да е custom overlay" />
+
+        <CheckBox
+            android:id="@+id/useCustomEndPopupCheckBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Финалният popup да е custom floating иконка" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="За кои номера да се показва popup"
             android:textColor="@color/calllog_text"
             android:textSize="16sp"
