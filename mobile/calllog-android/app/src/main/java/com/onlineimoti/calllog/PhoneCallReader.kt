@@ -39,13 +39,31 @@ object PhoneCallReader {
         val safeLimit = limit.coerceIn(1, 50)
         val safeOffset = offset.coerceAtLeast(0)
         return runCatching {
-            readRecentCalls(context, safeLimit, safeOffset)
+            readRecentCalls(context, safeLimit, safeOffset, phoneFilter = "")
         }.getOrElse {
             emptyList()
         }
     }
 
-    private fun readRecentCalls(context: Context, safeLimit: Int, safeOffset: Int): List<PhoneCallRecord> {
+    fun callsForPhone(context: Context, phone: String, limit: Int = 50): List<PhoneCallRecord> {
+        if (!hasCallLogPermission(context) || phone.isBlank()) {
+            return emptyList()
+        }
+
+        val safeLimit = limit.coerceIn(1, 100)
+        return runCatching {
+            readRecentCalls(context, safeLimit, safeOffset = 0, phoneFilter = phone)
+        }.getOrElse {
+            emptyList()
+        }
+    }
+
+    private fun readRecentCalls(
+        context: Context,
+        safeLimit: Int,
+        safeOffset: Int,
+        phoneFilter: String,
+    ): List<PhoneCallRecord> {
         val projection = arrayOf(
             CallLog.Calls.NUMBER,
             CallLog.Calls.CACHED_NAME,
@@ -54,6 +72,7 @@ object PhoneCallReader {
             CallLog.Calls.DURATION,
         )
         val sortOrder = "${CallLog.Calls.DATE} DESC"
+        val normalizedPhoneFilter = normalizePhone(phoneFilter)
 
         return buildList {
             context.contentResolver.query(
@@ -73,6 +92,9 @@ object PhoneCallReader {
                 while (cursor.moveToNext() && size < safeLimit) {
                     val number = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                     if (number.isBlank()) {
+                        continue
+                    }
+                    if (normalizedPhoneFilter.isNotBlank() && !samePhone(normalizedPhoneFilter, number)) {
                         continue
                     }
                     if (skipped < safeOffset) {
@@ -133,5 +155,20 @@ object PhoneCallReader {
             CallLog.Calls.OUTGOING_TYPE -> "out"
             else -> ""
         }
+    }
+
+    private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
+        val normalizedCandidate = normalizePhone(candidate)
+        if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) {
+            return false
+        }
+        return normalizedPhone == normalizedCandidate ||
+            normalizedPhone.endsWith(normalizedCandidate) ||
+            normalizedCandidate.endsWith(normalizedPhone)
+    }
+
+    private fun normalizePhone(phone: String): String {
+        val digits = phone.filter { it.isDigit() }
+        return if (digits.length > 9) digits.takeLast(9) else digits
     }
 }
