@@ -18,7 +18,8 @@ class SystemCallHistoryActivity : Activity() {
         val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         val mode = intent.getStringExtra(EXTRA_MODE).orEmpty()
         val opened = when (mode) {
-            MODE_NUMBER -> openNumberHistoryInGooglePhone(phone)
+            MODE_GENERAL -> openSearchInDefaultDialer(phone)
+            MODE_NUMBER -> openSearchInGooglePhone(phone)
             MODE_SEARCH_DEFAULT -> openSearchInDefaultDialer(phone)
             MODE_SEARCH_GOOGLE -> openSearchInGooglePhone(phone)
             else -> openSystemCallHistory(phone)
