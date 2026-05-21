@@ -17,10 +17,11 @@ class SystemCallHistoryActivity : Activity() {
         super.onCreate(savedInstanceState)
         val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         val mode = intent.getStringExtra(EXTRA_MODE).orEmpty()
-        val opened = if (mode == MODE_NUMBER) {
-            openNumberHistoryInGooglePhone(phone)
-        } else {
-            openSystemCallHistory(phone)
+        val opened = when (mode) {
+            MODE_NUMBER -> openNumberHistoryInGooglePhone(phone)
+            MODE_SEARCH_DEFAULT -> openSearchInDefaultDialer(phone)
+            MODE_SEARCH_GOOGLE -> openSearchInGooglePhone(phone)
+            else -> openSystemCallHistory(phone)
         }
         if (!opened) {
             Toast.makeText(this, "Не успях да отворя телефонната история", Toast.LENGTH_SHORT).show()
@@ -78,6 +79,39 @@ class SystemCallHistoryActivity : Activity() {
         return startFirstWorking(fallbackIntents)
     }
 
+    private fun openSearchInDefaultDialer(phone: String): Boolean {
+        if (phone.isBlank()) {
+            return openSystemCallHistory(phone)
+        }
+
+        val defaultDialerPackage = getDefaultDialerPackageName()
+        val intents = buildList {
+            defaultDialerPackage?.let { packageName ->
+                add(searchIntent(phone, packageName))
+                add(callLogSearchIntent(phone, packageName))
+            }
+            add(searchIntent(phone, packageName = null))
+            add(callLogSearchIntent(phone, packageName = null))
+        }
+
+        return startFirstWorking(intents)
+    }
+
+    private fun openSearchInGooglePhone(phone: String): Boolean {
+        if (phone.isBlank()) {
+            return openSystemCallHistory(phone)
+        }
+
+        val googleSearchIntents = listOf(
+            searchIntent(phone, GOOGLE_PHONE_PACKAGE),
+            callLogSearchIntent(phone, GOOGLE_PHONE_PACKAGE),
+            searchIntent(phone, GOOGLE_CONTACTS_PACKAGE),
+            callLogSearchIntent(phone, GOOGLE_CONTACTS_PACKAGE),
+        ) + googleDialerSearchActivityIntents(phone)
+
+        return startFirstWorking(googleSearchIntents)
+    }
+
     private fun googleDialerActivityIntents(phone: String): List<Intent> {
         return listOf(
             Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(CallLog.Calls.CONTENT_FILTER_URI, phone)).apply {
@@ -91,6 +125,21 @@ class SystemCallHistoryActivity : Activity() {
             },
             Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null)).apply {
                 setClassName(GOOGLE_PHONE_PACKAGE, "com.google.android.dialer.extensions.GoogleDialtactsActivity")
+                putPhoneHints(phone)
+            },
+        )
+    }
+
+    private fun googleDialerSearchActivityIntents(phone: String): List<Intent> {
+        return listOf(
+            Intent(Intent.ACTION_SEARCH).apply {
+                setClassName(GOOGLE_PHONE_PACKAGE, "com.google.android.dialer.extensions.GoogleDialtactsActivity")
+                putExtra(SearchManager.QUERY, phone)
+                putPhoneHints(phone)
+            },
+            Intent(Intent.ACTION_SEARCH).apply {
+                setClassName(GOOGLE_CONTACTS_PACKAGE, "com.google.android.apps.contacts.activities.PeopleActivity")
+                putExtra(SearchManager.QUERY, phone)
                 putPhoneHints(phone)
             },
         )
@@ -111,13 +160,7 @@ class SystemCallHistoryActivity : Activity() {
                     putPhoneHints(phone)
                 }
             )
-            add(
-                Intent(Intent.ACTION_SEARCH).apply {
-                    packageName?.let { setPackage(it) }
-                    putExtra(SearchManager.QUERY, phone)
-                    putPhoneHints(phone)
-                }
-            )
+            add(searchIntent(phone, packageName))
             add(
                 Intent(Intent.ACTION_VIEW, CallLog.Calls.CONTENT_URI.buildUpon()
                     .appendQueryParameter("number", phone)
@@ -136,6 +179,27 @@ class SystemCallHistoryActivity : Activity() {
                 }
             )
             add(dialIntent(phone, packageName))
+        }
+    }
+
+    private fun searchIntent(phone: String, packageName: String?): Intent {
+        return Intent(Intent.ACTION_SEARCH).apply {
+            packageName?.let { setPackage(it) }
+            putExtra(SearchManager.QUERY, phone)
+            putExtra(SearchManager.USER_QUERY, phone)
+            putPhoneHints(phone)
+        }
+    }
+
+    private fun callLogSearchIntent(phone: String, packageName: String?): Intent {
+        return Intent(Intent.ACTION_VIEW, CallLog.Calls.CONTENT_URI.buildUpon()
+            .appendQueryParameter("q", phone)
+            .appendQueryParameter("query", phone)
+            .appendQueryParameter("search", phone)
+            .build()
+        ).apply {
+            packageName?.let { setPackage(it) }
+            putPhoneHints(phone)
         }
     }
 
@@ -198,6 +262,7 @@ class SystemCallHistoryActivity : Activity() {
         putExtra("search_query", phone)
         putExtra("EXTRA_PHONE_NUMBER", phone)
         putExtra("EXTRA_CALL_LOG_FILTER", phone)
+        putExtra(Intent.EXTRA_TEXT, phone)
     }
 
     companion object {
@@ -205,6 +270,9 @@ class SystemCallHistoryActivity : Activity() {
         const val EXTRA_MODE = "mode"
         const val MODE_GENERAL = "general"
         const val MODE_NUMBER = "number"
+        const val MODE_SEARCH_DEFAULT = "search_default"
+        const val MODE_SEARCH_GOOGLE = "search_google"
         private const val GOOGLE_PHONE_PACKAGE = "com.google.android.dialer"
+        private const val GOOGLE_CONTACTS_PACKAGE = "com.google.android.contacts"
     }
 }
