@@ -9,10 +9,14 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -50,6 +54,7 @@ class PostCallOverlayService : Service() {
 
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
             MODE_LOOKUP -> showLookupPopup()
+            MODE_NOTE -> showNoteEditor()
             else -> {
                 showBubble()
                 val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
@@ -124,53 +129,74 @@ class PostCallOverlayService : Service() {
             })
         }
 
-        val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
-        val scroll = ScrollView(this).apply { addView(card) }
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            android.graphics.PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = prefs.getInt(KEY_LOOKUP_POPUP_X, 0)
-            y = prefs.getInt(KEY_LOOKUP_POPUP_Y, dp(135))
-            width = resources.displayMetrics.widthPixels - dp(20)
-        }
+        addDraggableOverlay(ScrollView(this).apply { addView(card) }, focusable = false, defaultY = dp(135), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
+    }
 
-        scroll.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceAtLeast(0)
-                    windowManager?.updateViewLayout(scroll, params)
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved >= dp(8)) {
-                        prefs.edit()
-                            .putInt(KEY_LOOKUP_POPUP_X, params.x)
-                            .putInt(KEY_LOOKUP_POPUP_Y, params.y)
-                            .apply()
-                    }
-                    true
-                }
-                else -> false
+    private fun showNoteEditor() {
+        removeOverlay()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+        val titleText = displayName.ifBlank { phone.ifBlank { "Бележка" } }
+        val currentNote = ContactNoteReader.noteForPhone(this, phone)
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
+            elevation = dp(16).toFloat()
+        }
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleRow.addView(TextView(this).apply {
+            text = titleText
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(17, 24, 39))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
+        card.addView(titleRow)
+
+        val noteInput = EditText(this).apply {
+            setText(currentNote)
+            hint = "Бележка към контакта"
+            minLines = 3
+            maxLines = 7
+            textSize = 16f
+            setTextColor(Color.rgb(17, 24, 39))
+            setHintTextColor(Color.rgb(107, 114, 128))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine(false)
+            gravity = Gravity.TOP or Gravity.START
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(10)
             }
         }
+        card.addView(noteInput)
 
-        overlayView = scroll
-        windowManager?.addView(scroll, params)
-        handler.postDelayed({ stopSelf() }, LOOKUP_POPUP_TIMEOUT_MS)
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            setPadding(0, dp(10), 0, 0)
+        }
+        actions.addView(textAction("Запази") {
+            val saved = ContactNoteReader.saveNoteForPhone(this, phone, noteInput.text?.toString().orEmpty())
+            Toast.makeText(this, if (saved) "Бележката е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            stopSelf()
+        })
+        card.addView(actions)
+
+        val scroll = ScrollView(this).apply { addView(card) }
+        addDraggableOverlay(scroll, focusable = true, defaultY = dp(135), timeoutMs = 0L)
+        noteInput.requestFocus()
+        handler.postDelayed({
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                ?.showSoftInput(noteInput, InputMethodManager.SHOW_IMPLICIT)
+        }, 250)
     }
 
     private fun showBubble() {
@@ -220,7 +246,7 @@ class PostCallOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved < dp(8)) openForm()
+                    if (moved < dp(8)) showNoteEditor()
                     true
                 }
                 else -> false
@@ -229,6 +255,56 @@ class PostCallOverlayService : Service() {
 
         overlayView = bubble
         windowManager?.addView(bubble, params)
+    }
+
+    private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
+        val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
+        val flags = if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            flags,
+            android.graphics.PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            x = prefs.getInt(KEY_LOOKUP_POPUP_X, 0)
+            y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
+            width = resources.displayMetrics.widthPixels - dp(20)
+        }
+
+        view.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = params.x
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                    params.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceAtLeast(0)
+                    windowManager?.updateViewLayout(view, params)
+                    false
+                }
+                MotionEvent.ACTION_UP -> {
+                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
+                    if (moved >= dp(8)) {
+                        prefs.edit()
+                            .putInt(KEY_LOOKUP_POPUP_X, params.x)
+                            .putInt(KEY_LOOKUP_POPUP_Y, params.y)
+                            .apply()
+                    }
+                    false
+                }
+                else -> false
+            }
+        }
+
+        overlayView = view
+        windowManager?.addView(view, params)
+        if (timeoutMs > 0) handler.postDelayed({ stopSelf() }, timeoutMs)
     }
 
     private fun keyValueRow(label: String, value: String, topPadding: Int = 0): LinearLayout {
@@ -265,23 +341,25 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun openForm() {
-        if (formUrl.isBlank()) {
-            showServerTokenRequired()
-            return
+    private fun textAction(textValue: String, action: () -> Unit): TextView {
+        return TextView(this).apply {
+            text = textValue
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = roundedRect(Color.rgb(55, 65, 81), dp(12), Color.TRANSPARENT, 0)
+            setPadding(dp(18), dp(10), dp(18), dp(10))
+            setOnClickListener { action() }
         }
-        startActivity(
-            Intent(this, WebViewActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
-                .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-                .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-        )
-        stopSelf()
+    }
+
+    private fun openForm() {
+        showNoteEditor()
     }
 
     private fun openFormOrWarn() {
-        if (formUrl.isNotBlank()) openForm() else showServerTokenRequired()
+        showNoteEditor()
     }
 
     private fun openCrmLog() {
@@ -339,7 +417,7 @@ class PostCallOverlayService : Service() {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius.toFloat()
             setColor(color)
-            setStroke(strokeWidth, strokeColor)
+            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
     }
 
@@ -356,6 +434,7 @@ class PostCallOverlayService : Service() {
     companion object {
         const val EXTRA_MODE = "mode"
         const val MODE_LOOKUP = "lookup"
+        const val MODE_NOTE = "note"
         const val EXTRA_FORM_URL = "form_url"
         const val EXTRA_PHONE = "phone"
         const val EXTRA_DIRECTION = "direction"
