@@ -181,22 +181,22 @@ object CallReportRuntime {
 
         val localCallCountLine = LocalCallStatsProvider.buildLine(context, phone).ifBlank { "Локална телефонна история" }
         val contactNote = ContactNoteReader.noteForPhone(context, phone)
-        val line2 = contactNote.ifBlank { result.subtitle.ifBlank { phone } }
-        val line3 = result.lines.firstOrNull { it.isNotBlank() }
-            ?: result.subtitle.takeIf { it.isNotBlank() && it != line2 }
+        val noteLine = "Бележка: ${contactNote.ifBlank { "няма" }}"
+        val thirdLine = result.lines.firstOrNull { it.isNotBlank() }
+            ?: result.subtitle.takeIf { it.isNotBlank() }
             ?: "Натисни бутон за действие."
-        val bigText = buildSystemPopupText(
-            boldLine = localCallCountLine,
-            secondLine = line2,
-            thirdLine = line3,
-        )
-        val contentText = contactNote.ifBlank { line2 }
+        val boldLine = bold(localCallCountLine)
+
+        val style = NotificationCompat.InboxStyle()
+            .addLine(boldLine)
+            .addLine(noteLine)
+            .addLine(thirdLine)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(result.title)
-            .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+            .setContentText(noteLine)
+            .setStyle(style)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
@@ -313,15 +313,9 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
     }
 
-    private fun buildSystemPopupText(boldLine: String, secondLine: String, thirdLine: String): SpannableStringBuilder {
-        val builder = SpannableStringBuilder()
-        val boldStart = builder.length
-        builder.append(boldLine)
-        builder.setSpan(StyleSpan(Typeface.BOLD), boldStart, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        builder.append('\n')
-        builder.append(secondLine)
-        builder.append('\n')
-        builder.append(thirdLine)
+    private fun bold(value: String): SpannableStringBuilder {
+        val builder = SpannableStringBuilder(value)
+        builder.setSpan(StyleSpan(Typeface.BOLD), 0, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         return builder
     }
 }
