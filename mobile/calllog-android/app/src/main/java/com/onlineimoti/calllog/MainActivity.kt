@@ -58,6 +58,9 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         startPermissionFlow()
 
+        binding.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            binding.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
         binding.openAppPermissionsButton.setOnClickListener { startPermissionFlow() }
         binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
@@ -90,6 +93,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun hydrateFields() {
         val config = ConfigStore.load(this)
+        binding.remoteEnabledCheckBox.isChecked = config.remoteEnabled
+        binding.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
         binding.baseUrlInput.setText(config.baseUrl)
         binding.accessTokenInput.setText(config.accessToken)
         binding.contactGroupsInput.setText(config.contactGroups)
@@ -105,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveConfig(): AppConfig {
         val config = AppConfig(
+            remoteEnabled = binding.remoteEnabledCheckBox.isChecked,
             baseUrl = binding.baseUrlInput.text?.toString().orEmpty(),
             accessToken = binding.accessTokenInput.text?.toString().orEmpty(),
             contactGroups = binding.contactGroupsInput.text?.toString().orEmpty(),
@@ -169,11 +175,15 @@ class MainActivity : AppCompatActivity() {
     private fun directionValue(): String = if (binding.directionIn.isChecked) "in" else "out"
     private fun phoneValue(): String = binding.phoneInput.text?.toString()?.trim().orEmpty()
 
+    private fun remoteReady(config: AppConfig): Boolean {
+        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
+    }
+
     private fun openFormDirect() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
-            setStatus("За директна server форма попълни Base URL, access token и телефон.")
+        if (!remoteReady(config) || phone.isBlank()) {
+            setStatus("За server форма включи Сървър и попълни Base URL, access token и телефон.")
             return
         }
         openWebView(buildFormUrl(config, phone, directionValue()))
@@ -182,8 +192,8 @@ class MainActivity : AppCompatActivity() {
     private fun openFullLogDirect() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
-            setStatus("За server лог попълни Base URL, access token и телефон.")
+        if (!remoteReady(config) || phone.isBlank()) {
+            setStatus("За server лог включи Сървър и попълни Base URL, access token и телефон.")
             return
         }
         openWebView(buildHistoryUrl(config, phone, directionValue()))
@@ -202,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         executor.execute {
             val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
             val title = displayName.ifNullOrBlank { phone }
-            val result = if (config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()) {
+            val result = if (remoteReady(config)) {
                 runCatching {
                     CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
                         if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
@@ -233,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         executor.execute {
             val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
             val title = displayName.ifNullOrBlank { "Локални действия след разговора" }
-            val formUrl = if (config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()) {
+            val formUrl = if (remoteReady(config)) {
                 buildFormUrl(config, phone, directionValue())
             } else {
                 ""
