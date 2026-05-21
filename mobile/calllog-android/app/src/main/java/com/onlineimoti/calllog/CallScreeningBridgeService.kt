@@ -35,15 +35,29 @@ class CallScreeningBridgeService : CallScreeningService() {
         EXECUTOR.execute {
             try {
                 val config = ConfigStore.load(this)
-                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-                    return@execute
-                }
                 if (!ContactGroupFilter.shouldNotify(this, number, config)) {
                     return@execute
                 }
                 val displayName = ContactGroupFilter.resolveDisplayName(this, number)
+                val title = displayName.ifNullOrBlank { number }
 
                 CallReportRuntime.ensureNotificationChannel(this)
+                if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+                    CallReportRuntime.showLookupNotification(
+                        context = this,
+                        result = LookupResult(
+                            title = title,
+                            subtitle = "Локален режим — няма access token",
+                            lines = emptyList(),
+                            openFormUrl = "",
+                        ),
+                        fullscreen = direction == "in",
+                        phone = number,
+                        direction = direction,
+                    )
+                    return@execute
+                }
+
                 val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
                     if (displayName.isNullOrBlank()) {
                         lookup
@@ -59,8 +73,25 @@ class CallScreeningBridgeService : CallScreeningService() {
                     direction = direction,
                 )
             } catch (_: Throwable) {
+                CallReportRuntime.ensureNotificationChannel(this)
+                CallReportRuntime.showLookupNotification(
+                    context = this,
+                    result = LookupResult(
+                        title = number,
+                        subtitle = "Локален режим",
+                        lines = emptyList(),
+                        openFormUrl = "",
+                    ),
+                    fullscreen = direction == "in",
+                    phone = number,
+                    direction = direction,
+                )
             }
         }
+    }
+
+    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
+        return if (this.isNullOrBlank()) fallback() else this
     }
 
     companion object {
