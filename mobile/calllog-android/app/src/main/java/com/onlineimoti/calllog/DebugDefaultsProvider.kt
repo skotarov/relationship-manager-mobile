@@ -59,6 +59,6 @@ class DebugDefaultsProvider : ContentProvider() {
     companion object {
         private const val DEFAULT_TEST_PHONE = "0877904903"
         private const val OLD_TEST_PHONE = "0876442321"
-        private const val DEBUG_DEFAULTS_VERSION = 2
+        private const val DEBUG_DEFAULTS_VERSION = 3
     }
 }
