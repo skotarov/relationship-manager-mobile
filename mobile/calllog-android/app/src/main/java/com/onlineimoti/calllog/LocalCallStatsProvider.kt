@@ -11,33 +11,31 @@ object LocalCallStatsProvider {
     private const val CURRENT_CALL_PROTECTION_WINDOW_MS = 30_000L
 
     fun buildLine(context: Context, phone: String): String {
+        val summary = summarize(context, phone) ?: return ""
+        return when {
+            summary.count <= 0 -> "Няма предишни разговори"
+            summary.lastCallAgo.isBlank() -> "Провеждани разговори: ${summary.count}"
+            else -> "Провеждани разговори: ${summary.count} · последен: ${summary.lastCallAgo}"
+        }
+    }
+
+    fun summarize(context: Context, phone: String): LocalCallSummary? {
         if (phone.isBlank()) {
-            return ""
+            return null
         }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
-            return ""
+            return null
         }
 
-        val stats = runCatching {
-            getStats(context, phone)
-        }.getOrNull() ?: return ""
-
-        if (stats.count <= 0) {
-            return "Няма предишни разговори"
-        }
-
+        val stats = runCatching { getStats(context, phone) }.getOrNull() ?: return null
         val lastCallAgo = stats.lastCallAtMillis?.let { timestamp ->
             formatAgo(System.currentTimeMillis() - timestamp)
         }.orEmpty()
 
-        return buildString {
-            append("Провеждани разговори: ")
-            append(stats.count)
-            if (lastCallAgo.isNotBlank()) {
-                append(" · последен: ")
-                append(lastCallAgo)
-            }
-        }
+        return LocalCallSummary(
+            count = stats.count,
+            lastCallAgo = lastCallAgo,
+        )
     }
 
     private fun getStats(context: Context, phone: String): LocalCallStats {
@@ -132,6 +130,11 @@ object LocalCallStatsProvider {
         val digits = phone.filter { it.isDigit() }
         return if (digits.length > 9) digits.takeLast(9) else digits
     }
+
+    data class LocalCallSummary(
+        val count: Int,
+        val lastCallAgo: String,
+    )
 
     private data class LocalCallStats(
         val count: Int,
