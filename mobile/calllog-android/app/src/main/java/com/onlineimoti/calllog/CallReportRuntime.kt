@@ -179,23 +179,28 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val localCallCountLine = LocalCallStatsProvider.buildLine(context, phone).ifBlank { "Локална телефонна история" }
+        val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
+        val notificationTitle = when {
+            displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
+            displayName.isNotBlank() -> displayName
+            result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
+            else -> phone.ifBlank { result.title.ifBlank { "Call Report" } }
+        }
+        val summary = LocalCallStatsProvider.summarize(context, phone)
         val contactNote = ContactNoteReader.noteForPhone(context, phone)
-        val noteLine = "Бележка: ${contactNote.ifBlank { "няма" }}"
-        val thirdLine = result.lines.firstOrNull { it.isNotBlank() }
-            ?: result.subtitle.takeIf { it.isNotBlank() }
-            ?: "Натисни бутон за действие."
-        val boldLine = bold(localCallCountLine)
+        val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
+        val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
+        val noteValue = contactNote.ifBlank { "няма" }
 
         val style = NotificationCompat.InboxStyle()
-            .addLine(boldLine)
-            .addLine(noteLine)
-            .addLine(thirdLine)
+            .addLine(labelValue("Разговори", callsValue))
+            .addLine(labelValue("Последно", lastValue))
+            .addLine(labelValue("Бележка", noteValue))
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle(result.title)
-            .setContentText(noteLine)
+            .setContentTitle(notificationTitle)
+            .setContentText("Бележка: $noteValue")
             .setStyle(style)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -313,9 +318,13 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
     }
 
-    private fun bold(value: String): SpannableStringBuilder {
-        val builder = SpannableStringBuilder(value)
-        builder.setSpan(StyleSpan(Typeface.BOLD), 0, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    private fun labelValue(label: String, value: String): SpannableStringBuilder {
+        val builder = SpannableStringBuilder()
+        val start = builder.length
+        builder.append(label)
+        builder.setSpan(StyleSpan(Typeface.BOLD), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.append(": ")
+        builder.append(value)
         return builder
     }
 }
