@@ -11,6 +11,7 @@ import android.provider.Settings
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.StyleSpan
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.io.BufferedReader
@@ -237,7 +238,8 @@ object CallReportRuntime {
         direction: String,
         title: String,
     ) {
-        if (Settings.canDrawOverlays(context)) {
+        val config = ConfigStore.load(context)
+        if (config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
@@ -248,25 +250,10 @@ object CallReportRuntime {
             )
             return
         }
-        if (formUrl.isBlank()) {
-            showLookupNotification(
-                context = context,
-                result = LookupResult(
-                    title = title.ifBlank { "Локални действия след разговора" },
-                    subtitle = "Локален режим — без сървърна бележка",
-                    lines = emptyList(),
-                    openFormUrl = "",
-                ),
-                fullscreen = true,
-                phone = phone,
-                direction = direction,
-            )
-            return
-        }
-        showPostCallFallbackNotification(context, formUrl, phone, direction, title)
+        showPostCallSystemNotification(context, formUrl, phone, direction, title)
     }
 
-    private fun showPostCallFallbackNotification(
+    private fun showPostCallSystemNotification(
         context: Context,
         formUrl: String,
         phone: String,
@@ -275,14 +262,19 @@ object CallReportRuntime {
     ) {
         ensureNotificationChannel(context)
 
-        val openFormIntent = Intent(context, WebViewActivity::class.java)
-            .putExtra(WebViewActivity.EXTRA_URL, formUrl)
-            .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-            .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-        val openFormPendingIntent = PendingIntent.getActivity(
+        val openIntent = if (formUrl.isNotBlank()) {
+            Intent(context, WebViewActivity::class.java)
+                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
+                .putExtra(WebViewActivity.EXTRA_PHONE, phone)
+                .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
+        } else {
+            Intent(context, RecentCallsActivity::class.java)
+                .putExtra(RecentCallsActivity.EXTRA_PHONE_FILTER, phone)
+        }
+        val openPendingIntent = PendingIntent.getActivity(
             context,
             2002,
-            openFormIntent,
+            openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
@@ -295,23 +287,28 @@ object CallReportRuntime {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
+        val titleText = title.ifBlank { displayName.ifBlank { "Бележка след разговора" } }
+        val contentViews = RemoteViews(context.packageName, R.layout.notification_post_call_black).apply {
+            setTextViewText(R.id.postCallIconText, "✎")
+            setTextViewText(R.id.postCallTitleText, titleText)
+            setTextViewText(R.id.postCallPhoneText, phone)
+            setOnClickPendingIntent(R.id.postCallIconText, openPendingIntent)
+            setOnClickPendingIntent(R.id.postCallTitleText, openPendingIntent)
+            setOnClickPendingIntent(R.id.postCallPhoneText, openPendingIntent)
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.sym_call_incoming)
-            .setContentTitle(title.ifBlank { "Бележка след разговора" })
+            .setSmallIcon(android.R.drawable.ic_menu_edit)
+            .setContentTitle(titleText)
             .setContentText(phone)
-            .setStyle(
-                NotificationCompat.BigTextStyle().bigText(
-                    listOf(phone, "Натисни, за да запишеш бележка.")
-                        .filter { it.isNotBlank() }
-                        .joinToString("\n")
-                )
-            )
+            .setCustomContentView(contentViews)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
-            .setContentIntent(openFormPendingIntent)
-            .setFullScreenIntent(openFormPendingIntent, true)
-            .addAction(0, "Запиши бележка", openFormPendingIntent)
+            .setContentIntent(openPendingIntent)
+            .setFullScreenIntent(openPendingIntent, true)
+            .addAction(0, "✎ Бележка", openPendingIntent)
             .addAction(0, "Пропусни", skipPendingIntent)
             .build()
 
