@@ -12,7 +12,8 @@ object LookupPopupPresenter {
         phone: String = "",
         direction: String = "",
     ) {
-        if (Settings.canDrawOverlays(context)) {
+        val config = ConfigStore.load(context)
+        if (config.useCustomStartPopup && Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOOKUP)
