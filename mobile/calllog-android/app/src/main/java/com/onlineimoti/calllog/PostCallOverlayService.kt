@@ -92,8 +92,9 @@ class PostCallOverlayService : Service() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(8), dp(10))
-            background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
-            elevation = dp(16).toFloat()
+            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
+            elevation = dp(22).toFloat()
+            translationZ = dp(8).toFloat()
         }
 
         card.addView(TextView(this).apply {
@@ -142,8 +143,9 @@ class PostCallOverlayService : Service() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
-            elevation = dp(16).toFloat()
+            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
+            elevation = dp(22).toFloat()
+            translationZ = dp(8).toFloat()
         }
         val titleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
