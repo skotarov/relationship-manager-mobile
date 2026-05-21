@@ -89,43 +89,43 @@ class PostCallOverlayService : Service() {
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.WHITE, dp(22), Color.rgb(55, 65, 81), dp(2))
             elevation = dp(16).toFloat()
         }
 
         card.addView(TextView(this).apply {
             text = titleText
-            textSize = 20f
+            textSize = 19f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(17, 24, 39))
         })
         card.addView(TextView(this).apply {
             text = labelValue("Разговори", callsValue)
-            textSize = 15f
+            textSize = 14f
             setTextColor(Color.rgb(31, 41, 55))
-            setPadding(0, dp(10), 0, 0)
+            setPadding(0, dp(6), 0, 0)
         })
         card.addView(TextView(this).apply {
             text = labelValue("Последно", lastValue)
-            textSize = 15f
+            textSize = 14f
             setTextColor(Color.rgb(31, 41, 55))
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(2), 0, 0)
         })
         card.addView(TextView(this).apply {
             text = labelValue("Бележка", noteValue)
-            textSize = 15f
+            textSize = 14f
             setTextColor(Color.rgb(31, 41, 55))
-            setPadding(0, dp(4), 0, dp(10))
+            setPadding(0, dp(2), 0, dp(6))
         })
 
         val extraLine = lines.firstOrNull { it.isMeaningfulPopupLine() } ?: subtitle.takeIf { it.isMeaningfulPopupLine() }
         if (!extraLine.isNullOrBlank()) {
             card.addView(TextView(this).apply {
                 text = extraLine
-                textSize = 13f
+                textSize = 12f
                 setTextColor(Color.rgb(75, 85, 99))
-                setPadding(0, 0, 0, dp(8))
+                setPadding(0, 0, 0, dp(4))
             })
         }
 
@@ -219,7 +219,7 @@ class PostCallOverlayService : Service() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(6), 0, 0)
+            setPadding(0, dp(4), 0, 0)
             block()
         }
     }
@@ -229,10 +229,10 @@ class PostCallOverlayService : Service() {
             setImageResource(drawableRes)
             background = ContextCompat.getDrawable(this@PostCallOverlayService, R.drawable.popup_icon_circle_bg)
             scaleType = android.widget.ImageView.ScaleType.CENTER
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                marginStart = dp(5)
-                marginEnd = dp(5)
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+            layoutParams = LinearLayout.LayoutParams(dp(50), dp(50)).apply {
+                marginStart = dp(3)
+                marginEnd = dp(3)
             }
             setOnClickListener { action() }
         }
