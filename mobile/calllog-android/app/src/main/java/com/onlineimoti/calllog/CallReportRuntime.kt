@@ -225,15 +225,29 @@ object CallReportRuntime {
         direction: String,
         title: String,
     ) {
-        if (formUrl.isBlank()) {
-            return
-        }
         if (Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                     .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                    .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
+            )
+            return
+        }
+        if (formUrl.isBlank()) {
+            showLookupNotification(
+                context = context,
+                result = LookupResult(
+                    title = title.ifBlank { "Локални действия след разговора" },
+                    subtitle = "Локален режим — без сървърна бележка",
+                    lines = emptyList(),
+                    openFormUrl = "",
+                ),
+                fullscreen = true,
+                phone = phone,
+                direction = direction,
             )
             return
         }
