@@ -43,7 +43,7 @@ class CallScreeningBridgeService : CallScreeningService() {
 
                 CallReportRuntime.ensureNotificationChannel(this)
                 if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-                    CallReportRuntime.showLookupNotification(
+                    LookupPopupPresenter.show(
                         context = this,
                         result = LookupResult(
                             title = title,
@@ -65,7 +65,7 @@ class CallScreeningBridgeService : CallScreeningService() {
                         lookup.copy(title = displayName)
                     }
                 }
-                CallReportRuntime.showLookupNotification(
+                LookupPopupPresenter.show(
                     context = this,
                     result = result,
                     fullscreen = direction == "in",
@@ -74,7 +74,7 @@ class CallScreeningBridgeService : CallScreeningService() {
                 )
             } catch (_: Throwable) {
                 CallReportRuntime.ensureNotificationChannel(this)
-                CallReportRuntime.showLookupNotification(
+                LookupPopupPresenter.show(
                     context = this,
                     result = LookupResult(
                         title = number,
