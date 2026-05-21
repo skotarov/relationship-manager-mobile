@@ -128,12 +128,12 @@ class PostCallOverlayService : Service() {
         }
 
         card.addView(iconRow {
-            addView(iconAction("▣", "CRM") { openCrmLog() })
-            addView(iconAction("✎", "Бележка") { openFormOrWarn() })
-            addView(iconAction("☎", "Тел.") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
-            addView(iconAction("👤", "Номер") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
-            addView(iconAction("≡", "Локал") { openLocalNumberLog() })
-            addView(iconAction("×", "Затвори") { stopSelf() })
+            addView(iconAction("▣") { openCrmLog() })
+            addView(iconAction("✎") { openFormOrWarn() })
+            addView(iconAction("☎") { openSystemHistory(SystemCallHistoryActivity.MODE_GENERAL) })
+            addView(iconAction("👤") { openSystemHistory(SystemCallHistoryActivity.MODE_NUMBER) })
+            addView(iconAction("≡") { openLocalNumberLog() })
+            addView(iconAction("×") { stopSelf() })
         })
 
         val scroll = ScrollView(this).apply { addView(card) }
@@ -222,39 +222,24 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun iconAction(icon: String, label: String, action: () -> Unit): LinearLayout {
-        val wrapper = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dp(3), 0, dp(3), 0)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        val circle = TextView(this).apply {
+    private fun iconAction(icon: String, action: () -> Unit): TextView {
+        return TextView(this).apply {
             text = icon
-            textSize = 19f
+            textSize = 20f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+            setTextColor(Color.rgb(31, 41, 55))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(55, 65, 81))
+                setColor(Color.TRANSPARENT)
+                setStroke(dp(1), Color.rgb(55, 65, 81))
             }
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
+                marginStart = dp(4)
+                marginEnd = dp(4)
+            }
             setOnClickListener { action() }
         }
-        val caption = TextView(this).apply {
-            text = label
-            textSize = 10f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(75, 85, 99))
-            maxLines = 1
-            setPadding(0, dp(3), 0, 0)
-            setOnClickListener { action() }
-        }
-        wrapper.addView(circle)
-        wrapper.addView(caption)
-        wrapper.setOnClickListener { action() }
-        return wrapper
     }
 
     private fun openForm() {
