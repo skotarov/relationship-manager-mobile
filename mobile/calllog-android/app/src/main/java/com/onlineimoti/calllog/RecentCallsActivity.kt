@@ -12,11 +12,13 @@ import com.onlineimoti.calllog.databinding.ActivityRecentCallsBinding
 
 class RecentCallsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityRecentCallsBinding
+    private var phoneFilter: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRecentCallsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        phoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
     }
 
     override fun onResume() {
@@ -26,18 +28,37 @@ class RecentCallsActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         binding.recentCallsContainer.removeAllViews()
+        val isFiltered = phoneFilter.isNotBlank()
+        binding.recentCallsTitleText.text = if (isFiltered) {
+            "История за номера"
+        } else {
+            "Последни разговори"
+        }
+
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.recentCallsStatusText.text = "Липсва достъп до телефонния log. Отвори Настройки и разреши Call log."
             return
         }
 
-        val calls = PhoneCallReader.recentCalls(this, limit = 20)
+        val calls = if (isFiltered) {
+            PhoneCallReader.callsForPhone(this, phoneFilter, limit = 50)
+        } else {
+            PhoneCallReader.recentCalls(this, limit = 20)
+        }
         if (calls.isEmpty()) {
-            binding.recentCallsStatusText.text = "Няма намерени разговори."
+            binding.recentCallsStatusText.text = if (isFiltered) {
+                "Няма намерени разговори за $phoneFilter."
+            } else {
+                "Няма намерени разговори."
+            }
             return
         }
 
-        binding.recentCallsStatusText.text = "Показвам последните ${calls.size} разговора."
+        binding.recentCallsStatusText.text = if (isFiltered) {
+            "Показвам ${calls.size} разговора за $phoneFilter."
+        } else {
+            "Показвам последните ${calls.size} разговора."
+        }
         calls.forEach { call ->
             binding.recentCallsContainer.addView(callCard(call))
         }
@@ -120,5 +141,9 @@ class RecentCallsActivity : AppCompatActivity() {
 
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
+    }
+
+    companion object {
+        const val EXTRA_PHONE_FILTER = "phone_filter"
     }
 }
