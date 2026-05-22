@@ -170,6 +170,25 @@ object CallReportRuntime {
         )
     }
 
+    private fun noteEditorPendingIntent(
+        context: Context,
+        requestCode: Int,
+        phone: String,
+        direction: String,
+        title: String,
+    ): PendingIntent {
+        val intent = Intent(context, NoteEditorLaunchActivity::class.java)
+            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+            .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+        return PendingIntent.getActivity(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun showLookupNotificationInternal(
         context: Context,
         result: LookupResult,
@@ -183,17 +202,7 @@ object CallReportRuntime {
         markPopup: Boolean,
     ) {
         ensureNotificationChannel(context)
-        val noteIntent = Intent(context, PostCallOverlayService::class.java)
-            .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-            .putExtra(PostCallOverlayService.EXTRA_TITLE, result.title)
-        val notePendingIntent = PendingIntent.getService(
-            context,
-            1001,
-            noteIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
         val systemHistoryPendingIntent = PendingIntent.getActivity(
             context,
             1004,
@@ -300,17 +309,7 @@ object CallReportRuntime {
     ) {
         ensureNotificationChannel(context)
 
-        val noteIntent = Intent(context, PostCallOverlayService::class.java)
-            .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-            .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-        val openPendingIntent = PendingIntent.getService(
-            context,
-            2002,
-            noteIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+        val openPendingIntent = noteEditorPendingIntent(context, 2002, phone, direction, title)
         val skipPendingIntent = PendingIntent.getBroadcast(
             context,
             2003,
