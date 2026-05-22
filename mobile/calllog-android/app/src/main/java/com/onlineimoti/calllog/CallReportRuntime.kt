@@ -213,7 +213,11 @@ object CallReportRuntime {
         val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
         val noteValue = contactNote.ifBlank { "няма" }
         val notificationText = "Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue"
-        val expandedText = "Разговори: $callsValue\nПоследно: $lastValue\nБележка: $noteValue"
+        val expandedText = formatNotificationRows(
+            "Разговори" to callsValue,
+            "Последно" to lastValue,
+            "Бележка" to noteValue,
+        )
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
@@ -231,6 +235,14 @@ object CallReportRuntime {
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+    }
+
+    private fun formatNotificationRows(vararg rows: Pair<String, String>): String {
+        val labelWidth = rows.maxOfOrNull { it.first.length } ?: 0
+        return rows.joinToString("\n") { (label, value) ->
+            val padding = " ".repeat((labelWidth - label.length).coerceAtLeast(0) + 2)
+            "$label:$padding$value"
+        }
     }
 
     fun showImmediatePostCallPrompt(
