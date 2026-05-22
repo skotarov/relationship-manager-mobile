@@ -89,9 +89,7 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
-            elevation = dp(22).toFloat()
-            translationZ = dp(8).toFloat()
+            stylePopupCard()
         }
 
         val spinner = TextView(this).apply {
@@ -133,7 +131,7 @@ class PostCallOverlayService : Service() {
             start()
         }
 
-        addDraggableOverlay(ScrollView(this).apply { addView(card) }, focusable = false, defaultY = dp(135), timeoutMs = LOADING_POPUP_TIMEOUT_MS)
+        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(135), timeoutMs = LOADING_POPUP_TIMEOUT_MS)
     }
 
     private fun showLookupPopup() {
@@ -156,9 +154,7 @@ class PostCallOverlayService : Service() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(12), dp(14))
-            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
-            elevation = dp(22).toFloat()
-            translationZ = dp(8).toFloat()
+            stylePopupCard()
         }
 
         card.addView(TextView(this).apply {
@@ -194,7 +190,7 @@ class PostCallOverlayService : Service() {
             })
         }
 
-        addDraggableOverlay(ScrollView(this).apply { addView(card) }, focusable = false, defaultY = dp(135), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
+        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(135), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
     }
 
     private fun showNoteEditor() {
@@ -208,9 +204,7 @@ class PostCallOverlayService : Service() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(16))
-            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
-            elevation = dp(22).toFloat()
-            translationZ = dp(8).toFloat()
+            stylePopupCard()
         }
         val titleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -239,6 +233,7 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.TOP or Gravity.START
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
+            clipToOutline = true
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dp(12)
             }
@@ -257,8 +252,7 @@ class PostCallOverlayService : Service() {
         })
         card.addView(actions)
 
-        val scroll = ScrollView(this).apply { addView(card) }
-        addDraggableOverlay(scroll, focusable = true, defaultY = dp(135), timeoutMs = 0L)
+        addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
         noteInput.requestFocus()
         handler.postDelayed({
             (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
@@ -281,7 +275,8 @@ class PostCallOverlayService : Service() {
                 shape = GradientDrawable.OVAL
                 setColor(Color.rgb(55, 65, 81))
             }
-            elevation = dp(8).toFloat()
+            elevation = dp(10).toFloat()
+            translationZ = dp(4).toFloat()
         }
 
         val params = WindowManager.LayoutParams(
@@ -337,7 +332,7 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = prefs.getInt(KEY_LOOKUP_POPUP_X, 0)
             y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
-            width = resources.displayMetrics.widthPixels - dp(20)
+            width = resources.displayMetrics.widthPixels - dp(4)
         }
 
         view.setOnTouchListener { _, event ->
@@ -416,8 +411,31 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = roundedRect(Color.rgb(55, 65, 81), dp(12), Color.TRANSPARENT, 0)
+            clipToOutline = true
             setPadding(dp(18), dp(10), dp(18), dp(10))
             setOnClickListener { action() }
+        }
+    }
+
+    private fun stylePopupCard() {
+        background = roundedRect(Color.WHITE, dp(24), Color.TRANSPARENT, 0)
+        clipToOutline = true
+        elevation = dp(40).toFloat()
+        translationZ = dp(18).toFloat()
+    }
+
+    private fun shadowScroll(card: View): ScrollView {
+        return ScrollView(this).apply {
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            clipToPadding = false
+            clipChildren = false
+            addView(
+                card,
+                ScrollView.LayoutParams(
+                    ScrollView.LayoutParams.MATCH_PARENT,
+                    ScrollView.LayoutParams.WRAP_CONTENT,
+                )
+            )
         }
     }
 
