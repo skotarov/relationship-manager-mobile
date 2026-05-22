@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
@@ -21,6 +22,7 @@ class CallReportTileService : TileService() {
     private fun updateTileState() {
         qsTile?.apply {
             label = "Call Report"
+            icon = Icon.createWithResource(this@CallReportTileService, R.mipmap.ic_launcher)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = "Отвори"
             }
