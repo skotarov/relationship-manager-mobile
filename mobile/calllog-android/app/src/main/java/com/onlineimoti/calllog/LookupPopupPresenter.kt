@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -13,7 +14,8 @@ object LookupPopupPresenter {
         direction: String = "",
     ) {
         val config = ConfigStore.load(context)
-        if (config.useCustomStartPopup && Settings.canDrawOverlays(context)) {
+        val screenLocked = isScreenLocked(context)
+        if (config.useCustomStartPopup && Settings.canDrawOverlays(context) && !screenLocked) {
             CallReportRuntime.showLookupShadeNotification(
                 context = context,
                 result = result,
@@ -39,9 +41,14 @@ object LookupPopupPresenter {
         CallReportRuntime.showLookupNotification(
             context = context,
             result = result,
-            fullscreen = fullscreen,
+            fullscreen = fullscreen && screenLocked,
             phone = phone,
             direction = direction,
         )
+    }
+
+    private fun isScreenLocked(context: Context): Boolean {
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        return keyguardManager?.isKeyguardLocked == true
     }
 }
