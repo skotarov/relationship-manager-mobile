@@ -3,7 +3,9 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
@@ -39,13 +41,28 @@ class CallStateReceiver : BroadcastReceiver() {
 
         CallLifecycleStore.markActive(context, number, direction)
         if (!CallStateDeduper.markHandled(context, number, direction)) return
+        showInstantLoading(context, number, "Зарежда се информация…", "Проверявам разговори и бележка…")
         showLookup(context, number, direction, fullscreen = direction == "in")
     }
 
     private fun handleCallEnded(context: Context) {
         val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
         if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) return
+        showInstantLoading(context, endedCall.number, "Разговорът приключи", "Подготвям бележката…")
         showPostCallPrompt(context, endedCall.number, endedCall.direction)
+    }
+
+    private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
+        val config = ConfigStore.load(context)
+        val shouldUseCustom = config.useCustomStartPopup || config.useCustomEndPopup
+        if (!shouldUseCustom || !Settings.canDrawOverlays(context)) return
+        context.startService(
+            Intent(context, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOADING)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, subtitle)
+        )
     }
 
     private fun remoteReady(config: AppConfig): Boolean {
