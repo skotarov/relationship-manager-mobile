@@ -48,14 +48,12 @@ class CallStateReceiver : BroadcastReceiver() {
     private fun handleCallEnded(context: Context) {
         val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
         if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) return
-        showInstantLoading(context, endedCall.number, "Разговорът приключи", "Подготвям бележката…")
         showPostCallPrompt(context, endedCall.number, endedCall.direction)
     }
 
     private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
         val config = ConfigStore.load(context)
-        val shouldUseCustom = config.useCustomStartPopup || config.useCustomEndPopup
-        if (!shouldUseCustom || !Settings.canDrawOverlays(context)) return
+        if (!config.useCustomStartPopup || !Settings.canDrawOverlays(context)) return
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOADING)
