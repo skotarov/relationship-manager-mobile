@@ -429,13 +429,7 @@ class PostCallOverlayService : Service() {
             setPadding(dp(18), dp(18), dp(18), dp(18))
             clipToPadding = false
             clipChildren = false
-            addView(
-                card,
-                ScrollView.LayoutParams(
-                    ScrollView.LayoutParams.MATCH_PARENT,
-                    ScrollView.LayoutParams.WRAP_CONTENT,
-                )
-            )
+            addView(card)
         }
     }
 
