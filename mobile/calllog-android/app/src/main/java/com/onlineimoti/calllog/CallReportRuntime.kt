@@ -212,17 +212,21 @@ object CallReportRuntime {
         val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
         val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
         val noteValue = contactNote.ifBlank { "няма" }
-        val rowsText = formatNotificationRows(
-            "Разговори" to callsValue,
-            "Последно" to lastValue,
-            "Бележка" to noteValue,
+        val notificationRows = listOf(
+            formatNotificationRow("Разговори", callsValue),
+            formatNotificationRow("Последно", lastValue),
+            formatNotificationRow("Бележка", noteValue),
         )
+        val rowsText = notificationRows.joinToString("\n")
+        val inboxStyle = NotificationCompat.InboxStyle()
+            .setBigContentTitle(notificationTitle)
+        notificationRows.forEach { inboxStyle.addLine(it) }
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
             .setContentText(rowsText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(rowsText))
+            .setStyle(inboxStyle)
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
@@ -236,12 +240,8 @@ object CallReportRuntime {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    private fun formatNotificationRows(vararg rows: Pair<String, String>): String {
-        val labelWidth = rows.maxOfOrNull { it.first.length } ?: 0
-        return rows.joinToString("\n") { (label, value) ->
-            val padding = " ".repeat((labelWidth - label.length).coerceAtLeast(0) + 2)
-            "$label:$padding$value"
-        }
+    private fun formatNotificationRow(label: String, value: String): String {
+        return "$label: $value"
     }
 
     fun showImmediatePostCallPrompt(
