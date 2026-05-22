@@ -59,6 +59,13 @@
             </intent-filter>
         </service>
         <activity
+            android:name=".NoteEditorLaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@style/Theme.CallLog.TransparentLauncher" />
+        <activity
             android:name=".SystemCallHistoryActivity"
             android:excludeFromRecents="true"
             android:exported="false"
