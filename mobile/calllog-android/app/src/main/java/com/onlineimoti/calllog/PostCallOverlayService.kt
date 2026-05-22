@@ -275,8 +275,8 @@ class PostCallOverlayService : Service() {
                 shape = GradientDrawable.OVAL
                 setColor(Color.rgb(55, 65, 81))
             }
-            elevation = dp(10).toFloat()
-            translationZ = dp(4).toFloat()
+            elevation = dp(8).toFloat()
+            translationZ = dp(2).toFloat()
         }
 
         val params = WindowManager.LayoutParams(
@@ -420,13 +420,13 @@ class PostCallOverlayService : Service() {
     private fun View.stylePopupCard() {
         background = roundedRect(Color.WHITE, dp(24), Color.TRANSPARENT, 0)
         clipToOutline = true
-        elevation = dp(40).toFloat()
-        translationZ = dp(18).toFloat()
+        elevation = dp(22).toFloat()
+        translationZ = dp(6).toFloat()
     }
 
     private fun shadowScroll(card: View): ScrollView {
         return ScrollView(this).apply {
-            setPadding(dp(18), dp(18), dp(18), dp(18))
+            setPadding(dp(14), dp(14), dp(14), dp(14))
             clipToPadding = false
             clipChildren = false
             addView(card)
