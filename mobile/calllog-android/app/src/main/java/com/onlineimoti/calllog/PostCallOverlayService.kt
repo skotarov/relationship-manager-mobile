@@ -20,11 +20,13 @@ import android.view.animation.LinearInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import java.util.Date
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -153,44 +155,64 @@ class PostCallOverlayService : Service() {
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(12), dp(14))
+            setPadding(dp(28), dp(20), dp(24), dp(18))
             stylePopupCard()
         }
 
-        card.addView(TextView(this).apply {
-            text = titleText
-            textSize = 19f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(17, 24, 39))
-        })
-
-        val infoAndCloseRow = LinearLayout(this).apply {
+        val contentRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
-            setPadding(0, dp(7), 0, 0)
         }
-        val infoColumn = LinearLayout(this).apply {
+        contentRow.addView(notificationIcon())
+
+        val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        infoColumn.addView(keyValueRow("Разговори", callsValue))
-        infoColumn.addView(keyValueRow("Последно", lastValue, topPadding = dp(2)))
-        infoColumn.addView(keyValueRow("Бележка", noteValue, topPadding = dp(2)))
-        infoAndCloseRow.addView(infoColumn)
-        infoAndCloseRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
-        card.addView(infoAndCloseRow)
 
-        val extraLine = lines.firstOrNull { it.isMeaningfulPopupLine() } ?: subtitle.takeIf { it.isMeaningfulPopupLine() }
-        if (!extraLine.isNullOrBlank()) {
-            card.addView(TextView(this).apply {
-                text = extraLine
-                textSize = 12f
-                setTextColor(Color.rgb(75, 85, 99))
-                setPadding(0, dp(3), 0, 0)
-            })
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        titleRow.addView(TextView(this).apply {
+            text = titleText
+            textSize = 17f
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(Color.rgb(17, 24, 39))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        titleRow.addView(TextView(this).apply {
+            text = currentTimeText()
+            textSize = 12f
+            setTextColor(Color.rgb(156, 163, 175))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dp(8)
+            }
+        })
+        contentColumn.addView(titleRow)
 
-        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(135), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
+        val dataColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(6), 0, 0)
+        }
+        dataColumn.addView(twoColumnRow("Разговори", callsValue))
+        dataColumn.addView(twoColumnRow("Последно", lastValue, topPadding = dp(2)))
+        dataColumn.addView(twoColumnRow("Бележка", noteValue, topPadding = dp(2), maxLines = 2))
+        contentColumn.addView(dataColumn)
+
+        contentRow.addView(contentColumn)
+        card.addView(contentRow)
+
+        val editRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(52), dp(12), 0, 0)
+        }
+        editRow.addView(notificationEditAction("Edit") { showNoteEditor() })
+        card.addView(editRow)
+
+        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
     }
 
     private fun showNoteEditor() {
@@ -367,6 +389,56 @@ class PostCallOverlayService : Service() {
         overlayView = view
         windowManager?.addView(view, params)
         if (timeoutMs > 0) handler.postDelayed({ stopSelf() }, timeoutMs)
+    }
+
+    private fun notificationIcon(): ImageView {
+        return ImageView(this).apply {
+            setImageResource(R.mipmap.ic_launcher)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
+                marginEnd = dp(12)
+                topMargin = dp(2)
+            }
+        }
+    }
+
+    private fun twoColumnRow(label: String, value: String, topPadding: Int = 0, maxLines: Int = 1): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, topPadding, 0, 0)
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = "$label:"
+                textSize = 14f
+                setTextColor(Color.rgb(107, 114, 128))
+                layoutParams = LinearLayout.LayoutParams(dp(88), LinearLayout.LayoutParams.WRAP_CONTENT)
+            })
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = value
+                textSize = 14f
+                setTextColor(Color.rgb(75, 85, 99))
+                this.maxLines = maxLines
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+        }
+    }
+
+    private fun notificationEditAction(textValue: String, action: () -> Unit): TextView {
+        return TextView(this).apply {
+            text = textValue
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(75, 85, 99))
+            background = roundedRect(Color.rgb(243, 244, 246), dp(22), Color.TRANSPARENT, 0)
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+            minWidth = dp(72)
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun currentTimeText(): String {
+        return android.text.format.DateFormat.getTimeFormat(this).format(Date())
     }
 
     private fun keyValueRow(label: String, value: String, topPadding: Int = 0): LinearLayout {
