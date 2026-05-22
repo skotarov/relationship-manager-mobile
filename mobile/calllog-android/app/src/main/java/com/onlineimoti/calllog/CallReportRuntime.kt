@@ -301,6 +301,7 @@ object CallReportRuntime {
         direction: String,
         title: String,
     ) {
+        NotificationManagerCompat.from(context).cancel(POST_CALL_NOTIFICATION_ID)
         val config = ConfigStore.load(context)
         if (config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
             context.startService(
@@ -311,55 +312,6 @@ object CallReportRuntime {
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                     .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
             )
-            return
         }
-        showPostCallSystemNotification(context, formUrl, phone, direction, title)
-    }
-
-    private fun showPostCallSystemNotification(
-        context: Context,
-        formUrl: String,
-        phone: String,
-        direction: String,
-        title: String,
-    ) {
-        ensureNotificationChannel(context)
-
-        val openPendingIntent = noteEditorPendingIntent(context, 2002, phone, direction, title)
-        val skipPendingIntent = PendingIntent.getBroadcast(
-            context,
-            2003,
-            Intent(context, NotificationDismissReceiver::class.java)
-                .putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_ID, POST_CALL_NOTIFICATION_ID),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
-        val titleText = title.ifBlank { displayName.ifBlank { "Бележка след разговора" } }
-        val contentViews = RemoteViews(context.packageName, R.layout.notification_post_call_black).apply {
-            setTextViewText(R.id.postCallIconText, "✎")
-            setTextViewText(R.id.postCallTitleText, titleText)
-            setTextViewText(R.id.postCallPhoneText, phone)
-            setOnClickPendingIntent(R.id.postCallIconText, openPendingIntent)
-            setOnClickPendingIntent(R.id.postCallTitleText, openPendingIntent)
-            setOnClickPendingIntent(R.id.postCallPhoneText, openPendingIntent)
-        }
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_edit)
-            .setContentTitle(titleText)
-            .setContentText(phone)
-            .setCustomContentView(contentViews)
-            .setCustomHeadsUpContentView(contentViews)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setAutoCancel(true)
-            .setContentIntent(openPendingIntent)
-            .setFullScreenIntent(openPendingIntent, true)
-            .addAction(0, "✎ Бележка", openPendingIntent)
-            .addAction(0, "Пропусни", skipPendingIntent)
-            .build()
-
-        NotificationManagerCompat.from(context).notify(POST_CALL_NOTIFICATION_ID, notification)
     }
 }
