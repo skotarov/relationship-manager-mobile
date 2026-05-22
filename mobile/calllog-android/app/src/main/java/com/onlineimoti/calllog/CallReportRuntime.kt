@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.io.BufferedReader
@@ -145,7 +144,6 @@ object CallReportRuntime {
             channelId = CHANNEL_ID,
             notificationId = LOOKUP_NOTIFICATION_ID,
             priority = NotificationCompat.PRIORITY_HIGH,
-            headsUp = true,
             markPopup = true,
         )
     }
@@ -165,7 +163,6 @@ object CallReportRuntime {
             channelId = PASSIVE_CHANNEL_ID,
             notificationId = LOOKUP_SHADE_NOTIFICATION_ID,
             priority = NotificationCompat.PRIORITY_LOW,
-            headsUp = false,
             markPopup = false,
         )
     }
@@ -198,27 +195,10 @@ object CallReportRuntime {
         channelId: String,
         notificationId: Int,
         priority: Int,
-        headsUp: Boolean,
         markPopup: Boolean,
     ) {
         ensureNotificationChannel(context)
         val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
-        val systemHistoryPendingIntent = PendingIntent.getActivity(
-            context,
-            1004,
-            Intent(context, SystemCallHistoryActivity::class.java)
-                .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
-                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val filteredHistoryPendingIntent = PendingIntent.getActivity(
-            context,
-            1005,
-            Intent(context, SystemCallHistoryActivity::class.java)
-                .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
-                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_NUMBER),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val notificationTitle = when {
@@ -235,53 +215,18 @@ object CallReportRuntime {
         val notificationText = "Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue"
         val expandedText = "Разговори: $callsValue\nПоследно: $lastValue\nБележка: $noteValue"
 
-        if (headsUp) {
-            val builder = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(android.R.drawable.sym_call_incoming)
-                .setContentTitle(notificationTitle)
-                .setContentText(notificationText)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
-                .setPriority(priority)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setAutoCancel(false)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-
-            if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
-            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
-            return
-        }
-
-        val contentViews = RemoteViews(context.packageName, R.layout.notification_lookup_system).apply {
-            setTextViewText(R.id.lookupTitleText, notificationTitle)
-            setTextViewText(R.id.lookupCallsValueText, callsValue)
-            setTextViewText(R.id.lookupLastValueText, lastValue)
-            setTextViewText(R.id.lookupNoteValueText, noteValue)
-            setOnClickPendingIntent(R.id.lookupTitleText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupCallsLabelText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupCallsValueText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupLastLabelText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupLastValueText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteLabelText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteValueText, notePendingIntent)
-            setOnClickPendingIntent(R.id.lookupNoteIconText, notePendingIntent)
-        }
-
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
             .setContentText(notificationText)
-            .setCustomContentView(contentViews)
-            .setCustomBigContentView(contentViews)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(notePendingIntent)
-            .addAction(0, "Бележка", notePendingIntent)
-            .addAction(0, "Тел. история", systemHistoryPendingIntent)
-            .addAction(0, "История номер", filteredHistoryPendingIntent)
+            .addAction(android.R.drawable.ic_menu_edit, "Edit", notePendingIntent)
         if (fullscreen) builder.setFullScreenIntent(notePendingIntent, true)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
