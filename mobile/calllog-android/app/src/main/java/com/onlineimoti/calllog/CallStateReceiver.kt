@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -53,7 +54,7 @@ class CallStateReceiver : BroadcastReceiver() {
 
     private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
         val config = ConfigStore.load(context)
-        if (!config.useCustomStartPopup || !Settings.canDrawOverlays(context)) return
+        if (!config.useCustomStartPopup || !Settings.canDrawOverlays(context) || isScreenLocked(context)) return
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOADING)
@@ -61,6 +62,11 @@ class CallStateReceiver : BroadcastReceiver() {
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                 .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, subtitle)
         )
+    }
+
+    private fun isScreenLocked(context: Context): Boolean {
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        return keyguardManager?.isKeyguardLocked == true
     }
 
     private fun remoteReady(config: AppConfig): Boolean {
