@@ -232,6 +232,23 @@ object CallReportRuntime {
         val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
         val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
         val noteValue = contactNote.ifBlank { "няма" }
+        val notificationText = "Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue"
+        val expandedText = "Разговори: $callsValue\nПоследно: $lastValue\nБележка: $noteValue"
+
+        if (headsUp) {
+            val builder = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.sym_call_incoming)
+                .setContentTitle(notificationTitle)
+                .setContentText(notificationText)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
+                .setPriority(priority)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setAutoCancel(false)
+
+            if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+            return
+        }
 
         val contentViews = RemoteViews(context.packageName, R.layout.notification_lookup_system).apply {
             setTextViewText(R.id.lookupTitleText, notificationTitle)
@@ -251,7 +268,7 @@ object CallReportRuntime {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
-            .setContentText("Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue")
+            .setContentText(notificationText)
             .setCustomContentView(contentViews)
             .setCustomBigContentView(contentViews)
             .setPriority(priority)
@@ -261,7 +278,6 @@ object CallReportRuntime {
             .addAction(0, "Бележка", notePendingIntent)
             .addAction(0, "Тел. история", systemHistoryPendingIntent)
             .addAction(0, "История номер", filteredHistoryPendingIntent)
-        if (headsUp) builder.setCustomHeadsUpContentView(contentViews)
         if (fullscreen) builder.setFullScreenIntent(notePendingIntent, true)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
