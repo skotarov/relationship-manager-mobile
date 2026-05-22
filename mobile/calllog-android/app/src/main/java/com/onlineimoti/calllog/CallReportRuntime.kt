@@ -212,8 +212,7 @@ object CallReportRuntime {
         val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
         val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
         val noteValue = contactNote.ifBlank { "няма" }
-        val notificationText = "Разговори: $callsValue • Последно: $lastValue • Бележка: $noteValue"
-        val expandedText = formatNotificationRows(
+        val rowsText = formatNotificationRows(
             "Разговори" to callsValue,
             "Последно" to lastValue,
             "Бележка" to noteValue,
@@ -222,8 +221,8 @@ object CallReportRuntime {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_call_incoming)
             .setContentTitle(notificationTitle)
-            .setContentText(notificationText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(expandedText))
+            .setContentText(rowsText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(rowsText))
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
