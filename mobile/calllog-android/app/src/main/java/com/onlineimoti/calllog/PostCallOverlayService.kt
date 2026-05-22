@@ -417,7 +417,7 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun stylePopupCard() {
+    private fun View.stylePopupCard() {
         background = roundedRect(Color.WHITE, dp(24), Color.TRANSPARENT, 0)
         clipToOutline = true
         elevation = dp(40).toFloat()
