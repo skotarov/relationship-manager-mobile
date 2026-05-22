@@ -1,6 +1,8 @@
 package com.onlineimoti.calllog
 
+import android.animation.ObjectAnimator
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -14,8 +16,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import android.view.inputmethod.InputMethodManager
-import android.content.Context
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -28,6 +30,7 @@ class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
+    private var loadingAnimator: ObjectAnimator? = null
     private var formUrl: String = ""
     private var phone: String = ""
     private var direction: String = ""
@@ -53,6 +56,7 @@ class PostCallOverlayService : Service() {
         }
 
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
+            MODE_LOADING -> showLoadingPopup()
             MODE_LOOKUP -> showLookupPopup()
             MODE_NOTE -> showNoteEditor()
             else -> {
@@ -66,11 +70,71 @@ class PostCallOverlayService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        loadingAnimator?.cancel()
+        loadingAnimator = null
         removeOverlay()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun showLoadingPopup() {
+        removeOverlay()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        val titleText = title.ifBlank { phone.ifBlank { "Call Report" } }
+        val messageText = subtitle.ifBlank { "Зареждат се данни…" }
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = roundedRect(Color.WHITE, dp(22), Color.TRANSPARENT, 0)
+            elevation = dp(22).toFloat()
+            translationZ = dp(8).toFloat()
+        }
+
+        val spinner = TextView(this).apply {
+            text = "↻"
+            textSize = 30f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(55, 65, 81))
+            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
+                marginEnd = dp(12)
+            }
+        }
+        card.addView(spinner)
+
+        val textColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        textColumn.addView(TextView(this).apply {
+            text = titleText
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(Color.rgb(17, 24, 39))
+        })
+        textColumn.addView(TextView(this).apply {
+            text = messageText
+            textSize = 14f
+            setTextColor(Color.rgb(75, 85, 99))
+            setPadding(0, dp(2), 0, 0)
+        })
+        card.addView(textColumn)
+
+        loadingAnimator = ObjectAnimator.ofFloat(spinner, View.ROTATION, 0f, 360f).apply {
+            duration = 850L
+            repeatCount = ObjectAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            start()
+        }
+
+        addDraggableOverlay(ScrollView(this).apply { addView(card) }, focusable = false, defaultY = dp(135), timeoutMs = LOADING_POPUP_TIMEOUT_MS)
+    }
 
     private fun showLookupPopup() {
         removeOverlay()
@@ -410,6 +474,8 @@ class PostCallOverlayService : Service() {
     }
 
     private fun removeOverlay() {
+        loadingAnimator?.cancel()
+        loadingAnimator = null
         val view = overlayView ?: return
         runCatching { windowManager?.removeView(view) }
         overlayView = null
@@ -436,6 +502,7 @@ class PostCallOverlayService : Service() {
 
     companion object {
         const val EXTRA_MODE = "mode"
+        const val MODE_LOADING = "loading"
         const val MODE_LOOKUP = "lookup"
         const val MODE_NOTE = "note"
         const val EXTRA_FORM_URL = "form_url"
@@ -444,6 +511,7 @@ class PostCallOverlayService : Service() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_SUBTITLE = "subtitle"
         const val EXTRA_LINES = "lines"
+        private const val LOADING_POPUP_TIMEOUT_MS = 45_000L
         private const val LOOKUP_POPUP_TIMEOUT_MS = 30_000L
         private const val LOOKUP_POPUP_POSITION_PREFS = "lookup_popup_position"
         private const val KEY_LOOKUP_POPUP_X = "lookup_popup_x"
