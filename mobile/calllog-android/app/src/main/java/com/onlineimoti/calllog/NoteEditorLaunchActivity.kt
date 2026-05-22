@@ -19,11 +19,7 @@ class NoteEditorLaunchActivity : Activity() {
     }
 
     private fun openEditorAndFinish() {
-        NotificationManagerCompat.from(this).apply {
-            cancel(LOOKUP_NOTIFICATION_ID)
-            cancel(LOOKUP_SHADE_NOTIFICATION_ID)
-            cancel(CallReportRuntime.POST_CALL_NOTIFICATION_ID)
-        }
+        NotificationManagerCompat.from(this).cancel(CallReportRuntime.POST_CALL_NOTIFICATION_ID)
 
         if (Settings.canDrawOverlays(this)) {
             startService(
@@ -36,10 +32,5 @@ class NoteEditorLaunchActivity : Activity() {
         }
         finishAndRemoveTask()
         overridePendingTransition(0, 0)
-    }
-
-    companion object {
-        private const val LOOKUP_NOTIFICATION_ID = 2001
-        private const val LOOKUP_SHADE_NOTIFICATION_ID = 2004
     }
 }
