@@ -176,11 +176,11 @@ object CallReportRuntime {
         direction: String,
         title: String,
     ): PendingIntent {
-        val intent = Intent(context, NoteEditorLaunchActivity::class.java)
+        val intent = Intent(context, NoteEditorReceiver::class.java)
             .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
             .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
             .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-        return PendingIntent.getActivity(
+        return PendingIntent.getBroadcast(
             context,
             requestCode,
             intent,
