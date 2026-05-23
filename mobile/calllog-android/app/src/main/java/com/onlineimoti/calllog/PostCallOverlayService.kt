@@ -210,6 +210,10 @@ class PostCallOverlayService : Service() {
             setPadding(dp(52), dp(12), 0, 0)
         }
         editRow.addView(notificationEditAction("Edit") { showNoteEditor() })
+        editRow.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
+        })
+        editRow.addView(notificationEditAction("Close") { stopSelf() })
         card.addView(editRow)
 
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
