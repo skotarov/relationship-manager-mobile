@@ -18,7 +18,7 @@ object CallReportRuntime {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val PASSIVE_CHANNEL_ID = "callreport_lookup_passive"
     private const val LOOKUP_NOTIFICATION_ID = 2001
-    private const val LOOKUP_SHADE_NOTIFICATION_ID = 2004
+    private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
 
@@ -161,7 +161,7 @@ object CallReportRuntime {
             phone = phone,
             direction = direction,
             channelId = PASSIVE_CHANNEL_ID,
-            notificationId = LOOKUP_SHADE_NOTIFICATION_ID,
+            notificationId = LOOKUP_NOTIFICATION_ID,
             priority = NotificationCompat.PRIORITY_LOW,
             markPopup = false,
         )
@@ -198,6 +198,10 @@ object CallReportRuntime {
         markPopup: Boolean,
     ) {
         ensureNotificationChannel(context)
+        NotificationManagerCompat.from(context).apply {
+            cancel(LEGACY_LOOKUP_SHADE_NOTIFICATION_ID)
+            cancel(POST_CALL_NOTIFICATION_ID)
+        }
         val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
 
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
