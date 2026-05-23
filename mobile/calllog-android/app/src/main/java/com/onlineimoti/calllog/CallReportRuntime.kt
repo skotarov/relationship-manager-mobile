@@ -238,7 +238,7 @@ object CallReportRuntime {
         notificationRows.forEach { inboxStyle.addLine(it) }
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.sym_call_incoming)
+            .setSmallIcon(R.drawable.ic_callreport_notification)
             .setContentTitle(notificationTitle)
             .setContentText(rowsText)
             .setStyle(inboxStyle)
