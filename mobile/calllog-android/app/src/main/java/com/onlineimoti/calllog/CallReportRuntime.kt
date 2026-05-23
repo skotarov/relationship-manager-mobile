@@ -5,10 +5,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -234,6 +238,7 @@ object CallReportRuntime {
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_callreport_notification)
+            .setLargeIcon(drawableToBitmap(context, R.drawable.callreport_popup_icon, 48))
             .setContentTitle(notificationTitle)
             .setContentText(rowsText.ifBlank { notificationTitle })
             .setPriority(priority)
@@ -249,6 +254,16 @@ object CallReportRuntime {
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+    }
+
+    private fun drawableToBitmap(context: Context, drawableRes: Int, sizeDp: Int): Bitmap? {
+        val drawable: Drawable = ContextCompat.getDrawable(context, drawableRes) ?: return null
+        val sizePx = (sizeDp * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     fun showImmediatePostCallPrompt(
