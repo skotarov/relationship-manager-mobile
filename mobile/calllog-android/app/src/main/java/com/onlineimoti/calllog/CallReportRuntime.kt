@@ -226,16 +226,7 @@ object CallReportRuntime {
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
             else -> phone.ifBlank { result.title.ifBlank { "Call Report" } }
         }
-        val summary = LocalCallStatsProvider.summarize(context, phone)
-        val contactNote = ContactNoteReader.noteForPhone(context, phone)
-        val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
-        val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
-        val noteValue = contactNote.ifBlank { "няма" }
-        val notificationRows = listOf(
-            formatNotificationRow("Разговори", callsValue),
-            formatNotificationRow("Последно", lastValue),
-            formatNotificationRow("Бележка", noteValue),
-        )
+        val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val rowsText = notificationRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle()
             .setBigContentTitle(notificationTitle)
@@ -244,8 +235,7 @@ object CallReportRuntime {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_callreport_notification)
             .setContentTitle(notificationTitle)
-            .setContentText(rowsText)
-            .setStyle(inboxStyle)
+            .setContentText(rowsText.ifBlank { notificationTitle })
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
@@ -254,14 +244,11 @@ object CallReportRuntime {
             .setContentIntent(notePendingIntent)
             .addAction(android.R.drawable.ic_menu_edit, "Edit", notePendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", closePendingIntent)
+        if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(notePendingIntent, fullscreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
-    }
-
-    private fun formatNotificationRow(label: String, value: String): String {
-        return "$label: $value"
     }
 
     fun showImmediatePostCallPrompt(
