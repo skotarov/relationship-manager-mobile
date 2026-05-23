@@ -9,13 +9,29 @@ import androidx.core.content.ContextCompat
 object LocalCallStatsProvider {
     private const val LOCAL_CALL_SCAN_LIMIT = 5000
     private const val CURRENT_CALL_PROTECTION_WINDOW_MS = 30_000L
+    private const val ICON_COMPLETED_CALL = "☎"
+    private const val ICON_FAILED_CALL = "✕"
+    private const val ICON_NOTE = "✎"
+    private const val ICON_INCOMING = "↙"
+    private const val ICON_OUTGOING = "↗"
 
     fun buildLine(context: Context, phone: String): String {
-        val summary = summarize(context, phone) ?: return ""
-        return when {
-            summary.count <= 0 -> "Няма предишни разговори"
-            summary.lastCallAgo.isBlank() -> "Провеждани разговори: ${summary.count}"
-            else -> "Провеждани разговори: ${summary.count} · последен: ${summary.lastCallAgo}"
+        return buildPopupInfoRows(context, phone).firstOrNull().orEmpty()
+    }
+
+    fun buildPopupInfoRows(context: Context, phone: String): List<String> {
+        val summary = summarize(context, phone)
+        val contactNote = ContactNoteReader.noteForPhone(context, phone)
+            .trim()
+            .replace(Regex("\\s+"), " ")
+
+        return buildList {
+            if (summary != null && summary.count > 0 && summary.lastCallAgo.isNotBlank()) {
+                add("${summary.statusIcon} ${summary.directionIcon} ${summary.lastCallAgo}")
+            }
+            if (contactNote.isNotBlank()) {
+                add("$ICON_NOTE $contactNote")
+            }
         }
     }
 
@@ -35,24 +51,31 @@ object LocalCallStatsProvider {
         return LocalCallSummary(
             count = stats.count,
             lastCallAgo = lastCallAgo,
+            lastCallType = stats.lastCallType,
+            lastDurationSeconds = stats.lastDurationSeconds,
+            directionIcon = directionIcon(stats.lastCallType),
+            statusIcon = statusIcon(stats.lastCallType, stats.lastDurationSeconds),
         )
     }
 
     private fun getStats(context: Context, phone: String): LocalCallStats {
         val digits = normalizePhone(phone)
         if (digits.isBlank()) {
-            return LocalCallStats(count = 0, lastCallAtMillis = null)
+            return LocalCallStats(count = 0, lastCallAtMillis = null, lastCallType = null, lastDurationSeconds = null)
         }
 
         val projection = arrayOf(
             CallLog.Calls.NUMBER,
             CallLog.Calls.DATE,
             CallLog.Calls.DURATION,
+            CallLog.Calls.TYPE,
         )
         val sortOrder = "${CallLog.Calls.DATE} DESC"
         val now = System.currentTimeMillis()
         var count = 0
         var lastCallAtMillis: Long? = null
+        var lastCallType: Int? = null
+        var lastDurationSeconds: Long? = null
         var scanned = 0
 
         context.contentResolver.query(
@@ -65,6 +88,7 @@ object LocalCallStatsProvider {
             val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
             val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
             val durationIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
+            val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
 
             while (cursor.moveToNext() && scanned < LOCAL_CALL_SCAN_LIMIT) {
                 scanned += 1
@@ -75,6 +99,7 @@ object LocalCallStatsProvider {
 
                 val callAtMillis = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L
                 val durationSeconds = if (durationIndex >= 0) cursor.getLong(durationIndex) else 0L
+                val callType = if (typeIndex >= 0) cursor.getInt(typeIndex) else null
                 val looksLikeCurrentCall = callAtMillis > 0L &&
                     now - callAtMillis in 0..CURRENT_CALL_PROTECTION_WINDOW_MS &&
                     durationSeconds <= 0L
@@ -85,11 +110,35 @@ object LocalCallStatsProvider {
                 count += 1
                 if (lastCallAtMillis == null && callAtMillis > 0L) {
                     lastCallAtMillis = callAtMillis
+                    lastCallType = callType
+                    lastDurationSeconds = durationSeconds
                 }
             }
         }
 
-        return LocalCallStats(count = count, lastCallAtMillis = lastCallAtMillis)
+        return LocalCallStats(
+            count = count,
+            lastCallAtMillis = lastCallAtMillis,
+            lastCallType = lastCallType,
+            lastDurationSeconds = lastDurationSeconds,
+        )
+    }
+
+    private fun directionIcon(callType: Int?): String {
+        return when (callType) {
+            CallLog.Calls.OUTGOING_TYPE -> ICON_OUTGOING
+            else -> ICON_INCOMING
+        }
+    }
+
+    private fun statusIcon(callType: Int?, durationSeconds: Long?): String {
+        return when (callType) {
+            CallLog.Calls.MISSED_TYPE,
+            CallLog.Calls.REJECTED_TYPE,
+            CallLog.Calls.BLOCKED_TYPE -> ICON_FAILED_CALL
+            CallLog.Calls.OUTGOING_TYPE -> if ((durationSeconds ?: 0L) <= 0L) ICON_FAILED_CALL else ICON_COMPLETED_CALL
+            else -> if ((durationSeconds ?: 1L) <= 0L) ICON_FAILED_CALL else ICON_COMPLETED_CALL
+        }
     }
 
     private fun formatAgo(diffMs: Long): String {
@@ -134,10 +183,16 @@ object LocalCallStatsProvider {
     data class LocalCallSummary(
         val count: Int,
         val lastCallAgo: String,
+        val lastCallType: Int? = null,
+        val lastDurationSeconds: Long? = null,
+        val directionIcon: String = ICON_INCOMING,
+        val statusIcon: String = ICON_COMPLETED_CALL,
     )
 
     private data class LocalCallStats(
         val count: Int,
         val lastCallAtMillis: Long?,
+        val lastCallType: Int?,
+        val lastDurationSeconds: Long?,
     )
 }
