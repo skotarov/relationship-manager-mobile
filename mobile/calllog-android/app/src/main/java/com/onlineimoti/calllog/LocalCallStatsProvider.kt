@@ -9,7 +9,7 @@ import androidx.core.content.ContextCompat
 object LocalCallStatsProvider {
     private const val LOCAL_CALL_SCAN_LIMIT = 5000
     private const val CURRENT_CALL_PROTECTION_WINDOW_MS = 30_000L
-    private const val ICON_COMPLETED_CALL = "☎"
+    private const val ICON_COMPLETED_CALL = "✆"
     private const val ICON_FAILED_CALL = "✕"
     private const val ICON_NOTE = "✎"
     private const val ICON_INCOMING = "↙"
