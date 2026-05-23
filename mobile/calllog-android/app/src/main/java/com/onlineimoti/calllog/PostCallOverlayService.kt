@@ -147,11 +147,7 @@ class PostCallOverlayService : Service() {
             title.isNotBlank() && title != phone -> "$title • $phone"
             else -> phone.ifBlank { title.ifBlank { "Call Report" } }
         }
-        val summary = LocalCallStatsProvider.summarize(this, phone)
-        val contactNote = ContactNoteReader.noteForPhone(this, phone)
-        val callsValue = summary?.let { if (it.count <= 0) "няма предишни разговори" else it.count.toString() }.orEmpty().ifBlank { "няма данни" }
-        val lastValue = summary?.let { if (it.count <= 0) "няма предишно обаждане" else it.lastCallAgo.ifBlank { "няма данни" } }.orEmpty().ifBlank { "няма данни" }
-        val noteValue = contactNote.ifBlank { "няма" }
+        val infoRows = LocalCallStatsProvider.buildPopupInfoRows(this, phone)
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -193,14 +189,27 @@ class PostCallOverlayService : Service() {
         })
         contentColumn.addView(titleRow)
 
-        val dataColumn = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(6), 0, 0)
+        if (infoRows.isNotEmpty()) {
+            val dataColumn = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, dp(6), 0, 0)
+            }
+            infoRows.forEachIndexed { index, line ->
+                dataColumn.addView(TextView(this).apply {
+                    text = line
+                    textSize = 14f
+                    setTextColor(Color.rgb(75, 85, 99))
+                    setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
+                    maxLines = if (line.startsWith("✎")) 2 else 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                })
+            }
+            contentColumn.addView(dataColumn)
         }
-        dataColumn.addView(twoColumnRow("Разговори", callsValue))
-        dataColumn.addView(twoColumnRow("Последно", lastValue, topPadding = dp(2)))
-        dataColumn.addView(twoColumnRow("Бележка", noteValue, topPadding = dp(2), maxLines = 2))
-        contentColumn.addView(dataColumn)
 
         contentRow.addView(contentColumn)
         card.addView(contentRow)
