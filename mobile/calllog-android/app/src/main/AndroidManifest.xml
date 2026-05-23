@@ -43,6 +43,10 @@
             android:enabled="true"
             android:exported="false" />
         <receiver
+            android:name=".NoteEditorReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
             android:name=".CallStateReceiver"
             android:enabled="true"
             android:exported="false">
