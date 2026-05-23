@@ -406,10 +406,10 @@ class PostCallOverlayService : Service() {
 
     private fun notificationIcon(): ImageView {
         return ImageView(this).apply {
-            setImageResource(R.mipmap.ic_launcher)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setImageResource(R.drawable.callreport_popup_icon)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = false
-            setPadding(dp(2), dp(2), dp(2), dp(2))
+            setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
                 marginEnd = dp(12)
                 topMargin = dp(2)
