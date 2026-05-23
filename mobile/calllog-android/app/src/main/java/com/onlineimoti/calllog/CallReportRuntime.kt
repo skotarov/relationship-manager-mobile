@@ -186,6 +186,16 @@ object CallReportRuntime {
         )
     }
 
+    private fun dismissPendingIntent(context: Context, notificationId: Int): PendingIntent {
+        return PendingIntent.getBroadcast(
+            context,
+            1006,
+            Intent(context, NotificationDismissReceiver::class.java)
+                .putExtra(NotificationDismissReceiver.EXTRA_NOTIFICATION_ID, notificationId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun showLookupNotificationInternal(
         context: Context,
         result: LookupResult,
@@ -203,6 +213,7 @@ object CallReportRuntime {
             cancel(POST_CALL_NOTIFICATION_ID)
         }
         val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
+        val closePendingIntent = dismissPendingIntent(context, notificationId)
 
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val notificationTitle = when {
@@ -238,6 +249,7 @@ object CallReportRuntime {
             .setOnlyAlertOnce(true)
             .setContentIntent(notePendingIntent)
             .addAction(android.R.drawable.ic_menu_edit, "Edit", notePendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", closePendingIntent)
         if (fullscreen) builder.setFullScreenIntent(notePendingIntent, true)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
