@@ -145,6 +145,7 @@ object CallReportRuntime {
             notificationId = LOOKUP_NOTIFICATION_ID,
             priority = NotificationCompat.PRIORITY_HIGH,
             markPopup = true,
+            alertAgain = true,
         )
     }
 
@@ -164,6 +165,7 @@ object CallReportRuntime {
             notificationId = LOOKUP_NOTIFICATION_ID,
             priority = NotificationCompat.PRIORITY_LOW,
             markPopup = false,
+            alertAgain = false,
         )
     }
 
@@ -206,11 +208,13 @@ object CallReportRuntime {
         notificationId: Int,
         priority: Int,
         markPopup: Boolean,
+        alertAgain: Boolean,
     ) {
         ensureNotificationChannel(context)
         NotificationManagerCompat.from(context).apply {
             cancel(LEGACY_LOOKUP_SHADE_NOTIFICATION_ID)
             cancel(POST_CALL_NOTIFICATION_ID)
+            if (alertAgain) cancel(notificationId)
         }
         val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
         val closePendingIntent = dismissPendingIntent(context, notificationId)
@@ -246,11 +250,11 @@ object CallReportRuntime {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
             .setOngoing(true)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(notePendingIntent)
             .addAction(android.R.drawable.ic_menu_edit, "Edit", notePendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", closePendingIntent)
-        if (fullscreen) builder.setFullScreenIntent(notePendingIntent, true)
+        if (fullscreen || alertAgain) builder.setFullScreenIntent(notePendingIntent, fullscreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
