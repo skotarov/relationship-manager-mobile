@@ -238,7 +238,7 @@ object CallReportRuntime {
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_callreport_notification)
-            .setLargeIcon(drawableToBitmap(context, R.drawable.callreport_popup_icon, 48))
+            .setLargeIcon(drawableToBitmap(context, R.mipmap.ic_launcher, 48))
             .setContentTitle(notificationTitle)
             .setContentText(rowsText.ifBlank { notificationTitle })
             .setPriority(priority)
@@ -247,8 +247,8 @@ object CallReportRuntime {
             .setOngoing(true)
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(notePendingIntent)
-            .addAction(android.R.drawable.ic_menu_edit, "Edit", notePendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", closePendingIntent)
+            .addAction(0, "Edit", notePendingIntent)
+            .addAction(0, "Close", closePendingIntent)
         if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(notePendingIntent, fullscreen)
 
