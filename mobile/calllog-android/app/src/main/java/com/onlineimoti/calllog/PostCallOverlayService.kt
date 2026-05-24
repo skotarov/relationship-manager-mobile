@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.InputType
@@ -258,6 +259,7 @@ class PostCallOverlayService : Service() {
             setTextColor(Color.rgb(17, 24, 39))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
+        titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         card.addView(titleRow)
 
@@ -314,6 +316,32 @@ class PostCallOverlayService : Service() {
         }, 250)
     }
 
+    private fun openCalendarEvent(displayName: String) {
+        val safeName = displayName.ifBlank { phone.ifBlank { "контакт" } }
+        val eventTitle = "Среща с $safeName"
+        val description = buildString {
+            appendLine("Име: $safeName")
+            if (phone.isNotBlank()) appendLine("Телефон: $phone")
+        }.trim()
+        val begin = System.currentTimeMillis() + 60 * 60 * 1000L
+        val end = begin + 60 * 60 * 1000L
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, eventTitle)
+            putExtra(CalendarContract.Events.DESCRIPTION, description)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching {
+            startActivity(intent)
+            removeOverlay()
+            stopSelf()
+        }.onFailure {
+            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun showGeneralNoteEditor() {
         handler.removeCallbacksAndMessages(null)
         removeOverlay()
@@ -355,6 +383,7 @@ class PostCallOverlayService : Service() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })
+        titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         card.addView(titleRow)
 
