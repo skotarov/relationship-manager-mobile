@@ -179,11 +179,15 @@ object CallReportRuntime {
         phone: String,
         direction: String,
         title: String,
+        callAt: Long = 0L,
+        durationSeconds: Long = 0L,
     ): PendingIntent {
         val intent = Intent(context, NoteEditorReceiver::class.java)
             .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
             .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
             .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+            .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
+            .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
         return PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -220,7 +224,16 @@ object CallReportRuntime {
             cancel(POST_CALL_NOTIFICATION_ID)
             if (alertAgain) cancel(notificationId)
         }
-        val notePendingIntent = noteEditorPendingIntent(context, 1001, phone, direction, result.title)
+        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        val notePendingIntent = noteEditorPendingIntent(
+            context = context,
+            requestCode = 1001,
+            phone = phone,
+            direction = direction.ifBlank { latestCall?.direction.orEmpty() },
+            title = result.title,
+            callAt = latestCall?.startedAt ?: 0L,
+            durationSeconds = latestCall?.durationSeconds ?: 0L,
+        )
         val closePendingIntent = dismissPendingIntent(context, notificationId)
 
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
