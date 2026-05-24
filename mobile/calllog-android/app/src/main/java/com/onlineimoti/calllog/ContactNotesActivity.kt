@@ -7,18 +7,32 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 
 class ContactNotesActivity : Activity() {
+    private var phone: String = ""
+    private var titleText: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
-        val title = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
-        setContentView(buildContent(phone, title))
+        phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
+        titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
+        render()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        render()
+    }
+
+    private fun render() {
+        setContentView(buildContent(phone, titleText))
     }
 
     private fun buildContent(phone: String, title: String): ScrollView {
@@ -124,6 +138,9 @@ class ContactNotesActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.rgb(224, 246, 255), dp(12), Color.rgb(125, 211, 252), dp(1))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openEditPopup(note) }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -144,7 +161,29 @@ class ContactNotesActivity : Activity() {
                 setTextColor(Color.rgb(8, 47, 73))
                 setPadding(0, dp(5), 0, 0)
             })
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = "Натисни за редакция"
+                textSize = 11.5f
+                setTextColor(Color.rgb(14, 116, 144))
+                setPadding(0, dp(6), 0, 0)
+            })
         }
+    }
+
+    private fun openEditPopup(note: ContactCallNote) {
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Разреши 'Показване върху други приложения', за да редактираш бележката.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startService(
+            Intent(this, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, note.direction)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, note.callAt)
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, note.durationSeconds)
+        )
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
