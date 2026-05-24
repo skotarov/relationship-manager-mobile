@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
@@ -20,13 +22,23 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
+    private val handler = Handler(Looper.getMainLooper())
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
     private var noteSavedReceiverRegistered = false
+    private var noteRefreshUntilMs = 0L
 
     private val noteSavedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             renderCalls()
+        }
+    }
+
+    private val noteRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (System.currentTimeMillis() > noteRefreshUntilMs) return
+            renderCalls()
+            handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
         }
     }
 
@@ -60,6 +72,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onPause() {
         unregisterNoteSavedReceiver()
+        handler.removeCallbacks(noteRefreshRunnable)
         super.onPause()
     }
 
@@ -248,6 +261,13 @@ class HomeActivity : AppCompatActivity() {
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
         )
+        startTemporaryNoteRefresh()
+    }
+
+    private fun startTemporaryNoteRefresh() {
+        noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
+        handler.removeCallbacks(noteRefreshRunnable)
+        handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
     }
 
     private fun noteKey(number: String): String {
@@ -263,5 +283,7 @@ class HomeActivity : AppCompatActivity() {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_NOTE_PHONE = "phone"
         private const val PAGE_SIZE = 20
+        private const val NOTE_REFRESH_INTERVAL_MS = 1000L
+        private const val NOTE_REFRESH_WINDOW_MS = 120_000L
     }
 }
