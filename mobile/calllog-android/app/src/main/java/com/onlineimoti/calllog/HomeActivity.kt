@@ -13,14 +13,11 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.card.MaterialCardView
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
-import java.util.concurrent.Executors
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
-    private val executor = Executors.newSingleThreadExecutor()
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
-    private var serverNotesByNumber: Map<String, String> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +48,6 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         binding.homeCallsContainer.removeAllViews()
-        serverNotesByNumber = emptyMap()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
             binding.paginationContainer.visibility = android.view.View.GONE
@@ -72,56 +68,29 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
+        val contactNotesByNumber = loadContactNotesForCurrentPage()
+
         binding.homeStatusText.text = "Разговори ${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + currentCalls.size}"
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = currentCalls.size >= PAGE_SIZE
         binding.pageText.text = "Стр. ${pageIndex + 1}"
         binding.paginationContainer.visibility = android.view.View.VISIBLE
         currentCalls.forEach { call ->
-            binding.homeCallsContainer.addView(compactCallRow(call, serverNotesByNumber[noteKey(call.number)]))
-        }
-        loadServerNotesForCurrentPage()
-    }
-
-    private fun renderCurrentPageWithNotes() {
-        binding.homeCallsContainer.removeAllViews()
-        currentCalls.forEach { call ->
-            binding.homeCallsContainer.addView(compactCallRow(call, serverNotesByNumber[noteKey(call.number)]))
+            binding.homeCallsContainer.addView(compactCallRow(call, contactNotesByNumber[noteKey(call.number)]))
         }
     }
 
-    private fun loadServerNotesForCurrentPage() {
-        val config = ConfigStore.load(this)
-        if (config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-            return
-        }
-
-        val visibleNumbers = currentCalls.map { it.number }.distinctBy { noteKey(it) }
-        if (visibleNumbers.isEmpty()) {
-            return
-        }
-
-        binding.homeStatusText.text = "${binding.homeStatusText.text} • зареждам бележки…"
-        executor.execute {
-            val notes = linkedMapOf<String, String>()
-            visibleNumbers.forEach { number ->
-                runCatching {
-                    CallReportRuntime.fetchLookup(config, number, "").lines
-                        .firstOrNull { line -> isUsefulServerNote(line) }
-                        .orEmpty()
-                }.getOrDefault("").takeIf { it.isNotBlank() }?.let { note ->
-                    notes[noteKey(number)] = note
-                }
-            }
-            runOnUiThread {
-                serverNotesByNumber = notes
-                binding.homeStatusText.text = "Разговори ${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + currentCalls.size}"
-                renderCurrentPageWithNotes()
+    private fun loadContactNotesForCurrentPage(): Map<String, String> {
+        val notes = linkedMapOf<String, String>()
+        currentCalls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
+            ContactNoteReader.noteForPhone(this, number).takeIf { it.isNotBlank() }?.let { note ->
+                notes[noteKey(number)] = note
             }
         }
+        return notes
     }
 
-    private fun compactCallRow(call: PhoneCallRecord, serverNote: String? = null): MaterialCardView {
+    private fun compactCallRow(call: PhoneCallRecord, contactNote: String? = null): MaterialCardView {
         val card = MaterialCardView(this).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
@@ -170,9 +139,9 @@ class HomeActivity : AppCompatActivity() {
             textSize = 12.5f
             maxLines = 1
         })
-        if (!serverNote.isNullOrBlank()) {
+        if (!contactNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
-                text = "📝 $serverNote"
+                text = "📝 $contactNote"
                 setTextColor(getColor(R.color.calllog_muted_text))
                 textSize = 12.5f
                 maxLines = 2
@@ -222,16 +191,6 @@ class HomeActivity : AppCompatActivity() {
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, call.displayName)
         )
-    }
-
-    private fun isUsefulServerNote(line: String): Boolean {
-        val normalized = line.trim()
-        if (normalized.isBlank()) {
-            return false
-        }
-        return !normalized.startsWith("В Call Report:") &&
-            !normalized.startsWith("Предишни разговори:") &&
-            !normalized.startsWith("В телефона:")
     }
 
     private fun noteKey(number: String): String {
