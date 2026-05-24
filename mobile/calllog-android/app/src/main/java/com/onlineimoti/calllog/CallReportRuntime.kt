@@ -196,6 +196,23 @@ object CallReportRuntime {
         )
     }
 
+    private fun contactNotesPendingIntent(
+        context: Context,
+        requestCode: Int,
+        phone: String,
+        title: String,
+    ): PendingIntent {
+        val intent = Intent(context, ContactNotesActivity::class.java)
+            .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+            .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
+        return PendingIntent.getActivity(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun dismissPendingIntent(context: Context, notificationId: Int): PendingIntent {
         return PendingIntent.getBroadcast(
             context,
@@ -234,8 +251,6 @@ object CallReportRuntime {
             callAt = latestCall?.startedAt ?: 0L,
             durationSeconds = latestCall?.durationSeconds ?: 0L,
         )
-        val closePendingIntent = dismissPendingIntent(context, notificationId)
-
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val notificationTitle = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
@@ -243,6 +258,9 @@ object CallReportRuntime {
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
             else -> phone.ifBlank { result.title.ifBlank { "Call Report" } }
         }
+        val contactNotesIntent = contactNotesPendingIntent(context, 1002, phone, notificationTitle)
+        val closePendingIntent = dismissPendingIntent(context, notificationId)
+
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val rowsText = notificationRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle()
@@ -260,6 +278,7 @@ object CallReportRuntime {
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(notePendingIntent)
             .addAction(0, "Edit", notePendingIntent)
+            .addAction(0, "Всички", contactNotesIntent)
             .addAction(0, "Close", closePendingIntent)
         if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(notePendingIntent, fullscreen)
