@@ -1,8 +1,12 @@
 package com.onlineimoti.calllog
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
@@ -18,6 +22,13 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
+    private var noteSavedReceiverRegistered = false
+
+    private val noteSavedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            renderCalls()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +54,31 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        registerNoteSavedReceiver()
         renderCalls()
+    }
+
+    override fun onPause() {
+        unregisterNoteSavedReceiver()
+        super.onPause()
+    }
+
+    private fun registerNoteSavedReceiver() {
+        if (noteSavedReceiverRegistered) return
+        val filter = IntentFilter(ACTION_CONTACT_NOTE_SAVED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(noteSavedReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(noteSavedReceiver, filter)
+        }
+        noteSavedReceiverRegistered = true
+    }
+
+    private fun unregisterNoteSavedReceiver() {
+        if (!noteSavedReceiverRegistered) return
+        runCatching { unregisterReceiver(noteSavedReceiver) }
+        noteSavedReceiverRegistered = false
     }
 
     private fun renderCalls() {
@@ -69,6 +104,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         val contactNotesByNumber = loadContactNotesForCurrentPage()
+        val contactNamesByNumber = loadContactNamesForCurrentPage()
 
         binding.homeStatusText.text = "Разговори ${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + currentCalls.size}"
         binding.previousCallsButton.isEnabled = pageIndex > 0
@@ -76,7 +112,14 @@ class HomeActivity : AppCompatActivity() {
         binding.pageText.text = "Стр. ${pageIndex + 1}"
         binding.paginationContainer.visibility = android.view.View.VISIBLE
         currentCalls.forEach { call ->
-            binding.homeCallsContainer.addView(compactCallRow(call, contactNotesByNumber[noteKey(call.number)]))
+            val displayName = contactNamesByNumber[noteKey(call.number)].orEmpty().ifBlank { call.displayName }
+            binding.homeCallsContainer.addView(
+                compactCallRow(
+                    call = call,
+                    displayName = displayName,
+                    contactNote = contactNotesByNumber[noteKey(call.number)],
+                )
+            )
         }
     }
 
@@ -90,7 +133,21 @@ class HomeActivity : AppCompatActivity() {
         return notes
     }
 
-    private fun compactCallRow(call: PhoneCallRecord, contactNote: String? = null): MaterialCardView {
+    private fun loadContactNamesForCurrentPage(): Map<String, String> {
+        val names = linkedMapOf<String, String>()
+        currentCalls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
+            ContactGroupFilter.resolveDisplayName(this, number).orEmpty().takeIf { it.isNotBlank() }?.let { name ->
+                names[noteKey(number)] = name
+            }
+        }
+        return names
+    }
+
+    private fun compactCallRow(
+        call: PhoneCallRecord,
+        displayName: String,
+        contactNote: String? = null,
+    ): MaterialCardView {
         val card = MaterialCardView(this).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
@@ -123,7 +180,7 @@ class HomeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         textColumn.addView(TextView(this).apply {
-            text = call.displayName
+            text = displayName
             setTextColor(getColor(R.color.calllog_text))
             textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
@@ -160,7 +217,7 @@ class HomeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
                 leftMargin = dp(8)
             }
-            setOnClickListener { openContactNotePopupForCall(call) }
+            setOnClickListener { openContactNotePopupForCall(call, displayName) }
         })
 
         card.addView(row)
@@ -178,7 +235,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun openContactNotePopupForCall(call: PhoneCallRecord) {
+    private fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
         if (!Settings.canDrawOverlays(this)) {
             binding.homeStatusText.text = "За popup бележка разреши 'Показване върху други приложения' от Настройки."
             return
@@ -189,7 +246,7 @@ class HomeActivity : AppCompatActivity() {
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, call.displayName)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
         )
     }
 
@@ -203,6 +260,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
+        const val EXTRA_NOTE_PHONE = "phone"
         private const val PAGE_SIZE = 20
     }
 }
