@@ -139,7 +139,7 @@ class HomeActivity : AppCompatActivity() {
     private fun loadContactNotesForCurrentPage(): Map<String, String> {
         val notes = linkedMapOf<String, String>()
         currentCalls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
-            ContactNoteReader.noteForPhone(this, number).takeIf { it.isNotBlank() }?.let { note ->
+            ContactNoteReader.generalNoteForPhone(this, number).takeIf { it.isNotBlank() }?.let { note ->
                 notes[noteKey(number)] = note
             }
         }
@@ -261,6 +261,8 @@ class HomeActivity : AppCompatActivity() {
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, call.startedAt)
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
         )
         startTemporaryNoteRefresh()
     }
