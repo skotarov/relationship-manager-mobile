@@ -15,14 +15,30 @@ import java.io.RandomAccessFile
 object ContactNoteReader {
     private const val LOCAL_NOTE_PREFS = "callreport_local_contact_notes"
 
-    fun noteForPhone(context: Context, phoneNumber: String): String {
+    fun noteForPhone(context: Context, phoneNumber: String): String = generalNoteForPhone(context, phoneNumber)
+
+    fun generalNoteForPhone(context: Context, phoneNumber: String): String {
         if (phoneNumber.isBlank()) return ""
-        LocalNotesFileStore.latestNoteForPhone(phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
-        readContactNote(context, phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
+        val hasContact = findContactId(context, phoneNumber) != null
+        if (hasContact) readContactNote(context, phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
+        if (!hasContact) LocalNotesFileStore.profileGeneralNote(phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
         return readLocalNote(context, phoneNumber)
     }
 
-    fun saveNoteForPhone(
+    fun callNoteForPhone(phoneNumber: String, callAt: Long, direction: String = ""): String {
+        return LocalNotesFileStore.noteForCall(phoneNumber, callAt, direction)
+    }
+
+    fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
+        if (phoneNumber.isBlank()) return false
+        val hasContact = findContactId(context, phoneNumber) != null
+        val savedToContact = if (hasContact) saveContactNote(context, phoneNumber, note) else false
+        val savedToProfile = if (!hasContact) LocalNotesFileStore.saveUnknownGeneralNote(phoneNumber, note) else false
+        saveLocalNote(context, phoneNumber, note)
+        return savedToContact || savedToProfile || phoneNumber.normalizePhoneKey().isNotBlank()
+    }
+
+    fun saveCallNoteForPhone(
         context: Context,
         phoneNumber: String,
         note: String,
@@ -30,9 +46,9 @@ object ContactNoteReader {
         callAt: Long = 0L,
         durationSeconds: Long = 0L,
     ): Boolean {
-        if (phoneNumber.isBlank()) return false
+        if (phoneNumber.isBlank() || note.isBlank()) return false
         val hasContact = findContactId(context, phoneNumber) != null
-        val savedToFile = LocalNotesFileStore.appendNote(
+        return LocalNotesFileStore.appendCallNote(
             phoneNumber = phoneNumber,
             note = note,
             direction = direction,
@@ -40,8 +56,10 @@ object ContactNoteReader {
             durationSeconds = durationSeconds,
             isUnknownContact = !hasContact,
         )
-        saveLocalNote(context, phoneNumber, note)
-        return savedToFile || phoneNumber.normalizePhoneKey().isNotBlank()
+    }
+
+    fun saveNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
+        return saveGeneralNoteForPhone(context, phoneNumber, note)
     }
 
     private fun readContactNote(context: Context, phoneNumber: String): String {
@@ -56,7 +74,6 @@ object ContactNoteReader {
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0).orEmpty().trim() else "" }.orEmpty()
     }
 
-    @Suppress("unused")
     private fun saveContactNote(context: Context, phoneNumber: String, note: String): Boolean {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
         val contactId = findContactId(context, phoneNumber) ?: return false
@@ -123,7 +140,6 @@ object LocalNotesFileStore {
     private const val PROFILE_FILE = "profile.json"
 
     fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
-
     fun publicRootPath(): String = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR).absolutePath
 
     fun latestNoteForPhone(phoneNumber: String): String {
@@ -133,7 +149,49 @@ object LocalNotesFileStore {
         return if (line.isBlank()) "" else runCatching { JSONObject(line).optString("note") }.getOrDefault("").trim()
     }
 
-    fun appendNote(
+    fun noteForCall(phoneNumber: String, callAt: Long, direction: String = ""): String {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || callAt <= 0L || !canUsePublicFolder()) return ""
+        val file = callLogFile(phoneKey, createDirs = false)
+        if (!file.exists()) return ""
+        return runCatching {
+            file.readLines().asReversed().firstNotNullOfOrNull { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@firstNotNullOfOrNull null
+                val sameCall = json.optLong("call_at", 0L) == callAt
+                val sameDirection = direction.isBlank() || json.optString("direction").isBlank() || json.optString("direction") == direction
+                if (sameCall && sameDirection) json.optString("note").trim().takeIf { it.isNotBlank() } else null
+            }.orEmpty()
+        }.getOrDefault("")
+    }
+
+    fun profileGeneralNote(phoneNumber: String): String {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || !canUsePublicFolder()) return ""
+        val file = profileFile(phoneKey, createDirs = false)
+        if (!file.exists()) return ""
+        return runCatching { JSONObject(file.readText()).optString("general_note") }.getOrDefault("").trim()
+    }
+
+    fun saveUnknownGeneralNote(phoneNumber: String, note: String): Boolean {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || !canUsePublicFolder()) return false
+        return runCatching {
+            val now = System.currentTimeMillis()
+            val file = profileFile(phoneKey, createDirs = true)
+            val profile = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
+            profile.put("v", 1)
+            profile.put("phone", phoneNumber)
+            profile.put("normalized_phone", phoneKey)
+            profile.put("has_android_contact", false)
+            profile.put("general_note", note.trim())
+            profile.put("general_note_at", now)
+            profile.put("updated_at", now)
+            file.writeText(profile.toString(2))
+            true
+        }.getOrDefault(false)
+    }
+
+    fun appendCallNote(
         phoneNumber: String,
         note: String,
         direction: String = "",
@@ -148,7 +206,7 @@ object LocalNotesFileStore {
             val now = System.currentTimeMillis()
             val record = JSONObject().apply {
                 put("v", 1)
-                put("type", "note")
+                put("type", "call_note")
                 put("id", "$phoneKey-${if (callAt > 0L) callAt else now}-${direction.ifBlank { "call" }}")
                 put("at", now)
                 put("phone", phoneNumber)
@@ -159,12 +217,12 @@ object LocalNotesFileStore {
                 put("note", trimmedNote)
             }
             callLogFile(phoneKey, createDirs = true).appendText(record.toString() + "\n")
-            if (isUnknownContact) writeUnknownProfile(phoneNumber, phoneKey, trimmedNote, now)
+            if (isUnknownContact) writeUnknownLatestProfile(phoneNumber, phoneKey, trimmedNote, now)
             true
         }.getOrDefault(false)
     }
 
-    private fun writeUnknownProfile(phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
+    private fun writeUnknownLatestProfile(phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
         val file = profileFile(phoneKey, createDirs = true)
         val profile = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
         profile.put("v", 1)
