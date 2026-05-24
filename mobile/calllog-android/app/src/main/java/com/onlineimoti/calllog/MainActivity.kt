@@ -2,12 +2,13 @@ package com.onlineimoti.calllog
 
 import android.Manifest
 import android.app.NotificationManager
+import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.app.role.RoleManager
+import android.os.Environment
 import android.provider.Settings
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -31,6 +32,12 @@ class MainActivity : AppCompatActivity() {
 
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (hasCallScreeningRole()) setStatus("Call screening role е активирана.")
+        refreshPermissionSummary()
+        requestNextPermissionStep()
+    }
+
+    private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (canUsePublicNotesFolder()) setStatus("Публичната папка за бележки е достъпна: ${LocalNotesFileStore.publicRootPath()}")
         refreshPermissionSummary()
         requestNextPermissionStep()
     }
@@ -66,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
-            setStatus("Настройките са записани локално.")
+            setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
         }
         binding.openFormButton.setOnClickListener {
             saveConfig()
@@ -153,8 +160,12 @@ class MainActivity : AppCompatActivity() {
                 singlePermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
             }
             !hasPermission(Manifest.permission.WRITE_CONTACTS) -> {
-                setStatus("Разреши Contacts write, за да записваме бележката към контакта.")
+                setStatus("Разреши Contacts write за съвместимост със старите бележки към контакти.")
                 singlePermissionLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+            }
+            !canUsePublicNotesFolder() -> {
+                setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
+                requestStorageManagerPermissionIfNeeded()
             }
             !Settings.canDrawOverlays(this) -> {
                 setStatus("Разреши Display over other apps, за custom popup режимите.")
@@ -170,7 +181,7 @@ class MainActivity : AppCompatActivity() {
             }
             else -> {
                 isPermissionFlowRunning = false
-                setStatus("Основните разрешения са проверени.")
+                setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.publicRootPath()}.")
                 refreshPermissionSummary()
             }
         }
@@ -247,11 +258,7 @@ class MainActivity : AppCompatActivity() {
         executor.execute {
             val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
             val title = displayName.ifNullOrBlank { "Локални действия след разговора" }
-            val formUrl = if (remoteReady(config)) {
-                buildFormUrl(config, phone, directionValue())
-            } else {
-                ""
-            }
+            val formUrl = if (remoteReady(config)) buildFormUrl(config, phone, directionValue()) else ""
             runOnUiThread {
                 binding.testEndPopupButton.isEnabled = true
                 CallReportRuntime.showPostCallPromptNotification(
@@ -297,6 +304,7 @@ class MainActivity : AppCompatActivity() {
         val callLogGranted = hasPermission(Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(Manifest.permission.READ_CONTACTS)
         val contactsWriteGranted = hasPermission(Manifest.permission.WRITE_CONTACTS)
+        val publicNotesGranted = canUsePublicNotesFolder()
         val overlayGranted = Settings.canDrawOverlays(this)
         val callScreeningGranted = hasCallScreeningRole()
         val fullscreenGranted = canUseFullScreenIntent()
@@ -307,6 +315,7 @@ class MainActivity : AppCompatActivity() {
             "Call report log" to callLogGranted,
             "Contacts read" to contactsGranted,
             "Contacts write" to contactsWriteGranted,
+            "Public notes folder" to publicNotesGranted,
             "Floating icon" to overlayGranted,
             "Call screening" to callScreeningGranted,
             "Full-screen popup" to fullscreenGranted,
@@ -321,7 +330,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSummaryText.text = builder
 
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !overlayGranted
+        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted || !overlayGranted
         binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
         binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
         binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
@@ -330,9 +339,25 @@ class MainActivity : AppCompatActivity() {
     private fun permissionStateLabel(active: Boolean): String = if (active) "активно" else "липсва"
     private fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun hasPermission(permission: String): Boolean = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
 
     private fun openAppPermissionSettings() {
         startPermissionFlow()
+    }
+
+    private fun requestStorageManagerPermissionIfNeeded() {
+        if (canUsePublicNotesFolder()) {
+            requestNextPermissionStep()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val appIntent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            storageSettingsLauncher.launch(appIntent)
+        } else {
+            requestNextPermissionStep()
+        }
     }
 
     private fun hasCallScreeningRole(): Boolean {
