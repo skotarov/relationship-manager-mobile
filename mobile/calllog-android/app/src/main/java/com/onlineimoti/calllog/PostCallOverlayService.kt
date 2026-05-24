@@ -194,6 +194,7 @@ class PostCallOverlayService : Service() {
             setTextColor(Color.rgb(156, 163, 175))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
         })
+        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         contentColumn.addView(titleRow)
 
         if (infoRows.isNotEmpty()) {
@@ -228,8 +229,6 @@ class PostCallOverlayService : Service() {
         editRow.addView(notificationEditAction("Обща") { showGeneralNoteEditor() })
         editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         editRow.addView(notificationEditAction("Всички") { openContactNotesScreen() })
-        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        editRow.addView(notificationEditAction("Close") { stopSelf() })
         card.addView(editRow)
 
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
