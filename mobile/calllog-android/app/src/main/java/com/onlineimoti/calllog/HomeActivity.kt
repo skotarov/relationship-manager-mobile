@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -126,11 +127,13 @@ class HomeActivity : AppCompatActivity() {
         binding.paginationContainer.visibility = android.view.View.VISIBLE
         currentCalls.forEach { call ->
             val displayName = contactNamesByNumber[noteKey(call.number)].orEmpty().ifBlank { call.displayName }
+            val callNote = ContactNoteReader.callNoteForPhone(call.number, call.startedAt, call.direction)
             binding.homeCallsContainer.addView(
                 compactCallRow(
                     call = call,
                     displayName = displayName,
                     contactNote = contactNotesByNumber[noteKey(call.number)],
+                    callNote = callNote,
                 )
             )
         }
@@ -160,6 +163,7 @@ class HomeActivity : AppCompatActivity() {
         call: PhoneCallRecord,
         displayName: String,
         contactNote: String? = null,
+        callNote: String? = null,
     ): MaterialCardView {
         val card = MaterialCardView(this).apply {
             radius = dp(12).toFloat()
@@ -219,6 +223,22 @@ class HomeActivity : AppCompatActivity() {
                 setPadding(0, dp(3), 0, 0)
             })
         }
+        if (!callNote.isNullOrBlank()) {
+            textColumn.addView(TextView(this).apply {
+                text = "💬 $callNote"
+                setTextColor(Color.rgb(7, 89, 133))
+                textSize = 12.5f
+                maxLines = 3
+                setPadding(dp(8), dp(5), dp(8), dp(5))
+                background = roundedRect(Color.rgb(224, 246, 255), dp(9), Color.rgb(125, 211, 252), dp(1))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(5)
+                }
+            })
+        }
         row.addView(textColumn)
 
         row.addView(ImageButton(this).apply {
@@ -271,6 +291,15 @@ class HomeActivity : AppCompatActivity() {
         noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
         handler.removeCallbacks(noteRefreshRunnable)
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
+    }
+
+    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius.toFloat()
+            setColor(color)
+            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
+        }
     }
 
     private fun noteKey(number: String): String {
