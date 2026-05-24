@@ -22,7 +22,7 @@ class CallReportTileService : TileService() {
     private fun updateTileState() {
         qsTile?.apply {
             label = "Call Report"
-            icon = Icon.createWithResource(this@CallReportTileService, R.mipmap.ic_launcher)
+            icon = Icon.createWithResource(this@CallReportTileService, R.drawable.ic_qs_callreport)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = "Отвори"
             }
