@@ -223,7 +223,7 @@ object CallReportRuntime {
 
     private fun systemPopupLargeIcon(context: Context, phone: String, hasLoggedData: Boolean): Bitmap? {
         contactPhotoBitmap(context, phone)?.let { return it }
-        return if (hasLoggedData) infoBitmap(context, 56) else null
+        return if (hasLoggedData) infoBitmap(context, 45) else null
     }
 
     private fun contactPhotoBitmap(context: Context, phoneNumber: String): Bitmap? {
@@ -241,7 +241,7 @@ object CallReportRuntime {
         return runCatching {
             context.contentResolver.openInputStream(Uri.parse(photoUri)).use { stream ->
                 val original = BitmapFactory.decodeStream(stream) ?: return@use null
-                Bitmap.createScaledBitmap(original, dp(context, 56), dp(context, 56), true)
+                Bitmap.createScaledBitmap(original, dp(context, 45), dp(context, 45), true)
             }
         }.getOrNull()
     }
@@ -255,7 +255,7 @@ object CallReportRuntime {
         paint.color = Color.WHITE
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = Typeface.DEFAULT_BOLD
-        paint.textSize = size * 0.62f
+        paint.textSize = size * 0.56f
         val y = size / 2f - (paint.descent() + paint.ascent()) / 2f
         canvas.drawText("i", size / 2f, y, paint)
         return bitmap
