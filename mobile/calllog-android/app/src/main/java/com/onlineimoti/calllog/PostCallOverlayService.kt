@@ -1,15 +1,19 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.animation.ObjectAnimator
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
@@ -224,6 +228,7 @@ class PostCallOverlayService : Service() {
         }
 
         contentRow.addView(contentColumn)
+        contentRow.addView(lookupRightIcon(infoRows.isNotEmpty()))
         card.addView(contentRow)
 
         val editRow = LinearLayout(this).apply {
@@ -453,6 +458,51 @@ class PostCallOverlayService : Service() {
                 marginEnd = dp(12)
                 topMargin = dp(2)
             }
+        }
+    }
+
+    private fun lookupRightIcon(hasLoggedData: Boolean): View {
+        val photoUri = contactPhotoUri(phone)
+        if (!photoUri.isNullOrBlank()) {
+            return ImageView(this).apply {
+                setImageURI(Uri.parse(photoUri))
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                background = roundedRect(Color.rgb(229, 231, 235), dp(28), Color.TRANSPARENT, 0)
+                clipToOutline = true
+                layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
+                    marginStart = dp(12)
+                    topMargin = dp(2)
+                }
+                setOnClickListener { openContactNotesScreen() }
+            }
+        }
+        return TextView(this).apply {
+            text = if (hasLoggedData) "i" else ""
+            textSize = 26f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = roundedRect(if (hasLoggedData) Color.rgb(14, 165, 233) else Color.TRANSPARENT, dp(28), Color.TRANSPARENT, 0)
+            visibility = if (hasLoggedData) View.VISIBLE else View.INVISIBLE
+            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
+                marginStart = dp(12)
+                topMargin = dp(2)
+            }
+            if (hasLoggedData) setOnClickListener { openContactNotesScreen() }
+        }
+    }
+
+    private fun contactPhotoUri(phoneNumber: String): String? {
+        if (phoneNumber.isBlank()) return null
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
+        return contentResolver.query(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phoneNumber).build(),
+            arrayOf(ContactsContract.PhoneLookup.PHOTO_URI, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) null else cursor.getString(0).orEmpty().ifBlank { cursor.getString(1).orEmpty() }.ifBlank { null }
         }
     }
 
