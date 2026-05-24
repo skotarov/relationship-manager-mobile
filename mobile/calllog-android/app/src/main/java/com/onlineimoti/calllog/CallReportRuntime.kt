@@ -250,7 +250,7 @@ object CallReportRuntime {
         notificationRows.forEach { inboxStyle.addLine(it) }
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.callreport_popup_icon)
+            .setSmallIcon(R.drawable.ic_callreport_notification)
             .setContentTitle(notificationTitle)
             .setContentText(rowsText.ifBlank { notificationTitle })
             .setPriority(priority)
