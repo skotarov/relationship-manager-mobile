@@ -171,6 +171,9 @@ class HomeActivity : AppCompatActivity() {
             setStrokeColor(getColor(R.color.calllog_border))
             setCardBackgroundColor(getColor(R.color.calllog_surface))
             cardElevation = 0f
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openContactNotesScreen(call, displayName) }
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -267,6 +270,14 @@ class HomeActivity : AppCompatActivity() {
             !completed && call.direction == "out" -> "🔴↗"
             else -> "⚪"
         }
+    }
+
+    private fun openContactNotesScreen(call: PhoneCallRecord, displayName: String) {
+        startActivity(
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, call.number)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { call.number })
+        )
     }
 
     private fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
