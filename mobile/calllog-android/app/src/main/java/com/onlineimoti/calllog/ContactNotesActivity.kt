@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -42,9 +43,10 @@ class ContactNotesActivity : Activity() {
                 text = phone
                 textSize = 14f
                 setTextColor(Color.rgb(100, 116, 139))
-                setPadding(0, dp(2), 0, dp(14))
+                setPadding(0, dp(2), 0, dp(10))
             })
         }
+        root.addView(allCallsButton())
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         root.addView(sectionTitle("Основна бележка"))
@@ -64,6 +66,33 @@ class ContactNotesActivity : Activity() {
         }
 
         return ScrollView(this).apply { addView(root) }
+    }
+
+    private fun allCallsButton(): TextView {
+        return TextView(this).apply {
+            text = "Всички обаждания"
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = roundedRect(Color.rgb(55, 65, 81), dp(12), Color.TRANSPARENT, 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openAllCallsLog() }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(10) }
+        }
+    }
+
+    private fun openAllCallsLog() {
+        startActivity(
+            Intent(this, HomeActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
+        finish()
     }
 
     private fun sectionTitle(textValue: String): TextView {
