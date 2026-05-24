@@ -193,13 +193,6 @@ class HomeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         textColumn.addView(TextView(this).apply {
-            text = displayName
-            setTextColor(getColor(R.color.calllog_text))
-            textSize = 15f
-            setTypeface(typeface, Typeface.BOLD)
-            maxLines = 1
-        })
-        textColumn.addView(TextView(this).apply {
             text = listOf(
                 call.number,
                 PhoneCallReader.formatStartedAt(call.startedAt),
@@ -208,6 +201,14 @@ class HomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.calllog_muted_text))
             textSize = 12.5f
             maxLines = 1
+        })
+        textColumn.addView(TextView(this).apply {
+            text = displayName
+            setTextColor(getColor(R.color.calllog_text))
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            maxLines = 1
+            setPadding(0, dp(2), 0, 0)
         })
         if (!contactNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
