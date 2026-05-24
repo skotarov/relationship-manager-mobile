@@ -242,6 +242,7 @@ class PostCallOverlayService : Service() {
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = displayName.ifBlank { phone.ifBlank { "Бележка към обаждане" } }
         val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
+        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -282,6 +283,7 @@ class PostCallOverlayService : Service() {
             topMargin = dp(12),
         )
         card.addView(callNoteInput)
+        if (generalNote.isNotBlank()) card.addView(generalNoteInfo(generalNote))
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -476,9 +478,7 @@ class PostCallOverlayService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved >= dp(8)) {
-                        prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
-                    }
+                    if (moved >= dp(8)) prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
                     false
                 }
                 else -> false
@@ -543,6 +543,27 @@ class PostCallOverlayService : Service() {
             null,
         )?.use { cursor ->
             if (!cursor.moveToFirst()) null else cursor.getString(0).orEmpty().ifBlank { cursor.getString(1).orEmpty() }.ifBlank { null }
+        }
+    }
+
+    private fun generalNoteInfo(note: String): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(9), dp(12), dp(10))
+            background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(226, 232, 240), dp(1))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = "Обща бележка — само за информация"
+                textSize = 12.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(100, 116, 139))
+            })
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = note
+                textSize = 14f
+                setTextColor(Color.rgb(51, 65, 85))
+                setPadding(0, dp(4), 0, 0)
+            })
         }
     }
 
