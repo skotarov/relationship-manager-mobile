@@ -169,9 +169,8 @@ object LocalNotesFileStore {
         return runCatching {
             file.readLines().asReversed().firstNotNullOfOrNull { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@firstNotNullOfOrNull null
-                val sameCall = json.optLong("call_at", 0L) == callAt
-                val sameDirection = direction.isBlank() || json.optString("direction").isBlank() || json.optString("direction") == direction
-                if (sameCall && sameDirection) json.optString("note").trim().takeIf { it.isNotBlank() } else null
+                if (!sameCall(json, callAt, direction)) return@firstNotNullOfOrNull null
+                json.optString("note").trim().takeIf { it.isNotBlank() }
             }.orEmpty()
         }.getOrDefault("")
     }
@@ -182,15 +181,21 @@ object LocalNotesFileStore {
         val file = callLogFile(phoneKey, createDirs = false)
         if (!file.exists()) return emptyList()
         return runCatching {
-            file.readLines().mapNotNull { line ->
+            val seen = linkedSetOf<String>()
+            file.readLines().asReversed().mapNotNull { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
+                if (json.optString("type") != "call_note") return@mapNotNull null
                 val note = json.optString("note").trim()
                 if (note.isBlank()) return@mapNotNull null
+                val callAt = json.optLong("call_at", 0L)
+                val direction = json.optString("direction")
+                val key = "${callAt}-${direction.ifBlank { "call" }}"
+                if (!seen.add(key)) return@mapNotNull null
                 ContactCallNote(
                     note = note,
-                    callAt = json.optLong("call_at", 0L),
+                    callAt = callAt,
                     savedAt = json.optLong("at", 0L),
-                    direction = json.optString("direction"),
+                    direction = direction,
                     durationSeconds = json.optLong("duration", 0L),
                 )
             }.sortedByDescending { note -> note.callAt.takeIf { it > 0L } ?: note.savedAt }
@@ -249,10 +254,26 @@ object LocalNotesFileStore {
                 if (durationSeconds > 0L) put("duration", durationSeconds)
                 put("note", trimmedNote)
             }
-            callLogFile(phoneKey, createDirs = true).appendText(record.toString() + "\n")
+            val file = callLogFile(phoneKey, createDirs = true)
+            if (callAt > 0L && file.exists()) {
+                val keptLines = file.readLines().filterNot { line ->
+                    val json = runCatching { JSONObject(line) }.getOrNull() ?: return@filterNot false
+                    sameCall(json, callAt, direction)
+                }
+                file.writeText((keptLines + record.toString()).joinToString("\n") + "\n")
+            } else {
+                file.appendText(record.toString() + "\n")
+            }
             if (isUnknownContact) writeUnknownLatestProfile(phoneNumber, phoneKey, trimmedNote, now)
             true
         }.getOrDefault(false)
+    }
+
+    private fun sameCall(json: JSONObject, callAt: Long, direction: String): Boolean {
+        val sameCallAt = json.optLong("call_at", 0L) == callAt
+        val rowDirection = json.optString("direction")
+        val sameDirection = direction.isBlank() || rowDirection.isBlank() || rowDirection == direction
+        return sameCallAt && sameDirection
     }
 
     private fun writeUnknownLatestProfile(phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
