@@ -39,6 +39,8 @@ class PostCallOverlayService : Service() {
     private var title: String = ""
     private var subtitle: String = ""
     private var lines: List<String> = emptyList()
+    private var callAt: Long = 0L
+    private var durationSeconds: Long = 0L
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
@@ -51,6 +53,16 @@ class PostCallOverlayService : Service() {
         title = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
         subtitle = intent?.getStringExtra(EXTRA_SUBTITLE).orEmpty()
         lines = intent?.getStringArrayListExtra(EXTRA_LINES).orEmpty()
+        callAt = intent?.getLongExtra(EXTRA_CALL_AT, 0L) ?: 0L
+        durationSeconds = intent?.getLongExtra(EXTRA_DURATION, 0L) ?: 0L
+
+        if (callAt <= 0L && phone.isNotBlank()) {
+            PhoneCallReader.callsForPhone(this, phone, limit = 1).firstOrNull()?.let { call ->
+                callAt = call.startedAt
+                durationSeconds = call.durationSeconds
+                if (direction.isBlank()) direction = call.direction
+            }
+        }
 
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
@@ -234,7 +246,8 @@ class PostCallOverlayService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = displayName.ifBlank { phone.ifBlank { "Бележка" } }
-        val currentNote = ContactNoteReader.noteForPhone(this, phone)
+        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
+        val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -255,25 +268,34 @@ class PostCallOverlayService : Service() {
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         card.addView(titleRow)
 
-        val noteInput = EditText(this).apply {
-            setText(currentNote)
-            hint = "Бележка към контакта"
-            minLines = 3
-            maxLines = 7
-            textSize = 16f
-            setTextColor(Color.rgb(17, 24, 39))
-            setHintTextColor(Color.rgb(107, 114, 128))
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setSingleLine(false)
-            gravity = Gravity.TOP or Gravity.START
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
-            clipToOutline = true
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(12)
-            }
+        if (callAt > 0L) {
+            card.addView(TextView(this).apply {
+                text = listOf(
+                    PhoneCallReader.formatStartedAt(callAt),
+                    PhoneCallReader.formatDuration(durationSeconds),
+                    PhoneCallReader.directionLabel(direction),
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                textSize = 13f
+                setTextColor(Color.rgb(107, 114, 128))
+                setPadding(0, dp(6), 0, 0)
+            })
         }
-        card.addView(noteInput)
+
+        val callNoteInput = noteEditText(
+            value = callNote,
+            hintText = "Бележка към това обаждане",
+            minLineCount = 2,
+            topMargin = dp(12),
+        )
+        card.addView(callNoteInput)
+
+        val generalNoteInput = noteEditText(
+            value = generalNote,
+            hintText = "Обща бележка към контакта/номера",
+            minLineCount = 2,
+            topMargin = dp(10),
+        )
+        card.addView(generalNoteInput)
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -281,17 +303,26 @@ class PostCallOverlayService : Service() {
             setPadding(0, dp(12), 0, 0)
         }
         actions.addView(textAction("Запази") {
-            val saved = ContactNoteReader.saveNoteForPhone(this, phone, noteInput.text?.toString().orEmpty())
-            Toast.makeText(this, if (saved) "Бележката е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            val generalSaved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
+            val callText = callNoteInput.text?.toString().orEmpty()
+            val callSaved = callText.isBlank() || ContactNoteReader.saveCallNoteForPhone(
+                context = this,
+                phoneNumber = phone,
+                note = callText,
+                direction = direction,
+                callAt = callAt,
+                durationSeconds = durationSeconds,
+            )
+            Toast.makeText(this, if (generalSaved && callSaved) "Бележките са записани" else "Не успях да запиша всички бележки", Toast.LENGTH_SHORT).show()
             stopSelf()
         })
         card.addView(actions)
 
         addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
-        noteInput.requestFocus()
+        callNoteInput.requestFocus()
         handler.postDelayed({
             (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
-                ?.showSoftInput(noteInput, InputMethodManager.SHOW_IMPLICIT)
+                ?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
     }
 
@@ -413,6 +444,27 @@ class PostCallOverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
                 marginEnd = dp(12)
                 topMargin = dp(2)
+            }
+        }
+    }
+
+    private fun noteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
+        return EditText(this).apply {
+            setText(value)
+            hint = hintText
+            minLines = minLineCount
+            maxLines = 5
+            textSize = 16f
+            setTextColor(Color.rgb(17, 24, 39))
+            setHintTextColor(Color.rgb(107, 114, 128))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine(false)
+            gravity = Gravity.TOP or Gravity.START
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
+            clipToOutline = true
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                this.topMargin = topMargin
             }
         }
     }
@@ -610,6 +662,8 @@ class PostCallOverlayService : Service() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_SUBTITLE = "subtitle"
         const val EXTRA_LINES = "lines"
+        const val EXTRA_CALL_AT = "call_at"
+        const val EXTRA_DURATION = "duration"
         private const val LOADING_POPUP_TIMEOUT_MS = 45_000L
         private const val LOOKUP_POPUP_TIMEOUT_MS = 30_000L
         private const val LOOKUP_POPUP_POSITION_PREFS = "lookup_popup_position"
