@@ -234,6 +234,10 @@ class PostCallOverlayService : Service() {
         editRow.addView(View(this).apply {
             layoutParams = LinearLayout.LayoutParams(dp(8), 1)
         })
+        editRow.addView(notificationEditAction("Всички") { openContactNotesScreen() })
+        editRow.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
+        })
         editRow.addView(notificationEditAction("Close") { stopSelf() })
         card.addView(editRow)
 
@@ -302,6 +306,10 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
         }
+        actions.addView(secondaryTextAction("Всички бележки") { openContactNotesScreen() })
+        actions.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
+        })
         actions.addView(textAction("Запази") {
             val generalSaved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
             val callText = callNoteInput.text?.toString().orEmpty()
@@ -554,6 +562,30 @@ class PostCallOverlayService : Service() {
             setPadding(dp(18), dp(10), dp(18), dp(10))
             setOnClickListener { action() }
         }
+    }
+
+    private fun secondaryTextAction(textValue: String, action: () -> Unit): TextView {
+        return TextView(this).apply {
+            text = textValue
+            textSize = 15f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(55, 65, 81))
+            background = roundedRect(Color.rgb(243, 244, 246), dp(12), Color.TRANSPARENT, 0)
+            clipToOutline = true
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun openContactNotesScreen() {
+        startActivity(
+            Intent(this, ContactNotesActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { title.ifBlank { phone } })
+        )
+        stopSelf()
     }
 
     private fun View.stylePopupCard() {
