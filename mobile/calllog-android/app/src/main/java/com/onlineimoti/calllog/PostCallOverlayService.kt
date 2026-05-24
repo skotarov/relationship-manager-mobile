@@ -111,11 +111,11 @@ class PostCallOverlayService : Service() {
 
         val spinner = TextView(this).apply {
             text = "↻"
-            textSize = 30f
+            textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(55, 65, 81))
-            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) }
+            layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(10) }
         }
         card.addView(spinner)
 
@@ -362,9 +362,9 @@ class PostCallOverlayService : Service() {
         titleRow.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_note_lines)
             scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            background = roundedRect(Color.rgb(243, 244, 246), dp(22), Color.TRANSPARENT, 0)
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(10) }
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
+            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
         })
         titleRow.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -421,10 +421,10 @@ class PostCallOverlayService : Service() {
     private fun showBubble() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val size = dp(58)
+        val size = dp(46)
         val bubble = TextView(this).apply {
             text = "✎"
-            textSize = 30f
+            textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
@@ -432,7 +432,7 @@ class PostCallOverlayService : Service() {
                 shape = GradientDrawable.OVAL
                 setColor(Color.rgb(55, 65, 81))
             }
-            elevation = dp(8).toFloat()
+            elevation = dp(6).toFloat()
             translationZ = dp(2).toFloat()
         }
         val params = WindowManager.LayoutParams(
@@ -535,8 +535,8 @@ class PostCallOverlayService : Service() {
             setImageResource(R.drawable.callreport_popup_icon)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = false
-            layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
-                marginEnd = dp(12)
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply {
+                marginEnd = dp(10)
                 topMargin = dp(2)
             }
         }
@@ -548,10 +548,10 @@ class PostCallOverlayService : Service() {
             return ImageView(this).apply {
                 setImageURI(Uri.parse(photoUri))
                 scaleType = ImageView.ScaleType.CENTER_CROP
-                background = roundedRect(Color.rgb(229, 231, 235), dp(28), Color.TRANSPARENT, 0)
+                background = roundedRect(Color.rgb(229, 231, 235), dp(22), Color.TRANSPARENT, 0)
                 clipToOutline = true
-                layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                    marginStart = dp(12)
+                layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
+                    marginStart = dp(10)
                     topMargin = dp(2)
                 }
                 setOnClickListener { openContactNotesScreen() }
@@ -559,14 +559,14 @@ class PostCallOverlayService : Service() {
         }
         return TextView(this).apply {
             text = if (hasLoggedData) "i" else ""
-            textSize = 26f
+            textSize = 21f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            background = roundedRect(if (hasLoggedData) Color.rgb(14, 165, 233) else Color.TRANSPARENT, dp(28), Color.TRANSPARENT, 0)
+            background = roundedRect(if (hasLoggedData) Color.rgb(14, 165, 233) else Color.TRANSPARENT, dp(22), Color.TRANSPARENT, 0)
             visibility = if (hasLoggedData) View.VISIBLE else View.INVISIBLE
-            layoutParams = LinearLayout.LayoutParams(dp(56), dp(56)).apply {
-                marginStart = dp(12)
+            layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
+                marginStart = dp(10)
                 topMargin = dp(2)
             }
             if (hasLoggedData) setOnClickListener { openContactNotesScreen() }
@@ -656,9 +656,9 @@ class PostCallOverlayService : Service() {
             setImageResource(drawableRes)
             background = ContextCompat.getDrawable(this@PostCallOverlayService, R.drawable.popup_icon_circle_bg)
             scaleType = android.widget.ImageView.ScaleType.CENTER
-            setPadding(dp(9), dp(9), dp(9), dp(9))
-            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
-                marginStart = dp(6)
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply {
+                marginStart = dp(5)
                 marginEnd = dp(0)
             }
             setOnClickListener { action() }
