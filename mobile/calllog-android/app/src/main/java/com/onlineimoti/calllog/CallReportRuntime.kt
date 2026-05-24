@@ -199,7 +199,7 @@ object CallReportRuntime {
         notificationRows.forEach { inboxStyle.addLine(it) }
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_callreport_notification)
+            .setSmallIcon(R.drawable.ic_system_popup_callreport)
             .setColor(BRAND_BLUE)
             .setColorized(true)
             .setLargeIcon(systemPopupLargeIcon(context, phone, notificationRows.isNotEmpty()))
