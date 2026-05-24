@@ -57,7 +57,7 @@ class ContactNotesActivity : Activity() {
                 text = phone
                 textSize = 14f
                 setTextColor(Color.rgb(100, 116, 139))
-                setPadding(0, dp(2), 0, dp(10))
+                setPadding(0, dp(2), 0, dp(6))
             })
         }
         root.addView(allCallsButton())
@@ -85,19 +85,19 @@ class ContactNotesActivity : Activity() {
     private fun allCallsButton(): TextView {
         return TextView(this).apply {
             text = "Всички обаждания"
-            textSize = 15f
+            textSize = 14.5f
             typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            background = roundedRect(Color.rgb(55, 65, 81), dp(12), Color.TRANSPARENT, 0)
+            gravity = Gravity.START
+            setTextColor(Color.rgb(14, 116, 144))
+            setPadding(0, dp(4), 0, dp(8))
+            background = null
             isClickable = true
             isFocusable = true
             setOnClickListener { openAllCallsLog() }
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(10) }
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(4) }
         }
     }
 
