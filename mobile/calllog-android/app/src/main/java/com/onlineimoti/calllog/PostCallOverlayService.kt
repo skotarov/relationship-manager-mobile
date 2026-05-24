@@ -77,6 +77,7 @@ class PostCallOverlayService : Service() {
             MODE_LOADING -> showLoadingPopup()
             MODE_LOOKUP -> showLookupPopup()
             MODE_NOTE -> showNoteEditor()
+            MODE_GENERAL_NOTE -> showGeneralNoteEditor()
             else -> {
                 showBubble()
                 val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
@@ -100,9 +101,6 @@ class PostCallOverlayService : Service() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val titleText = title.ifBlank { phone.ifBlank { "Call Report" } }
-        val messageText = subtitle.ifBlank { "Зареждат се данни…" }
-
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -116,9 +114,7 @@ class PostCallOverlayService : Service() {
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(55, 65, 81))
-            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply {
-                marginEnd = dp(12)
-            }
+            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(12) }
         }
         card.addView(spinner)
 
@@ -127,7 +123,7 @@ class PostCallOverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         textColumn.addView(TextView(this).apply {
-            text = titleText
+            text = title.ifBlank { phone.ifBlank { "Call Report" } }
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 1
@@ -135,7 +131,7 @@ class PostCallOverlayService : Service() {
             setTextColor(Color.rgb(17, 24, 39))
         })
         textColumn.addView(TextView(this).apply {
-            text = messageText
+            text = subtitle.ifBlank { "Зареждат се данни…" }
             textSize = 14f
             setTextColor(Color.rgb(75, 85, 99))
             setPadding(0, dp(2), 0, 0)
@@ -148,7 +144,6 @@ class PostCallOverlayService : Service() {
             interpolator = LinearInterpolator()
             start()
         }
-
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(135), timeoutMs = LOADING_POPUP_TIMEOUT_MS)
     }
 
@@ -170,7 +165,6 @@ class PostCallOverlayService : Service() {
             setPadding(dp(28), dp(20), dp(24), dp(18))
             stylePopupCard()
         }
-
         val contentRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
@@ -181,7 +175,6 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-
         val titleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -199,9 +192,7 @@ class PostCallOverlayService : Service() {
             text = currentTimeText()
             textSize = 12f
             setTextColor(Color.rgb(156, 163, 175))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = dp(8)
-            }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
         })
         contentColumn.addView(titleRow)
 
@@ -218,10 +209,7 @@ class PostCallOverlayService : Service() {
                     setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
                     maxLines = if (line.startsWith("✎")) 2 else 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    )
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 })
             }
             contentColumn.addView(dataColumn)
@@ -236,13 +224,11 @@ class PostCallOverlayService : Service() {
             setPadding(dp(52), dp(12), 0, 0)
         }
         editRow.addView(notificationEditAction("Edit") { showNoteEditor() })
-        editRow.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
-        })
+        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+        editRow.addView(notificationEditAction("Обща") { showGeneralNoteEditor() })
+        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         editRow.addView(notificationEditAction("Всички") { openContactNotesScreen() })
-        editRow.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
-        })
+        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         editRow.addView(notificationEditAction("Close") { stopSelf() })
         card.addView(editRow)
 
@@ -254,8 +240,7 @@ class PostCallOverlayService : Service() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-        val titleText = displayName.ifBlank { phone.ifBlank { "Бележка" } }
-        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
+        val titleText = displayName.ifBlank { phone.ifBlank { "Бележка към обаждане" } }
         val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
 
         val card = LinearLayout(this).apply {
@@ -290,33 +275,24 @@ class PostCallOverlayService : Service() {
             })
         }
 
-        val callNoteInput = noteEditText(
+        val callNoteInput = callNoteEditText(
             value = callNote,
             hintText = "Бележка към това обаждане",
-            minLineCount = 2,
+            minLineCount = 3,
             topMargin = dp(12),
         )
         card.addView(callNoteInput)
-
-        val generalNoteInput = noteEditText(
-            value = generalNote,
-            hintText = "Обща бележка към контакта/номера",
-            minLineCount = 2,
-            topMargin = dp(10),
-        )
-        card.addView(generalNoteInput)
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
         }
-        actions.addView(secondaryTextAction("Всички бележки") { openContactNotesScreen() })
-        actions.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(8), 1)
-        })
+        actions.addView(secondaryTextAction("Обща бележка") { showGeneralNoteEditor() })
+        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+        actions.addView(secondaryTextAction("Всички") { openContactNotesScreen() })
+        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(textAction("Запази") {
-            val generalSaved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
             val callText = callNoteInput.text?.toString().orEmpty()
             val callSaved = callText.isBlank() || ContactNoteReader.saveCallNoteForPhone(
                 context = this,
@@ -326,7 +302,7 @@ class PostCallOverlayService : Service() {
                 callAt = callAt,
                 durationSeconds = durationSeconds,
             )
-            Toast.makeText(this, if (generalSaved && callSaved) "Бележките са записани" else "Не успях да запиша всички бележки", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (callSaved) "Бележката към обаждането е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
             stopSelf()
         })
         card.addView(actions)
@@ -334,15 +310,88 @@ class PostCallOverlayService : Service() {
         addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
         callNoteInput.requestFocus()
         handler.postDelayed({
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
-                ?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
+        }, 250)
+    }
+
+    private fun showGeneralNoteEditor() {
+        handler.removeCallbacksAndMessages(null)
+        removeOverlay()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+        val titleText = displayName.ifBlank { phone.ifBlank { "Обща бележка" } }
+        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            stylePopupCard()
+        }
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleRow.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_note_lines)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            background = roundedRect(Color.rgb(243, 244, 246), dp(22), Color.TRANSPARENT, 0)
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(10) }
+        })
+        titleRow.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = "Обща бележка"
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(17, 24, 39))
+            })
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = titleText
+                textSize = 13f
+                setTextColor(Color.rgb(107, 114, 128))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        })
+        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
+        card.addView(titleRow)
+
+        val generalNoteInput = noteEditText(
+            value = generalNote,
+            hintText = "Обща бележка към контакта/номера",
+            minLineCount = 4,
+            topMargin = dp(12),
+        )
+        card.addView(generalNoteInput)
+
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            setPadding(0, dp(12), 0, 0)
+        }
+        actions.addView(secondaryTextAction("Към разговора") { showNoteEditor() })
+        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+        actions.addView(secondaryTextAction("Всички") { openContactNotesScreen() })
+        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+        actions.addView(textAction("Запази") {
+            val saved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
+            Toast.makeText(this, if (saved) "Общата бележка е записана" else "Не успях да запиша общата бележка", Toast.LENGTH_SHORT).show()
+            stopSelf()
+        })
+        card.addView(actions)
+
+        addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
+        generalNoteInput.requestFocus()
+        handler.postDelayed({
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(generalNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
     }
 
     private fun showBubble() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
         val size = dp(58)
         val bubble = TextView(this).apply {
             text = "✎"
@@ -357,7 +406,6 @@ class PostCallOverlayService : Service() {
             elevation = dp(8).toFloat()
             translationZ = dp(2).toFloat()
         }
-
         val params = WindowManager.LayoutParams(
             size,
             size,
@@ -369,7 +417,6 @@ class PostCallOverlayService : Service() {
             x = dp(18)
             y = dp(110)
         }
-
         bubble.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -393,7 +440,6 @@ class PostCallOverlayService : Service() {
                 else -> false
             }
         }
-
         overlayView = bubble
         windowManager?.addView(bubble, params)
     }
@@ -413,7 +459,6 @@ class PostCallOverlayService : Service() {
             y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
             width = resources.displayMetrics.widthPixels - dp(4)
         }
-
         view.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -432,17 +477,13 @@ class PostCallOverlayService : Service() {
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
                     if (moved >= dp(8)) {
-                        prefs.edit()
-                            .putInt(KEY_LOOKUP_POPUP_X, params.x)
-                            .putInt(KEY_LOOKUP_POPUP_Y, params.y)
-                            .apply()
+                        prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
                     }
                     false
                 }
                 else -> false
             }
         }
-
         overlayView = view
         windowManager?.addView(view, params)
         if (timeoutMs > 0) handler.postDelayed({ stopSelf() }, timeoutMs)
@@ -453,7 +494,6 @@ class PostCallOverlayService : Service() {
             setImageResource(R.drawable.callreport_popup_icon)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = false
-            setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
                 marginEnd = dp(12)
                 topMargin = dp(2)
@@ -506,6 +546,14 @@ class PostCallOverlayService : Service() {
         }
     }
 
+    private fun callNoteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
+        return noteEditText(value, hintText, minLineCount, topMargin).apply {
+            setTextColor(Color.rgb(8, 47, 73))
+            setHintTextColor(Color.rgb(14, 116, 144))
+            background = roundedRect(Color.rgb(224, 246, 255), dp(12), Color.rgb(125, 211, 252), dp(1))
+        }
+    }
+
     private fun noteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
         return EditText(this).apply {
             setText(value)
@@ -521,30 +569,7 @@ class PostCallOverlayService : Service() {
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(209, 213, 219), dp(1))
             clipToOutline = true
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                this.topMargin = topMargin
-            }
-        }
-    }
-
-    private fun twoColumnRow(label: String, value: String, topPadding: Int = 0, maxLines: Int = 1): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, topPadding, 0, 0)
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = "$label:"
-                textSize = 14f
-                setTextColor(Color.rgb(107, 114, 128))
-                layoutParams = LinearLayout.LayoutParams(dp(88), LinearLayout.LayoutParams.WRAP_CONTENT)
-            })
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = value
-                textSize = 14f
-                setTextColor(Color.rgb(75, 85, 99))
-                this.maxLines = maxLines
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { this.topMargin = topMargin }
         }
     }
 
@@ -556,35 +581,13 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(75, 85, 99))
             background = roundedRect(Color.rgb(243, 244, 246), dp(22), Color.TRANSPARENT, 0)
-            setPadding(dp(20), dp(12), dp(20), dp(12))
-            minWidth = dp(72)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            minWidth = dp(64)
             setOnClickListener { action() }
         }
     }
 
-    private fun currentTimeText(): String {
-        return android.text.format.DateFormat.getTimeFormat(this).format(Date())
-    }
-
-    private fun keyValueRow(label: String, value: String, topPadding: Int = 0): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, topPadding, 0, 0)
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = label
-                textSize = 14f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(107, 114, 128))
-                layoutParams = LinearLayout.LayoutParams(dp(92), LinearLayout.LayoutParams.WRAP_CONTENT)
-            })
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = value
-                textSize = 14f
-                setTextColor(Color.rgb(31, 41, 55))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
-        }
-    }
+    private fun currentTimeText(): String = android.text.format.DateFormat.getTimeFormat(this).format(Date())
 
     private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton {
         return ImageButton(this).apply {
@@ -609,7 +612,7 @@ class PostCallOverlayService : Service() {
             setTextColor(Color.WHITE)
             background = roundedRect(Color.rgb(55, 65, 81), dp(12), Color.TRANSPARENT, 0)
             clipToOutline = true
-            setPadding(dp(18), dp(10), dp(18), dp(10))
+            setPadding(dp(14), dp(10), dp(14), dp(10))
             setOnClickListener { action() }
         }
     }
@@ -617,13 +620,13 @@ class PostCallOverlayService : Service() {
     private fun secondaryTextAction(textValue: String, action: () -> Unit): TextView {
         return TextView(this).apply {
             text = textValue
-            textSize = 15f
+            textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(55, 65, 81))
             background = roundedRect(Color.rgb(243, 244, 246), dp(12), Color.TRANSPARENT, 0)
             clipToOutline = true
-            setPadding(dp(14), dp(10), dp(14), dp(10))
+            setPadding(dp(10), dp(10), dp(10), dp(10))
             setOnClickListener { action() }
         }
     }
@@ -656,54 +659,6 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun openForm() {
-        showNoteEditor()
-    }
-
-    private fun openFormOrWarn() {
-        showNoteEditor()
-    }
-
-    private fun openCrmLog() {
-        val config = ConfigStore.load(this)
-        if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
-            showServerTokenRequired()
-            return
-        }
-        val url = buildEndpoint(
-            baseUrl = config.baseUrl,
-            path = config.historyPath,
-            params = linkedMapOf("phone" to phone, "direction" to direction, "access_token" to config.accessToken),
-        )
-        startActivity(
-            Intent(this, WebViewActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(WebViewActivity.EXTRA_URL, url)
-                .putExtra(WebViewActivity.EXTRA_PHONE, phone)
-                .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
-        )
-        stopSelf()
-    }
-
-    private fun openSystemHistory(mode: String) {
-        startActivity(
-            Intent(this, SystemCallHistoryActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(SystemCallHistoryActivity.EXTRA_PHONE, phone)
-                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, mode)
-        )
-        stopSelf()
-    }
-
-    private fun openLocalNumberLog() {
-        startActivity(
-            Intent(this, RecentCallsActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(RecentCallsActivity.EXTRA_PHONE_FILTER, phone)
-        )
-        stopSelf()
-    }
-
     private fun showServerTokenRequired() {
         Toast.makeText(this, "За CRM/бележка е нужен access token", Toast.LENGTH_SHORT).show()
     }
@@ -725,21 +680,14 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun String.isMeaningfulPopupLine(): Boolean {
-        val value = trim()
-        if (value.isBlank()) return false
-        return !value.startsWith("Локален режим", ignoreCase = true)
-    }
-
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
         const val EXTRA_MODE = "mode"
         const val MODE_LOADING = "loading"
         const val MODE_LOOKUP = "lookup"
         const val MODE_NOTE = "note"
+        const val MODE_GENERAL_NOTE = "general_note"
         const val EXTRA_FORM_URL = "form_url"
         const val EXTRA_PHONE = "phone"
         const val EXTRA_DIRECTION = "direction"
