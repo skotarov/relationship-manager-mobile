@@ -194,7 +194,6 @@ class PostCallOverlayService : Service() {
             setTextColor(Color.rgb(156, 163, 175))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
         })
-        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         contentColumn.addView(titleRow)
 
         if (infoRows.isNotEmpty()) {
@@ -471,13 +470,21 @@ class PostCallOverlayService : Service() {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = (initialY + (event.rawY - initialTouchY).toInt()).coerceAtLeast(0)
+                    params.y = initialY + (event.rawY - initialTouchY).toInt()
                     windowManager?.updateViewLayout(view, params)
                     false
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved >= dp(8)) prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
+                    if (moved >= dp(8)) {
+                        if (shouldDismissDraggedOverlay(params)) {
+                            stopSelf()
+                        } else {
+                            params.y = params.y.coerceAtLeast(0)
+                            windowManager?.updateViewLayout(view, params)
+                            prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
+                        }
+                    }
                     false
                 }
                 else -> false
@@ -486,6 +493,12 @@ class PostCallOverlayService : Service() {
         overlayView = view
         windowManager?.addView(view, params)
         if (timeoutMs > 0) handler.postDelayed({ stopSelf() }, timeoutMs)
+    }
+
+    private fun shouldDismissDraggedOverlay(params: WindowManager.LayoutParams): Boolean {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+        return kotlin.math.abs(params.x) > screenWidth / 3 || params.y < -dp(110) || params.y > screenHeight - dp(80)
     }
 
     private fun notificationIcon(): ImageView {
