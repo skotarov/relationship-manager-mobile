@@ -191,9 +191,9 @@ class HomeActivity : AppCompatActivity() {
 
         row.addView(TextView(this).apply {
             text = callIcon(call)
-            textSize = 20f
+            textSize = 16f
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(dp(30), ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.WRAP_CONTENT)
         })
 
         val textColumn = LinearLayout(this).apply {
@@ -245,7 +245,7 @@ class HomeActivity : AppCompatActivity() {
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(4) }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(3) }
         }
         actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
         actions.addView(iconButton(R.drawable.ic_note_lines, "Бележка") { openContactNotePopupForCall(call, displayName) })
@@ -262,8 +262,8 @@ class HomeActivity : AppCompatActivity() {
             background = null
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = android.widget.ImageView.ScaleType.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            layoutParams = LinearLayout.LayoutParams(dp(40), dp(44))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
             setOnClickListener { action() }
         }
     }
