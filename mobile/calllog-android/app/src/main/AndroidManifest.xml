@@ -81,6 +81,9 @@
             android:exported="false"
             android:launchMode="singleTop" />
         <activity
+            android:name=".ContactNotesActivity"
+            android:exported="false" />
+        <activity
             android:name=".RecentCallsActivity"
             android:exported="false" />
         <activity
