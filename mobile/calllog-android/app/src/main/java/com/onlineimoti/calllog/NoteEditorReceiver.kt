@@ -12,12 +12,17 @@ class NoteEditorReceiver : BroadcastReceiver() {
 
         if (!Settings.canDrawOverlays(context)) return
 
+        val mode = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE)
+            ?: PostCallOverlayService.MODE_NOTE
+
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty())
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty())
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty())
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L))
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L))
         )
     }
 }
