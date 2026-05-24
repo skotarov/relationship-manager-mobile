@@ -579,6 +579,8 @@ class PostCallOverlayService : Service() {
     }
 
     private fun openContactNotesScreen() {
+        handler.removeCallbacksAndMessages(null)
+        removeOverlay()
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
