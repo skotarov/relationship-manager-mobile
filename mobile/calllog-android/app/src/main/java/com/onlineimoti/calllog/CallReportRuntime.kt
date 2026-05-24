@@ -33,6 +33,7 @@ object CallReportRuntime {
     private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     const val POST_CALL_NOTIFICATION_ID = 2002
     private const val HISTORY_LIMIT = 5
+    private const val BRAND_BLUE = 0xFF0A84FF.toInt()
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -199,6 +200,8 @@ object CallReportRuntime {
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_callreport_notification)
+            .setColor(BRAND_BLUE)
+            .setColorized(true)
             .setLargeIcon(systemPopupLargeIcon(context, phone, notificationRows.isNotEmpty()))
             .setContentTitle(notificationTitle)
             .setContentText(rowsText.ifBlank { notificationTitle })
