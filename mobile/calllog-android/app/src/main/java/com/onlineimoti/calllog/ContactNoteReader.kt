@@ -12,6 +12,14 @@ import org.json.JSONObject
 import java.io.File
 import java.io.RandomAccessFile
 
+data class ContactCallNote(
+    val note: String,
+    val callAt: Long,
+    val savedAt: Long,
+    val direction: String,
+    val durationSeconds: Long,
+)
+
 object ContactNoteReader {
     private const val LOCAL_NOTE_PREFS = "callreport_local_contact_notes"
 
@@ -27,6 +35,10 @@ object ContactNoteReader {
 
     fun callNoteForPhone(phoneNumber: String, callAt: Long, direction: String = ""): String {
         return LocalNotesFileStore.noteForCall(phoneNumber, callAt, direction)
+    }
+
+    fun callNotesForPhone(phoneNumber: String): List<ContactCallNote> {
+        return LocalNotesFileStore.allCallNotes(phoneNumber)
     }
 
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
@@ -162,6 +174,27 @@ object LocalNotesFileStore {
                 if (sameCall && sameDirection) json.optString("note").trim().takeIf { it.isNotBlank() } else null
             }.orEmpty()
         }.getOrDefault("")
+    }
+
+    fun allCallNotes(phoneNumber: String): List<ContactCallNote> {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || !canUsePublicFolder()) return emptyList()
+        val file = callLogFile(phoneKey, createDirs = false)
+        if (!file.exists()) return emptyList()
+        return runCatching {
+            file.readLines().mapNotNull { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
+                val note = json.optString("note").trim()
+                if (note.isBlank()) return@mapNotNull null
+                ContactCallNote(
+                    note = note,
+                    callAt = json.optLong("call_at", 0L),
+                    savedAt = json.optLong("at", 0L),
+                    direction = json.optString("direction"),
+                    durationSeconds = json.optLong("duration", 0L),
+                )
+            }.sortedByDescending { note -> note.callAt.takeIf { it > 0L } ?: note.savedAt }
+        }.getOrDefault(emptyList())
     }
 
     fun profileGeneralNote(phoneNumber: String): String {
