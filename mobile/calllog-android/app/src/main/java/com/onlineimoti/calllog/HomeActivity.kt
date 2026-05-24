@@ -1,14 +1,16 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -179,18 +181,17 @@ class HomeActivity : AppCompatActivity() {
         }
         row.addView(textColumn)
 
-        row.addView(MaterialButton(this).apply {
-            text = "Бележка"
-            minWidth = 0
-            minHeight = dp(36)
-            setPadding(dp(10), 0, dp(10), 0)
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(40),
-            ).apply {
+        row.addView(ImageButton(this).apply {
+            setImageResource(R.drawable.ic_note_lines)
+            contentDescription = "Бележка"
+            background = null
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = android.widget.ImageView.ScaleType.CENTER
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply {
                 leftMargin = dp(8)
             }
-            setOnClickListener { openFormForCall(call) }
+            setOnClickListener { openContactNotePopupForCall(call) }
         })
 
         card.addView(row)
@@ -208,30 +209,18 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun openFormForCall(call: PhoneCallRecord) {
-        val config = ConfigStore.load(this)
-        if (config.baseUrl.isBlank()) {
-            binding.homeStatusText.text = "Първо попълни Base URL в Настройки."
+    private fun openContactNotePopupForCall(call: PhoneCallRecord) {
+        if (!Settings.canDrawOverlays(this)) {
+            binding.homeStatusText.text = "За popup бележка разреши 'Показване върху други приложения' от Настройки."
             return
         }
 
-        val formUrl = buildEndpoint(
-            baseUrl = config.baseUrl,
-            path = config.formPath,
-            params = linkedMapOf(
-                "phone" to call.number,
-                "direction" to call.direction,
-                "call_at" to call.startedAt.toString(),
-                "duration" to call.durationSeconds.toString(),
-                "access_token" to config.accessToken,
-            )
-        )
-
-        startActivity(
-            Intent(this, WebViewActivity::class.java)
-                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
-                .putExtra(WebViewActivity.EXTRA_PHONE, call.number)
-                .putExtra(WebViewActivity.EXTRA_DIRECTION, call.direction)
+        startService(
+            Intent(this, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, call.displayName)
         )
     }
 
