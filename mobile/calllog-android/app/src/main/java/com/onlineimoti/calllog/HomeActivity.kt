@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -204,6 +205,9 @@ class HomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.calllog_muted_text))
             textSize = 12.5f
             maxLines = 1
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openDialer(call.number) }
         })
         textColumn.addView(TextView(this).apply {
             text = displayName
@@ -212,6 +216,9 @@ class HomeActivity : AppCompatActivity() {
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
             setPadding(0, dp(2), 0, 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openDialer(call.number) }
         })
         if (!contactNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
@@ -266,6 +273,11 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = if (activePhoneFilter.isNotBlank() && noteKey(activePhoneFilter) == key) "" else number
         pageIndex = 0
         renderCalls()
+    }
+
+    private fun openDialer(number: String) {
+        if (number.isBlank()) return
+        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
