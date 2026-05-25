@@ -41,65 +41,48 @@ object CallReportContactIntegration {
         }
     }
 
+    fun removeAllCallReportContacts(context: Context): Int {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return 0
+        val deleted = runCatching {
+            context.contentResolver.delete(
+                ContactsContract.RawContacts.CONTENT_URI,
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=?",
+                arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME),
+            )
+        }.getOrDefault(0)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST_SYNC_MS).apply()
+        return deleted
+    }
+
     fun linkContact(context: Context, phone: String, displayName: String) {
         val cleanedPhone = cleanPhone(phone)
         if (cleanedPhone.isBlank()) return
         if (!canReadAndWriteContacts(context)) return
-        if (hasExistingCallReportPhoneRow(context, cleanedPhone)) return
 
         ensureAccount(context)
+        val title = displayName.ifBlank { cleanedPhone }
+        val callReportRawContactId = findCallReportRawContactId(context, cleanedPhone)
         val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
         val operations = arrayListOf<ContentProviderOperation>()
 
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, ACCOUNT_TYPE)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, ACCOUNT_NAME)
-                .withValue(ContactsContract.RawContacts.SYNC1, cleanedPhone)
-                .withValue(ContactsContract.RawContacts.AGGREGATION_MODE, ContactsContract.RawContacts.AGGREGATION_MODE_DEFAULT)
-                .build()
-        )
-
-        val title = displayName.ifBlank { cleanedPhone }
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, title)
-                .build()
-        )
-
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, cleanedPhone)
-                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, "Call Report")
-                .build()
-        )
-
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                .withValue(ContactsContract.Data.MIMETYPE, HISTORY_MIME_TYPE)
-                .withValue(ContactsContract.Data.DATA1, cleanedPhone)
-                .withValue(ContactsContract.Data.DATA2, "Call Report")
-                .withValue(ContactsContract.Data.DATA3, "История")
-                .build()
-        )
-
-        if (existingRawContactId > 0L) {
-            operations.add(
-                ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
-                    .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
-                    .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, existingRawContactId)
-                    .withValueBackReference(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, 0)
-                    .build()
-            )
+        if (callReportRawContactId > 0L) {
+            addUpdateExistingCallReportRawContactOperations(operations, callReportRawContactId, cleanedPhone, title, context)
+            if (existingRawContactId > 0L && existingRawContactId != callReportRawContactId) {
+                operations.add(
+                    ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                        .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                        .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, existingRawContactId)
+                        .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, callReportRawContactId)
+                        .build()
+                )
+            }
+        } else {
+            addCreateCallReportRawContactOperations(operations, cleanedPhone, title, existingRawContactId)
         }
 
-        runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations) }
+        if (operations.isNotEmpty()) {
+            runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations) }
+        }
     }
 
     fun phoneFromDataUri(context: Context, uri: Uri?): String {
@@ -109,6 +92,130 @@ object CallReportContactIntegration {
                 if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
             }.orEmpty()
         }.getOrDefault("")
+    }
+
+    private fun addCreateCallReportRawContactOperations(
+        operations: ArrayList<ContentProviderOperation>,
+        phone: String,
+        title: String,
+        existingRawContactId: Long,
+    ) {
+        operations.add(
+            ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, ACCOUNT_TYPE)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, ACCOUNT_NAME)
+                .withValue(ContactsContract.RawContacts.SYNC1, phone)
+                .withValue(ContactsContract.RawContacts.AGGREGATION_MODE, ContactsContract.RawContacts.AGGREGATION_MODE_DEFAULT)
+                .build()
+        )
+        operations.add(
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, title)
+                .build()
+        )
+        operations.add(
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, "Call Report")
+                .build()
+        )
+        operations.add(
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, HISTORY_MIME_TYPE)
+                .withValue(ContactsContract.Data.DATA1, phone)
+                .withValue(ContactsContract.Data.DATA2, "Call Report")
+                .withValue(ContactsContract.Data.DATA3, "История")
+                .build()
+        )
+        if (existingRawContactId > 0L) {
+            operations.add(
+                ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                    .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                    .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, existingRawContactId)
+                    .withValueBackReference(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, 0)
+                    .build()
+            )
+        }
+    }
+
+    private fun addUpdateExistingCallReportRawContactOperations(
+        operations: ArrayList<ContentProviderOperation>,
+        rawContactId: Long,
+        phone: String,
+        title: String,
+        context: Context,
+    ) {
+        operations.add(
+            ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)
+                .withSelection("${ContactsContract.RawContacts._ID}=?", arrayOf(rawContactId.toString()))
+                .withValue(ContactsContract.RawContacts.SYNC1, phone)
+                .build()
+        )
+        upsertDataRow(
+            context = context,
+            operations = operations,
+            rawContactId = rawContactId,
+            mimeType = ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
+            insertValues = mapOf(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME to title),
+        )
+        upsertDataRow(
+            context = context,
+            operations = operations,
+            rawContactId = rawContactId,
+            mimeType = ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+            insertValues = mapOf(
+                ContactsContract.CommonDataKinds.Phone.NUMBER to phone,
+                ContactsContract.CommonDataKinds.Phone.TYPE to ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
+                ContactsContract.CommonDataKinds.Phone.LABEL to "Call Report",
+            ),
+        )
+        upsertDataRow(
+            context = context,
+            operations = operations,
+            rawContactId = rawContactId,
+            mimeType = HISTORY_MIME_TYPE,
+            insertValues = mapOf(
+                ContactsContract.Data.DATA1 to phone,
+                ContactsContract.Data.DATA2 to "Call Report",
+                ContactsContract.Data.DATA3 to "История",
+            ),
+        )
+    }
+
+    private fun upsertDataRow(
+        context: Context,
+        operations: ArrayList<ContentProviderOperation>,
+        rawContactId: Long,
+        mimeType: String,
+        insertValues: Map<String, Any>,
+    ) {
+        val dataId = findDataRowId(context, rawContactId, mimeType)
+        val builder = if (dataId > 0L) {
+            ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                .withSelection("${ContactsContract.Data._ID}=?", arrayOf(dataId.toString()))
+        } else {
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                .withValue(ContactsContract.Data.MIMETYPE, mimeType)
+        }
+        insertValues.forEach { (key, value) -> builder.withValue(key, value) }
+        operations.add(builder.build())
+    }
+
+    private fun findDataRowId(context: Context, rawContactId: Long, mimeType: String): Long {
+        return context.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(ContactsContract.Data._ID),
+            "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+            arrayOf(rawContactId.toString(), mimeType),
+            null,
+        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
     }
 
     private fun linkPhonebookContacts(context: Context) {
@@ -150,6 +257,25 @@ object CallReportContactIntegration {
         }
     }
 
+    private fun findCallReportRawContactId(context: Context, phone: String): Long {
+        val bySync = context.contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(ContactsContract.RawContacts._ID),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=?",
+            arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME, phone),
+            null,
+        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        if (bySync > 0L) return bySync
+
+        return context.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
+            arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
+            null,
+        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+    }
+
     private fun findExistingRawContactId(context: Context, phone: String): Long {
         val contactId = context.contentResolver.query(
             ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
@@ -163,20 +289,10 @@ object CallReportContactIntegration {
         return context.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
-            "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
-            arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE),
+            "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?",
+            arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, ACCOUNT_TYPE),
             null,
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
-    }
-
-    private fun hasExistingCallReportPhoneRow(context: Context, phone: String): Boolean {
-        return context.contentResolver.query(
-            ContactsContract.Data.CONTENT_URI,
-            arrayOf(ContactsContract.Data._ID),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
-            arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
-            null,
-        )?.use { it.moveToFirst() } == true
     }
 
     private fun cleanPhone(value: String): String {
