@@ -24,6 +24,29 @@
             android:exported="false"
             android:initOrder="1" />
         <service
+            android:name=".CallReportAuthenticatorService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/callreport_authenticator" />
+        </service>
+        <service
+            android:name=".CallReportSyncService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter" />
+            </intent-filter>
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/callreport_syncadapter" />
+            <meta-data
+                android:name="android.provider.CONTACTS_STRUCTURE"
+                android:resource="@xml/callreport_contacts" />
+        </service>
+        <service
             android:name=".CallReportTileService"
             android:exported="true"
             android:icon="@drawable/ic_qs_callreport"
@@ -116,6 +139,11 @@
                 <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="tel" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.com.onlineimoti.calllog.history" />
             </intent-filter>
         </activity>
         <activity
