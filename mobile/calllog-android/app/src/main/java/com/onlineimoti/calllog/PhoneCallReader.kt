@@ -120,9 +120,12 @@ object PhoneCallReader {
 
     private fun directionFromType(type: Int): String {
         return when (type) {
-            CallLog.Calls.INCOMING_TYPE -> "in"
+            CallLog.Calls.INCOMING_TYPE,
+            CallLog.Calls.MISSED_TYPE,
+            CallLog.Calls.REJECTED_TYPE,
+            CallLog.Calls.BLOCKED_TYPE -> "in"
             CallLog.Calls.OUTGOING_TYPE -> "out"
-            else -> ""
+            else -> "in"
         }
     }
 
