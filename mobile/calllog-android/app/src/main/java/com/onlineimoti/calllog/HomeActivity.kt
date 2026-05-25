@@ -208,9 +208,6 @@ class HomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.calllog_muted_text))
             textSize = 12.5f
             maxLines = 1
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { openDialer(call.number) }
         })
         textColumn.addView(TextView(this).apply {
             text = displayName
@@ -219,9 +216,6 @@ class HomeActivity : AppCompatActivity() {
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
             setPadding(0, dp(2), 0, 0)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { openDialer(call.number) }
         })
         if (!contactNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
@@ -252,6 +246,7 @@ class HomeActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(3) }
         }
+        actions.addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer(call.number) })
         actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
         actions.addView(emojiButton("💬", "Бележка") { openContactNotePopupForCall(call, displayName) })
         row.addView(actions)
