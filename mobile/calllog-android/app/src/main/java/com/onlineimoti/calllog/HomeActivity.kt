@@ -299,6 +299,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
+        if (call.durationSeconds <= 0 && call.direction != "out") return "↴"
         return when (call.direction) {
             "in" -> "↙"
             "out" -> "↗"
