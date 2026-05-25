@@ -296,7 +296,7 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
         }
-        actions.addView(secondaryTextAction("Основна") { showGeneralNoteEditor() })
+        actions.addView(secondaryIconAction(R.drawable.ic_note_lines, "Основна") { showGeneralNoteEditor() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
@@ -695,6 +695,18 @@ class PostCallOverlayService : Service() {
             background = roundedRect(Color.rgb(243, 244, 246), dp(12), Color.TRANSPARENT, 0)
             clipToOutline = true
             setPadding(dp(10), dp(10), dp(10), dp(10))
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun secondaryIconAction(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
+        return ImageButton(this).apply {
+            setImageResource(drawableRes)
+            contentDescription = description
+            background = roundedRect(Color.rgb(243, 244, 246), dp(12), Color.TRANSPARENT, 0)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(40))
             setOnClickListener { action() }
         }
     }
