@@ -51,6 +51,7 @@ class HomeActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.settingsButton.setOnClickListener { startActivity(Intent(this, MainActivity::class.java)) }
+        binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.previousCallsButton.setOnClickListener {
             if (pageIndex > 0) {
                 pageIndex -= 1
@@ -97,6 +98,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         binding.homeCallsContainer.removeAllViews()
+        binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
             binding.paginationContainer.visibility = android.view.View.GONE
@@ -111,7 +113,7 @@ class HomeActivity : AppCompatActivity() {
 
         if (currentCalls.isEmpty()) {
             binding.homeStatusText.text = when {
-                activePhoneFilter.isNotBlank() && pageIndex == 0 -> "Няма разговори за ${activePhoneFilter}."
+                activePhoneFilter.isNotBlank() && pageIndex == 0 -> "${activePhoneFilter} • няма разговори"
                 pageIndex == 0 -> "Няма намерени разговори."
                 else -> "Няма повече разговори."
             }
@@ -129,7 +131,7 @@ class HomeActivity : AppCompatActivity() {
         binding.homeStatusText.text = if (activePhoneFilter.isBlank()) {
             "Разговори $startNumber–$endNumber"
         } else {
-            "Филтър: ${activePhoneFilter} • $startNumber–$endNumber"
+            "${activePhoneFilter} • $startNumber–$endNumber"
         }
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = currentCalls.size >= PAGE_SIZE
@@ -289,6 +291,13 @@ class HomeActivity : AppCompatActivity() {
     private fun togglePhoneFilter(number: String) {
         val key = noteKey(number)
         activePhoneFilter = if (activePhoneFilter.isNotBlank() && noteKey(activePhoneFilter) == key) "" else number
+        pageIndex = 0
+        renderCalls()
+    }
+
+    private fun clearPhoneFilter() {
+        if (activePhoneFilter.isBlank()) return
+        activePhoneFilter = ""
         pageIndex = 0
         renderCalls()
     }
