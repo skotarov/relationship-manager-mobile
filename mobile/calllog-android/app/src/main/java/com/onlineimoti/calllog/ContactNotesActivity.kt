@@ -64,12 +64,7 @@ class ContactNotesActivity : Activity() {
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         root.addView(sectionTitle("Основна бележка"))
-        root.addView(
-            plainNoteCard(
-                generalNote.ifBlank { "Няма основна бележка към този контакт/номер." },
-                muted = generalNote.isBlank(),
-            )
-        )
+        root.addView(generalNoteCard(generalNote.ifBlank { "Няма основна бележка към този контакт/номер." }, muted = generalNote.isBlank()))
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
         root.addView(sectionTitle("Бележки от разговори"))
@@ -116,6 +111,14 @@ class ContactNotesActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(30, 41, 59))
             setPadding(0, dp(14), 0, dp(8))
+        }
+    }
+
+    private fun generalNoteCard(textValue: String, muted: Boolean): TextView {
+        return plainNoteCard(textValue, muted).apply {
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openGeneralNotePopup() }
         }
     }
 
@@ -168,6 +171,19 @@ class ContactNotesActivity : Activity() {
                 setPadding(0, dp(6), 0, 0)
             })
         }
+    }
+
+    private fun openGeneralNotePopup() {
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Разреши 'Показване върху други приложения', за да редактираш основната бележка.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startService(
+            Intent(this, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_GENERAL_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
+        )
     }
 
     private fun openEditPopup(note: ContactCallNote) {
