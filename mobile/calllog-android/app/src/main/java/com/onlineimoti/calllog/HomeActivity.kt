@@ -191,10 +191,10 @@ class HomeActivity : AppCompatActivity() {
 
         row.addView(TextView(this).apply {
             text = callIcon(call)
-            textSize = 28f
+            textSize = 36f
             gravity = Gravity.CENTER
             setTextColor(callIconColor(call))
-            layoutParams = LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
         })
 
         val textColumn = LinearLayout(this).apply {
