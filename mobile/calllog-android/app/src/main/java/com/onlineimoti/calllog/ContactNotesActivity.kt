@@ -153,12 +153,12 @@ class ContactNotesActivity : Activity() {
             text = textValue
             textSize = 14.5f
             setTextColor(if (muted) Color.rgb(100, 116, 139) else Color.rgb(30, 41, 59))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.WHITE, dp(12), Color.rgb(226, 232, 240), dp(1))
+            setPadding(0, dp(2), 0, dp(8))
+            background = null
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
+            ).apply { bottomMargin = dp(4) }
         }
     }
 
