@@ -248,7 +248,7 @@ class HomeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(3) }
         }
         actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
-        actions.addView(iconButton(R.drawable.ic_note_lines, "Бележка") { openContactNotePopupForCall(call, displayName) })
+        actions.addView(emojiButton("💬", "Бележка") { openContactNotePopupForCall(call, displayName) })
         row.addView(actions)
 
         card.addView(row)
@@ -262,6 +262,21 @@ class HomeActivity : AppCompatActivity() {
             background = null
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = android.widget.ImageView.ScaleType.CENTER
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun emojiButton(emoji: String, description: String, action: () -> Unit): TextView {
+        return TextView(this).apply {
+            text = emoji
+            contentDescription = description
+            textSize = 20f
+            gravity = Gravity.CENTER
+            background = null
+            isClickable = true
+            isFocusable = true
             setPadding(dp(6), dp(6), dp(6), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
             setOnClickListener { action() }
