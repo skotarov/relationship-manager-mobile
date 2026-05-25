@@ -65,11 +65,7 @@ class ContactNotesActivity : Activity() {
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
         root.addView(sectionTitleWithEmoji("Бележки от разговори", "💬"))
-        if (callNotes.isEmpty()) {
-            root.addView(plainNoteCard("Няма бележки към разговори.", muted = true))
-        } else {
-            callNotes.forEach { note -> root.addView(callNoteCard(note)) }
-        }
+        callNotes.forEach { note -> root.addView(callNoteCard(note)) }
 
         return ScrollView(this).apply { addView(root) }
     }
