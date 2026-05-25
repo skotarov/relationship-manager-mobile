@@ -251,12 +251,22 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        titleRow.addView(TextView(this).apply {
-            text = titleText
-            textSize = 18f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(17, 24, 39))
+        titleRow.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = "Бележка от разговора"
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(17, 24, 39))
+            })
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = titleText
+                textSize = 13f
+                setTextColor(Color.rgb(107, 114, 128))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
         })
         titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
