@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.Settings
@@ -95,6 +96,7 @@ class ContactNotesActivity : Activity() {
                 maxLines = 1
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             })
+            addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer() })
             addView(iconButton(R.drawable.ic_calendar_event, "Календар") { openCalendarEvent() })
         }
     }
@@ -242,6 +244,11 @@ class ContactNotesActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
             setOnClickListener { action() }
         }
+    }
+
+    private fun openDialer() {
+        if (phone.isBlank()) return
+        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
     }
 
     private fun openCalendarEvent() {
