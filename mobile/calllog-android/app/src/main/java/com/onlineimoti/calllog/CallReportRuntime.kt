@@ -210,7 +210,7 @@ object CallReportRuntime {
             .setOngoing(false)
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(editIntent)
-            .addAction(0, "Добави", editIntent)
+            .addAction(0, "💬", editIntent)
             .addAction(0, "История", allNotesIntent)
         if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
