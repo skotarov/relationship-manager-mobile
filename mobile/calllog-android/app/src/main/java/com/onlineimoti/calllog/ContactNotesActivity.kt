@@ -60,7 +60,7 @@ class ContactNotesActivity : Activity() {
         }
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_general_note_yellow))
+        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
         root.addView(generalNoteCard(generalNote.ifBlank { "Няма основна бележка към този контакт/номер." }, muted = generalNote.isBlank()))
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
