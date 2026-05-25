@@ -30,6 +30,7 @@ class ContactShareActivity : Activity() {
             return
         }
 
+        CallReportContactIntegration.linkContact(this, phone, title)
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)

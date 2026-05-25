@@ -26,6 +26,7 @@ class PhoneNumberActionActivity : Activity() {
         }
 
         val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
+        CallReportContactIntegration.linkContact(this, phone, title)
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
@@ -36,6 +37,8 @@ class PhoneNumberActionActivity : Activity() {
 
     private fun extractPhone(sourceIntent: Intent?): String {
         if (sourceIntent == null) return ""
+        val customDataPhone = CallReportContactIntegration.phoneFromDataUri(this, sourceIntent.data)
+        if (customDataPhone.isNotBlank()) return cleanPhone(customDataPhone)
         val candidates = listOfNotNull(
             sourceIntent.data?.schemeSpecificPart,
             sourceIntent.dataString,
