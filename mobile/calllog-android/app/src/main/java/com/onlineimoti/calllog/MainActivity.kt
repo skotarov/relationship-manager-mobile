@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         binding.openAppPermissionsButton.setOnClickListener { startPermissionFlow() }
         binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
+        binding.cleanupContactsButton.setOnClickListener { cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
@@ -183,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                 isPermissionFlowRunning = false
                 setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.publicRootPath()}.")
                 refreshPermissionSummary()
+                CallReportContactIntegration.schedulePhonebookContactSync(this, force = true)
             }
         }
     }
@@ -213,6 +215,11 @@ class MainActivity : AppCompatActivity() {
         }
         openWebView(buildHistoryUrl(config, phone, directionValue()))
         setStatus("Отворен е тестов пълен лог.")
+    }
+
+    private fun cleanupCallReportContacts() {
+        val deleted = CallReportContactIntegration.removeAllCallReportContacts(this)
+        setStatus("Премахнати Call Report записи от контактите: $deleted")
     }
 
     private fun testStartPopup() {
