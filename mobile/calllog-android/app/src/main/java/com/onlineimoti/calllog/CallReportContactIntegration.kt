@@ -20,7 +20,7 @@ object CallReportContactIntegration {
         if (cleanedPhone.isBlank()) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return
-        if (hasExistingCallReportData(context, cleanedPhone)) return
+        if (hasExistingCallReportPhoneRow(context, cleanedPhone)) return
 
         ensureAccount(context)
         val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
@@ -30,6 +30,7 @@ object CallReportContactIntegration {
             ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, ACCOUNT_TYPE)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, ACCOUNT_NAME)
+                .withValue(ContactsContract.RawContacts.SYNC1, cleanedPhone)
                 .withValue(ContactsContract.RawContacts.AGGREGATION_MODE, ContactsContract.RawContacts.AGGREGATION_MODE_DEFAULT)
                 .build()
         )
@@ -46,10 +47,20 @@ object CallReportContactIntegration {
         operations.add(
             ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, cleanedPhone)
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, "Call Report")
+                .build()
+        )
+
+        operations.add(
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, HISTORY_MIME_TYPE)
                 .withValue(ContactsContract.Data.DATA1, cleanedPhone)
-                .withValue(ContactsContract.Data.DATA2, "История в Call Report")
-                .withValue(ContactsContract.Data.DATA3, title)
+                .withValue(ContactsContract.Data.DATA2, "Call Report")
+                .withValue(ContactsContract.Data.DATA3, "История")
                 .build()
         )
 
@@ -102,12 +113,12 @@ object CallReportContactIntegration {
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
     }
 
-    private fun hasExistingCallReportData(context: Context, phone: String): Boolean {
+    private fun hasExistingCallReportPhoneRow(context: Context, phone: String): Boolean {
         return context.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             arrayOf(ContactsContract.Data._ID),
-            "${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.Data.DATA1}=?",
-            arrayOf(HISTORY_MIME_TYPE, phone),
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
+            arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
             null,
         )?.use { it.moveToFirst() } == true
     }
