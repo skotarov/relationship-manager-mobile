@@ -277,23 +277,41 @@ class PostCallOverlayService : Service() {
         card.addView(titleRow)
 
         if (callAt > 0L) {
-            card.addView(TextView(this).apply {
-                text = listOf(
-                    PhoneCallReader.formatStartedAt(callAt),
-                    PhoneCallReader.formatDuration(durationSeconds),
-                    PhoneCallReader.directionLabel(direction),
-                ).filter { it.isNotBlank() }.joinToString(" • ")
-                textSize = 13f
-                setTextColor(Color.rgb(107, 114, 128))
-                setPadding(0, dp(6), 0, 0)
-            })
+            val infoRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(12), 0, 0)
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            fun addInfoPart(value: String, textColor: Int, bold: Boolean = false) {
+                if (value.isBlank()) return
+                if (infoRow.childCount > 0) {
+                    infoRow.addView(TextView(this).apply {
+                        text = " • "
+                        textSize = 13f
+                        setTextColor(Color.rgb(107, 114, 128))
+                    })
+                }
+                infoRow.addView(TextView(this).apply {
+                    text = value
+                    textSize = 13f
+                    if (bold) typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(textColor)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+            }
+            addInfoPart(PhoneCallReader.directionLabel(direction), callDirectionColor(direction))
+            addInfoPart(PhoneCallReader.formatStartedAt(callAt), Color.rgb(107, 114, 128), bold = true)
+            addInfoPart(PhoneCallReader.formatDuration(durationSeconds), Color.rgb(107, 114, 128))
+            card.addView(infoRow)
         }
 
         val callNoteInput = callNoteEditText(
             value = callNote,
             hintText = "Бележка към това обаждане",
             minLineCount = 3,
-            topMargin = dp(12),
+            topMargin = dp(8),
         )
         card.addView(callNoteInput)
 
@@ -661,6 +679,14 @@ class PostCallOverlayService : Service() {
     }
 
     private fun currentTimeText(): String = android.text.format.DateFormat.getTimeFormat(this).format(Date())
+
+    private fun callDirectionColor(directionValue: String): Int {
+        return when (directionValue) {
+            "out" -> Color.rgb(34, 197, 94)
+            "in" -> Color.rgb(59, 130, 246)
+            else -> Color.rgb(107, 114, 128)
+        }
+    }
 
     private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton {
         return ImageButton(this).apply {
