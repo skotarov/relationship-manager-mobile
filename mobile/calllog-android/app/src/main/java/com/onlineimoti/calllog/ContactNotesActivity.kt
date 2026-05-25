@@ -79,6 +79,18 @@ class ContactNotesActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(TextView(this@ContactNotesActivity).apply {
+                text = "‹"
+                textSize = 32f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(15, 23, 42))
+                background = null
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { openAllCallsLog() }
+                layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(8) }
+            })
+            addView(TextView(this@ContactNotesActivity).apply {
                 text = "Информация"
                 textSize = 22f
                 typeface = Typeface.DEFAULT_BOLD
