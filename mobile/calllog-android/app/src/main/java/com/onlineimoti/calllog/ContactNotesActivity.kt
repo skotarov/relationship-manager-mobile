@@ -199,12 +199,6 @@ class ContactNotesActivity : Activity() {
                 setTextColor(Color.rgb(8, 47, 73))
                 setPadding(0, dp(5), 0, 0)
             })
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = "Натисни за редакция"
-                textSize = 11.5f
-                setTextColor(Color.rgb(14, 116, 144))
-                setPadding(0, dp(6), 0, 0)
-            })
         }
     }
 
