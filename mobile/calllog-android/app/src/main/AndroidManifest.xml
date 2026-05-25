@@ -81,6 +81,27 @@
             android:exported="false"
             android:launchMode="singleTop" />
         <activity
+            android:name=".ContactShareActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="Call Report"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/vcard" />
+                <data android:mimeType="text/x-vcard" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/vcard" />
+                <data android:mimeType="text/x-vcard" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".ContactNotesActivity"
             android:exported="false" />
         <activity
