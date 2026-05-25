@@ -204,7 +204,12 @@ class HomeActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         textColumn.addView(TextView(this).apply {
-            text = listOf(call.number, PhoneCallReader.formatStartedAt(call.startedAt), PhoneCallReader.formatDuration(call.durationSeconds)).filter { it.isNotBlank() }.joinToString(" • ")
+            val hasContactName = displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
+            text = listOf(
+                PhoneCallReader.formatStartedAt(call.startedAt),
+                PhoneCallReader.formatDuration(call.durationSeconds),
+                call.number.takeIf { hasContactName },
+            ).filter { !it.isNullOrBlank() }.joinToString(" • ")
             setTextColor(getColor(R.color.calllog_muted_text))
             textSize = 12.5f
             maxLines = 1
