@@ -7,9 +7,11 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -47,12 +49,7 @@ class ContactNotesActivity : Activity() {
             )
         }
 
-        root.addView(TextView(this).apply {
-            text = title
-            textSize = 22f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(15, 23, 42))
-        })
+        root.addView(headerRow(title))
         if (phone.isNotBlank()) {
             root.addView(TextView(this).apply {
                 text = phone
@@ -76,6 +73,22 @@ class ContactNotesActivity : Activity() {
         }
 
         return ScrollView(this).apply { addView(root) }
+    }
+
+    private fun headerRow(title: String): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = title
+                textSize = 22f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(15, 23, 42))
+                maxLines = 1
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(iconButton(R.drawable.ic_calendar_event, "Календар") { openCalendarEvent() })
+        }
     }
 
     private fun allCallsButton(): TextView {
@@ -207,6 +220,40 @@ class ContactNotesActivity : Activity() {
             "in" -> "↙ входящ"
             "out" -> "↗ изходящ"
             else -> PhoneCallReader.directionLabel(direction)
+        }
+    }
+
+    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
+        return ImageButton(this).apply {
+            setImageResource(drawableRes)
+            contentDescription = description
+            background = null
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun openCalendarEvent() {
+        val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
+        val eventTitle = "Среща с $safeName"
+        val description = buildString {
+            appendLine("Име: $safeName")
+            if (phone.isNotBlank()) appendLine("Телефон: $phone")
+        }.trim()
+        val begin = System.currentTimeMillis() + 60 * 60 * 1000L
+        val end = begin + 60 * 60 * 1000L
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, eventTitle)
+            putExtra(CalendarContract.Events.DESCRIPTION, description)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
+        }
+        runCatching { startActivity(intent) }.onFailure {
+            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
         }
     }
 
