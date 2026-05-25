@@ -307,6 +307,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun callIconColor(call: PhoneCallRecord): Int {
+        if (call.durationSeconds <= 0 && call.direction == "out") return Color.rgb(148, 163, 184)
         if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
         return when (call.direction) {
             "in" -> Color.rgb(59, 130, 246)
