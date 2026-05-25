@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -63,11 +64,11 @@ class ContactNotesActivity : Activity() {
         root.addView(allCallsButton())
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        root.addView(sectionTitle("Основна бележка"))
+        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_general_note_yellow))
         root.addView(generalNoteCard(generalNote.ifBlank { "Няма основна бележка към този контакт/номер." }, muted = generalNote.isBlank()))
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
-        root.addView(sectionTitle("Бележки от разговори"))
+        root.addView(sectionTitleWithEmoji("Бележки от разговори", "💬"))
         if (callNotes.isEmpty()) {
             root.addView(plainNoteCard("Няма бележки към разговори.", muted = true))
         } else {
@@ -104,13 +105,38 @@ class ContactNotesActivity : Activity() {
         finish()
     }
 
-    private fun sectionTitle(textValue: String): TextView {
-        return TextView(this).apply {
-            text = textValue
-            textSize = 16f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(30, 41, 59))
+    private fun sectionTitleWithDrawable(textValue: String, drawableRes: Int): LinearLayout {
+        return titleRow(textValue).apply {
+            addView(ImageView(this@ContactNotesActivity).apply {
+                setImageResource(drawableRes)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
+            }, 0)
+        }
+    }
+
+    private fun sectionTitleWithEmoji(textValue: String, emoji: String): LinearLayout {
+        return titleRow(textValue).apply {
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = emoji
+                textSize = 17f
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
+            }, 0)
+        }
+    }
+
+    private fun titleRow(textValue: String): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(14), 0, dp(8))
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = textValue
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(30, 41, 59))
+            })
         }
     }
 
