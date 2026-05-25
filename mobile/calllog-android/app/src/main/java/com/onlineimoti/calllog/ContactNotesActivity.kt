@@ -55,10 +55,9 @@ class ContactNotesActivity : Activity() {
                 text = phone
                 textSize = 14f
                 setTextColor(Color.rgb(100, 116, 139))
-                setPadding(0, dp(2), 0, dp(6))
+                setPadding(0, dp(2), 0, dp(10))
             })
         }
-        root.addView(allCallsButton())
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_general_note_yellow))
@@ -80,7 +79,7 @@ class ContactNotesActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(TextView(this@ContactNotesActivity).apply {
-                text = title
+                text = "Информация"
                 textSize = 22f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(15, 23, 42))
