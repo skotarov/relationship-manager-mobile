@@ -191,8 +191,9 @@ class HomeActivity : AppCompatActivity() {
 
         row.addView(TextView(this).apply {
             text = callIcon(call)
-            textSize = 16f
+            textSize = 28f
             gravity = Gravity.CENTER
+            setTextColor(callIconColor(call))
             layoutParams = LinearLayout.LayoutParams(dp(24), ViewGroup.LayoutParams.WRAP_CONTENT)
         })
 
@@ -298,13 +299,19 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
-        val completed = call.durationSeconds > 0
-        return when {
-            completed && call.direction == "in" -> "🟢↙"
-            completed && call.direction == "out" -> "🟢↗"
-            !completed && call.direction == "in" -> "🔴↙"
-            !completed && call.direction == "out" -> "🔴↗"
-            else -> "⚪"
+        return when (call.direction) {
+            "in" -> "↙"
+            "out" -> "↗"
+            else -> "•"
+        }
+    }
+
+    private fun callIconColor(call: PhoneCallRecord): Int {
+        if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
+        return when (call.direction) {
+            "in" -> Color.rgb(59, 130, 246)
+            "out" -> Color.rgb(34, 197, 94)
+            else -> Color.rgb(148, 163, 184)
         }
     }
 
