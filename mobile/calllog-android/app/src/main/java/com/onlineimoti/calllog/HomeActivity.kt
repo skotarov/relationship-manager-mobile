@@ -222,7 +222,9 @@ class HomeActivity : AppCompatActivity() {
         })
         if (!contactNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
-                text = "📝 $contactNote"
+                text = contactNote
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+                compoundDrawablePadding = dp(4)
                 setTextColor(getColor(R.color.calllog_muted_text))
                 textSize = 12.5f
                 maxLines = 2
