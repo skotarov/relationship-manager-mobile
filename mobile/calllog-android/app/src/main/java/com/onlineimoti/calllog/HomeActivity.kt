@@ -299,21 +299,14 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
-        if (call.durationSeconds <= 0 && call.direction != "out") return "↴"
-        return when (call.direction) {
-            "in" -> "↙"
-            "out" -> "↗"
-            else -> "•"
-        }
+        return if (call.direction == "out") "↗" else "↙"
     }
 
     private fun callIconColor(call: PhoneCallRecord): Int {
-        if (call.durationSeconds <= 0 && call.direction == "out") return Color.rgb(148, 163, 184)
         if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
         return when (call.direction) {
-            "in" -> Color.rgb(59, 130, 246)
             "out" -> Color.rgb(34, 197, 94)
-            else -> Color.rgb(148, 163, 184)
+            else -> Color.rgb(59, 130, 246)
         }
     }
 
