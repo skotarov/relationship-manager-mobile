@@ -253,7 +253,7 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             addView(TextView(this@PostCallOverlayService).apply {
-                text = "Бележка от разговора"
+                text = "💬 Бележка от разговора"
                 textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(17, 24, 39))
