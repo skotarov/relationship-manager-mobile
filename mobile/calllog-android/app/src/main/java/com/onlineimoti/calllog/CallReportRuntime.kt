@@ -191,7 +191,6 @@ object CallReportRuntime {
         }
 
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, callAt, duration)
-        val generalIntent = editorPendingIntent(context, 1002, PostCallOverlayService.MODE_GENERAL_NOTE, phone, resolvedDirection, result.title, callAt, duration)
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationTitle)
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val rowsText = notificationRows.joinToString("\n")
@@ -211,9 +210,8 @@ object CallReportRuntime {
             .setOngoing(false)
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(editIntent)
-            .addAction(0, "Edit", editIntent)
-            .addAction(0, "Обща", generalIntent)
-            .addAction(0, "Всички", allNotesIntent)
+            .addAction(0, "Добави", editIntent)
+            .addAction(0, "История", allNotesIntent)
         if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
