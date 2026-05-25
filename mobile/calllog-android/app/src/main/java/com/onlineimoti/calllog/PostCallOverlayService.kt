@@ -228,7 +228,7 @@ class PostCallOverlayService : Service() {
         editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         editRow.addView(notificationEditAction("Обща") { showGeneralNoteEditor() })
         editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        editRow.addView(notificationEditAction("Всички") { openContactNotesScreen() })
+        editRow.addView(notificationEditAction("Виж") { openContactNotesScreen() })
         card.addView(editRow)
 
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
@@ -241,7 +241,6 @@ class PostCallOverlayService : Service() {
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = displayName.ifBlank { phone.ifBlank { "Бележка към обаждане" } }
         val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
-        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -283,7 +282,6 @@ class PostCallOverlayService : Service() {
             topMargin = dp(12),
         )
         card.addView(callNoteInput)
-        if (generalNote.isNotBlank()) card.addView(generalNoteInfo(generalNote))
 
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -292,7 +290,7 @@ class PostCallOverlayService : Service() {
         }
         actions.addView(secondaryTextAction("Обща бележка") { showGeneralNoteEditor() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(secondaryTextAction("Всички") { openContactNotesScreen() })
+        actions.addView(secondaryTextAction("Виж") { openContactNotesScreen() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(textAction("Запази") {
             val callText = callNoteInput.text?.toString().orEmpty()
@@ -402,7 +400,7 @@ class PostCallOverlayService : Service() {
         }
         actions.addView(secondaryTextAction("Към разговора") { showNoteEditor() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(secondaryTextAction("Всички") { openContactNotesScreen() })
+        actions.addView(secondaryTextAction("Виж") { openContactNotesScreen() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(textAction("Запази") {
             val saved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
