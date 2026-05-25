@@ -355,7 +355,7 @@ class PostCallOverlayService : Service() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-        val titleText = displayName.ifBlank { phone.ifBlank { "Обща бележка" } }
+        val titleText = displayName.ifBlank { phone.ifBlank { "Основна бележка" } }
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
 
         val card = LinearLayout(this).apply {
@@ -378,7 +378,7 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             addView(TextView(this@PostCallOverlayService).apply {
-                text = "Обща бележка"
+                text = "Основна бележка"
                 textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(17, 24, 39))
@@ -397,7 +397,7 @@ class PostCallOverlayService : Service() {
 
         val generalNoteInput = noteEditText(
             value = generalNote,
-            hintText = "Обща бележка към контакта/номера",
+            hintText = "Основна бележка към контакта/номера",
             minLineCount = 4,
             topMargin = dp(12),
         )
@@ -414,7 +414,7 @@ class PostCallOverlayService : Service() {
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(textAction("Запази") {
             val saved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
-            Toast.makeText(this, if (saved) "Общата бележка е записана" else "Не успях да запиша общата бележка", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
             stopSelf()
         })
         card.addView(actions)
