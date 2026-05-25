@@ -369,7 +369,6 @@ class PostCallOverlayService : Service() {
             setImageResource(R.drawable.ic_note_lines)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(5), dp(5), dp(5), dp(5))
-            background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
             layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
         })
         titleRow.addView(LinearLayout(this).apply {
