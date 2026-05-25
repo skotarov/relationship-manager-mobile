@@ -51,12 +51,18 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow(title))
-        if (phone.isNotBlank()) {
+        val contactInfoText = listOfNotNull(
+            title.takeIf { it.isNotBlank() && it != phone && it != "Бележки" },
+            phone.takeIf { it.isNotBlank() },
+        ).joinToString(" • ")
+        if (contactInfoText.isNotBlank()) {
             root.addView(TextView(this).apply {
-                text = phone
+                text = contactInfoText
                 textSize = 14f
                 setTextColor(Color.rgb(100, 116, 139))
                 setPadding(0, dp(2), 0, dp(10))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
 
