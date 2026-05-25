@@ -9,17 +9,42 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 object CallReportContactIntegration {
     const val ACCOUNT_TYPE = "com.onlineimoti.calllog.account"
     const val HISTORY_MIME_TYPE = "vnd.android.cursor.item/vnd.com.onlineimoti.calllog.history"
     private const val ACCOUNT_NAME = "Call Report"
+    private const val PREFS = "callreport_contact_integration"
+    private const val KEY_LAST_SYNC_MS = "last_sync_ms"
+    private const val SYNC_INTERVAL_MS = 24L * 60L * 60L * 1000L
+    private const val MAX_CONTACTS_PER_SYNC = 2500
+    private val syncExecutor = Executors.newSingleThreadExecutor()
+    @Volatile private var syncRunning = false
+
+    fun schedulePhonebookContactSync(context: Context, force: Boolean = false) {
+        val appContext = context.applicationContext
+        if (!canReadAndWriteContacts(appContext)) return
+        if (syncRunning) return
+        val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val lastSync = prefs.getLong(KEY_LAST_SYNC_MS, 0L)
+        if (!force && System.currentTimeMillis() - lastSync < SYNC_INTERVAL_MS) return
+
+        syncRunning = true
+        syncExecutor.execute {
+            try {
+                linkPhonebookContacts(appContext)
+                prefs.edit().putLong(KEY_LAST_SYNC_MS, System.currentTimeMillis()).apply()
+            } finally {
+                syncRunning = false
+            }
+        }
+    }
 
     fun linkContact(context: Context, phone: String, displayName: String) {
         val cleanedPhone = cleanPhone(phone)
         if (cleanedPhone.isBlank()) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return
+        if (!canReadAndWriteContacts(context)) return
         if (hasExistingCallReportPhoneRow(context, cleanedPhone)) return
 
         ensureAccount(context)
@@ -84,6 +109,37 @@ object CallReportContactIntegration {
                 if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
             }.orEmpty()
         }.getOrDefault("")
+    }
+
+    private fun linkPhonebookContacts(context: Context) {
+        if (!canReadAndWriteContacts(context)) return
+        ensureAccount(context)
+        val seen = linkedSetOf<String>()
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+        )
+        context.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            null,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC",
+        )?.use { cursor ->
+            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            while (cursor.moveToNext() && seen.size < MAX_CONTACTS_PER_SYNC) {
+                val phone = cleanPhone(cursor.getString(numberIndex).orEmpty())
+                if (phone.isBlank() || !seen.add(phone)) continue
+                val name = cursor.getString(nameIndex).orEmpty()
+                linkContact(context, phone, name)
+            }
+        }
+    }
+
+    private fun canReadAndWriteContacts(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun ensureAccount(context: Context) {
