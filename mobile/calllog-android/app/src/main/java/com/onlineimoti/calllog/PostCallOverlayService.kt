@@ -406,7 +406,7 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
         }
-        actions.addView(secondaryTextAction("Към разговора") { showNoteEditor() })
+        actions.addView(secondaryTextAction("💬") { showNoteEditor() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
