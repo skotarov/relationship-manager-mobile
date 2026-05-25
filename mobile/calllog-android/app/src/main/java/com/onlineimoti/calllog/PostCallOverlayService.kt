@@ -224,7 +224,7 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(52), dp(12), 0, 0)
         }
-        editRow.addView(notificationEditAction("Добави") { showNoteEditor() })
+        editRow.addView(notificationEditAction("💬") { showNoteEditor() })
         editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         editRow.addView(notificationEditAction("История") { openContactNotesScreen() })
         card.addView(editRow)
