@@ -187,8 +187,8 @@ class ContactNotesActivity : Activity() {
             addView(TextView(this@ContactNotesActivity).apply {
                 text = listOf(
                     PhoneCallReader.formatStartedAt(note.callAt.takeIf { it > 0L } ?: note.savedAt),
+                    directionArrowLabel(note.direction),
                     PhoneCallReader.formatDuration(note.durationSeconds),
-                    PhoneCallReader.directionLabel(note.direction),
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(Color.rgb(7, 89, 133))
@@ -199,6 +199,14 @@ class ContactNotesActivity : Activity() {
                 setTextColor(Color.rgb(8, 47, 73))
                 setPadding(0, dp(5), 0, 0)
             })
+        }
+    }
+
+    private fun directionArrowLabel(direction: String): String {
+        return when (direction) {
+            "in" -> "↙ входящ"
+            "out" -> "↗ изходящ"
+            else -> PhoneCallReader.directionLabel(direction)
         }
     }
 
