@@ -14,12 +14,9 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
@@ -74,7 +71,6 @@ class MainActivity : AppCompatActivity() {
         binding.openAppPermissionsButton.setOnClickListener { startPermissionFlow() }
         binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
-        addManualContactsScanButton()
         binding.cleanupContactsButton.setOnClickListener { cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
@@ -218,28 +214,6 @@ class MainActivity : AppCompatActivity() {
         }
         openWebView(buildHistoryUrl(config, phone, directionValue()))
         setStatus("Отворен е тестов пълен лог.")
-    }
-
-    private fun addManualContactsScanButton() {
-        val parent = binding.cleanupContactsButton.parent as? ViewGroup ?: return
-        if (parent.findViewWithTag<View>(SCAN_CONTACTS_BUTTON_TAG) != null) return
-        val margin = (8 * resources.displayMetrics.density).toInt()
-        val button = MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-            tag = SCAN_CONTACTS_BUTTON_TAG
-            text = "Обходи контактите сега"
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = margin }
-            setOnClickListener { scanContactsNow() }
-        }
-        val cleanupIndex = parent.indexOfChild(binding.cleanupContactsButton)
-        parent.addView(button, if (cleanupIndex >= 0) cleanupIndex else parent.childCount)
-    }
-
-    private fun scanContactsNow() {
-        CallReportContactIntegration.schedulePhonebookContactSync(this, force = true)
-        setStatus("Стартирано е ръчно обхождане на контактите.")
     }
 
     private fun cleanupCallReportContacts() {
@@ -441,9 +415,5 @@ class MainActivity : AppCompatActivity() {
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
         return if (this.isNullOrBlank()) fallback() else this
-    }
-
-    companion object {
-        private const val SCAN_CONTACTS_BUTTON_TAG = "scan_contacts_button"
     }
 }
