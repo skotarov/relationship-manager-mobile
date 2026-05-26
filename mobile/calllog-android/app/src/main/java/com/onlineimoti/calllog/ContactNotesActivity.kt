@@ -65,6 +65,7 @@ class ContactNotesActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
+        root.addView(contactRegistrationToggle())
 
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
@@ -95,6 +96,38 @@ class ContactNotesActivity : Activity() {
             addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer() })
             addView(iconButton(R.drawable.ic_calendar_event, "Календар") { openCalendarEvent() })
         }
+    }
+
+    private fun contactRegistrationToggle(): TextView {
+        val linked = CallReportContactIntegration.isContactLinked(this, phone)
+        return TextView(this).apply {
+            text = if (linked) "Премахни от Call Report контактите" else "Регистрирай в Call Report контактите"
+            textSize = 13.5f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(if (linked) Color.rgb(185, 28, 28) else Color.rgb(14, 116, 144))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = roundedRect(Color.WHITE, dp(12), if (linked) Color.rgb(252, 165, 165) else Color.rgb(125, 211, 252), dp(1))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { toggleContactRegistration(linked) }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+        }
+    }
+
+    private fun toggleContactRegistration(currentlyLinked: Boolean) {
+        if (phone.isBlank()) return
+        if (currentlyLinked) {
+            val deleted = CallReportContactIntegration.removeContact(this, phone)
+            Toast.makeText(this, if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис", Toast.LENGTH_SHORT).show()
+        } else {
+            CallReportContactIntegration.linkContact(this, phone, titleText)
+            Toast.makeText(this, "Регистрирано в Call Report контактите", Toast.LENGTH_SHORT).show()
+        }
+        render()
     }
 
     private fun allCallsButton(): TextView {
