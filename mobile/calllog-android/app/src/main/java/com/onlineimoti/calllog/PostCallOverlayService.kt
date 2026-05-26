@@ -157,6 +157,12 @@ class PostCallOverlayService : Service() {
         val infoRows = LocalCallStatsProvider.buildPopupInfoRows(this, phone)
         val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
         val remainingInfoRows = infoRows.drop(1)
+        val latestCallNote = ContactNoteReader.callNotesForPhone(phone)
+            .firstOrNull()
+            ?.note
+            .orEmpty()
+            .trim()
+            .replace(Regex("\\s+"), " ")
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -191,7 +197,7 @@ class PostCallOverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
 
-        if (remainingInfoRows.isNotEmpty()) {
+        if (remainingInfoRows.isNotEmpty() || latestCallNote.isNotBlank()) {
             val dataColumn = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(0, dp(6), 0, 0)
@@ -206,6 +212,21 @@ class PostCallOverlayService : Service() {
                     maxLines = if (line.startsWith("✎")) 2 else 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                     layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                })
+            }
+            if (latestCallNote.isNotBlank()) {
+                dataColumn.addView(TextView(this).apply {
+                    text = latestCallNote
+                    textSize = 14f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(Color.rgb(8, 47, 73))
+                    setPadding(dp(10), dp(7), dp(10), dp(7))
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    background = roundedRect(Color.rgb(224, 246, 255), dp(10), Color.rgb(125, 211, 252), dp(1))
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                        topMargin = dp(6)
+                    }
                 })
             }
             contentColumn.addView(dataColumn)
