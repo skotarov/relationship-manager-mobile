@@ -96,14 +96,12 @@ class PostCallOverlayService : Service() {
     private fun showLoadingPopup() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             stylePopupCard()
         }
-
         val spinner = TextView(this).apply {
             text = "↻"
             textSize = 24f
@@ -113,7 +111,6 @@ class PostCallOverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(10) }
         }
         card.addView(spinner)
-
         val textColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -133,7 +130,6 @@ class PostCallOverlayService : Service() {
             setPadding(0, dp(2), 0, 0)
         })
         card.addView(textColumn)
-
         loadingAnimator = ObjectAnimator.ofFloat(spinner, View.ROTATION, 0f, 360f).apply {
             duration = 850L
             repeatCount = ObjectAnimator.INFINITE
@@ -146,7 +142,6 @@ class PostCallOverlayService : Service() {
     private fun showLookupPopup() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
@@ -157,13 +152,7 @@ class PostCallOverlayService : Service() {
         val infoRows = LocalCallStatsProvider.buildPopupInfoRows(this, phone)
         val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
         val remainingInfoRows = infoRows.drop(1)
-        val latestCallNote = ContactNoteReader.callNotesForPhone(phone)
-            .firstOrNull()
-            ?.note
-            .orEmpty()
-            .trim()
-            .replace(Regex("\\s+"), " ")
-
+        val latestCallNote = ContactNoteReader.callNotesForPhone(phone).firstOrNull()?.note.orEmpty().trim().replace(Regex("\\s+"), " ")
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(28), dp(20), dp(24), dp(18))
@@ -173,7 +162,6 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
         }
-
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -196,7 +184,6 @@ class PostCallOverlayService : Service() {
             ellipsize = android.text.TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
-
         if (remainingInfoRows.isNotEmpty() || latestCallNote.isNotBlank()) {
             val dataColumn = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -204,15 +191,7 @@ class PostCallOverlayService : Service() {
             }
             remainingInfoRows.forEachIndexed { index, line ->
                 if (line.startsWith("✎")) {
-                    dataColumn.addView(
-                        notePreviewRow(
-                            noteText = line.removePrefix("✎").trim(),
-                            textColor = Color.rgb(180, 83, 9),
-                            backgroundColor = Color.TRANSPARENT,
-                            strokeColor = Color.TRANSPARENT,
-                            topMargin = if (index == 0) 0 else dp(2),
-                        )
-                    )
+                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), Color.rgb(180, 83, 9), Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2)))
                 } else {
                     dataColumn.addView(TextView(this).apply {
                         text = line
@@ -226,23 +205,13 @@ class PostCallOverlayService : Service() {
                 }
             }
             if (latestCallNote.isNotBlank()) {
-                dataColumn.addView(
-                    notePreviewRow(
-                        noteText = latestCallNote,
-                        textColor = Color.rgb(8, 47, 73),
-                        backgroundColor = Color.rgb(224, 246, 255),
-                        strokeColor = Color.rgb(125, 211, 252),
-                        topMargin = dp(6),
-                    )
-                )
+                dataColumn.addView(notePreviewRow(latestCallNote, Color.rgb(8, 47, 73), Color.rgb(224, 246, 255), Color.rgb(125, 211, 252), dp(6)))
             }
             contentColumn.addView(dataColumn)
         }
-
         contentRow.addView(contentColumn)
         contentRow.addView(noteRightAction())
         card.addView(contentRow)
-
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
     }
 
@@ -253,7 +222,6 @@ class PostCallOverlayService : Service() {
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = displayName.ifBlank { phone.ifBlank { "Бележка към обаждане" } }
         val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
-
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(16))
@@ -289,7 +257,6 @@ class PostCallOverlayService : Service() {
         titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         card.addView(titleRow)
-
         if (callAt > 0L) {
             val infoRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -320,15 +287,8 @@ class PostCallOverlayService : Service() {
             addInfoPart(PhoneCallReader.formatDuration(durationSeconds), Color.rgb(107, 114, 128))
             card.addView(infoRow)
         }
-
-        val callNoteInput = callNoteEditText(
-            value = callNote,
-            hintText = "Бележка към това обаждане",
-            minLineCount = 3,
-            topMargin = dp(8),
-        )
+        val callNoteInput = callNoteEditText(callNote, "Бележка към това обаждане", 3, dp(8))
         card.addView(callNoteInput)
-
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
@@ -352,7 +312,6 @@ class PostCallOverlayService : Service() {
             stopSelf()
         })
         card.addView(actions)
-
         addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
         callNoteInput.requestFocus()
         handler.postDelayed({
@@ -393,7 +352,6 @@ class PostCallOverlayService : Service() {
         val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
         val titleText = displayName.ifBlank { phone.ifBlank { "Основна бележка" } }
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(16))
@@ -429,15 +387,8 @@ class PostCallOverlayService : Service() {
         titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
         titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
         card.addView(titleRow)
-
-        val generalNoteInput = noteEditText(
-            value = generalNote,
-            hintText = "Основна бележка към контакта/номера",
-            minLineCount = 4,
-            topMargin = dp(12),
-        )
+        val generalNoteInput = noteEditText(generalNote, "Основна бележка към контакта/номера", 4, dp(12))
         card.addView(generalNoteInput)
-
         val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
@@ -453,7 +404,6 @@ class PostCallOverlayService : Service() {
             stopSelf()
         })
         card.addView(actions)
-
         addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
         generalNoteInput.requestFocus()
         handler.postDelayed({
@@ -611,7 +561,7 @@ class PostCallOverlayService : Service() {
                 setPadding(0, 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply {
                     marginEnd = dp(6)
-                    topMargin = dp(1)
+                    this.topMargin = dp(1)
                 }
             })
             addView(TextView(this@PostCallOverlayService).apply {
