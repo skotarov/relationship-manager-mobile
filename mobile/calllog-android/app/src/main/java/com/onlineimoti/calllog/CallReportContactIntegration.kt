@@ -54,6 +54,28 @@ object CallReportContactIntegration {
         return deleted
     }
 
+    fun isContactLinked(context: Context, phone: String): Boolean {
+        val cleanedPhone = cleanPhone(phone)
+        if (cleanedPhone.isBlank()) return false
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
+        return findCallReportRawContactId(context, cleanedPhone) > 0L
+    }
+
+    fun removeContact(context: Context, phone: String): Int {
+        val cleanedPhone = cleanPhone(phone)
+        if (cleanedPhone.isBlank()) return 0
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return 0
+        val rawContactId = findCallReportRawContactId(context, cleanedPhone)
+        if (rawContactId <= 0L) return 0
+        return runCatching {
+            context.contentResolver.delete(
+                ContactsContract.RawContacts.CONTENT_URI,
+                "${ContactsContract.RawContacts._ID}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=?",
+                arrayOf(rawContactId.toString(), ACCOUNT_TYPE, ACCOUNT_NAME),
+            )
+        }.getOrDefault(0)
+    }
+
     fun linkContact(context: Context, phone: String, displayName: String) {
         val cleanedPhone = cleanPhone(phone)
         if (cleanedPhone.isBlank()) return
