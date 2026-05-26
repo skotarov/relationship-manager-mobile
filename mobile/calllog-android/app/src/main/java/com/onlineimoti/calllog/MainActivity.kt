@@ -13,10 +13,12 @@ import android.provider.Settings
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var isPermissionFlowRunning = false
     private var contactsOperationProgress: ProgressBar? = null
+    private var contactsOperationProgressRow: LinearLayout? = null
     private var contactsOperationRunning = false
 
     private val singlePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
@@ -224,23 +227,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun addContactsOperationProgressBar() {
         val parent = binding.cleanupContactsButton.parent as? ViewGroup ?: return
-        if (contactsOperationProgress != null) return
-        val margin = (8 * resources.displayMetrics.density).toInt()
-        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            isIndeterminate = true
+        if (contactsOperationProgressRow != null) return
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             visibility = View.GONE
+            setPadding(0, dp(10), 0, dp(2))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = margin }
+            )
         }
+        val spinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            isIndeterminate = true
+            layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
+        }
+        row.addView(spinner)
+        row.addView(TextView(this).apply {
+            text = "Почистване на Call Report записите…"
+            textSize = 14f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(binding.cleanupContactsButton.currentTextColor)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
         val cleanupIndex = parent.indexOfChild(binding.cleanupContactsButton)
-        parent.addView(progress, if (cleanupIndex >= 0) cleanupIndex + 1 else parent.childCount)
-        contactsOperationProgress = progress
+        parent.addView(row, if (cleanupIndex >= 0) cleanupIndex + 1 else parent.childCount)
+        contactsOperationProgress = spinner
+        contactsOperationProgressRow = row
     }
 
     private fun setContactsOperationRunning(running: Boolean) {
         contactsOperationRunning = running
+        contactsOperationProgressRow?.visibility = if (running) View.VISIBLE else View.GONE
         contactsOperationProgress?.visibility = if (running) View.VISIBLE else View.GONE
         binding.cleanupContactsButton.isEnabled = !running
         binding.cleanupContactsButton.text = if (running) "Почистване…" else "Почисти Call Report от контактите"
@@ -451,6 +469,8 @@ class MainActivity : AppCompatActivity() {
         }
         fullscreenIntentSettingsLauncher.launch(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply { data = Uri.parse("package:$packageName") })
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
         return if (this.isNullOrBlank()) fallback() else this
