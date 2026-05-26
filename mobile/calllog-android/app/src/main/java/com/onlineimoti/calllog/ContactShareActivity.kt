@@ -4,9 +4,13 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
 import java.io.InputStreamReader
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 class ContactShareActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,7 +24,7 @@ class ContactShareActivity : Activity() {
     }
 
     private fun handleSharedContact(sourceIntent: Intent?) {
-        val sharedText = readSharedText(sourceIntent)
+        val sharedText = unfoldVCardLines(readSharedText(sourceIntent))
         val phone = extractPhone(sharedText)
         val title = extractName(sharedText).ifBlank { phone }
 
@@ -75,6 +79,24 @@ class ContactShareActivity : Activity() {
         }.getOrDefault("")
     }
 
+    private fun unfoldVCardLines(text: String): String {
+        if (text.isBlank()) return text
+
+        val unfoldedLines = mutableListOf<String>()
+        text.replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .split('\n')
+            .forEach { line ->
+                if ((line.startsWith(" ") || line.startsWith("\t")) && unfoldedLines.isNotEmpty()) {
+                    unfoldedLines[unfoldedLines.lastIndex] = unfoldedLines.last() + line.drop(1)
+                } else {
+                    unfoldedLines.add(line)
+                }
+            }
+
+        return unfoldedLines.joinToString("\n")
+    }
+
     private fun extractPhone(text: String): String {
         if (text.isBlank()) return ""
         val telLinePhone = text.lineSequence()
@@ -90,18 +112,82 @@ class ContactShareActivity : Activity() {
     private fun extractName(text: String): String {
         if (text.isBlank()) return ""
         val fullName = text.lineSequence()
-            .firstOrNull { it.trim().startsWith("FN", ignoreCase = true) }
-            ?.substringAfter(':')
+            .firstOrNull { isVCardProperty(it, "FN") }
+            ?.let { decodeVCardNameValue(it) }
             ?.trim()
             .orEmpty()
         if (fullName.isNotBlank()) return fullName
 
         return text.lineSequence()
-            .firstOrNull { it.trim().startsWith("N", ignoreCase = true) }
-            ?.substringAfter(':')
+            .firstOrNull { isVCardProperty(it, "N") }
+            ?.let { decodeVCardNameValue(it) }
             ?.split(';')
             ?.filter { it.isNotBlank() }
             ?.joinToString(" ") { it.trim() }
             .orEmpty()
+    }
+
+    private fun isVCardProperty(line: String, propertyName: String): Boolean {
+        val header = line.trimStart().substringBefore(':', missingDelimiterValue = "")
+        val name = header.substringBefore(';').trim()
+        return name.equals(propertyName, ignoreCase = true)
+    }
+
+    private fun decodeVCardNameValue(line: String): String {
+        val header = line.substringBefore(':', missingDelimiterValue = "")
+        val value = line.substringAfter(':', missingDelimiterValue = "").trim()
+        if (value.isBlank()) return value
+
+        val shouldDecode = header.contains("ENCODING=QUOTED-PRINTABLE", ignoreCase = true) ||
+            quotedPrintableHexRegex.findAll(value).take(2).count() >= 2
+        if (!shouldDecode) return value
+
+        val decoded = decodeQuotedPrintableUtf8(value)
+        if (decoded != value && BuildConfig.DEBUG) {
+            Log.d(TAG, "Decoded quoted-printable vCard name")
+        }
+        return decoded
+    }
+
+    private fun decodeQuotedPrintableUtf8(value: String): String {
+        return runCatching {
+            val bytes = ByteArrayOutputStream()
+            var index = 0
+            while (index < value.length) {
+                val char = value[index]
+                if (char == '=') {
+                    val next = value.getOrNull(index + 1)
+                    if (next == '\r' || next == '\n') {
+                        index += 1
+                        if (value.getOrNull(index) == '\r') index += 1
+                        if (value.getOrNull(index) == '\n') index += 1
+                        continue
+                    }
+
+                    val hex = value.substring(index + 1, (index + 3).coerceAtMost(value.length))
+                    if (hex.length == 2 && hex.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) {
+                        bytes.write(hex.toInt(16))
+                        index += 3
+                        continue
+                    }
+                }
+
+                val rawBytes = char.toString().toByteArray(Charsets.UTF_8)
+                bytes.write(rawBytes, 0, rawBytes.size)
+                index += 1
+            }
+
+            val decoder = Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+            decoder.decode(ByteBuffer.wrap(bytes.toByteArray())).toString().trim()
+        }.getOrElse {
+            value
+        }
+    }
+
+    private companion object {
+        private const val TAG = "ContactShareActivity"
+        private val quotedPrintableHexRegex = Regex("=([0-9A-Fa-f]{2})")
     }
 }
