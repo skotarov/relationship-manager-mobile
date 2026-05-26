@@ -191,7 +191,7 @@ class PostCallOverlayService : Service() {
             }
             remainingInfoRows.forEachIndexed { index, line ->
                 if (line.startsWith("✎")) {
-                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), Color.rgb(180, 83, 9), Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2)))
+                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), Color.rgb(92, 64, 0), Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_note_lines))
                 } else {
                     dataColumn.addView(TextView(this).apply {
                         text = line
@@ -205,7 +205,7 @@ class PostCallOverlayService : Service() {
                 }
             }
             if (latestCallNote.isNotBlank()) {
-                dataColumn.addView(notePreviewRow(latestCallNote, Color.rgb(8, 47, 73), Color.rgb(224, 246, 255), Color.rgb(125, 211, 252), dp(6)))
+                dataColumn.addView(notePreviewRow(latestCallNote, Color.rgb(8, 47, 73), Color.rgb(224, 246, 255), Color.rgb(125, 211, 252), dp(6), R.drawable.ic_chat_note))
             }
             contentColumn.addView(dataColumn)
         }
@@ -542,7 +542,7 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun notePreviewRow(noteText: String, textColor: Int, backgroundColor: Int, strokeColor: Int, topMargin: Int): LinearLayout {
+    private fun notePreviewRow(noteText: String, textColor: Int, backgroundColor: Int, strokeColor: Int, topMargin: Int, iconRes: Int): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
@@ -556,7 +556,7 @@ class PostCallOverlayService : Service() {
                 this.topMargin = topMargin
             }
             addView(ImageView(this@PostCallOverlayService).apply {
-                setImageResource(R.drawable.ic_chat_note)
+                setImageResource(iconRes)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setPadding(0, 0, 0, 0)
                 layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply {
