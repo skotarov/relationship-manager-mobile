@@ -494,18 +494,19 @@ class PostCallOverlayService : Service() {
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
-        val flags = if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        val flags = (if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        val popupWidth = resources.displayMetrics.widthPixels - dp(32)
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            popupWidth,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             flags,
             android.graphics.PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = prefs.getInt(KEY_LOOKUP_POPUP_X, 0)
+            x = 0
             y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
-            width = resources.displayMetrics.widthPixels - dp(4)
+            width = popupWidth
         }
         view.setOnTouchListener { _, event ->
             when (event.action) {
@@ -528,9 +529,10 @@ class PostCallOverlayService : Service() {
                         if (shouldDismissDraggedOverlay(params)) {
                             stopSelf()
                         } else {
+                            params.x = 0
                             params.y = params.y.coerceAtLeast(0)
                             windowManager?.updateViewLayout(view, params)
-                            prefs.edit().putInt(KEY_LOOKUP_POPUP_X, params.x).putInt(KEY_LOOKUP_POPUP_Y, params.y).apply()
+                            prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
                         }
                     }
                     false
@@ -546,7 +548,7 @@ class PostCallOverlayService : Service() {
     private fun shouldDismissDraggedOverlay(params: WindowManager.LayoutParams): Boolean {
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
-        return kotlin.math.abs(params.x) > screenWidth / 3 || params.y < -dp(110) || params.y > screenHeight - dp(80)
+        return kotlin.math.abs(params.x) > screenWidth / 4 || params.y < -dp(110) || params.y > screenHeight - dp(80)
     }
 
     private fun notificationIcon(): ImageView {
