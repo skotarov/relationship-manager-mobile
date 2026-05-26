@@ -160,6 +160,8 @@ class PostCallOverlayService : Service() {
             else -> phone.ifBlank { title.ifBlank { "Call Report" } }
         }
         val infoRows = LocalCallStatsProvider.buildPopupInfoRows(this, phone)
+        val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
+        val remainingInfoRows = infoRows.drop(1)
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -175,33 +177,31 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val titleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        titleRow.addView(TextView(this).apply {
-            text = titleText
+        contentColumn.addView(TextView(this).apply {
+            text = headerText
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
             setTextColor(Color.rgb(17, 24, 39))
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
-        titleRow.addView(TextView(this).apply {
-            text = currentTimeText()
-            textSize = 12f
-            setTextColor(Color.rgb(156, 163, 175))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) }
+        contentColumn.addView(TextView(this).apply {
+            text = titleText
+            textSize = 14f
+            setTextColor(Color.rgb(75, 85, 99))
+            setPadding(0, dp(3), 0, 0)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
-        contentColumn.addView(titleRow)
 
-        if (infoRows.isNotEmpty()) {
+        if (remainingInfoRows.isNotEmpty()) {
             val dataColumn = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(0, dp(6), 0, 0)
             }
-            infoRows.forEachIndexed { index, line ->
+            remainingInfoRows.forEachIndexed { index, line ->
                 dataColumn.addView(TextView(this).apply {
                     text = line
                     textSize = 14f
