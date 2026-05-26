@@ -677,8 +677,8 @@ class PostCallOverlayService : Service() {
     private fun View.stylePopupCard() {
         background = roundedRect(Color.WHITE, dp(24), Color.TRANSPARENT, 0)
         clipToOutline = true
-        elevation = dp(22).toFloat()
-        translationZ = dp(6).toFloat()
+        elevation = dp(11).toFloat()
+        translationZ = dp(3).toFloat()
     }
 
     private fun shadowScroll(card: View): ScrollView {
