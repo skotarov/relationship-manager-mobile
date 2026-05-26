@@ -200,7 +200,8 @@ class PostCallOverlayService : Service() {
                 dataColumn.addView(TextView(this).apply {
                     text = line
                     textSize = 14f
-                    setTextColor(Color.rgb(75, 85, 99))
+                    setTextColor(if (line.startsWith("✎")) Color.rgb(180, 83, 9) else Color.rgb(75, 85, 99))
+                    if (line.startsWith("✎")) typeface = Typeface.DEFAULT_BOLD
                     setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
                     maxLines = if (line.startsWith("✎")) 2 else 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
