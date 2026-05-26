@@ -59,54 +59,57 @@ object CallReportContactIntegration {
         val cleanedPhone = cleanPhone(phone)
         if (cleanedPhone.isBlank()) return false
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
-        return findCallReportRawContactId(context, cleanedPhone) > 0L
+        return runCatching { findCallReportRawContactId(context, cleanedPhone) > 0L }.getOrDefault(false)
     }
 
     fun removeContact(context: Context, phone: String): Int {
-        val cleanedPhone = cleanPhone(phone)
-        if (cleanedPhone.isBlank()) return 0
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return 0
-        val rawContactId = findCallReportRawContactId(context, cleanedPhone)
-        if (rawContactId <= 0L) return 0
-        val deleted = runCatching {
-            context.contentResolver.delete(
+        return runCatching {
+            val cleanedPhone = cleanPhone(phone)
+            if (cleanedPhone.isBlank()) return@runCatching 0
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return@runCatching 0
+            val rawContactId = findCallReportRawContactId(context, cleanedPhone)
+            if (rawContactId <= 0L) return@runCatching 0
+            val deleted = context.contentResolver.delete(
                 ContactsContract.RawContacts.CONTENT_URI,
                 "${ContactsContract.RawContacts._ID}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(rawContactId.toString(), ACCOUNT_TYPE, ACCOUNT_NAME),
             )
+            if (findCallReportRawContactId(context, cleanedPhone) <= 0L) deleted else 0
         }.getOrDefault(0)
-        return if (findCallReportRawContactId(context, cleanedPhone) <= 0L) deleted else 0
     }
 
-    fun linkContact(context: Context, phone: String, displayName: String) {
-        val cleanedPhone = cleanPhone(phone)
-        if (cleanedPhone.isBlank()) return
-        if (!canReadAndWriteContacts(context)) return
+    fun linkContact(context: Context, phone: String, displayName: String): Boolean {
+        return runCatching {
+            val cleanedPhone = cleanPhone(phone)
+            if (cleanedPhone.isBlank()) return@runCatching false
+            if (!canReadAndWriteContacts(context)) return@runCatching false
 
-        ensureAccount(context)
-        val title = displayName.ifBlank { cleanedPhone }
-        val callReportRawContactId = findCallReportRawContactId(context, cleanedPhone)
-        val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
-        val operations = arrayListOf<ContentProviderOperation>()
+            ensureAccount(context)
+            val title = displayName.ifBlank { cleanedPhone }
+            val callReportRawContactId = findCallReportRawContactId(context, cleanedPhone)
+            val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
+            val operations = arrayListOf<ContentProviderOperation>()
 
-        if (callReportRawContactId > 0L) {
-            addUpdateExistingCallReportRawContactOperations(operations, callReportRawContactId, cleanedPhone, title, context)
-            if (existingRawContactId > 0L && existingRawContactId != callReportRawContactId) {
-                operations.add(
-                    ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
-                        .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
-                        .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, existingRawContactId)
-                        .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, callReportRawContactId)
-                        .build()
-                )
+            if (callReportRawContactId > 0L) {
+                addUpdateExistingCallReportRawContactOperations(operations, callReportRawContactId, cleanedPhone, title, context)
+                if (existingRawContactId > 0L && existingRawContactId != callReportRawContactId) {
+                    operations.add(
+                        ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                            .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                            .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, existingRawContactId)
+                            .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, callReportRawContactId)
+                            .build()
+                    )
+                }
+            } else {
+                addCreateCallReportRawContactOperations(operations, cleanedPhone, title, existingRawContactId)
             }
-        } else {
-            addCreateCallReportRawContactOperations(operations, cleanedPhone, title, existingRawContactId)
-        }
 
-        if (operations.isNotEmpty()) {
-            runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations) }
-        }
+            if (operations.isNotEmpty()) {
+                context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
+            }
+            findCallReportRawContactId(context, cleanedPhone) > 0L
+        }.getOrDefault(false)
     }
 
     fun phoneFromDataUri(context: Context, uri: Uri?): String {
@@ -233,37 +236,41 @@ object CallReportContactIntegration {
     }
 
     private fun findDataRowId(context: Context, rawContactId: Long, mimeType: String): Long {
-        return context.contentResolver.query(
-            ContactsContract.Data.CONTENT_URI,
-            arrayOf(ContactsContract.Data._ID),
-            "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
-            arrayOf(rawContactId.toString(), mimeType),
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data._ID),
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+                arrayOf(rawContactId.toString(), mimeType),
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
     }
 
     private fun linkPhonebookContacts(context: Context) {
         if (!canReadAndWriteContacts(context)) return
         ensureAccount(context)
         val seen = linkedSetOf<String>()
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-        )
-        context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
-            null,
-            null,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC",
-        )?.use { cursor ->
-            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            while (cursor.moveToNext() && seen.size < MAX_CONTACTS_PER_SYNC) {
-                val phone = cleanPhone(cursor.getString(numberIndex).orEmpty())
-                if (phone.isBlank() || !seen.add(phone)) continue
-                val name = cursor.getString(nameIndex).orEmpty()
-                linkContact(context, phone, name)
+        runCatching {
+            val projection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            )
+            context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                null,
+                null,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC",
+            )?.use { cursor ->
+                val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                while (cursor.moveToNext() && seen.size < MAX_CONTACTS_PER_SYNC) {
+                    val phone = cleanPhone(cursor.getString(numberIndex).orEmpty())
+                    if (phone.isBlank() || !seen.add(phone)) continue
+                    val name = cursor.getString(nameIndex).orEmpty()
+                    linkContact(context, phone, name)
+                }
             }
         }
     }
@@ -276,8 +283,10 @@ object CallReportContactIntegration {
     private fun ensureAccount(context: Context) {
         val account = Account(ACCOUNT_NAME, ACCOUNT_TYPE)
         val manager = AccountManager.get(context)
-        if (manager.getAccountsByType(ACCOUNT_TYPE).none { it.name == ACCOUNT_NAME }) {
-            runCatching { manager.addAccountExplicitly(account, null, null) }
+        runCatching {
+            if (manager.getAccountsByType(ACCOUNT_TYPE).none { it.name == ACCOUNT_NAME }) {
+                manager.addAccountExplicitly(account, null, null)
+            }
         }
         runCatching {
             ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
@@ -286,41 +295,49 @@ object CallReportContactIntegration {
     }
 
     private fun findCallReportRawContactId(context: Context, phone: String): Long {
-        val bySync = context.contentResolver.query(
-            ContactsContract.RawContacts.CONTENT_URI,
-            arrayOf(ContactsContract.RawContacts._ID),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-            arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME, phone),
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        val bySync = runCatching {
+            context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts._ID),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME, phone),
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
         if (bySync > 0L) return bySync
 
-        return context.contentResolver.query(
-            ContactsContract.Data.CONTENT_URI,
-            arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.DELETED}=0 AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
-            arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.DELETED}=0 AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
+                arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
     }
 
     private fun findExistingRawContactId(context: Context, phone: String): Long {
-        val contactId = context.contentResolver.query(
-            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
-            arrayOf(ContactsContract.PhoneLookup._ID),
-            null,
-            null,
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        val contactId = runCatching {
+            context.contentResolver.query(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
         if (contactId <= 0L) return 0L
 
-        return context.contentResolver.query(
-            ContactsContract.Data.CONTENT_URI,
-            arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
-            "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=? AND ${ContactsContract.RawContacts.DELETED}=0",
-            arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, ACCOUNT_TYPE),
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
+                "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, ACCOUNT_TYPE),
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
+        }.getOrDefault(0L)
     }
 
     private fun cleanPhone(value: String): String {
