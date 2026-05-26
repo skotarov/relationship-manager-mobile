@@ -4,6 +4,7 @@ import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.ContentProviderOperation
+import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -277,6 +278,10 @@ object CallReportContactIntegration {
         val manager = AccountManager.get(context)
         if (manager.getAccountsByType(ACCOUNT_TYPE).none { it.name == ACCOUNT_NAME }) {
             runCatching { manager.addAccountExplicitly(account, null, null) }
+        }
+        runCatching {
+            ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
+            ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
         }
     }
 
