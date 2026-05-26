@@ -116,7 +116,7 @@ object CallReportContactIntegration {
         if (uri == null) return ""
         return runCatching {
             context.contentResolver.query(uri, arrayOf(ContactsContract.Data.DATA1), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else ""
+                if (cursor.moveToFirst()) cleanPhone(cursor.getString(0).orEmpty()) else ""
             }.orEmpty()
         }.getOrDefault("")
     }
@@ -340,9 +340,5 @@ object CallReportContactIntegration {
         }.getOrDefault(0L)
     }
 
-    private fun cleanPhone(value: String): String {
-        val keepPlus = value.trimStart().startsWith("+")
-        val digits = value.filter { it.isDigit() }
-        return if (keepPlus && digits.isNotBlank()) "+$digits" else digits
-    }
+    private fun cleanPhone(value: String): String = PhoneNormalizer.normalize(value)
 }
