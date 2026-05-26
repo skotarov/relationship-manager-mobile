@@ -30,7 +30,17 @@ class ContactShareActivity : Activity() {
             return
         }
 
-        CallReportContactIntegration.linkContact(this, phone, title)
+        val linked = runCatching {
+            CallReportContactIntegration.linkContact(this, phone, title)
+            CallReportContactIntegration.isContactLinked(this, phone)
+        }.getOrDefault(false)
+
+        Toast.makeText(
+            this,
+            if (linked) "Call Report е регистриран към контакта" else "Отварям историята. Регистрацията към контакта не мина.",
+            Toast.LENGTH_SHORT,
+        ).show()
+
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
