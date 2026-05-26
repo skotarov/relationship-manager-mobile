@@ -1,11 +1,9 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.animation.ObjectAnimator
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -14,7 +12,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.CalendarContract
-import android.provider.ContactsContract
 import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
@@ -30,8 +27,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContextCompat
-import java.util.Date
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -239,10 +234,10 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        titleRow.addView(TextView(this).apply {
-            text = "💬"
-            textSize = 18f
-            gravity = Gravity.CENTER
+        titleRow.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_chat_note)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(3), dp(3), dp(3), dp(3))
             layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
         })
         titleRow.addView(LinearLayout(this).apply {
@@ -419,7 +414,7 @@ class PostCallOverlayService : Service() {
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
         }
-        actions.addView(secondaryTextAction("💬") { showNoteEditor() })
+        actions.addView(secondaryIconAction(R.drawable.ic_chat_note, "Бележка") { showNoteEditor() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
         actions.addView(secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
@@ -441,16 +436,16 @@ class PostCallOverlayService : Service() {
         removeOverlay()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val size = dp(46)
-        val bubble = TextView(this).apply {
-            text = "✎"
-            textSize = 24f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+        val bubble = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_chat_note)
+            contentDescription = "Бележка"
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(55, 65, 81))
+                setColor(Color.WHITE)
+                setStroke(dp(1), Color.rgb(75, 85, 99))
             }
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             elevation = dp(6).toFloat()
             translationZ = dp(2).toFloat()
         }
@@ -551,27 +546,13 @@ class PostCallOverlayService : Service() {
         return kotlin.math.abs(params.x) > screenWidth / 4 || params.y < -dp(110) || params.y > screenHeight - dp(80)
     }
 
-    private fun notificationIcon(): ImageView {
-        return ImageView(this).apply {
-            setImageResource(R.drawable.callreport_popup_icon)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = false
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply {
-                marginEnd = dp(10)
-                topMargin = dp(2)
-            }
-        }
-    }
-
-    private fun noteRightAction(): TextView {
-        return TextView(this).apply {
-            text = "💬"
-            textSize = 22f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
+    private fun noteRightAction(): ImageButton {
+        return ImageButton(this).apply {
+            setImageResource(R.drawable.ic_chat_note)
             contentDescription = "Добави бележка"
-            setTextColor(Color.WHITE)
-            background = roundedRect(Color.rgb(55, 65, 81), dp(22), Color.TRANSPARENT, 0)
+            background = roundedRect(Color.WHITE, dp(22), Color.rgb(75, 85, 99), dp(1))
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             isClickable = true
             isFocusable = true
             layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
@@ -579,72 +560,6 @@ class PostCallOverlayService : Service() {
                 topMargin = dp(2)
             }
             setOnClickListener { handler.post { showNoteEditor() } }
-        }
-    }
-
-    private fun lookupRightIcon(hasLoggedData: Boolean): View {
-        val photoUri = contactPhotoUri(phone)
-        if (!photoUri.isNullOrBlank()) {
-            return ImageView(this).apply {
-                setImageURI(Uri.parse(photoUri))
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                background = roundedRect(Color.rgb(229, 231, 235), dp(22), Color.TRANSPARENT, 0)
-                clipToOutline = true
-                layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
-                    marginStart = dp(10)
-                    topMargin = dp(2)
-                }
-                setOnClickListener { openContactNotesScreen() }
-            }
-        }
-        return TextView(this).apply {
-            text = if (hasLoggedData) "i" else ""
-            textSize = 21f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            background = roundedRect(if (hasLoggedData) Color.rgb(14, 165, 233) else Color.TRANSPARENT, dp(22), Color.TRANSPARENT, 0)
-            visibility = if (hasLoggedData) View.VISIBLE else View.INVISIBLE
-            layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
-                marginStart = dp(10)
-                topMargin = dp(2)
-            }
-            if (hasLoggedData) setOnClickListener { openContactNotesScreen() }
-        }
-    }
-
-    private fun contactPhotoUri(phoneNumber: String): String? {
-        if (phoneNumber.isBlank()) return null
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
-        return contentResolver.query(
-            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phoneNumber).build(),
-            arrayOf(ContactsContract.PhoneLookup.PHOTO_URI, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (!cursor.moveToFirst()) null else cursor.getString(0).orEmpty().ifBlank { cursor.getString(1).orEmpty() }.ifBlank { null }
-        }
-    }
-
-    private fun generalNoteInfo(note: String): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(9), dp(12), dp(10))
-            background = roundedRect(Color.rgb(249, 250, 251), dp(12), Color.rgb(226, 232, 240), dp(1))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) }
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = "Обща бележка — само за информация"
-                textSize = 12.5f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(100, 116, 139))
-            })
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = note
-                textSize = 14f
-                setTextColor(Color.rgb(51, 65, 85))
-                setPadding(0, dp(4), 0, 0)
-            })
         }
     }
 
@@ -675,22 +590,6 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun notificationEditAction(textValue: String, action: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = textValue
-            textSize = 14f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(75, 85, 99))
-            background = roundedRect(Color.rgb(243, 244, 246), dp(22), Color.TRANSPARENT, 0)
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            minWidth = dp(64)
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun currentTimeText(): String = android.text.format.DateFormat.getTimeFormat(this).format(Date())
-
     private fun callDirectionColor(directionValue: String): Int {
         return when (directionValue) {
             "out" -> Color.rgb(34, 197, 94)
@@ -702,13 +601,10 @@ class PostCallOverlayService : Service() {
     private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton {
         return ImageButton(this).apply {
             setImageResource(drawableRes)
-            background = ContextCompat.getDrawable(this@PostCallOverlayService, R.drawable.popup_icon_circle_bg)
-            scaleType = android.widget.ImageView.ScaleType.CENTER
+            background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
+            scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(7), dp(7), dp(7), dp(7))
-            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply {
-                marginStart = dp(5)
-                marginEnd = dp(0)
-            }
+            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginStart = dp(5) }
             setOnClickListener { action() }
         }
     }
@@ -779,10 +675,6 @@ class PostCallOverlayService : Service() {
             clipChildren = false
             addView(card)
         }
-    }
-
-    private fun showServerTokenRequired() {
-        Toast.makeText(this, "За CRM/бележка е нужен access token", Toast.LENGTH_SHORT).show()
     }
 
     private fun removeOverlay() {
