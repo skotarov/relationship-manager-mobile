@@ -165,6 +165,9 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(28), dp(20), dp(24), dp(18))
             stylePopupCard()
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showNoteEditor() }
         }
         val contentRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -219,15 +222,6 @@ class PostCallOverlayService : Service() {
         contentRow.addView(contentColumn)
         contentRow.addView(lookupRightIcon(infoRows.isNotEmpty()))
         card.addView(contentRow)
-
-        val editRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(52), dp(12), 0, 0)
-        }
-        editRow.addView(notificationEditAction("💬") { showNoteEditor() })
-        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        editRow.addView(notificationEditAction("История") { openContactNotesScreen() })
-        card.addView(editRow)
 
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
     }
