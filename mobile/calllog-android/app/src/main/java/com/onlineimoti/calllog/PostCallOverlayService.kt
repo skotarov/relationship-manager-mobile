@@ -203,31 +203,38 @@ class PostCallOverlayService : Service() {
                 setPadding(0, dp(6), 0, 0)
             }
             remainingInfoRows.forEachIndexed { index, line ->
-                dataColumn.addView(TextView(this).apply {
-                    text = line
-                    textSize = 14f
-                    setTextColor(if (line.startsWith("✎")) Color.rgb(180, 83, 9) else Color.rgb(75, 85, 99))
-                    if (line.startsWith("✎")) typeface = Typeface.DEFAULT_BOLD
-                    setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
-                    maxLines = if (line.startsWith("✎")) 2 else 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                })
+                if (line.startsWith("✎")) {
+                    dataColumn.addView(
+                        notePreviewRow(
+                            noteText = line.removePrefix("✎").trim(),
+                            textColor = Color.rgb(180, 83, 9),
+                            backgroundColor = Color.TRANSPARENT,
+                            strokeColor = Color.TRANSPARENT,
+                            topMargin = if (index == 0) 0 else dp(2),
+                        )
+                    )
+                } else {
+                    dataColumn.addView(TextView(this).apply {
+                        text = line
+                        textSize = 14f
+                        setTextColor(Color.rgb(75, 85, 99))
+                        setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    })
+                }
             }
             if (latestCallNote.isNotBlank()) {
-                dataColumn.addView(TextView(this).apply {
-                    text = latestCallNote
-                    textSize = 14f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(Color.rgb(8, 47, 73))
-                    setPadding(dp(10), dp(7), dp(10), dp(7))
-                    maxLines = 2
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    background = roundedRect(Color.rgb(224, 246, 255), dp(10), Color.rgb(125, 211, 252), dp(1))
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                        topMargin = dp(6)
-                    }
-                })
+                dataColumn.addView(
+                    notePreviewRow(
+                        noteText = latestCallNote,
+                        textColor = Color.rgb(8, 47, 73),
+                        backgroundColor = Color.rgb(224, 246, 255),
+                        strokeColor = Color.rgb(125, 211, 252),
+                        topMargin = dp(6),
+                    )
+                )
             }
             contentColumn.addView(dataColumn)
         }
@@ -582,6 +589,40 @@ class PostCallOverlayService : Service() {
                 topMargin = dp(2)
             }
             setOnClickListener { handler.post { showNoteEditor() } }
+        }
+    }
+
+    private fun notePreviewRow(noteText: String, textColor: Int, backgroundColor: Int, strokeColor: Int, topMargin: Int): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
+            if (backgroundColor != Color.TRANSPARENT) {
+                setPadding(dp(8), dp(7), dp(10), dp(7))
+                background = roundedRect(backgroundColor, dp(10), strokeColor, dp(1))
+            } else {
+                setPadding(0, 0, 0, 0)
+            }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                this.topMargin = topMargin
+            }
+            addView(ImageView(this@PostCallOverlayService).apply {
+                setImageResource(R.drawable.ic_chat_note)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(0, 0, 0, 0)
+                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply {
+                    marginEnd = dp(6)
+                    topMargin = dp(1)
+                }
+            })
+            addView(TextView(this@PostCallOverlayService).apply {
+                text = noteText
+                textSize = 14f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(textColor)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
         }
     }
 
