@@ -69,7 +69,6 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         registerNoteSavedReceiver()
-        CallReportContactIntegration.schedulePhonebookContactSync(this)
         renderCalls()
     }
 
