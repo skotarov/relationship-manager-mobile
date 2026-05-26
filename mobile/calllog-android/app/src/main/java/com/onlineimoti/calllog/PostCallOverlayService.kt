@@ -170,7 +170,6 @@ class PostCallOverlayService : Service() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
         }
-        contentRow.addView(notificationIcon())
 
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -217,17 +216,8 @@ class PostCallOverlayService : Service() {
         }
 
         contentRow.addView(contentColumn)
-        contentRow.addView(lookupRightIcon(infoRows.isNotEmpty()))
+        contentRow.addView(noteRightAction())
         card.addView(contentRow)
-
-        val editRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(52), dp(12), 0, 0)
-        }
-        editRow.addView(notificationEditAction("💬") { showNoteEditor() })
-        editRow.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        editRow.addView(notificationEditAction("История") { openContactNotesScreen() })
-        card.addView(editRow)
 
         addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
     }
@@ -568,6 +558,25 @@ class PostCallOverlayService : Service() {
                 marginEnd = dp(10)
                 topMargin = dp(2)
             }
+        }
+    }
+
+    private fun noteRightAction(): TextView {
+        return TextView(this).apply {
+            text = "💬"
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            contentDescription = "Добави бележка"
+            setTextColor(Color.WHITE)
+            background = roundedRect(Color.rgb(55, 65, 81), dp(22), Color.TRANSPARENT, 0)
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
+                marginStart = dp(10)
+                topMargin = dp(2)
+            }
+            setOnClickListener { handler.post { showNoteEditor() } }
         }
     }
 
