@@ -30,16 +30,7 @@ class ContactShareActivity : Activity() {
             return
         }
 
-        val linked = runCatching {
-            CallReportContactIntegration.linkContact(this, phone, title)
-            CallReportContactIntegration.isContactLinked(this, phone)
-        }.getOrDefault(false)
-
-        Toast.makeText(
-            this,
-            if (linked) "Call Report е регистриран към контакта" else "Отварям историята. Регистрацията към контакта не мина.",
-            Toast.LENGTH_SHORT,
-        ).show()
+        Toast.makeText(this, "Отварям историята в Call Report", Toast.LENGTH_SHORT).show()
 
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
@@ -93,13 +84,7 @@ class ContactShareActivity : Activity() {
                 normalizedLine.substringAfter(':', normalizedLine).takeIf { it.any(Char::isDigit) }
             }
         val candidate = telLinePhone ?: Regex("(?:\\+?\\d[\\d\\s()./-]{6,}\\d)").find(text)?.value.orEmpty()
-        return candidate
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("(", "")
-            .replace(")", "")
-            .replace("/", "")
-            .trim()
+        return PhoneNormalizer.normalize(candidate)
     }
 
     private fun extractName(text: String): String {
