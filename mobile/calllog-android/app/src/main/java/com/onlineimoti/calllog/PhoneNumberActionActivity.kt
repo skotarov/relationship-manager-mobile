@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.app.SearchManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -43,7 +44,11 @@ class PhoneNumberActionActivity : Activity() {
             sourceIntent.data?.schemeSpecificPart,
             sourceIntent.dataString,
             sourceIntent.getStringExtra(Intent.EXTRA_PHONE_NUMBER),
+            sourceIntent.getStringExtra(SearchManager.QUERY),
+            sourceIntent.getStringExtra("query"),
+            sourceIntent.getStringExtra("android.intent.extra.SEARCH_QUERY"),
             sourceIntent.getStringExtra(Intent.EXTRA_TEXT),
+            sourceIntent.getStringExtra(Intent.EXTRA_SUBJECT),
         )
         val raw = candidates.firstOrNull { it.any(Char::isDigit) }.orEmpty()
         return cleanPhone(raw)
@@ -53,6 +58,7 @@ class PhoneNumberActionActivity : Activity() {
         val decoded = Uri.decode(value)
             .removePrefix("tel:")
             .removePrefix("phone:")
+            .removePrefix("web_search:")
             .substringBefore('?')
             .substringBefore(';')
             .trim()
