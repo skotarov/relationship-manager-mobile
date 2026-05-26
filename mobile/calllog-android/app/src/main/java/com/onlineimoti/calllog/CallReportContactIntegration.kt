@@ -46,7 +46,7 @@ object CallReportContactIntegration {
         val deleted = runCatching {
             context.contentResolver.delete(
                 ContactsContract.RawContacts.CONTENT_URI,
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=?",
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME),
             )
         }.getOrDefault(0)
@@ -67,13 +67,14 @@ object CallReportContactIntegration {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return 0
         val rawContactId = findCallReportRawContactId(context, cleanedPhone)
         if (rawContactId <= 0L) return 0
-        return runCatching {
+        val deleted = runCatching {
             context.contentResolver.delete(
                 ContactsContract.RawContacts.CONTENT_URI,
-                "${ContactsContract.RawContacts._ID}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=?",
+                "${ContactsContract.RawContacts._ID}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(rawContactId.toString(), ACCOUNT_TYPE, ACCOUNT_NAME),
             )
         }.getOrDefault(0)
+        return if (findCallReportRawContactId(context, cleanedPhone) <= 0L) deleted else 0
     }
 
     fun linkContact(context: Context, phone: String, displayName: String) {
@@ -283,7 +284,7 @@ object CallReportContactIntegration {
         val bySync = context.contentResolver.query(
             ContactsContract.RawContacts.CONTENT_URI,
             arrayOf(ContactsContract.RawContacts._ID),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=?",
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
             arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME, phone),
             null,
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
@@ -292,7 +293,7 @@ object CallReportContactIntegration {
         return context.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
-            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
+            "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.DELETED}=0 AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.CommonDataKinds.Phone.NUMBER}=?",
             arrayOf(ACCOUNT_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, phone),
             null,
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
@@ -311,7 +312,7 @@ object CallReportContactIntegration {
         return context.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             arrayOf(ContactsContract.Data.RAW_CONTACT_ID),
-            "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?",
+            "${ContactsContract.Data.CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=? AND ${ContactsContract.RawContacts.DELETED}=0",
             arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, ACCOUNT_TYPE),
             null,
         )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
