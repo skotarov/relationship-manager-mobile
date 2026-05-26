@@ -26,7 +26,6 @@ class PhoneNumberActionActivity : Activity() {
         }
 
         val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
-        CallReportContactIntegration.linkContact(this, phone, title)
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
@@ -38,7 +37,7 @@ class PhoneNumberActionActivity : Activity() {
     private fun extractPhone(sourceIntent: Intent?): String {
         if (sourceIntent == null) return ""
         val customDataPhone = CallReportContactIntegration.phoneFromDataUri(this, sourceIntent.data)
-        if (customDataPhone.isNotBlank()) return cleanPhone(customDataPhone)
+        if (customDataPhone.isNotBlank()) return PhoneNormalizer.normalize(customDataPhone)
         val candidates = listOfNotNull(
             sourceIntent.data?.schemeSpecificPart,
             sourceIntent.dataString,
@@ -50,19 +49,6 @@ class PhoneNumberActionActivity : Activity() {
             sourceIntent.getStringExtra(Intent.EXTRA_SUBJECT),
         )
         val raw = candidates.firstOrNull { it.any(Char::isDigit) }.orEmpty()
-        return cleanPhone(raw)
-    }
-
-    private fun cleanPhone(value: String): String {
-        val decoded = Uri.decode(value)
-            .removePrefix("tel:")
-            .removePrefix("phone:")
-            .removePrefix("web_search:")
-            .substringBefore('?')
-            .substringBefore(';')
-            .trim()
-        val keepPlus = decoded.startsWith("+")
-        val digits = decoded.filter { it.isDigit() }
-        return if (keepPlus && digits.isNotBlank()) "+$digits" else digits
+        return PhoneNormalizer.normalize(raw)
     }
 }
