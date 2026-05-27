@@ -73,7 +73,7 @@ class ContactNotesActivity : Activity() {
         root.addView(cards.generalNoteCard(generalNote.ifBlank { "+ Добави" }, muted = generalNote.isBlank()) { openGeneralNotePopup() })
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
-        root.addView(sectionTitleWithEmoji("Бележки от разговори", "💬"))
+        root.addView(sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
         callNotes.forEach { note -> root.addView(cards.callNoteCard(note) { openEditPopup(note) }) }
 
         return ScrollView(this).apply { addView(root) }
