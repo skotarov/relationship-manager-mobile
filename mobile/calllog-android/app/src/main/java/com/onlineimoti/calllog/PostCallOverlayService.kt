@@ -9,10 +9,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.provider.CalendarContract
 import android.provider.Settings
-import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
@@ -20,7 +17,6 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -96,6 +92,34 @@ class PostCallOverlayService : Service() {
             showNoteEditor = ::showNoteEditor,
         )
     }
+    private val calendarActions by lazy {
+        PostCallCalendarActions(
+            service = this,
+            phone = { phone },
+            removeOverlay = ::removeOverlay,
+            stopOverlay = { stopSelf() },
+        )
+    }
+    private val navigationActions by lazy {
+        PostCallNavigationActions(
+            service = this,
+            handler = handler,
+            phone = { phone },
+            title = { title },
+            removeOverlay = ::removeOverlay,
+            stopOverlay = { stopSelf() },
+        )
+    }
+    private val windowController by lazy {
+        PostCallOverlayWindowController(
+            service = this,
+            handler = handler,
+            windowManager = { windowManager },
+            setOverlayView = { overlayView = it },
+            stopOverlay = { stopSelf() },
+            dp = ::dp,
+        )
+    }
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var loadingAnimator: ObjectAnimator? = null
@@ -107,10 +131,6 @@ class PostCallOverlayService : Service() {
     private var lines: List<String> = emptyList()
     private var callAt: Long = 0L
     private var durationSeconds: Long = 0L
-    private var initialX = 0
-    private var initialY = 0
-    private var initialTouchX = 0f
-    private var initialTouchY = 0f
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         formUrl = intent?.getStringExtra(EXTRA_FORM_URL).orEmpty()
@@ -176,29 +196,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun openCalendarEvent(displayName: String) {
-        val safeName = displayName.ifBlank { phone.ifBlank { "контакт" } }
-        val eventTitle = "Среща с $safeName"
-        val description = buildString {
-            appendLine("Име: $safeName")
-            if (phone.isNotBlank()) appendLine("Телефон: $phone")
-        }.trim()
-        val begin = System.currentTimeMillis() + 60 * 60 * 1000L
-        val end = begin + 60 * 60 * 1000L
-        val intent = Intent(Intent.ACTION_INSERT).apply {
-            data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, eventTitle)
-            putExtra(CalendarContract.Events.DESCRIPTION, description)
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching {
-            startActivity(intent)
-            removeOverlay()
-            stopSelf()
-        }.onFailure {
-            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
-        }
+        calendarActions.openCalendarEvent(displayName)
     }
 
     private fun showBubble() {
@@ -206,62 +204,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
-        val prefs = getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, MODE_PRIVATE)
-        val flags = (if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        val popupWidth = resources.displayMetrics.widthPixels - dp(32)
-        val params = WindowManager.LayoutParams(
-            popupWidth,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            flags,
-            android.graphics.PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
-            y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
-            width = popupWidth
-        }
-        view.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager?.updateViewLayout(view, params)
-                    false
-                }
-                MotionEvent.ACTION_UP -> {
-                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved >= dp(8)) {
-                        if (shouldDismissDraggedOverlay(params)) {
-                            stopSelf()
-                        } else {
-                            params.x = 0
-                            params.y = params.y.coerceAtLeast(0)
-                            windowManager?.updateViewLayout(view, params)
-                            prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
-                        }
-                    }
-                    false
-                }
-                else -> false
-            }
-        }
-        overlayView = view
-        windowManager?.addView(view, params)
-        if (timeoutMs > 0) handler.postDelayed({ stopSelf() }, timeoutMs)
-    }
-
-    private fun shouldDismissDraggedOverlay(params: WindowManager.LayoutParams): Boolean {
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-        return kotlin.math.abs(params.x) > screenWidth / 4 || params.y < -dp(110) || params.y > screenHeight - dp(80)
+        windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs)
     }
 
     private fun noteRightAction(): ImageButton = ui.noteRightAction { handler.post { showNoteEditor() } }
@@ -297,15 +240,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun openContactNotesScreen() {
-        handler.removeCallbacksAndMessages(null)
-        removeOverlay()
-        startActivity(
-            Intent(this, ContactNotesActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { title.ifBlank { phone } })
-        )
-        stopSelf()
+        navigationActions.openContactNotesScreen()
     }
 
     private fun View.stylePopupCard() = ui.stylePopupCard(this)
@@ -342,8 +277,5 @@ class PostCallOverlayService : Service() {
         const val EXTRA_DURATION = "duration"
         private const val LOADING_POPUP_TIMEOUT_MS = 45_000L
         private const val LOOKUP_POPUP_TIMEOUT_MS = 30_000L
-        private const val LOOKUP_POPUP_POSITION_PREFS = "lookup_popup_position"
-        private const val KEY_LOOKUP_POPUP_X = "lookup_popup_x"
-        private const val KEY_LOOKUP_POPUP_Y = "lookup_popup_y"
     }
 }
