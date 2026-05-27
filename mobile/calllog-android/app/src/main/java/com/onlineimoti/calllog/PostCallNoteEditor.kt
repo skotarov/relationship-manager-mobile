@@ -119,7 +119,7 @@ internal class PostCallNoteEditor(
             gravity = Gravity.END
             setPadding(0, ui.dp(12), 0, 0)
         }
-        actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Основна") { showGeneralNoteEditor() })
+        actions.addView(ui.secondaryIconAction(R.drawable.ic_note_lines, "Основна") { showGeneralNoteEditor() })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
