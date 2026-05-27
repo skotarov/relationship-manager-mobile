@@ -119,16 +119,25 @@ internal class PostCallNoteEditor(
             gravity = Gravity.END
             setPadding(0, ui.dp(12), 0, 0)
         }
-        actions.addView(ui.secondaryIconAction(R.drawable.ic_note_lines, "Основна") { showGeneralNoteEditor() })
+        actions.addView(ui.secondaryIconAction(R.drawable.ic_note_lines, "Основна") {
+            NotePersistence.saveOrDeleteCallNote(
+                context = service,
+                phoneNumber = phoneValue,
+                note = callNoteInput.text?.toString().orEmpty(),
+                direction = directionValue,
+                callAt = callAtValue,
+                durationSeconds = durationValue,
+            )
+            showGeneralNoteEditor()
+        })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
-            val callText = callNoteInput.text?.toString().orEmpty()
-            val callSaved = callText.isBlank() || ContactNoteReader.saveCallNoteForPhone(
+            val callSaved = NotePersistence.saveOrDeleteCallNote(
                 context = service,
                 phoneNumber = phoneValue,
-                note = callText,
+                note = callNoteInput.text?.toString().orEmpty(),
                 direction = directionValue,
                 callAt = callAtValue,
                 durationSeconds = durationValue,
