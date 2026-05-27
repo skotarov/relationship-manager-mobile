@@ -235,7 +235,9 @@ class HomeActivity : AppCompatActivity() {
         }
         if (!callNote.isNullOrBlank()) {
             textColumn.addView(TextView(this).apply {
-                text = "💬 $callNote"
+                text = callNote
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
+                compoundDrawablePadding = dp(5)
                 setTextColor(Color.rgb(7, 89, 133))
                 textSize = 12.5f
                 maxLines = 3
@@ -253,7 +255,7 @@ class HomeActivity : AppCompatActivity() {
         }
         actions.addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer(call.number) })
         actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
-        actions.addView(emojiButton("💬", "Бележка") { openContactNotePopupForCall(call, displayName) })
+        actions.addView(iconButton(R.drawable.ic_chat_note, "Бележка") { openContactNotePopupForCall(call, displayName) })
         row.addView(actions)
 
         card.addView(row)
@@ -267,21 +269,6 @@ class HomeActivity : AppCompatActivity() {
             background = null
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = android.widget.ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun emojiButton(emoji: String, description: String, action: () -> Unit): TextView {
-        return TextView(this).apply {
-            text = emoji
-            contentDescription = description
-            textSize = 20f
-            gravity = Gravity.CENTER
-            background = null
-            isClickable = true
-            isFocusable = true
             setPadding(dp(6), dp(6), dp(6), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
             setOnClickListener { action() }
