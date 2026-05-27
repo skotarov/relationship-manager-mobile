@@ -2,10 +2,8 @@ package com.onlineimoti.calllog
 
 import android.animation.ObjectAnimator
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Handler
@@ -17,10 +15,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.view.animation.LinearInterpolator
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -74,6 +70,30 @@ class PostCallOverlayService : Service() {
             addDraggableOverlay = ::addDraggableOverlay,
             showNoteEditor = ::showNoteEditor,
             timeoutMs = LOOKUP_POPUP_TIMEOUT_MS,
+        )
+    }
+    private val loadingPopup by lazy {
+        PostCallLoadingPopup(
+            service = this,
+            ui = ui,
+            phone = { phone },
+            title = { title },
+            subtitle = { subtitle },
+            setWindowManager = { windowManager = it },
+            setLoadingAnimator = { loadingAnimator = it },
+            removeOverlay = ::removeOverlay,
+            addDraggableOverlay = ::addDraggableOverlay,
+            timeoutMs = LOADING_POPUP_TIMEOUT_MS,
+        )
+    }
+    private val bubble by lazy {
+        PostCallBubble(
+            service = this,
+            ui = ui,
+            setWindowManager = { windowManager = it },
+            setOverlayView = { overlayView = it },
+            removeOverlay = ::removeOverlay,
+            showNoteEditor = ::showNoteEditor,
         )
     }
     private var windowManager: WindowManager? = null
@@ -140,49 +160,7 @@ class PostCallOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showLoadingPopup() {
-        removeOverlay()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            stylePopupCard()
-        }
-        val spinner = TextView(this).apply {
-            text = "↻"
-            textSize = 24f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(55, 65, 81))
-            layoutParams = LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(10) }
-        }
-        card.addView(spinner)
-        val textColumn = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        textColumn.addView(TextView(this).apply {
-            text = title.ifBlank { phone.ifBlank { "Call Report" } }
-            textSize = 18f
-            typeface = Typeface.DEFAULT_BOLD
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(Color.rgb(17, 24, 39))
-        })
-        textColumn.addView(TextView(this).apply {
-            text = subtitle.ifBlank { "Зареждат се данни…" }
-            textSize = 14f
-            setTextColor(Color.rgb(75, 85, 99))
-            setPadding(0, dp(2), 0, 0)
-        })
-        card.addView(textColumn)
-        loadingAnimator = ObjectAnimator.ofFloat(spinner, View.ROTATION, 0f, 360f).apply {
-            duration = 850L
-            repeatCount = ObjectAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            start()
-        }
-        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(135), timeoutMs = LOADING_POPUP_TIMEOUT_MS)
+        loadingPopup.show()
     }
 
     private fun showLookupPopup() {
@@ -224,58 +202,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun showBubble() {
-        removeOverlay()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val size = dp(46)
-        val bubble = ImageButton(this).apply {
-            setImageResource(R.drawable.ic_chat_note)
-            contentDescription = "Бележка"
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.WHITE)
-                setStroke(dp(1), Color.rgb(75, 85, 99))
-            }
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            elevation = dp(6).toFloat()
-            translationZ = dp(2).toFloat()
-        }
-        val params = WindowManager.LayoutParams(
-            size,
-            size,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            android.graphics.PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.END
-            x = dp(18)
-            y = dp(110)
-        }
-        bubble.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX - (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager?.updateViewLayout(bubble, params)
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved < dp(8)) showNoteEditor()
-                    true
-                }
-                else -> false
-            }
-        }
-        overlayView = bubble
-        windowManager?.addView(bubble, params)
+        bubble.show()
     }
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
