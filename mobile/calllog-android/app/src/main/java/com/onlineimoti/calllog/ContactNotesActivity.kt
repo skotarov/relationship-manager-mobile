@@ -57,10 +57,11 @@ class ContactNotesActivity : Activity() {
         if (contactInfoText.isNotBlank()) {
             root.addView(TextView(this).apply {
                 text = contactInfoText
-                textSize = 14f
-                setTextColor(Color.rgb(100, 116, 139))
-                setPadding(0, dp(2), 0, dp(10))
-                maxLines = 1
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(15, 23, 42))
+                setPadding(0, dp(4), 0, dp(12))
+                maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
