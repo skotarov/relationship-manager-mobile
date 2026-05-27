@@ -224,7 +224,7 @@ class PostCallOverlayService : Service() {
             }
             remainingInfoRows.forEachIndexed { index, line ->
                 if (line.startsWith("✎")) {
-                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), NoteUiStyle.General.text, Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_note_lines))
+                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), NoteUiStyle.General.text, Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_chat_note))
                 } else {
                     dataColumn.addView(TextView(this).apply {
                         text = line
