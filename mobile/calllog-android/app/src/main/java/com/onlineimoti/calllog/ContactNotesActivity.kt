@@ -67,15 +67,25 @@ class ContactNotesActivity : Activity() {
         }
         root.addView(contactRegistrationToggle())
 
+        val cards = contactNotesCards()
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
-        root.addView(generalNoteCard(generalNote.ifBlank { "+ Добави" }, muted = generalNote.isBlank()))
+        root.addView(cards.generalNoteCard(generalNote.ifBlank { "+ Добави" }, muted = generalNote.isBlank()) { openGeneralNotePopup() })
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
         root.addView(sectionTitleWithEmoji("Бележки от разговори", "💬"))
-        callNotes.forEach { note -> root.addView(callNoteCard(note)) }
+        callNotes.forEach { note -> root.addView(cards.callNoteCard(note) { openEditPopup(note) }) }
 
         return ScrollView(this).apply { addView(root) }
+    }
+
+    private fun contactNotesCards(): ContactNotesCards {
+        return ContactNotesCards(
+            activity = this,
+            dp = ::dp,
+            roundedRect = ::roundedRect,
+            directionArrowLabel = ::directionArrowLabel,
+        )
     }
 
     private fun headerRow(title: String): LinearLayout {
@@ -192,23 +202,6 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun generalNoteCard(textValue: String, muted: Boolean): TextView {
-        return TextView(this).apply {
-            text = textValue
-            textSize = 14.5f
-            setTextColor(if (muted) Color.rgb(100, 116, 139) else Color.rgb(30, 41, 59))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.WHITE, dp(12), Color.rgb(226, 232, 240), dp(1))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { openGeneralNotePopup() }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
-        }
-    }
-
     private fun plainNoteCard(textValue: String, muted: Boolean): TextView {
         return TextView(this).apply {
             text = textValue
@@ -220,37 +213,6 @@ class ContactNotesActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(4) }
-        }
-    }
-
-    private fun callNoteCard(note: ContactCallNote): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.rgb(224, 246, 255), dp(12), Color.rgb(125, 211, 252), dp(1))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { openEditPopup(note) }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
-
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = listOf(
-                    PhoneCallReader.formatStartedAt(note.callAt.takeIf { it > 0L } ?: note.savedAt),
-                    directionArrowLabel(note.direction),
-                    PhoneCallReader.formatDuration(note.durationSeconds),
-                ).filter { it.isNotBlank() }.joinToString(" • ")
-                textSize = 12.5f
-                setTextColor(Color.rgb(7, 89, 133))
-            })
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = note.note
-                textSize = 14.5f
-                setTextColor(Color.rgb(8, 47, 73))
-                setPadding(0, dp(5), 0, 0)
-            })
         }
     }
 
