@@ -191,7 +191,7 @@ class PostCallOverlayService : Service() {
             }
             remainingInfoRows.forEachIndexed { index, line ->
                 if (line.startsWith("✎")) {
-                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), Color.rgb(92, 64, 0), Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_note_lines))
+                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), NoteUiStyle.General.text, Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_note_lines))
                 } else {
                     dataColumn.addView(TextView(this).apply {
                         text = line
@@ -205,7 +205,7 @@ class PostCallOverlayService : Service() {
                 }
             }
             if (latestCallNote.isNotBlank()) {
-                dataColumn.addView(notePreviewRow(latestCallNote, Color.rgb(8, 47, 73), Color.rgb(224, 246, 255), Color.rgb(125, 211, 252), dp(6), R.drawable.ic_chat_note))
+                dataColumn.addView(notePreviewRow(latestCallNote, NoteUiStyle.Call.text, NoteUiStyle.Call.background, NoteUiStyle.Call.border, dp(6), R.drawable.ic_chat_note))
             }
             contentColumn.addView(dataColumn)
         }
@@ -578,9 +578,9 @@ class PostCallOverlayService : Service() {
 
     private fun callNoteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
         return noteEditText(value, hintText, minLineCount, topMargin).apply {
-            setTextColor(Color.rgb(8, 47, 73))
-            setHintTextColor(Color.rgb(14, 116, 144))
-            background = roundedRect(Color.rgb(224, 246, 255), dp(12), Color.rgb(125, 211, 252), dp(1))
+            setTextColor(NoteUiStyle.Call.text)
+            setHintTextColor(NoteUiStyle.Call.metaText)
+            background = roundedRect(NoteUiStyle.Call.background, dp(12), NoteUiStyle.Call.border, dp(1))
         }
     }
 
