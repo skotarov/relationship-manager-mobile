@@ -29,6 +29,9 @@ internal class PostCallNoteEditor(
     private val showGeneralNoteEditor: () -> Unit,
     private val openCalendarEvent: (String) -> Unit,
     private val openContactNotesScreen: () -> Unit,
+    private val pendingCallNote: () -> String?,
+    private val setPendingCallNote: (String) -> Unit,
+    private val savePendingNoteChangesBeforeHistory: () -> Boolean,
     private val stopOverlay: () -> Unit,
 ) {
     fun show() {
@@ -42,7 +45,7 @@ internal class PostCallNoteEditor(
         val durationValue = durationSeconds()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
-        val callNote = ContactNoteReader.callNoteForPhone(phoneValue, callAtValue, directionValue)
+        val callNote = pendingCallNote() ?: ContactNoteReader.callNoteForPhone(phoneValue, callAtValue, directionValue)
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -120,18 +123,18 @@ internal class PostCallNoteEditor(
             setPadding(0, ui.dp(12), 0, 0)
         }
         actions.addView(ui.secondaryIconAction(R.drawable.ic_note_lines, "Основна") {
-            NotePersistence.saveOrDeleteCallNote(
-                context = service,
-                phoneNumber = phoneValue,
-                note = callNoteInput.text?.toString().orEmpty(),
-                direction = directionValue,
-                callAt = callAtValue,
-                durationSeconds = durationValue,
-            )
+            setPendingCallNote(callNoteInput.text?.toString().orEmpty())
             showGeneralNoteEditor()
         })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
-        actions.addView(ui.secondaryTextAction("История") { openContactNotesScreen() })
+        actions.addView(ui.secondaryTextAction("История") {
+            setPendingCallNote(callNoteInput.text?.toString().orEmpty())
+            if (savePendingNoteChangesBeforeHistory()) {
+                openContactNotesScreen()
+            } else {
+                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            }
+        })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
             val callSaved = NotePersistence.saveOrDeleteCallNote(
