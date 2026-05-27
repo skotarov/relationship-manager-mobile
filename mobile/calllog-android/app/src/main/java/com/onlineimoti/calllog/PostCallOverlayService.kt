@@ -37,6 +37,9 @@ class PostCallOverlayService : Service() {
             showGeneralNoteEditor = ::showGeneralNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
+            pendingCallNote = { pendingCallNote },
+            setPendingCallNote = { pendingCallNote = it },
+            savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
             stopOverlay = { stopSelf() },
         )
     }
@@ -52,6 +55,9 @@ class PostCallOverlayService : Service() {
             showNoteEditor = ::showNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
+            pendingGeneralNote = { pendingGeneralNote },
+            setPendingGeneralNote = { pendingGeneralNote = it },
+            savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
             stopOverlay = { stopSelf() },
         )
     }
@@ -131,6 +137,8 @@ class PostCallOverlayService : Service() {
     private var lines: List<String> = emptyList()
     private var callAt: Long = 0L
     private var durationSeconds: Long = 0L
+    private var pendingGeneralNote: String? = null
+    private var pendingCallNote: String? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         formUrl = intent?.getStringExtra(EXTRA_FORM_URL).orEmpty()
@@ -241,6 +249,32 @@ class PostCallOverlayService : Service() {
 
     private fun openContactNotesScreen() {
         navigationActions.openContactNotesScreen()
+    }
+
+    private fun savePendingNoteChangesBeforeHistory(): Boolean {
+        var saved = true
+
+        pendingGeneralNote?.let { note ->
+            saved = NotePersistence.saveOrDeleteGeneralNote(this, phone, note) && saved
+        }
+
+        pendingCallNote?.let { note ->
+            saved = NotePersistence.saveOrDeleteCallNote(
+                context = this,
+                phoneNumber = phone,
+                note = note,
+                direction = direction,
+                callAt = callAt,
+                durationSeconds = durationSeconds,
+            ) && saved
+        }
+
+        if (saved) {
+            pendingGeneralNote = null
+            pendingCallNote = null
+        }
+
+        return saved
     }
 
     private fun View.stylePopupCard() = ui.stylePopupCard(this)
