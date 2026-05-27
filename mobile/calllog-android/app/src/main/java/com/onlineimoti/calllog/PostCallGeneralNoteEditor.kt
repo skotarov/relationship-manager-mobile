@@ -48,7 +48,7 @@ internal class PostCallGeneralNoteEditor(
             gravity = Gravity.CENTER_VERTICAL
         }
         titleRow.addView(ImageView(service).apply {
-            setImageResource(R.drawable.ic_chat_note)
+            setImageResource(R.drawable.ic_note_lines)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(ui.dp(5), ui.dp(5), ui.dp(5), ui.dp(5))
             layoutParams = LinearLayout.LayoutParams(ui.dp(35), ui.dp(35)).apply { marginEnd = ui.dp(8) }
