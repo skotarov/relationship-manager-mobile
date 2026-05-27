@@ -8,12 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -23,10 +18,16 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
+    private val contactsCleanupController by lazy {
+        MainContactsCleanupController(
+            activity = this,
+            binding = binding,
+            executor = executor,
+            setStatus = ::setStatus,
+            dp = ::dp,
+        )
+    }
     private var isPermissionFlowRunning = false
-    private var contactsOperationProgress: ProgressBar? = null
-    private var contactsOperationProgressRow: LinearLayout? = null
-    private var contactsOperationRunning = false
 
     private val singlePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
         refreshPermissionSummary()
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         hydrateFields()
         refreshPermissionSummary()
         renderBuildVersion()
-        addContactsOperationProgressBar()
+        contactsCleanupController.addProgressBar()
         startPermissionFlow()
 
         binding.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
@@ -75,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         binding.openAppPermissionsButton.setOnClickListener { startPermissionFlow() }
         binding.openCallScreeningButton.setOnClickListener { requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { requestFullScreenIntentPermissionIfNeeded() }
-        binding.cleanupContactsButton.setOnClickListener { cleanupCallReportContacts() }
+        binding.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
@@ -218,59 +219,6 @@ class MainActivity : AppCompatActivity() {
         }
         openWebView(buildHistoryUrl(config, phone, directionValue()))
         setStatus("Отворен е тестов пълен лог.")
-    }
-
-    private fun addContactsOperationProgressBar() {
-        val parent = binding.cleanupContactsButton.parent as? ViewGroup ?: return
-        if (contactsOperationProgressRow != null) return
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            visibility = View.GONE
-            setPadding(0, dp(10), 0, dp(2))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        val spinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
-            isIndeterminate = true
-            layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
-        }
-        row.addView(spinner)
-        row.addView(TextView(this).apply {
-            text = "Почистване на Call Report записите…"
-            textSize = 14f
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            setTextColor(binding.cleanupContactsButton.currentTextColor)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        val cleanupIndex = parent.indexOfChild(binding.cleanupContactsButton)
-        parent.addView(row, if (cleanupIndex >= 0) cleanupIndex + 1 else parent.childCount)
-        contactsOperationProgress = spinner
-        contactsOperationProgressRow = row
-    }
-
-    private fun setContactsOperationRunning(running: Boolean) {
-        contactsOperationRunning = running
-        contactsOperationProgressRow?.visibility = if (running) View.VISIBLE else View.GONE
-        contactsOperationProgress?.visibility = if (running) View.VISIBLE else View.GONE
-        binding.cleanupContactsButton.isEnabled = !running
-        binding.cleanupContactsButton.text = if (running) "Почистване…" else "Почисти Call Report от контактите"
-    }
-
-    private fun cleanupCallReportContacts() {
-        if (contactsOperationRunning) return
-        setContactsOperationRunning(true)
-        setStatus("Почиствам Call Report записите от контактите…")
-        val appContext = applicationContext
-        executor.execute {
-            val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext)
-            runOnUiThread {
-                setContactsOperationRunning(false)
-                setStatus("Премахнати Call Report записи от контактите: $deleted")
-            }
-        }
     }
 
     private fun testStartPopup() {
