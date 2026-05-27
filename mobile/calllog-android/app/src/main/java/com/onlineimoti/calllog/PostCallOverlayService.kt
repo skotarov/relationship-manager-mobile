@@ -30,6 +30,25 @@ import android.widget.Toast
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val ui by lazy { PostCallOverlayUi(this) }
+    private val noteEditor by lazy {
+        PostCallNoteEditor(
+            service = this,
+            ui = ui,
+            handler = handler,
+            phone = { phone },
+            direction = { direction },
+            callAt = { callAt },
+            durationSeconds = { durationSeconds },
+            callDirectionColor = ::callDirectionColor,
+            setWindowManager = { windowManager = it },
+            removeOverlay = ::removeOverlay,
+            addDraggableOverlay = ::addDraggableOverlay,
+            showGeneralNoteEditor = ::showGeneralNoteEditor,
+            openCalendarEvent = ::openCalendarEvent,
+            openContactNotesScreen = ::openContactNotesScreen,
+            stopOverlay = { stopSelf() },
+        )
+    }
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var loadingAnimator: ObjectAnimator? = null
@@ -216,107 +235,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun showNoteEditor() {
-        handler.removeCallbacksAndMessages(null)
-        removeOverlay()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-        val titleText = displayName.ifBlank { phone.ifBlank { "Бележка към обаждане" } }
-        val callNote = ContactNoteReader.callNoteForPhone(phone, callAt, direction)
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-            stylePopupCard()
-        }
-        val titleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        titleRow.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_chat_note)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setPadding(dp(3), dp(3), dp(3), dp(3))
-            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
-        })
-        titleRow.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = "Бележка от разговора"
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(17, 24, 39))
-            })
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = titleText
-                textSize = 13f
-                setTextColor(Color.rgb(107, 114, 128))
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-        })
-        titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
-        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
-        card.addView(titleRow)
-        if (callAt > 0L) {
-            val infoRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(12), 0, 0)
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            }
-            fun addInfoPart(value: String, textColor: Int, bold: Boolean = false) {
-                if (value.isBlank()) return
-                if (infoRow.childCount > 0) {
-                    infoRow.addView(TextView(this).apply {
-                        text = " • "
-                        textSize = 13f
-                        setTextColor(Color.rgb(107, 114, 128))
-                    })
-                }
-                infoRow.addView(TextView(this).apply {
-                    text = value
-                    textSize = 13f
-                    if (bold) typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(textColor)
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                })
-            }
-            addInfoPart(PhoneCallReader.directionLabel(direction), callDirectionColor(direction))
-            addInfoPart(PhoneCallReader.formatStartedAt(callAt), Color.rgb(107, 114, 128), bold = true)
-            addInfoPart(PhoneCallReader.formatDuration(durationSeconds), Color.rgb(107, 114, 128))
-            card.addView(infoRow)
-        }
-        val callNoteInput = callNoteEditText(callNote, "Бележка към това обаждане", 3, dp(8))
-        card.addView(callNoteInput)
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            setPadding(0, dp(12), 0, 0)
-        }
-        actions.addView(secondaryIconAction(R.drawable.ic_note_lines, "Основна") { showGeneralNoteEditor() })
-        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(secondaryTextAction("История") { openContactNotesScreen() })
-        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(textAction("Запази") {
-            val callText = callNoteInput.text?.toString().orEmpty()
-            val callSaved = callText.isBlank() || ContactNoteReader.saveCallNoteForPhone(
-                context = this,
-                phoneNumber = phone,
-                note = callText,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = durationSeconds,
-            )
-            Toast.makeText(this, if (callSaved) "Бележката към обаждането е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
-            stopSelf()
-        })
-        card.addView(actions)
-        addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
-        callNoteInput.requestFocus()
-        handler.postDelayed({
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
-        }, 250)
+        noteEditor.show()
     }
 
     private fun openCalendarEvent(displayName: String) {
