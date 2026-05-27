@@ -113,28 +113,47 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun contactRegistrationToggle(): TextView {
+    private fun contactRegistrationToggle(): LinearLayout {
         val linked = CallReportContactIntegration.isContactLinked(this, phone)
-        return TextView(this).apply {
-            text = when {
-                contactRegistrationBusy -> "Обработва се…"
-                linked -> "Премахни от Call Report контактите"
-                else -> "Регистрирай в Call Report контактите"
-            }
-            textSize = 13.5f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(if (linked) Color.rgb(185, 28, 28) else Color.rgb(14, 116, 144))
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = roundedRect(Color.WHITE, dp(12), if (linked) Color.rgb(252, 165, 165) else Color.rgb(125, 211, 252), dp(1))
+        val backgroundColor = when {
+            contactRegistrationBusy -> Color.rgb(100, 116, 139)
+            linked -> Color.rgb(220, 38, 38)
+            else -> Color.rgb(22, 163, 74)
+        }
+        val iconRes = if (linked) R.drawable.ic_crm_person_remove else R.drawable.ic_crm_person_add
+        val labelRes = when {
+            contactRegistrationBusy -> R.string.crm_contact_processing
+            linked -> R.string.crm_remove_contact
+            else -> R.string.crm_add_contact
+        }
+
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(10), dp(16), dp(10))
+            background = roundedRect(backgroundColor, dp(16), Color.TRANSPARENT, 0)
             isEnabled = !contactRegistrationBusy
             isClickable = true
             isFocusable = true
+            contentDescription = getString(labelRes)
             setOnClickListener { toggleContactRegistration(linked) }
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
+
+            addView(ImageView(this@ContactNotesActivity).apply {
+                setImageResource(iconRes)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(10) }
+            })
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = getString(labelRes)
+                textSize = 15.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.WHITE)
+                includeFontPadding = false
+            })
         }
     }
 
