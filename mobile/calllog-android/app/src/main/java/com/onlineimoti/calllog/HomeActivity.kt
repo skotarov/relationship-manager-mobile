@@ -223,14 +223,17 @@ class HomeActivity : AppCompatActivity() {
             setPadding(0, dp(2), 0, 0)
         })
         if (!contactNote.isNullOrBlank()) {
+            val colors = NoteUiStyle.General
             textColumn.addView(TextView(this).apply {
                 text = contactNote
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
                 compoundDrawablePadding = dp(4)
-                setTextColor(getColor(R.color.calllog_muted_text))
+                setTextColor(colors.text)
                 textSize = 12.5f
                 maxLines = 2
-                setPadding(0, dp(3), 0, 0)
+                setPadding(dp(8), dp(5), dp(8), dp(5))
+                background = roundedRect(colors.background, dp(9), colors.border, dp(1))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) }
             })
         }
         if (!callNote.isNullOrBlank()) {
