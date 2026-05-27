@@ -82,12 +82,15 @@ internal class PostCallGeneralNoteEditor(
             gravity = Gravity.END
             setPadding(0, ui.dp(12), 0, 0)
         }
-        actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") { showNoteEditor() })
+        actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") {
+            NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
+            showNoteEditor()
+        })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.secondaryTextAction("История") { openContactNotesScreen() })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
-            val saved = ContactNoteReader.saveGeneralNoteForPhone(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
+            val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
             Toast.makeText(service, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
             stopOverlay()
         })
