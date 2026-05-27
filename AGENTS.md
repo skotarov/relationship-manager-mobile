@@ -36,6 +36,18 @@ When the user says “направи го” for this repo:
   - `.github/workflows/android-build.yml`
 - After writing a file, verify the saved file once.
 
+## Edit-size rule
+
+Do not rewrite large or medium Kotlin files wholesale just to make a small behavioral change.
+
+Use this order of preference:
+
+1. Make the smallest targeted edit in the existing file.
+2. If the change touches repeated logic, add a small helper file/class and call it from the existing files.
+3. Only rewrite a whole file when the file is genuinely small or the user explicitly asks for a full refactor.
+
+For files such as `ContactNoteReader.kt`, prefer adding a helper such as `NotePersistence.kt` instead of replacing the entire file.
+
 ## Android tasks belong in this repo
 
 Implement Android/mobile work here: UI, Settings, recent calls, pagination, permissions, app icon, theme, build version display, call detection, popups, local call log, WebView opening of remote pages, and Android-side settings.
