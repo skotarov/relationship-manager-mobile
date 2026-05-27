@@ -18,7 +18,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -44,6 +43,21 @@ class PostCallOverlayService : Service() {
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showGeneralNoteEditor = ::showGeneralNoteEditor,
+            openCalendarEvent = ::openCalendarEvent,
+            openContactNotesScreen = ::openContactNotesScreen,
+            stopOverlay = { stopSelf() },
+        )
+    }
+    private val generalNoteEditor by lazy {
+        PostCallGeneralNoteEditor(
+            service = this,
+            ui = ui,
+            handler = handler,
+            phone = { phone },
+            setWindowManager = { windowManager = it },
+            removeOverlay = ::removeOverlay,
+            addDraggableOverlay = ::addDraggableOverlay,
+            showNoteEditor = ::showNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
             stopOverlay = { stopSelf() },
@@ -238,6 +252,10 @@ class PostCallOverlayService : Service() {
         noteEditor.show()
     }
 
+    private fun showGeneralNoteEditor() {
+        generalNoteEditor.show()
+    }
+
     private fun openCalendarEvent(displayName: String) {
         val safeName = displayName.ifBlank { phone.ifBlank { "контакт" } }
         val eventTitle = "Среща с $safeName"
@@ -262,72 +280,6 @@ class PostCallOverlayService : Service() {
         }.onFailure {
             Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun showGeneralNoteEditor() {
-        handler.removeCallbacksAndMessages(null)
-        removeOverlay()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-        val titleText = displayName.ifBlank { phone.ifBlank { "Основна бележка" } }
-        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-            stylePopupCard()
-        }
-        val titleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        titleRow.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_note_lines)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(5), dp(5), dp(5), dp(5))
-            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
-        })
-        titleRow.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = "Основна бележка"
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(17, 24, 39))
-            })
-            addView(TextView(this@PostCallOverlayService).apply {
-                text = titleText
-                textSize = 13f
-                setTextColor(Color.rgb(107, 114, 128))
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-        })
-        titleRow.addView(iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
-        titleRow.addView(iconAction(R.drawable.ic_popup_close) { stopSelf() })
-        card.addView(titleRow)
-        val generalNoteInput = noteEditText(generalNote, "Основна бележка към контакта/номера", 4, dp(12))
-        card.addView(generalNoteInput)
-        val actions = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            setPadding(0, dp(12), 0, 0)
-        }
-        actions.addView(secondaryIconAction(R.drawable.ic_chat_note, "Бележка") { showNoteEditor() })
-        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(secondaryTextAction("История") { openContactNotesScreen() })
-        actions.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-        actions.addView(textAction("Запази") {
-            val saved = ContactNoteReader.saveGeneralNoteForPhone(this, phone, generalNoteInput.text?.toString().orEmpty())
-            Toast.makeText(this, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
-            stopSelf()
-        })
-        card.addView(actions)
-        addDraggableOverlay(shadowScroll(card), focusable = true, defaultY = dp(135), timeoutMs = 0L)
-        generalNoteInput.requestFocus()
-        handler.postDelayed({
-            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(generalNoteInput, InputMethodManager.SHOW_IMPLICIT)
-        }, 250)
     }
 
     private fun showBubble() {
