@@ -63,6 +63,19 @@ class PostCallOverlayService : Service() {
             stopOverlay = { stopSelf() },
         )
     }
+    private val lookupPopup by lazy {
+        PostCallLookupPopup(
+            service = this,
+            ui = ui,
+            phone = { phone },
+            title = { title },
+            setWindowManager = { windowManager = it },
+            removeOverlay = ::removeOverlay,
+            addDraggableOverlay = ::addDraggableOverlay,
+            showNoteEditor = ::showNoteEditor,
+            timeoutMs = LOOKUP_POPUP_TIMEOUT_MS,
+        )
+    }
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var loadingAnimator: ObjectAnimator? = null
@@ -173,79 +186,7 @@ class PostCallOverlayService : Service() {
     }
 
     private fun showLookupPopup() {
-        removeOverlay()
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val displayName = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
-        val titleText = when {
-            displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
-            displayName.isNotBlank() -> displayName
-            title.isNotBlank() && title != phone -> "$title • $phone"
-            else -> phone.ifBlank { title.ifBlank { "Call Report" } }
-        }
-        val infoRows = LocalCallStatsProvider.buildPopupInfoRows(this, phone)
-        val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
-        val remainingInfoRows = infoRows.drop(1)
-        val latestCallNote = ContactNoteReader.callNotesForPhone(phone).firstOrNull()?.note.orEmpty().trim().replace(Regex("\\s+"), " ")
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(28), dp(20), dp(24), dp(18))
-            stylePopupCard()
-        }
-        val contentRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.TOP
-        }
-        val contentColumn = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        contentColumn.addView(TextView(this).apply {
-            text = headerText
-            textSize = 17f
-            typeface = Typeface.DEFAULT_BOLD
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(Color.rgb(17, 24, 39))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        })
-        contentColumn.addView(TextView(this).apply {
-            text = titleText
-            textSize = 14f
-            setTextColor(Color.rgb(75, 85, 99))
-            setPadding(0, dp(3), 0, 0)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        })
-        if (remainingInfoRows.isNotEmpty() || latestCallNote.isNotBlank()) {
-            val dataColumn = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(0, dp(6), 0, 0)
-            }
-            remainingInfoRows.forEachIndexed { index, line ->
-                if (line.startsWith("✎")) {
-                    dataColumn.addView(notePreviewRow(line.removePrefix("✎").trim(), NoteUiStyle.General.text, Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else dp(2), R.drawable.ic_note_lines))
-                } else {
-                    dataColumn.addView(TextView(this).apply {
-                        text = line
-                        textSize = 14f
-                        setTextColor(Color.rgb(75, 85, 99))
-                        setPadding(0, if (index == 0) 0 else dp(2), 0, 0)
-                        maxLines = 1
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                    })
-                }
-            }
-            if (latestCallNote.isNotBlank()) {
-                dataColumn.addView(notePreviewRow(latestCallNote, NoteUiStyle.Call.text, NoteUiStyle.Call.background, NoteUiStyle.Call.border, dp(6), R.drawable.ic_chat_note))
-            }
-            contentColumn.addView(dataColumn)
-        }
-        contentRow.addView(contentColumn)
-        contentRow.addView(noteRightAction())
-        card.addView(contentRow)
-        addDraggableOverlay(shadowScroll(card), focusable = false, defaultY = dp(74), timeoutMs = LOOKUP_POPUP_TIMEOUT_MS)
+        lookupPopup.show()
     }
 
     private fun showNoteEditor() {
