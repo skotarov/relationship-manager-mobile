@@ -1,14 +1,12 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.app.NotificationManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -277,60 +275,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun testStartPopup() {
         val config = ConfigStore.load(this)
-        val phone = phoneValue()
-        if (phone.isBlank()) {
-            setStatus("Попълни телефон.")
-            return
-        }
-        binding.testStartPopupButton.isEnabled = false
-        setStatus("Тест: показвам popup при старт за $phone …")
-        executor.execute {
-            val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
-            val title = displayName.ifNullOrBlank { phone }
-            val result = if (remoteReady(config)) {
-                runCatching {
-                    CallReportRuntime.fetchLookup(config, phone, directionValue()).let { lookup ->
-                        if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
-                    }
-                }.getOrElse {
-                    LookupResult(title, "Локален режим", emptyList(), "")
-                }
-            } else {
-                LookupResult(title, "Локален режим — без сървърни данни", emptyList(), "")
-            }
-            runOnUiThread {
-                binding.testStartPopupButton.isEnabled = true
-                LookupPopupPresenter.show(this, result, fullscreen = true, phone = phone, direction = directionValue())
-                setStatus("Показан е тестов popup при старт.")
-            }
-        }
+        MainTestPopupActions.testStartPopup(
+            activity = this,
+            binding = binding,
+            executor = executor,
+            config = config,
+            phone = phoneValue(),
+            direction = directionValue(),
+            remoteReady = remoteReady(config),
+            setStatus = ::setStatus,
+        )
     }
 
     private fun testEndPopup() {
         val config = ConfigStore.load(this)
         val phone = phoneValue()
-        if (phone.isBlank()) {
-            setStatus("Попълни телефон.")
-            return
-        }
-        binding.testEndPopupButton.isEnabled = false
-        setStatus("Тест: показвам popup след край за $phone …")
-        executor.execute {
-            val displayName = ContactGroupFilter.resolveDisplayName(this, phone)
-            val title = displayName.ifNullOrBlank { "Локални действия след разговора" }
-            val formUrl = if (remoteReady(config)) buildFormUrl(config, phone, directionValue()) else ""
-            runOnUiThread {
-                binding.testEndPopupButton.isEnabled = true
-                CallReportRuntime.showPostCallPromptNotification(
-                    context = this,
-                    formUrl = formUrl,
-                    phone = phone,
-                    direction = directionValue(),
-                    title = title,
-                )
-                setStatus("Показан е тестов popup след край.")
-            }
-        }
+        MainTestPopupActions.testEndPopup(
+            activity = this,
+            binding = binding,
+            executor = executor,
+            phone = phone,
+            direction = directionValue(),
+            formUrl = if (remoteReady(config)) buildFormUrl(config, phone, directionValue()) else "",
+            setStatus = ::setStatus,
+        )
     }
 
     private fun buildFormUrl(config: AppConfig, phone: String, direction: String): String = buildEndpoint(
@@ -424,8 +392,4 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-
-    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
-        return if (this.isNullOrBlank()) fallback() else this
-    }
 }
