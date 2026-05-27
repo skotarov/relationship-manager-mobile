@@ -49,22 +49,7 @@ class ContactNotesActivity : Activity() {
             )
         }
 
-        root.addView(headerRow())
-        val contactInfoText = listOfNotNull(
-            title.takeIf { it.isNotBlank() && it != phone && it != "Бележки" },
-            phone.takeIf { it.isNotBlank() },
-        ).joinToString(" • ")
-        if (contactInfoText.isNotBlank()) {
-            root.addView(TextView(this).apply {
-                text = contactInfoText
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(15, 23, 42))
-                setPadding(0, dp(4), 0, dp(12))
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-        }
+        root.addView(headerRow(title, phone))
         root.addView(contactRegistrationToggle())
 
         val cards = contactNotesCards()
@@ -88,20 +73,40 @@ class ContactNotesActivity : Activity() {
         )
     }
 
-    private fun headerRow(): LinearLayout {
+    private fun headerRow(title: String, phone: String): LinearLayout {
+        val mainTitle = title.takeIf { it.isNotBlank() && it != "Бележки" }
+            ?: phone.takeIf { it.isNotBlank() }
+            ?: "Информация"
+        val phoneLine = phone.takeIf { it.isNotBlank() && it != mainTitle }.orEmpty()
+
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(12))
             addView(iconButton(R.drawable.ic_arrow_back, "Към лога") { openAllCallsLog() }.apply {
-                layoutParams = LinearLayout.LayoutParams(dp(42), dp(38)).apply { marginEnd = dp(8) }
+                layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
             })
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = "Информация"
-                textSize = 22f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(15, 23, 42))
-                maxLines = 1
+            addView(LinearLayout(this@ContactNotesActivity).apply {
+                orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(TextView(this@ContactNotesActivity).apply {
+                    text = mainTitle
+                    textSize = 22f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(Color.rgb(15, 23, 42))
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                if (phoneLine.isNotBlank()) {
+                    addView(TextView(this@ContactNotesActivity).apply {
+                        text = phoneLine
+                        textSize = 15.5f
+                        setTextColor(Color.rgb(71, 85, 105))
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        setPadding(0, dp(2), 0, 0)
+                    })
+                }
             })
             addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer() })
             addView(iconButton(R.drawable.ic_calendar_event, "Календар") { openCalendarEvent() })
