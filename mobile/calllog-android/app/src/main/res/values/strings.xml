@@ -9,4 +9,7 @@
     <string name="crm_add_contact">Добави в CRM</string>
     <string name="crm_remove_contact">Премахни от CRM</string>
     <string name="crm_contact_processing">Обработва се…</string>
+    <string name="open_default_contact">Отвори контакта</string>
+    <string name="contact_not_found">Контактът не е намерен</string>
+    <string name="contacts_app_not_found">Няма приложение за контакти</string>
 </resources>
