@@ -1,13 +1,16 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.view.Gravity
 import android.widget.ImageButton
@@ -16,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
@@ -50,7 +54,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow(title, phone))
-        root.addView(contactRegistrationToggle())
+        root.addView(contactActionRow())
 
         val cards = contactNotesCards()
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
@@ -113,6 +117,19 @@ class ContactNotesActivity : Activity() {
         }
     }
 
+    private fun contactActionRow(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(contactRegistrationToggle())
+            addView(openDefaultContactButton())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+        }
+    }
+
     private fun contactRegistrationToggle(): LinearLayout {
         val linked = CallReportContactIntegration.isContactLinked(this, phone)
         val backgroundColor = when {
@@ -140,7 +157,7 @@ class ContactNotesActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
+            )
 
             addView(ImageView(this@ContactNotesActivity).apply {
                 setImageResource(iconRes)
@@ -153,6 +170,29 @@ class ContactNotesActivity : Activity() {
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.WHITE)
                 includeFontPadding = false
+            })
+        }
+    }
+
+    private fun openDefaultContactButton(): LinearLayout {
+        val label = getString(R.string.open_default_contact)
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = roundedRect(Color.WHITE, dp(14), Color.rgb(226, 232, 240), dp(1))
+            isClickable = true
+            isFocusable = true
+            contentDescription = label
+            setOnClickListener { openDefaultContact() }
+            layoutParams = LinearLayout.LayoutParams(dp(46), LinearLayout.LayoutParams.MATCH_PARENT).apply {
+                marginStart = dp(8)
+            }
+
+            addView(ImageView(this@ContactNotesActivity).apply {
+                setImageResource(R.drawable.ic_contact_open)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
             })
         }
     }
@@ -240,6 +280,37 @@ class ContactNotesActivity : Activity() {
     private fun openDialer() {
         if (phone.isBlank()) return
         startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+    }
+
+    private fun openDefaultContact() {
+        if (phone.isBlank()) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val lookupUri = runCatching {
+            contentResolver.query(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
+                arrayOf(ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val lookupKey = cursor.getString(0)
+                val contactId = cursor.getLong(1)
+                ContactsContract.Contacts.getLookupUri(contactId, lookupKey)
+            }
+        }.getOrNull()
+
+        if (lookupUri == null) {
+            Toast.makeText(this, getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, lookupUri)) }
+            .onFailure { Toast.makeText(this, getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
     }
 
     private fun openCalendarEvent() {
