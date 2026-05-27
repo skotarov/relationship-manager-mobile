@@ -25,6 +25,9 @@ internal class PostCallGeneralNoteEditor(
     private val showNoteEditor: () -> Unit,
     private val openCalendarEvent: (String) -> Unit,
     private val openContactNotesScreen: () -> Unit,
+    private val pendingGeneralNote: () -> String?,
+    private val setPendingGeneralNote: (String) -> Unit,
+    private val savePendingNoteChangesBeforeHistory: () -> Boolean,
     private val stopOverlay: () -> Unit,
 ) {
     fun show() {
@@ -35,7 +38,7 @@ internal class PostCallGeneralNoteEditor(
         val phoneValue = phone()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Основна бележка" } }
-        val generalNote = ContactNoteReader.generalNoteForPhone(service, phoneValue)
+        val generalNote = pendingGeneralNote() ?: ContactNoteReader.generalNoteForPhone(service, phoneValue)
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -83,11 +86,18 @@ internal class PostCallGeneralNoteEditor(
             setPadding(0, ui.dp(12), 0, 0)
         }
         actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") {
-            NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
+            setPendingGeneralNote(generalNoteInput.text?.toString().orEmpty())
             showNoteEditor()
         })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
-        actions.addView(ui.secondaryTextAction("История") { openContactNotesScreen() })
+        actions.addView(ui.secondaryTextAction("История") {
+            setPendingGeneralNote(generalNoteInput.text?.toString().orEmpty())
+            if (savePendingNoteChangesBeforeHistory()) {
+                openContactNotesScreen()
+            } else {
+                Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+            }
+        })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
             val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
