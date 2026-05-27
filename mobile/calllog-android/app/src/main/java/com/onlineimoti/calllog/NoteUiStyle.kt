@@ -15,8 +15,8 @@ internal object NoteUiStyle {
         text = Color.rgb(92, 64, 0),
         mutedText = Color.rgb(100, 116, 139),
         metaText = Color.rgb(92, 64, 0),
-        background = Color.WHITE,
-        border = Color.rgb(226, 232, 240),
+        background = Color.rgb(255, 251, 224),
+        border = Color.rgb(245, 224, 142),
     )
 
     val Call = NoteCardColors(
