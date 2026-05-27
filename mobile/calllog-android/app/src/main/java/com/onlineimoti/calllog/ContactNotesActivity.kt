@@ -68,7 +68,7 @@ class ContactNotesActivity : Activity() {
 
         val cards = contactNotesCards()
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
+        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_chat_note))
         root.addView(cards.generalNoteCard(generalNote.ifBlank { "+ Добави" }, muted = generalNote.isBlank()) { openGeneralNotePopup() })
 
         val callNotes = ContactNoteReader.callNotesForPhone(phone)
