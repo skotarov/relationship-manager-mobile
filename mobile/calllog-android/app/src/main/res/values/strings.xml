@@ -6,4 +6,7 @@
     <string name="save_settings">Запази настройките</string>
     <string name="open_form_direct">Отвори формата</string>
     <string name="test_notification">Тествай notification</string>
+    <string name="crm_add_contact">Добави в CRM</string>
+    <string name="crm_remove_contact">Премахни от CRM</string>
+    <string name="crm_contact_processing">Обработва се…</string>
 </resources>
