@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -11,7 +10,6 @@ import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.Settings
 import android.view.Gravity
-import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -22,6 +20,7 @@ import android.widget.Toast
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
+    private var contactRegistrationBusy = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +49,7 @@ class ContactNotesActivity : Activity() {
             )
         }
 
-        root.addView(headerRow(title))
+        root.addView(headerRow())
         val contactInfoText = listOfNotNull(
             title.takeIf { it.isNotBlank() && it != phone && it != "Бележки" },
             phone.takeIf { it.isNotBlank() },
@@ -88,7 +87,7 @@ class ContactNotesActivity : Activity() {
         )
     }
 
-    private fun headerRow(title: String): LinearLayout {
+    private fun headerRow(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -111,13 +110,18 @@ class ContactNotesActivity : Activity() {
     private fun contactRegistrationToggle(): TextView {
         val linked = CallReportContactIntegration.isContactLinked(this, phone)
         return TextView(this).apply {
-            text = if (linked) "Премахни от Call Report контактите" else "Регистрирай в Call Report контактите"
+            text = when {
+                contactRegistrationBusy -> "Обработва се…"
+                linked -> "Премахни от Call Report контактите"
+                else -> "Регистрирай в Call Report контактите"
+            }
             textSize = 13.5f
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(if (linked) Color.rgb(185, 28, 28) else Color.rgb(14, 116, 144))
             setPadding(dp(10), dp(8), dp(10), dp(8))
             background = roundedRect(Color.WHITE, dp(12), if (linked) Color.rgb(252, 165, 165) else Color.rgb(125, 211, 252), dp(1))
+            isEnabled = !contactRegistrationBusy
             isClickable = true
             isFocusable = true
             setOnClickListener { toggleContactRegistration(linked) }
@@ -129,34 +133,30 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun toggleContactRegistration(currentlyLinked: Boolean) {
-        if (phone.isBlank()) return
-        if (currentlyLinked) {
-            val deleted = CallReportContactIntegration.removeContact(this, phone)
-            Toast.makeText(this, if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис", Toast.LENGTH_SHORT).show()
-        } else {
-            CallReportContactIntegration.linkContact(this, phone, titleText)
-            Toast.makeText(this, "Регистрирано в Call Report контактите", Toast.LENGTH_SHORT).show()
-        }
+        if (phone.isBlank() || contactRegistrationBusy) return
+        contactRegistrationBusy = true
         render()
-    }
 
-    private fun allCallsButton(): TextView {
-        return TextView(this).apply {
-            text = "Всички обаждания"
-            textSize = 14.5f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.START
-            setTextColor(Color.rgb(14, 116, 144))
-            setPadding(0, dp(4), 0, dp(8))
-            background = null
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { openAllCallsLog() }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(4) }
-        }
+        val appContext = applicationContext
+        val phoneValue = phone
+        val titleValue = titleText
+        Thread {
+            val message = if (currentlyLinked) {
+                val deleted = CallReportContactIntegration.removeContact(appContext, phoneValue)
+                if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис"
+            } else {
+                val saved = CallReportContactIntegration.linkContact(appContext, phoneValue, titleValue)
+                if (saved) "Регистрирано в Call Report контактите" else "Не успях да регистрирам контакта"
+            }
+
+            runOnUiThread {
+                contactRegistrationBusy = false
+                if (!isFinishing && !isDestroyed) {
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                    render()
+                }
+            }
+        }.start()
     }
 
     private fun openAllCallsLog() {
@@ -177,17 +177,6 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun sectionTitleWithEmoji(textValue: String, emoji: String): LinearLayout {
-        return titleRow(textValue).apply {
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = emoji
-                textSize = 17f
-                gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
-            }, 0)
-        }
-    }
-
     private fun titleRow(textValue: String): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -199,20 +188,6 @@ class ContactNotesActivity : Activity() {
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(30, 41, 59))
             })
-        }
-    }
-
-    private fun plainNoteCard(textValue: String, muted: Boolean): TextView {
-        return TextView(this).apply {
-            text = textValue
-            textSize = 14.5f
-            setTextColor(if (muted) Color.rgb(100, 116, 139) else Color.rgb(30, 41, 59))
-            setPadding(0, dp(2), 0, dp(8))
-            background = null
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(4) }
         }
     }
 
