@@ -10,9 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -362,51 +359,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshPermissionSummary() {
-        val notificationsGranted = hasNotificationPermission()
-        val phoneGranted = hasPermission(Manifest.permission.READ_PHONE_STATE)
-        val callLogGranted = hasPermission(Manifest.permission.READ_CALL_LOG)
-        val contactsGranted = hasPermission(Manifest.permission.READ_CONTACTS)
-        val contactsWriteGranted = hasPermission(Manifest.permission.WRITE_CONTACTS)
-        val publicNotesGranted = canUsePublicNotesFolder()
-        val overlayGranted = Settings.canDrawOverlays(this)
-        val callScreeningGranted = hasCallScreeningRole()
-        val fullscreenGranted = canUseFullScreenIntent()
-
-        val rows = listOf(
-            "Notifications" to notificationsGranted,
-            "Phone" to phoneGranted,
-            "Call report log" to callLogGranted,
-            "Contacts read" to contactsGranted,
-            "Contacts write" to contactsWriteGranted,
-            "Public notes folder" to publicNotesGranted,
-            "Floating icon" to overlayGranted,
-            "Call screening" to callScreeningGranted,
-            "Full-screen popup" to fullscreenGranted,
-        )
-        val missingColor = ContextCompat.getColor(this, R.color.calllog_error)
-        val builder = SpannableStringBuilder()
-        rows.forEachIndexed { index, row ->
-            val start = builder.length
-            builder.append("${row.first}: ${permissionStateLabel(row.second)}")
-            if (!row.second) builder.setSpan(ForegroundColorSpan(missingColor), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            if (index < rows.lastIndex) builder.append('\n')
-        }
-        binding.permissionsSummaryText.text = builder
-
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted || !overlayGranted
-        binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
-        binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
-        binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
+        MainPermissionSummary.refresh(this, binding)
     }
 
-    private fun permissionStateLabel(active: Boolean): String = if (active) "активно" else "липсва"
-    private fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || hasPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun hasPermission(permission: String): Boolean = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
-
-    private fun openAppPermissionSettings() {
-        startPermissionFlow()
-    }
 
     private fun requestStorageManagerPermissionIfNeeded() {
         if (canUsePublicNotesFolder()) {
@@ -424,9 +381,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasCallScreeningRole(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
-        val roleManager = getSystemService(RoleManager::class.java) ?: return false
-        return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+        return MainPermissionChecks.hasCallScreeningRole(this)
     }
 
     private fun requestOverlayPermissionIfNeeded() {
@@ -456,9 +411,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun canUseFullScreenIntent(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
-        val notificationManager = getSystemService(NotificationManager::class.java) ?: return false
-        return notificationManager.canUseFullScreenIntent()
+        return MainPermissionChecks.canUseFullScreenIntent(this)
     }
 
     private fun requestFullScreenIntentPermissionIfNeeded() {
