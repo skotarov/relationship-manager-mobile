@@ -91,15 +91,16 @@ internal class HomeCallRowRenderer(
             })
         }
         if (!callNote.isNullOrBlank()) {
+            val colors = NoteUiStyle.Call
             textColumn.addView(TextView(activity).apply {
                 text = callNote
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
                 compoundDrawablePadding = dp(5)
-                setTextColor(Color.rgb(7, 89, 133))
+                setTextColor(colors.text)
                 textSize = 12.5f
                 maxLines = 3
                 setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedRect(Color.rgb(224, 246, 255), dp(9), Color.rgb(125, 211, 252), dp(1))
+                background = roundedRect(colors.background, dp(9), colors.border, dp(1))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) }
             })
         }
