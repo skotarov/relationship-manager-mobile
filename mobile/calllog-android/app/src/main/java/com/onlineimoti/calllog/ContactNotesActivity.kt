@@ -1,30 +1,32 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.app.Activity
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
-import android.provider.CalendarContract
-import android.provider.ContactsContract
-import android.provider.Settings
 import android.view.Gravity
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
-import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
     private var contactRegistrationBusy = false
+
+    private val externalActions by lazy { ContactNotesExternalActions(this) }
+    private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
+    private val crmController by lazy {
+        ContactNotesCrmController(
+            activity = this,
+            getPhone = { phone },
+            getTitle = { titleText },
+            setBusy = { contactRegistrationBusy = it },
+            rerender = ::render,
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,33 +41,50 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun render() {
-        setContentView(buildContent(phone, titleText))
+        setContentView(buildContent())
     }
 
-    private fun buildContent(phone: String, title: String): ScrollView {
+    private fun buildContent(): ScrollView {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
             setBackgroundColor(Color.rgb(248, 250, 252))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
         }
 
-        root.addView(headerRow(title, phone))
+        root.addView(
+            headerUi.headerRow(
+                title = titleText,
+                phone = phone,
+                openAllCallsLog = externalActions::openAllCallsLog,
+                openDialer = { externalActions.openDialer(phone) },
+                openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
+            )
+        )
         root.addView(contactActionRow())
-
-        val cards = contactNotesCards()
-        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        root.addView(sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
-        root.addView(cards.generalNoteCard(generalNote.ifBlank { "+ Добави" }, muted = generalNote.isBlank()) { openGeneralNotePopup() })
-
-        val callNotes = ContactNoteReader.callNotesForPhone(phone)
-        root.addView(sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
-        callNotes.forEach { note -> root.addView(cards.callNoteCard(note) { openEditPopup(note) }) }
+        addGeneralNote(root)
+        addCallNotes(root)
 
         return ScrollView(this).apply { addView(root) }
+    }
+
+    private fun addGeneralNote(root: LinearLayout) {
+        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
+        val cards = contactNotesCards()
+        root.addView(headerUi.sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
+        root.addView(
+            cards.generalNoteCard(
+                generalNote.ifBlank { "+ Добави" },
+                muted = generalNote.isBlank(),
+            ) { externalActions.openGeneralNotePopup(phone, titleText) }
+        )
+    }
+
+    private fun addCallNotes(root: LinearLayout) {
+        val cards = contactNotesCards()
+        root.addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
+        ContactNoteReader.callNotesForPhone(phone).forEach { note ->
+            root.addView(cards.callNoteCard(note) { externalActions.openEditPopup(phone, titleText, note) })
+        }
     }
 
     private fun contactNotesCards(): ContactNotesCards {
@@ -73,56 +92,16 @@ class ContactNotesActivity : Activity() {
             activity = this,
             dp = ::dp,
             roundedRect = ::roundedRect,
-            directionArrowLabel = ::directionArrowLabel,
+            directionArrowLabel = headerUi::directionArrowLabel,
         )
     }
 
-    private fun headerRow(title: String, phone: String): LinearLayout {
-        val mainTitle = title.takeIf { it.isNotBlank() && it != "Бележки" }
-            ?: phone.takeIf { it.isNotBlank() }
-            ?: "Информация"
-        val phoneLine = phone.takeIf { it.isNotBlank() && it != mainTitle }.orEmpty()
-
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dp(12))
-            addView(iconButton(R.drawable.ic_arrow_back, "Към лога") { openAllCallsLog() }.apply {
-                layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
-            })
-            addView(LinearLayout(this@ContactNotesActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                addView(TextView(this@ContactNotesActivity).apply {
-                    text = mainTitle
-                    textSize = 22f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(Color.rgb(15, 23, 42))
-                    maxLines = 2
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                })
-                if (phoneLine.isNotBlank()) {
-                    addView(TextView(this@ContactNotesActivity).apply {
-                        text = phoneLine
-                        textSize = 15.5f
-                        setTextColor(Color.rgb(71, 85, 105))
-                        maxLines = 1
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        setPadding(0, dp(2), 0, 0)
-                    })
-                }
-            })
-            addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer() })
-            addView(iconButton(R.drawable.ic_calendar_event, "Календар") { openCalendarEvent() })
-        }
-    }
-
     private fun contactActionRow(): LinearLayout {
-        val linked = isCrmLinked()
+        val linked = crmController.isLinked()
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(contactRegistrationToggle())
+            addView(contactRegistrationToggle(linked))
             if (linked) addView(editCrmContactButton())
             addView(openDefaultContactButton())
             layoutParams = LinearLayout.LayoutParams(
@@ -132,8 +111,7 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun contactRegistrationToggle(): LinearLayout {
-        val linked = isCrmLinked()
+    private fun contactRegistrationToggle(linked: Boolean): LinearLayout {
         val actionColor = when {
             contactRegistrationBusy -> Color.rgb(100, 116, 139)
             linked -> Color.rgb(220, 38, 38)
@@ -155,11 +133,7 @@ class ContactNotesActivity : Activity() {
             isClickable = true
             isFocusable = true
             contentDescription = getString(labelRes)
-            setOnClickListener { toggleContactRegistration(linked) }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
+            setOnClickListener { if (!contactRegistrationBusy) crmController.toggle(linked) }
 
             addView(ImageView(this@ContactNotesActivity).apply {
                 setImageResource(iconRes)
@@ -189,7 +163,7 @@ class ContactNotesActivity : Activity() {
             isFocusable = true
             contentDescription = "Редактирай CRM полета"
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            setOnClickListener { showCrmContactFieldsDialog() }
+            setOnClickListener { crmController.showDialog() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -207,234 +181,16 @@ class ContactNotesActivity : Activity() {
             isClickable = true
             isFocusable = true
             contentDescription = label
-            setOnClickListener { openDefaultContact() }
+            setOnClickListener { externalActions.openDefaultContact(phone) }
             layoutParams = LinearLayout.LayoutParams(dp(46), LinearLayout.LayoutParams.MATCH_PARENT).apply {
                 marginStart = dp(8)
             }
-
             addView(ImageView(this@ContactNotesActivity).apply {
                 setImageResource(R.drawable.ic_contact_open)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
             })
         }
-    }
-
-    private fun toggleContactRegistration(currentlyLinked: Boolean) {
-        if (phone.isBlank() || contactRegistrationBusy) return
-        if (!currentlyLinked) {
-            showCrmContactFieldsDialog()
-            return
-        }
-
-        contactRegistrationBusy = true
-        render()
-
-        val appContext = applicationContext
-        val phoneValue = phone
-        Thread {
-            val deleted = removeCrmLink(appContext, phoneValue)
-            val message = if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис"
-
-            runOnUiThread {
-                contactRegistrationBusy = false
-                if (!isFinishing && !isDestroyed) {
-                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                    render()
-                }
-            }
-        }.start()
-    }
-
-    private fun showCrmContactFieldsDialog() {
-        CrmContactFieldsDialog.show(
-            activity = this,
-            phone = phone,
-            titleText = titleText,
-            currentGeneralNote = ContactNoteReader.generalNoteForPhone(this, phone),
-            onSave = ::saveCrmContactFields,
-        )
-    }
-
-    private fun saveCrmContactFields(fields: CallReportStableCrmContactWriter.Fields) {
-        contactRegistrationBusy = true
-        render()
-        val appContext = applicationContext
-        val mode = contactLinkMode()
-        val phoneValue = phone
-        val titleValue = titleText
-        Thread {
-            val saved = saveCrmLink(appContext, fields, mode, phoneValue, titleValue)
-            runOnUiThread {
-                contactRegistrationBusy = false
-                if (!isFinishing && !isDestroyed) {
-                    Toast.makeText(this, if (saved) "Регистрирано в Call Report контактите" else "Не успях да регистрирам контакта", Toast.LENGTH_SHORT).show()
-                    render()
-                }
-            }
-        }.start()
-    }
-
-    private fun isCrmLinked(): Boolean {
-        return CallReportContactIntegration.isContactLinked(this, phone)
-    }
-
-    private fun saveCrmLink(
-        context: android.content.Context,
-        fields: CallReportStableCrmContactWriter.Fields,
-        mode: String,
-        phone: String,
-        title: String,
-    ): Boolean {
-        return when (mode) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportStableCrmContactWriter.save(context, fields)
-            else -> CallReportContactIntegration.linkContact(context, phone, title)
-        }
-    }
-
-    private fun removeCrmLink(context: android.content.Context, phone: String): Int {
-        return CallReportContactIntegration.removeContact(context, phone)
-    }
-
-    private fun contactLinkMode(): String = ConfigStore.load(this).contactLinkMode
-
-    private fun openAllCallsLog() {
-        startActivity(
-            Intent(this, HomeActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        )
-        finish()
-    }
-
-    private fun sectionTitleWithDrawable(textValue: String, drawableRes: Int): LinearLayout {
-        return titleRow(textValue).apply {
-            addView(ImageView(this@ContactNotesActivity).apply {
-                setImageResource(drawableRes)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
-            }, 0)
-        }
-    }
-
-    private fun titleRow(textValue: String): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(14), 0, dp(8))
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = textValue
-                textSize = 16f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(30, 41, 59))
-            })
-        }
-    }
-
-    private fun directionArrowLabel(direction: String): String {
-        return when (direction) {
-            "in" -> "↙ входящ"
-            "out" -> "↗ изходящ"
-            else -> PhoneCallReader.directionLabel(direction)
-        }
-    }
-
-    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
-        return ImageButton(this).apply {
-            setImageResource(drawableRes)
-            contentDescription = description
-            background = null
-            setBackgroundColor(Color.TRANSPARENT)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun openDialer() {
-        if (phone.isBlank()) return
-        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-    }
-
-    private fun openDefaultContact() {
-        if (phone.isBlank()) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val lookupUri = runCatching {
-            contentResolver.query(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
-                arrayOf(ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup._ID),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                if (!cursor.moveToFirst()) return@use null
-                val lookupKey = cursor.getString(0)
-                val contactId = cursor.getLong(1)
-                ContactsContract.Contacts.getLookupUri(contactId, lookupKey)
-            }
-        }.getOrNull()
-
-        if (lookupUri == null) {
-            Toast.makeText(this, getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        runCatching { startActivity(Intent(Intent.ACTION_VIEW, lookupUri)) }
-            .onFailure { Toast.makeText(this, getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun openCalendarEvent() {
-        val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
-        val eventTitle = "Среща с $safeName"
-        val description = buildString {
-            appendLine("Име: $safeName")
-            if (phone.isNotBlank()) appendLine("Телефон: $phone")
-        }.trim()
-        val begin = System.currentTimeMillis() + 60 * 60 * 1000L
-        val end = begin + 60 * 60 * 1000L
-        val intent = Intent(Intent.ACTION_INSERT).apply {
-            data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, eventTitle)
-            putExtra(CalendarContract.Events.DESCRIPTION, description)
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
-        }
-        runCatching { startActivity(intent) }.onFailure {
-            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun openGeneralNotePopup() {
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Разреши 'Показване върху други приложения', за да редактираш основната бележка.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        startService(
-            Intent(this, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_GENERAL_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
-        )
-    }
-
-    private fun openEditPopup(note: ContactCallNote) {
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Разреши 'Показване върху други приложения', за да редактираш бележката.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        startService(
-            Intent(this, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, note.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, note.callAt)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, note.durationSeconds)
-        )
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
