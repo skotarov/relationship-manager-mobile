@@ -21,6 +21,8 @@ object CrmContactFieldsDialog {
             orientation = LinearLayout.VERTICAL
             setPadding(ui.dp(18), ui.dp(10), ui.dp(18), ui.dp(4))
         }
+        val basicSection = ui.verticalSection()
+        val advancedSection = ui.verticalSection().apply { visibility = View.GONE }
 
         val basicRadio = RadioButton(activity).apply {
             id = View.generateViewId()
@@ -40,9 +42,6 @@ object CrmContactFieldsDialog {
                 advancedSection.visibility = if (checkedId == advancedRadio.id) View.VISIBLE else View.GONE
             }
         })
-
-        val basicSection = ui.verticalSection()
-        val advancedSection = ui.verticalSection().apply { visibility = View.GONE }
         root.addView(basicSection)
         root.addView(advancedSection)
 
