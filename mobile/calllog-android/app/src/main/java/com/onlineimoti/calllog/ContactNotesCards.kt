@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Typeface
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -28,6 +29,39 @@ internal class ContactNotesCards(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
+        }
+    }
+
+    fun addCallNoteButton(call: PhoneCallRecord, onClick: () -> Unit): LinearLayout {
+        val colors = NoteUiStyle.Call
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedRect(Color.WHITE, dp(12), colors.border, dp(1))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+
+            addView(TextView(activity).apply {
+                text = "+ Добави бележка към последния разговор"
+                textSize = 14.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(colors.metaText)
+            })
+            addView(TextView(activity).apply {
+                text = listOf(
+                    PhoneCallReader.formatStartedAt(call.startedAt),
+                    directionArrowLabel(call.direction),
+                    PhoneCallReader.formatDuration(call.durationSeconds),
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                textSize = 12.5f
+                setTextColor(colors.metaText)
+                setPadding(0, dp(5), 0, 0)
+            })
         }
     }
 
