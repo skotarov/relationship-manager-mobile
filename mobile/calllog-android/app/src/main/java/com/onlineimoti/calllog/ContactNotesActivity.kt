@@ -261,8 +261,10 @@ class ContactNotesActivity : Activity() {
         render()
         val appContext = applicationContext
         val mode = contactLinkMode()
+        val phoneValue = phone
+        val titleValue = titleText
         Thread {
-            val saved = saveCrmLink(appContext, fields, mode)
+            val saved = saveCrmLink(appContext, fields, mode, phoneValue, titleValue)
             runOnUiThread {
                 contactRegistrationBusy = false
                 if (!isFinishing && !isDestroyed) {
@@ -284,10 +286,12 @@ class ContactNotesActivity : Activity() {
         context: android.content.Context,
         fields: CallReportStableCrmContactWriter.Fields,
         mode: String,
+        phone: String,
+        title: String,
     ): Boolean {
         return when (mode) {
             ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.save(context, fields)
-            else -> CallReportStableCrmContactWriter.save(context, fields)
+            else -> CallReportContactIntegration.linkContact(context, phone, title)
         }
     }
 
