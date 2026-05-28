@@ -4,7 +4,9 @@ import android.app.Service
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.EditText
 
 internal class PostCallOverlayWindowController(
     private val service: Service,
@@ -18,10 +20,15 @@ internal class PostCallOverlayWindowController(
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
+    private var dragAllowedForGesture = false
 
     fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         val prefs = service.getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, Service.MODE_PRIVATE)
-        val flags = (if (focusable) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        val flags = if (focusable) {
+            0
+        } else {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        }
         val popupWidth = service.resources.displayMetrics.widthPixels - dp(32)
         val params = WindowManager.LayoutParams(
             popupWidth,
@@ -34,6 +41,10 @@ internal class PostCallOverlayWindowController(
             x = 0
             y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
             width = popupWidth
+            if (focusable) {
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+            }
         }
         view.setOnTouchListener { _, event ->
             when (event.action) {
@@ -42,26 +53,36 @@ internal class PostCallOverlayWindowController(
                     initialY = params.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
+                    dragAllowedForGesture = !isTouchInsideEditableText(view, event.rawX, event.rawY)
                     false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager()?.updateViewLayout(view, params)
+                    if (dragAllowedForGesture) {
+                        params.x = initialX + (event.rawX - initialTouchX).toInt()
+                        params.y = initialY + (event.rawY - initialTouchY).toInt()
+                        windowManager()?.updateViewLayout(view, params)
+                    }
                     false
                 }
                 MotionEvent.ACTION_UP -> {
-                    val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved >= dp(8)) {
-                        if (shouldDismissDraggedOverlay(params)) {
-                            stopOverlay()
-                        } else {
-                            params.x = 0
-                            params.y = params.y.coerceAtLeast(0)
-                            windowManager()?.updateViewLayout(view, params)
-                            prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
+                    if (dragAllowedForGesture) {
+                        val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
+                        if (moved >= dp(8)) {
+                            if (shouldDismissDraggedOverlay(params)) {
+                                stopOverlay()
+                            } else {
+                                params.x = 0
+                                params.y = params.y.coerceAtLeast(0)
+                                windowManager()?.updateViewLayout(view, params)
+                                prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
+                            }
                         }
                     }
+                    dragAllowedForGesture = false
+                    false
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    dragAllowedForGesture = false
                     false
                 }
                 else -> false
@@ -70,6 +91,27 @@ internal class PostCallOverlayWindowController(
         setOverlayView(view)
         windowManager()?.addView(view, params)
         if (timeoutMs > 0) handler.postDelayed({ stopOverlay() }, timeoutMs)
+    }
+
+    private fun isTouchInsideEditableText(root: View, rawX: Float, rawY: Float): Boolean {
+        if (!root.isShown) return false
+        if (root is EditText && isPointInsideView(root, rawX, rawY)) return true
+        if (root is ViewGroup) {
+            for (index in root.childCount - 1 downTo 0) {
+                if (isTouchInsideEditableText(root.getChildAt(index), rawX, rawY)) return true
+            }
+        }
+        return false
+    }
+
+    private fun isPointInsideView(view: View, rawX: Float, rawY: Float): Boolean {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val left = location[0]
+        val top = location[1]
+        val right = left + view.width
+        val bottom = top + view.height
+        return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
     }
 
     private fun shouldDismissDraggedOverlay(params: WindowManager.LayoutParams): Boolean {
