@@ -93,6 +93,18 @@ internal class PostCallOverlayUi(private val context: Context) {
         }
     }
 
+    fun generalNotePreviewRow(noteText: String, topMargin: Int): LinearLayout {
+        val colors = NoteUiStyle.General
+        return notePreviewRow(
+            noteText = noteText,
+            textColor = colors.text,
+            backgroundColor = colors.background,
+            strokeColor = colors.border,
+            topMargin = topMargin,
+            iconRes = R.drawable.ic_note_lines,
+        )
+    }
+
     fun callNoteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
         return noteEditText(value, hintText, minLineCount, topMargin).apply {
             setTextColor(NoteUiStyle.Call.text)
