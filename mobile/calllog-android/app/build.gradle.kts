@@ -6,8 +6,13 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val githubRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 2
-val buildTime = OffsetDateTime.now(ZoneOffset.UTC).toString()
+val buildTime = OffsetDateTime.now(ZoneOffset.UTC)
+val buildTimeText = buildTime.toString()
+val timeVersionCode =
+    (buildTime.year % 100) * 10_000_000 +
+        buildTime.dayOfYear * 10_000 +
+        buildTime.hour * 100 +
+        buildTime.minute
 val defaultAccessToken = System.getenv("CALLREPORT_DEFAULT_TOKEN").orEmpty()
 
 android {
@@ -18,10 +23,10 @@ android {
         applicationId = "com.onlineimoti.calllog"
         minSdk = 29
         targetSdk = 35
-        versionCode = githubRunNumber
-        versionName = "0.2.$githubRunNumber"
+        versionCode = timeVersionCode
+        versionName = "0.2.$timeVersionCode"
 
-        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
+        buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
         buildConfigField("String", "DEFAULT_ACCESS_TOKEN", "\"$defaultAccessToken\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
