@@ -7,10 +7,9 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
-import androidx.appcompat.app.AppCompatActivity
 
 internal class MainPermissionFlowController(
-    private val activity: AppCompatActivity,
+    private val activity: MainActivity,
     private val requestPermissionLauncher: ActivityResultLauncher<String>,
     private val callScreeningRoleLauncher: ActivityResultLauncher<Intent>,
     private val storageSettingsLauncher: ActivityResultLauncher<Intent>,
