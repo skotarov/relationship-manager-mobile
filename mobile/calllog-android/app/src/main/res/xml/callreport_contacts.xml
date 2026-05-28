@@ -5,4 +5,9 @@
         android:icon="@mipmap/ic_launcher"
         android:summaryColumn="data2"
         android:detailColumn="data1" />
+    <ContactsDataKind
+        android:mimeType="vnd.android.cursor.item/vnd.com.onlineimoti.calllog.crm"
+        android:icon="@mipmap/ic_launcher"
+        android:summaryColumn="data2"
+        android:detailColumn="data1" />
 </ContactsSource>
