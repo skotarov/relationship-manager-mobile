@@ -118,7 +118,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun contactActionRow(): LinearLayout {
-        val linked = CallReportContactAppLinker.isLinked(this, phone)
+        val linked = isCrmLinked()
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -133,7 +133,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun contactRegistrationToggle(): LinearLayout {
-        val linked = CallReportContactAppLinker.isLinked(this, phone)
+        val linked = isCrmLinked()
         val actionColor = when {
             contactRegistrationBusy -> Color.rgb(100, 116, 139)
             linked -> Color.rgb(220, 38, 38)
@@ -233,7 +233,7 @@ class ContactNotesActivity : Activity() {
         val appContext = applicationContext
         val phoneValue = phone
         Thread {
-            val deleted = CallReportContactAppLinker.remove(appContext, phoneValue)
+            val deleted = removeCrmLink(appContext, phoneValue)
             val message = if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис"
 
             runOnUiThread {
@@ -260,8 +260,9 @@ class ContactNotesActivity : Activity() {
         contactRegistrationBusy = true
         render()
         val appContext = applicationContext
+        val mode = contactLinkMode()
         Thread {
-            val saved = CallReportContactAppLinker.save(appContext, fields)
+            val saved = saveCrmLink(appContext, fields, mode)
             runOnUiThread {
                 contactRegistrationBusy = false
                 if (!isFinishing && !isDestroyed) {
@@ -271,6 +272,33 @@ class ContactNotesActivity : Activity() {
             }
         }.start()
     }
+
+    private fun isCrmLinked(): Boolean {
+        return when (contactLinkMode()) {
+            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.isLinked(this, phone)
+            else -> CallReportContactIntegration.isContactLinked(this, phone)
+        }
+    }
+
+    private fun saveCrmLink(
+        context: android.content.Context,
+        fields: CallReportStableCrmContactWriter.Fields,
+        mode: String,
+    ): Boolean {
+        return when (mode) {
+            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.save(context, fields)
+            else -> CallReportStableCrmContactWriter.save(context, fields)
+        }
+    }
+
+    private fun removeCrmLink(context: android.content.Context, phone: String): Int {
+        return when (contactLinkMode()) {
+            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.remove(context, phone)
+            else -> CallReportContactIntegration.removeContact(context, phone)
+        }
+    }
+
+    private fun contactLinkMode(): String = ConfigStore.load(this).contactLinkMode
 
     private fun openAllCallsLog() {
         startActivity(
