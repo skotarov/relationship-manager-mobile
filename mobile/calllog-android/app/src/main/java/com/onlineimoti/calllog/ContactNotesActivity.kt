@@ -258,7 +258,11 @@ class ContactNotesActivity : Activity() {
         }
 
         val nameInput = input("Име / показвано име", titleText.ifBlank { phone })
-        val phoneInput = input("Телефон", phone)
+        input("Оригинален телефон за свързване", phone).apply {
+            isEnabled = false
+            setTextColor(Color.rgb(71, 85, 105))
+        }
+        val additionalPhoneInput = input("Допълнителен телефон (тестово)", "")
         val organizationInput = input("Организация", "Call Report")
         val jobTitleInput = input("Тип / длъжност", "CRM тест")
         val websiteInput = input("Сайт / линк", "")
@@ -272,9 +276,10 @@ class ContactNotesActivity : Activity() {
             .setNegativeButton("Изход", null)
             .setPositiveButton("Запис") { _, _ ->
                 saveCrmContactFields(
-                    CallReportCrmContactWriter.Fields(
-                        phone = phoneInput.text?.toString().orEmpty(),
+                    CallReportStableCrmContactWriter.Fields(
+                        originalPhone = phone,
                         displayName = nameInput.text?.toString().orEmpty(),
+                        additionalPhone = additionalPhoneInput.text?.toString().orEmpty(),
                         organization = organizationInput.text?.toString().orEmpty(),
                         jobTitle = jobTitleInput.text?.toString().orEmpty(),
                         website = websiteInput.text?.toString().orEmpty(),
@@ -287,12 +292,12 @@ class ContactNotesActivity : Activity() {
             .show()
     }
 
-    private fun saveCrmContactFields(fields: CallReportCrmContactWriter.Fields) {
+    private fun saveCrmContactFields(fields: CallReportStableCrmContactWriter.Fields) {
         contactRegistrationBusy = true
         render()
         val appContext = applicationContext
         Thread {
-            val saved = CallReportCrmContactWriter.save(appContext, fields)
+            val saved = CallReportStableCrmContactWriter.save(appContext, fields)
             runOnUiThread {
                 contactRegistrationBusy = false
                 if (!isFinishing && !isDestroyed) {
