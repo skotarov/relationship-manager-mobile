@@ -46,7 +46,7 @@ object ConfigStore {
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return AppConfig(
-            remoteEnabled = prefs.getBoolean(KEY_REMOTE_ENABLED, true),
+            remoteEnabled = prefs.getBoolean(KEY_REMOTE_ENABLED, false),
             baseUrl = prefs.getString(KEY_BASE_URL, "https://onlineimoti.com")!!.trim(),
             accessToken = prefs.getString(KEY_ACCESS_TOKEN, BuildConfig.DEFAULT_ACCESS_TOKEN)!!.trim(),
             contactGroups = prefs.getString(KEY_CONTACT_GROUPS, "")!!.trim(),
