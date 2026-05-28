@@ -4,19 +4,12 @@ import android.animation.ObjectAnimator
 import android.app.Service
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
@@ -128,6 +121,7 @@ class PostCallOverlayService : Service() {
             dp = ::dp,
         )
     }
+
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var loadingAnimator: ObjectAnimator? = null
@@ -143,22 +137,8 @@ class PostCallOverlayService : Service() {
     private var pendingCallNote: String? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        formUrl = intent?.getStringExtra(EXTRA_FORM_URL).orEmpty()
-        phone = intent?.getStringExtra(EXTRA_PHONE).orEmpty()
-        direction = intent?.getStringExtra(EXTRA_DIRECTION).orEmpty()
-        title = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
-        subtitle = intent?.getStringExtra(EXTRA_SUBTITLE).orEmpty()
-        lines = intent?.getStringArrayListExtra(EXTRA_LINES).orEmpty()
-        callAt = intent?.getLongExtra(EXTRA_CALL_AT, 0L) ?: 0L
-        durationSeconds = intent?.getLongExtra(EXTRA_DURATION, 0L) ?: 0L
-
-        if (callAt <= 0L && phone.isNotBlank()) {
-            PhoneCallReader.callsForPhone(this, phone, limit = 1).firstOrNull()?.let { call ->
-                callAt = call.startedAt
-                durationSeconds = call.durationSeconds
-                if (direction.isBlank()) direction = call.direction
-            }
-        }
+        readExtras(intent)
+        hydrateLatestCallIfNeeded()
 
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
@@ -166,15 +146,11 @@ class PostCallOverlayService : Service() {
         }
 
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
-            MODE_LOADING -> showLoadingPopup()
-            MODE_LOOKUP -> showLookupPopup()
-            MODE_NOTE -> showNoteEditor()
-            MODE_GENERAL_NOTE -> showGeneralNoteEditor()
-            else -> {
-                showBubble()
-                val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
-                handler.postDelayed({ stopSelf() }, timeout * 1000L)
-            }
+            MODE_LOADING -> loadingPopup.show()
+            MODE_LOOKUP -> lookupPopup.show()
+            MODE_NOTE -> noteEditor.show()
+            MODE_GENERAL_NOTE -> generalNoteEditor.show()
+            else -> showBubbleWithTimeout()
         }
         return START_NOT_STICKY
     }
@@ -189,12 +165,30 @@ class PostCallOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun showLoadingPopup() {
-        loadingPopup.show()
+    private fun readExtras(intent: Intent?) {
+        formUrl = intent?.getStringExtra(EXTRA_FORM_URL).orEmpty()
+        phone = intent?.getStringExtra(EXTRA_PHONE).orEmpty()
+        direction = intent?.getStringExtra(EXTRA_DIRECTION).orEmpty()
+        title = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
+        subtitle = intent?.getStringExtra(EXTRA_SUBTITLE).orEmpty()
+        lines = intent?.getStringArrayListExtra(EXTRA_LINES).orEmpty()
+        callAt = intent?.getLongExtra(EXTRA_CALL_AT, 0L) ?: 0L
+        durationSeconds = intent?.getLongExtra(EXTRA_DURATION, 0L) ?: 0L
     }
 
-    private fun showLookupPopup() {
-        lookupPopup.show()
+    private fun hydrateLatestCallIfNeeded() {
+        if (callAt > 0L || phone.isBlank()) return
+        PhoneCallReader.callsForPhone(this, phone, limit = 1).firstOrNull()?.let { call ->
+            callAt = call.startedAt
+            durationSeconds = call.durationSeconds
+            if (direction.isBlank()) direction = call.direction
+        }
+    }
+
+    private fun showBubbleWithTimeout() {
+        bubble.show()
+        val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
+        handler.postDelayed({ stopSelf() }, timeout * 1000L)
     }
 
     private fun showNoteEditor() {
@@ -209,26 +203,8 @@ class PostCallOverlayService : Service() {
         calendarActions.openCalendarEvent(displayName)
     }
 
-    private fun showBubble() {
-        bubble.show()
-    }
-
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs)
-    }
-
-    private fun noteRightAction(): ImageButton = ui.noteRightAction { handler.post { showNoteEditor() } }
-
-    private fun notePreviewRow(noteText: String, textColor: Int, backgroundColor: Int, strokeColor: Int, topMargin: Int, iconRes: Int): LinearLayout {
-        return ui.notePreviewRow(noteText, textColor, backgroundColor, strokeColor, topMargin, iconRes)
-    }
-
-    private fun callNoteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
-        return ui.callNoteEditText(value, hintText, minLineCount, topMargin)
-    }
-
-    private fun noteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
-        return ui.noteEditText(value, hintText, minLineCount, topMargin)
     }
 
     private fun callDirectionColor(directionValue: String): Int {
@@ -237,16 +213,6 @@ class PostCallOverlayService : Service() {
             "in" -> Color.rgb(59, 130, 246)
             else -> Color.rgb(107, 114, 128)
         }
-    }
-
-    private fun iconAction(drawableRes: Int, action: () -> Unit): ImageButton = ui.iconAction(drawableRes, action)
-
-    private fun textAction(textValue: String, action: () -> Unit): TextView = ui.textAction(textValue, action)
-
-    private fun secondaryTextAction(textValue: String, action: () -> Unit): TextView = ui.secondaryTextAction(textValue, action)
-
-    private fun secondaryIconAction(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
-        return ui.secondaryIconAction(drawableRes, description, action)
     }
 
     private fun openContactNotesScreen() {
@@ -284,20 +250,12 @@ class PostCallOverlayService : Service() {
         sendBroadcast(Intent(ACTION_NOTES_CHANGED).setPackage(packageName))
     }
 
-    private fun View.stylePopupCard() = ui.stylePopupCard(this)
-
-    private fun shadowScroll(card: View): ScrollView = ui.shadowScroll(card)
-
     private fun removeOverlay() {
         loadingAnimator?.cancel()
         loadingAnimator = null
         val view = overlayView ?: return
         runCatching { windowManager?.removeView(view) }
         overlayView = null
-    }
-
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
-        return ui.roundedRect(color, radius, strokeColor, strokeWidth)
     }
 
     private fun dp(value: Int): Int = ui.dp(value)
