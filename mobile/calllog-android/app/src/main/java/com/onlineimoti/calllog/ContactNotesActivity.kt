@@ -132,7 +132,7 @@ class ContactNotesActivity : Activity() {
 
     private fun contactRegistrationToggle(): LinearLayout {
         val linked = CallReportContactIntegration.isContactLinked(this, phone)
-        val backgroundColor = when {
+        val actionColor = when {
             contactRegistrationBusy -> Color.rgb(100, 116, 139)
             linked -> Color.rgb(220, 38, 38)
             else -> Color.rgb(22, 163, 74)
@@ -148,7 +148,7 @@ class ContactNotesActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(16), dp(10))
-            background = roundedRect(backgroundColor, dp(16), Color.TRANSPARENT, 0)
+            background = roundedRect(Color.WHITE, dp(16), actionColor, dp(1))
             isEnabled = !contactRegistrationBusy
             isClickable = true
             isFocusable = true
@@ -161,6 +161,7 @@ class ContactNotesActivity : Activity() {
 
             addView(ImageView(this@ContactNotesActivity).apply {
                 setImageResource(iconRes)
+                setColorFilter(actionColor)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(10) }
             })
@@ -168,7 +169,7 @@ class ContactNotesActivity : Activity() {
                 text = getString(labelRes)
                 textSize = 15.5f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.WHITE)
+                setTextColor(actionColor)
                 includeFontPadding = false
             })
         }
