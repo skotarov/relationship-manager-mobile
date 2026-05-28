@@ -1,5 +1,6 @@
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -14,6 +15,24 @@ val timeVersionCode =
         buildTime.hour * 100 +
         buildTime.minute
 val defaultAccessToken = System.getenv("CALLREPORT_DEFAULT_TOKEN").orEmpty()
+val fixedDebugKeystoreBase64File = rootProject.file("debug-signing/callreport-debug.keystore.base64")
+val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
+    .file("generated-signing/callreport-debug.keystore")
+    .get()
+    .asFile
+
+fun ensureFixedDebugKeystore(): File {
+    require(fixedDebugKeystoreBase64File.isFile) {
+        "Missing fixed debug keystore: ${fixedDebugKeystoreBase64File.path}"
+    }
+    if (!fixedDebugKeystoreFile.isFile) {
+        fixedDebugKeystoreFile.parentFile.mkdirs()
+        fixedDebugKeystoreFile.writeBytes(
+            Base64.getMimeDecoder().decode(fixedDebugKeystoreBase64File.readText().trim())
+        )
+    }
+    return fixedDebugKeystoreFile
+}
 
 android {
     namespace = "com.onlineimoti.calllog"
@@ -32,7 +51,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = ensureFixedDebugKeystore()
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
