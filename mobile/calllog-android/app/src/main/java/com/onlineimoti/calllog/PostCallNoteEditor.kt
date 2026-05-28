@@ -32,6 +32,7 @@ internal class PostCallNoteEditor(
     private val pendingCallNote: () -> String?,
     private val setPendingCallNote: (String) -> Unit,
     private val savePendingNoteChangesBeforeHistory: () -> Boolean,
+    private val notifyNotesChanged: () -> Unit,
     private val stopOverlay: () -> Unit,
 ) {
     fun show() {
@@ -145,6 +146,7 @@ internal class PostCallNoteEditor(
                 callAt = callAtValue,
                 durationSeconds = durationValue,
             )
+            if (callSaved) notifyNotesChanged()
             Toast.makeText(service, if (callSaved) "Бележката към обаждането е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
             stopOverlay()
         })
