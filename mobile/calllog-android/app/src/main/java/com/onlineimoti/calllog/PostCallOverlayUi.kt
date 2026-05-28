@@ -128,6 +128,10 @@ internal class PostCallOverlayUi(private val context: Context) {
             gravity = Gravity.TOP or Gravity.START
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(colors.background, dp(12), colors.border, dp(1))
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isLongClickable = true
+            setTextIsSelectable(true)
             clipToOutline = true
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { this.topMargin = topMargin }
         }
