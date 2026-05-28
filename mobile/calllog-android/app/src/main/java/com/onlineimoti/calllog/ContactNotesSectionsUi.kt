@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.graphics.drawable.GradientDrawable
 import android.widget.LinearLayout
 
 internal class ContactNotesSectionsUi(
@@ -15,8 +14,8 @@ internal class ContactNotesSectionsUi(
         root.addView(
             cards.generalNoteCard(
                 generalNote.ifBlank { "+ Добави" },
-                muted = generalNote.isBlank(),
-                onClick = onEdit,
+                generalNote.isBlank(),
+                onEdit,
             )
         )
     }
