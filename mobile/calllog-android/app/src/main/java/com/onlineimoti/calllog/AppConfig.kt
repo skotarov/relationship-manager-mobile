@@ -16,6 +16,7 @@ data class AppConfig(
     val postCallPromptTimeoutSeconds: Int,
     val useCustomStartPopup: Boolean,
     val useCustomEndPopup: Boolean,
+    val contactLinkMode: String,
 )
 
 object ConfigStore {
@@ -32,11 +33,15 @@ object ConfigStore {
     private const val KEY_POST_CALL_TIMEOUT = "post_call_timeout"
     private const val KEY_USE_CUSTOM_START_POPUP = "use_custom_start_popup"
     private const val KEY_USE_CUSTOM_END_POPUP = "use_custom_end_popup"
+    private const val KEY_CONTACT_LINK_MODE = "contact_link_mode"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
     const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
+    const val CONTACT_LINK_MODE_APP = "app"
+    const val CONTACT_LINK_MODE_CONTACT = "contact"
+    const val DEFAULT_CONTACT_LINK_MODE = CONTACT_LINK_MODE_APP
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -53,6 +58,7 @@ object ConfigStore {
             postCallPromptTimeoutSeconds = prefs.getInt(KEY_POST_CALL_TIMEOUT, DEFAULT_POST_CALL_TIMEOUT_SECONDS).coerceIn(3, 120),
             useCustomStartPopup = prefs.getBoolean(KEY_USE_CUSTOM_START_POPUP, true),
             useCustomEndPopup = prefs.getBoolean(KEY_USE_CUSTOM_END_POPUP, true),
+            contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
         )
     }
 
@@ -71,6 +77,7 @@ object ConfigStore {
             .putInt(KEY_POST_CALL_TIMEOUT, config.postCallPromptTimeoutSeconds.coerceIn(3, 120))
             .putBoolean(KEY_USE_CUSTOM_START_POPUP, config.useCustomStartPopup)
             .putBoolean(KEY_USE_CUSTOM_END_POPUP, config.useCustomEndPopup)
+            .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
             .apply()
     }
 
@@ -78,6 +85,13 @@ object ConfigStore {
         val trimmed = path.trim()
         if (trimmed.isBlank()) return defaultPath
         return if (trimmed.startsWith('/')) trimmed else "/$trimmed"
+    }
+
+    private fun normalizeContactLinkMode(value: String): String {
+        return when (value.trim()) {
+            CONTACT_LINK_MODE_CONTACT -> CONTACT_LINK_MODE_CONTACT
+            else -> CONTACT_LINK_MODE_APP
+        }
     }
 }
 
