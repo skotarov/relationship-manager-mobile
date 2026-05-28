@@ -27,9 +27,6 @@ object ContactNoteReader {
 
     fun generalNoteForPhone(context: Context, phoneNumber: String): String {
         if (phoneNumber.isBlank()) return ""
-        val hasContact = findContactId(context, phoneNumber) != null
-        if (hasContact) readContactNote(context, phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
-        if (!hasContact) LocalNotesFileStore.profileGeneralNote(phoneNumber).takeIf { it.isNotBlank() }?.let { return it }
         return readLocalNote(context, phoneNumber)
     }
 
@@ -43,11 +40,8 @@ object ContactNoteReader {
 
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
         if (phoneNumber.isBlank()) return false
-        val hasContact = findContactId(context, phoneNumber) != null
-        val savedToContact = if (hasContact) saveContactNote(context, phoneNumber, note) else false
-        val savedToProfile = if (!hasContact) LocalNotesFileStore.saveUnknownGeneralNote(phoneNumber, note) else false
         saveLocalNote(context, phoneNumber, note)
-        return savedToContact || savedToProfile || phoneNumber.normalizePhoneKey().isNotBlank()
+        return phoneNumber.normalizePhoneKey().isNotBlank()
     }
 
     fun saveCallNoteForPhone(
