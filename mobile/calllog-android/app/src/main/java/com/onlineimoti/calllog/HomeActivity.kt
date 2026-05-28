@@ -5,28 +5,27 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
+    private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
             dp = ::dp,
-            noteKey = ::noteKey,
+            noteKey = HomeCallPageLoader::noteKey,
             roundedRect = ::roundedRect,
-            openContactNotesScreen = ::openContactNotesScreen,
-            openDialer = ::openDialer,
+            openContactNotesScreen = homeActions::openContactNotesScreen,
+            openDialer = homeActions::openDialer,
             togglePhoneFilter = ::togglePhoneFilter,
-            openContactNotePopupForCall = ::openContactNotePopupForCall,
+            openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
         )
     }
     private var pageIndex = 0
@@ -54,7 +53,7 @@ class HomeActivity : AppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.settingsButton.setOnClickListener { startActivity(Intent(this, MainActivity::class.java)) }
+        binding.settingsButton.setOnClickListener { homeActions.openSettings() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.previousCallsButton.setOnClickListener {
             if (pageIndex > 0) {
@@ -109,27 +108,41 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
-        currentCalls = if (activePhoneFilter.isBlank()) {
-            PhoneCallReader.recentCalls(this, limit = PAGE_SIZE, offset = pageIndex * PAGE_SIZE)
-        } else {
-            PhoneCallReader.callsForPhone(this, activePhoneFilter, limit = PAGE_SIZE, offset = pageIndex * PAGE_SIZE)
-        }
-
+        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, pageIndex, PAGE_SIZE)
         if (currentCalls.isEmpty()) {
-            binding.homeStatusText.text = when {
-                activePhoneFilter.isNotBlank() && pageIndex == 0 -> "${activePhoneFilter} • няма разговори"
-                pageIndex == 0 -> "Няма намерени разговори."
-                else -> "Няма повече разговори."
-            }
-            binding.previousCallsButton.isEnabled = pageIndex > 0
-            binding.nextCallsButton.isEnabled = false
-            binding.pageText.text = "Стр. ${pageIndex + 1}"
-            binding.paginationContainer.visibility = android.view.View.VISIBLE
+            renderEmptyState()
             return
         }
 
-        val contactNotesByNumber = loadContactNotesForCurrentPage()
-        val contactNamesByNumber = loadContactNamesForCurrentPage()
+        renderStatusAndPagination()
+        val contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls)
+        val contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls)
+        currentCalls.forEach { call ->
+            val displayName = contactNamesByNumber[HomeCallPageLoader.noteKey(call.number)].orEmpty().ifBlank { call.displayName }
+            binding.homeCallsContainer.addView(
+                homeCallRowRenderer.compactCallRow(
+                    call = call,
+                    displayName = displayName,
+                    contactNote = contactNotesByNumber[HomeCallPageLoader.noteKey(call.number)],
+                    callNote = ContactNoteReader.callNoteForPhone(call.number, call.startedAt, call.direction),
+                )
+            )
+        }
+    }
+
+    private fun renderEmptyState() {
+        binding.homeStatusText.text = when {
+            activePhoneFilter.isNotBlank() && pageIndex == 0 -> "${activePhoneFilter} • няма разговори"
+            pageIndex == 0 -> "Няма намерени разговори."
+            else -> "Няма повече разговори."
+        }
+        binding.previousCallsButton.isEnabled = pageIndex > 0
+        binding.nextCallsButton.isEnabled = false
+        binding.pageText.text = "Стр. ${pageIndex + 1}"
+        binding.paginationContainer.visibility = android.view.View.VISIBLE
+    }
+
+    private fun renderStatusAndPagination() {
         val startNumber = pageIndex * PAGE_SIZE + 1
         val endNumber = pageIndex * PAGE_SIZE + currentCalls.size
         binding.homeStatusText.text = if (activePhoneFilter.isBlank()) {
@@ -141,44 +154,11 @@ class HomeActivity : AppCompatActivity() {
         binding.nextCallsButton.isEnabled = currentCalls.size >= PAGE_SIZE
         binding.pageText.text = "Стр. ${pageIndex + 1}"
         binding.paginationContainer.visibility = android.view.View.VISIBLE
-
-        currentCalls.forEach { call ->
-            val displayName = contactNamesByNumber[noteKey(call.number)].orEmpty().ifBlank { call.displayName }
-            val callNote = ContactNoteReader.callNoteForPhone(call.number, call.startedAt, call.direction)
-            binding.homeCallsContainer.addView(
-                homeCallRowRenderer.compactCallRow(
-                    call = call,
-                    displayName = displayName,
-                    contactNote = contactNotesByNumber[noteKey(call.number)],
-                    callNote = callNote,
-                )
-            )
-        }
-    }
-
-    private fun loadContactNotesForCurrentPage(): Map<String, String> {
-        val notes = linkedMapOf<String, String>()
-        currentCalls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
-            ContactNoteReader.generalNoteForPhone(this, number).takeIf { it.isNotBlank() }?.let { note ->
-                notes[noteKey(number)] = note
-            }
-        }
-        return notes
-    }
-
-    private fun loadContactNamesForCurrentPage(): Map<String, String> {
-        val names = linkedMapOf<String, String>()
-        currentCalls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
-            ContactGroupFilter.resolveDisplayName(this, number).orEmpty().takeIf { it.isNotBlank() }?.let { name ->
-                names[noteKey(number)] = name
-            }
-        }
-        return names
     }
 
     private fun togglePhoneFilter(number: String) {
-        val key = noteKey(number)
-        activePhoneFilter = if (activePhoneFilter.isNotBlank() && noteKey(activePhoneFilter) == key) "" else number
+        val key = HomeCallPageLoader.noteKey(number)
+        activePhoneFilter = if (activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key) "" else number
         pageIndex = 0
         renderCalls()
     }
@@ -188,32 +168,6 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = ""
         pageIndex = 0
         renderCalls()
-    }
-
-    private fun openDialer(number: String) {
-        if (number.isBlank()) return
-        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
-    }
-
-    private fun openContactNotesScreen(call: PhoneCallRecord, displayName: String) {
-        startActivity(Intent(this, ContactNotesActivity::class.java).putExtra(ContactNotesActivity.EXTRA_PHONE, call.number).putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { call.number }))
-    }
-
-    private fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
-        if (!Settings.canDrawOverlays(this)) {
-            binding.homeStatusText.text = "За popup бележка разреши 'Показване върху други приложения' от Настройки."
-            return
-        }
-        startService(
-            Intent(this, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, call.startedAt)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
-        )
-        startTemporaryNoteRefresh()
     }
 
     private fun startTemporaryNoteRefresh() {
@@ -229,11 +183,6 @@ class HomeActivity : AppCompatActivity() {
             setColor(color)
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
-    }
-
-    private fun noteKey(number: String): String {
-        val digits = number.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
