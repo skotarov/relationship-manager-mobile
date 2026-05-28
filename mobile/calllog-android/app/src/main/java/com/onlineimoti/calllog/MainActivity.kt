@@ -119,6 +119,11 @@ class MainActivity : AppCompatActivity() {
         binding.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
         binding.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         binding.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
+        if (config.contactLinkMode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
+            binding.contactLinkModeContact.isChecked = true
+        } else {
+            binding.contactLinkModeApp.isChecked = true
+        }
     }
 
     private fun saveConfig(): AppConfig {
@@ -136,6 +141,11 @@ class MainActivity : AppCompatActivity() {
                 ?: ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS,
             useCustomStartPopup = binding.useCustomStartPopupCheckBox.isChecked,
             useCustomEndPopup = binding.useCustomEndPopupCheckBox.isChecked,
+            contactLinkMode = if (binding.contactLinkModeContact.isChecked) {
+                ConfigStore.CONTACT_LINK_MODE_CONTACT
+            } else {
+                ConfigStore.CONTACT_LINK_MODE_APP
+            },
         )
         ConfigStore.save(this, config)
         return ConfigStore.load(this)
