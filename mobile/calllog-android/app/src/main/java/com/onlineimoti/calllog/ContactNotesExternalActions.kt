@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.ContactsContract
-import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 
@@ -74,12 +73,8 @@ class ContactNotesExternalActions(private val activity: Activity) {
     }
 
     fun openGeneralNotePopup(phone: String, titleText: String) {
-        if (!Settings.canDrawOverlays(activity)) {
-            Toast.makeText(activity, "Разреши 'Показване върху други приложения', за да редактираш основната бележка.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        activity.startService(
-            Intent(activity, PostCallOverlayService::class.java)
+        activity.startActivity(
+            Intent(activity, ContactNoteEditActivity::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_GENERAL_NOTE)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
@@ -87,12 +82,8 @@ class ContactNotesExternalActions(private val activity: Activity) {
     }
 
     fun openEditPopup(phone: String, titleText: String, note: ContactCallNote) {
-        if (!Settings.canDrawOverlays(activity)) {
-            Toast.makeText(activity, "Разреши 'Показване върху други приложения', за да редактираш бележката.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        activity.startService(
-            Intent(activity, PostCallOverlayService::class.java)
+        activity.startActivity(
+            Intent(activity, ContactNoteEditActivity::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, note.direction)
