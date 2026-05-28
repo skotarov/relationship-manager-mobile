@@ -156,6 +156,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ContactNoteEditActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+        <activity
             android:name=".ContactNotesActivity"
             android:exported="false" />
         <activity
