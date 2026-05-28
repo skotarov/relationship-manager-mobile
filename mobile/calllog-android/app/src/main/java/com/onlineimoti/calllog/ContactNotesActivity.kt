@@ -121,10 +121,12 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun contactActionRow(): LinearLayout {
+        val linked = CallReportContactIntegration.isContactLinked(this, phone)
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(contactRegistrationToggle())
+            if (linked) addView(editCrmContactButton())
             addView(openDefaultContactButton())
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -175,6 +177,26 @@ class ContactNotesActivity : Activity() {
                 setTextColor(actionColor)
                 includeFontPadding = false
             })
+        }
+    }
+
+    private fun editCrmContactButton(): TextView {
+        return TextView(this).apply {
+            text = "Едит"
+            textSize = 14.5f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(37, 99, 235))
+            background = roundedRect(Color.WHITE, dp(14), Color.rgb(37, 99, 235), dp(1))
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Редактирай CRM полета"
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setOnClickListener { showCrmContactFieldsDialog() }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+            ).apply { marginStart = dp(8) }
         }
     }
 
