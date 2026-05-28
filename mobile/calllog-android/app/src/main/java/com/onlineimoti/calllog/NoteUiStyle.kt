@@ -15,7 +15,7 @@ internal object NoteUiStyle {
         text = Color.rgb(92, 64, 0),
         mutedText = Color.rgb(100, 116, 139),
         metaText = Color.rgb(92, 64, 0),
-        background = Color.rgb(255, 251, 224),
+        background = Color.rgb(255, 254, 240),
         border = Color.TRANSPARENT,
     )
 
