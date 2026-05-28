@@ -28,6 +28,7 @@ internal class PostCallGeneralNoteEditor(
     private val pendingGeneralNote: () -> String?,
     private val setPendingGeneralNote: (String) -> Unit,
     private val savePendingNoteChangesBeforeHistory: () -> Boolean,
+    private val notifyNotesChanged: () -> Unit,
     private val stopOverlay: () -> Unit,
 ) {
     fun show() {
@@ -101,6 +102,7 @@ internal class PostCallGeneralNoteEditor(
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
             val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
+            if (saved) notifyNotesChanged()
             Toast.makeText(service, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
             stopOverlay()
         })
