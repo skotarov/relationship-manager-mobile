@@ -86,7 +86,7 @@ internal class PostCallLookupPopup(
             setPadding(0, ui.dp(6), 0, 0)
             infoRows.forEachIndexed { index, line ->
                 if (line.startsWith("✎")) {
-                    addView(ui.notePreviewRow(line.removePrefix("✎").trim(), NoteUiStyle.General.text, Color.TRANSPARENT, Color.TRANSPARENT, if (index == 0) 0 else ui.dp(2), R.drawable.ic_note_lines))
+                    addView(ui.generalNotePreviewRow(line.removePrefix("✎").trim(), if (index == 0) 0 else ui.dp(2)))
                 } else {
                     addView(TextView(service).apply {
                         text = line
