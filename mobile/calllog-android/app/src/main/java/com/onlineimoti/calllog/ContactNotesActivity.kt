@@ -82,9 +82,37 @@ class ContactNotesActivity : Activity() {
     private fun addCallNotes(root: LinearLayout) {
         val cards = contactNotesCards()
         root.addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
-        ContactNoteReader.callNotesForPhone(phone).forEach { note ->
+
+        val callNotes = ContactNoteReader.callNotesForPhone(phone)
+        latestCallWithoutNote(callNotes)?.let { latestCall ->
+            root.addView(
+                cards.addCallNoteButton(latestCall) {
+                    externalActions.openEditPopup(phone, titleText, latestCall.toContactCallNote())
+                }
+            )
+        }
+
+        callNotes.forEach { note ->
             root.addView(cards.callNoteCard(note) { externalActions.openEditPopup(phone, titleText, note) })
         }
+    }
+
+    private fun latestCallWithoutNote(callNotes: List<ContactCallNote>): PhoneCallRecord? {
+        val latestCall = PhoneCallReader.callsForPhone(this, phone, limit = 1).firstOrNull() ?: return null
+        val alreadyHasNote = callNotes.any { note ->
+            note.callAt == latestCall.startedAt && (note.direction.isBlank() || latestCall.direction.isBlank() || note.direction == latestCall.direction)
+        }
+        return latestCall.takeUnless { alreadyHasNote }
+    }
+
+    private fun PhoneCallRecord.toContactCallNote(): ContactCallNote {
+        return ContactCallNote(
+            note = "",
+            callAt = startedAt,
+            savedAt = startedAt,
+            direction = direction,
+            durationSeconds = durationSeconds,
+        )
     }
 
     private fun contactNotesCards(): ContactNotesCards {
