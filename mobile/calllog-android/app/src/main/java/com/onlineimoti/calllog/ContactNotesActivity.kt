@@ -118,7 +118,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun contactActionRow(): LinearLayout {
-        val linked = CallReportContactIntegration.isContactLinked(this, phone)
+        val linked = CallReportContactAppLinker.isLinked(this, phone)
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -133,7 +133,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun contactRegistrationToggle(): LinearLayout {
-        val linked = CallReportContactIntegration.isContactLinked(this, phone)
+        val linked = CallReportContactAppLinker.isLinked(this, phone)
         val actionColor = when {
             contactRegistrationBusy -> Color.rgb(100, 116, 139)
             linked -> Color.rgb(220, 38, 38)
@@ -233,7 +233,7 @@ class ContactNotesActivity : Activity() {
         val appContext = applicationContext
         val phoneValue = phone
         Thread {
-            val deleted = CallReportContactIntegration.removeContact(appContext, phoneValue)
+            val deleted = CallReportContactAppLinker.remove(appContext, phoneValue)
             val message = if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис"
 
             runOnUiThread {
@@ -261,7 +261,7 @@ class ContactNotesActivity : Activity() {
         render()
         val appContext = applicationContext
         Thread {
-            val saved = CallReportStableCrmContactWriter.save(appContext, fields)
+            val saved = CallReportContactAppLinker.save(appContext, fields)
             runOnUiThread {
                 contactRegistrationBusy = false
                 if (!isFinishing && !isDestroyed) {
