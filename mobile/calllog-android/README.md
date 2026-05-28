@@ -1,6 +1,6 @@
-# CallLog Android
+# Relation Management Android
 
-Prototype Android wrapper for the OnlineImoti mobile call report flow.
+Prototype Android wrapper for the OnlineImoti mobile relation management flow.
 
 ## Current scope
 
