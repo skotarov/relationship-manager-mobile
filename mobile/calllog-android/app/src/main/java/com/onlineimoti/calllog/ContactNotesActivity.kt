@@ -1,6 +1,10 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -10,11 +14,19 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
     private var contactRegistrationBusy = false
+    private var notesChangedReceiverRegistered = false
+
+    private val notesChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PostCallOverlayService.ACTION_NOTES_CHANGED) render()
+        }
+    }
 
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
@@ -35,9 +47,36 @@ class ContactNotesActivity : Activity() {
         render()
     }
 
+    override fun onStart() {
+        super.onStart()
+        registerNotesChangedReceiver()
+    }
+
     override fun onResume() {
         super.onResume()
         render()
+    }
+
+    override fun onStop() {
+        unregisterNotesChangedReceiver()
+        super.onStop()
+    }
+
+    private fun registerNotesChangedReceiver() {
+        if (notesChangedReceiverRegistered) return
+        ContextCompat.registerReceiver(
+            this,
+            notesChangedReceiver,
+            IntentFilter(PostCallOverlayService.ACTION_NOTES_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        notesChangedReceiverRegistered = true
+    }
+
+    private fun unregisterNotesChangedReceiver() {
+        if (!notesChangedReceiverRegistered) return
+        runCatching { unregisterReceiver(notesChangedReceiver) }
+        notesChangedReceiverRegistered = false
     }
 
     private fun render() {
