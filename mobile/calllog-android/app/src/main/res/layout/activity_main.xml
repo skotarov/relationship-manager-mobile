@@ -147,6 +147,42 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:text="CRM свързване в Android контакти"
+            android:textColor="@color/calllog_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/contactLinkModeGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical">
+            <RadioButton
+                android:id="@+id/contactLinkModeApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Като приложение — Call Report да се показва в свързани приложения" />
+            <RadioButton
+                android:id="@+id/contactLinkModeContact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Като контакт — Call Report да се добавя като свързан контакт" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Смяната важи при следващо Добави/Премахни от CRM."
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="За кои номера да се показва popup"
             android:textColor="@color/calllog_text"
             android:textSize="16sp"
