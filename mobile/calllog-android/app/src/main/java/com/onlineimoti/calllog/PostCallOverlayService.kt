@@ -40,6 +40,7 @@ class PostCallOverlayService : Service() {
             pendingCallNote = { pendingCallNote },
             setPendingCallNote = { pendingCallNote = it },
             savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
+            notifyNotesChanged = ::notifyNotesChanged,
             stopOverlay = { stopSelf() },
         )
     }
@@ -58,6 +59,7 @@ class PostCallOverlayService : Service() {
             pendingGeneralNote = { pendingGeneralNote },
             setPendingGeneralNote = { pendingGeneralNote = it },
             savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
+            notifyNotesChanged = ::notifyNotesChanged,
             stopOverlay = { stopSelf() },
         )
     }
@@ -272,9 +274,14 @@ class PostCallOverlayService : Service() {
         if (saved) {
             pendingGeneralNote = null
             pendingCallNote = null
+            notifyNotesChanged()
         }
 
         return saved
+    }
+
+    private fun notifyNotesChanged() {
+        sendBroadcast(Intent(ACTION_NOTES_CHANGED).setPackage(packageName))
     }
 
     private fun View.stylePopupCard() = ui.stylePopupCard(this)
@@ -296,6 +303,7 @@ class PostCallOverlayService : Service() {
     private fun dp(value: Int): Int = ui.dp(value)
 
     companion object {
+        const val ACTION_NOTES_CHANGED = "com.onlineimoti.calllog.NOTES_CHANGED"
         const val EXTRA_MODE = "mode"
         const val MODE_LOADING = "loading"
         const val MODE_LOOKUP = "lookup"
