@@ -276,10 +276,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun isCrmLinked(): Boolean {
-        return when (contactLinkMode()) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.isLinked(this, phone)
-            else -> CallReportContactIntegration.isContactLinked(this, phone)
-        }
+        return CallReportContactIntegration.isContactLinked(this, phone)
     }
 
     private fun saveCrmLink(
@@ -290,16 +287,13 @@ class ContactNotesActivity : Activity() {
         title: String,
     ): Boolean {
         return when (mode) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.save(context, fields)
+            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportStableCrmContactWriter.save(context, fields)
             else -> CallReportContactIntegration.linkContact(context, phone, title)
         }
     }
 
     private fun removeCrmLink(context: android.content.Context, phone: String): Int {
-        return when (contactLinkMode()) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportContactAppLinker.remove(context, phone)
-            else -> CallReportContactIntegration.removeContact(context, phone)
-        }
+        return CallReportContactIntegration.removeContact(context, phone)
     }
 
     private fun contactLinkMode(): String = ConfigStore.load(this).contactLinkMode
