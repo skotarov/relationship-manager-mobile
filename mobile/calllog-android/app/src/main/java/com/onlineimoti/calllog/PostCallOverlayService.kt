@@ -13,16 +13,17 @@ import android.view.WindowManager
 
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
+    private val state = PostCallOverlayState()
     private val ui by lazy { PostCallOverlayUi(this) }
     private val noteEditor by lazy {
         PostCallNoteEditor(
             service = this,
             ui = ui,
             handler = handler,
-            phone = { phone },
-            direction = { direction },
-            callAt = { callAt },
-            durationSeconds = { durationSeconds },
+            phone = { state.phone },
+            direction = { state.direction },
+            callAt = { state.callAt },
+            durationSeconds = { state.durationSeconds },
             callDirectionColor = ::callDirectionColor,
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
@@ -30,8 +31,8 @@ class PostCallOverlayService : Service() {
             showGeneralNoteEditor = ::showGeneralNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
-            pendingCallNote = { pendingCallNote },
-            setPendingCallNote = { pendingCallNote = it },
+            pendingCallNote = { state.pendingCallNote },
+            setPendingCallNote = { state.pendingCallNote = it },
             savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
             notifyNotesChanged = ::notifyNotesChanged,
             stopOverlay = { stopSelf() },
@@ -42,15 +43,15 @@ class PostCallOverlayService : Service() {
             service = this,
             ui = ui,
             handler = handler,
-            phone = { phone },
+            phone = { state.phone },
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showNoteEditor = ::showNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
-            pendingGeneralNote = { pendingGeneralNote },
-            setPendingGeneralNote = { pendingGeneralNote = it },
+            pendingGeneralNote = { state.pendingGeneralNote },
+            setPendingGeneralNote = { state.pendingGeneralNote = it },
             savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
             notifyNotesChanged = ::notifyNotesChanged,
             stopOverlay = { stopSelf() },
@@ -60,8 +61,8 @@ class PostCallOverlayService : Service() {
         PostCallLookupPopup(
             service = this,
             ui = ui,
-            phone = { phone },
-            title = { title },
+            phone = { state.phone },
+            title = { state.title },
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
@@ -73,9 +74,9 @@ class PostCallOverlayService : Service() {
         PostCallLoadingPopup(
             service = this,
             ui = ui,
-            phone = { phone },
-            title = { title },
-            subtitle = { subtitle },
+            phone = { state.phone },
+            title = { state.title },
+            subtitle = { state.subtitle },
             setWindowManager = { windowManager = it },
             setLoadingAnimator = { loadingAnimator = it },
             removeOverlay = ::removeOverlay,
@@ -96,7 +97,7 @@ class PostCallOverlayService : Service() {
     private val calendarActions by lazy {
         PostCallCalendarActions(
             service = this,
-            phone = { phone },
+            phone = { state.phone },
             removeOverlay = ::removeOverlay,
             stopOverlay = { stopSelf() },
         )
@@ -105,8 +106,8 @@ class PostCallOverlayService : Service() {
         PostCallNavigationActions(
             service = this,
             handler = handler,
-            phone = { phone },
-            title = { title },
+            phone = { state.phone },
+            title = { state.title },
             removeOverlay = ::removeOverlay,
             stopOverlay = { stopSelf() },
         )
@@ -125,20 +126,10 @@ class PostCallOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var loadingAnimator: ObjectAnimator? = null
-    private var formUrl: String = ""
-    private var phone: String = ""
-    private var direction: String = ""
-    private var title: String = ""
-    private var subtitle: String = ""
-    private var lines: List<String> = emptyList()
-    private var callAt: Long = 0L
-    private var durationSeconds: Long = 0L
-    private var pendingGeneralNote: String? = null
-    private var pendingCallNote: String? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        readExtras(intent)
-        hydrateLatestCallIfNeeded()
+        state.readExtras(intent)
+        state.hydrateLatestCallIfNeeded(this)
 
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
@@ -164,26 +155,6 @@ class PostCallOverlayService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun readExtras(intent: Intent?) {
-        formUrl = intent?.getStringExtra(EXTRA_FORM_URL).orEmpty()
-        phone = intent?.getStringExtra(EXTRA_PHONE).orEmpty()
-        direction = intent?.getStringExtra(EXTRA_DIRECTION).orEmpty()
-        title = intent?.getStringExtra(EXTRA_TITLE).orEmpty()
-        subtitle = intent?.getStringExtra(EXTRA_SUBTITLE).orEmpty()
-        lines = intent?.getStringArrayListExtra(EXTRA_LINES).orEmpty()
-        callAt = intent?.getLongExtra(EXTRA_CALL_AT, 0L) ?: 0L
-        durationSeconds = intent?.getLongExtra(EXTRA_DURATION, 0L) ?: 0L
-    }
-
-    private fun hydrateLatestCallIfNeeded() {
-        if (callAt > 0L || phone.isBlank()) return
-        PhoneCallReader.callsForPhone(this, phone, limit = 1).firstOrNull()?.let { call ->
-            callAt = call.startedAt
-            durationSeconds = call.durationSeconds
-            if (direction.isBlank()) direction = call.direction
-        }
-    }
 
     private fun showBubbleWithTimeout() {
         bubble.show()
@@ -222,24 +193,23 @@ class PostCallOverlayService : Service() {
     private fun savePendingNoteChangesBeforeHistory(): Boolean {
         var saved = true
 
-        pendingGeneralNote?.let { note ->
-            saved = NotePersistence.saveOrDeleteGeneralNote(this, phone, note) && saved
+        state.pendingGeneralNote?.let { note ->
+            saved = NotePersistence.saveOrDeleteGeneralNote(this, state.phone, note) && saved
         }
 
-        pendingCallNote?.let { note ->
+        state.pendingCallNote?.let { note ->
             saved = NotePersistence.saveOrDeleteCallNote(
                 context = this,
-                phoneNumber = phone,
+                phoneNumber = state.phone,
                 note = note,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = durationSeconds,
+                direction = state.direction,
+                callAt = state.callAt,
+                durationSeconds = state.durationSeconds,
             ) && saved
         }
 
         if (saved) {
-            pendingGeneralNote = null
-            pendingCallNote = null
+            state.clearPendingNotes()
             notifyNotesChanged()
         }
 
