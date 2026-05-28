@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
             dp = ::dp,
         )
     }
-    private val permissionFlowController by lazy {
+    private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
             requestPermissionLauncher = singlePermissionLauncher,
