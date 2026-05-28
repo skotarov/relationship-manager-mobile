@@ -2,7 +2,6 @@ package com.onlineimoti.calllog
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -13,9 +12,7 @@ import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.Settings
-import android.text.InputType
 import android.view.Gravity
-import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -250,68 +247,13 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun showCrmContactFieldsDialog() {
-        val currentGeneralNote = ContactNoteReader.generalNoteForPhone(this, phone)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(10), dp(18), dp(4))
-        }
-
-        fun input(label: String, value: String = "", lines: Int = 1): EditText {
-            root.addView(TextView(this).apply {
-                text = label
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(71, 85, 105))
-                setPadding(0, dp(8), 0, dp(3))
-            })
-            return EditText(this).apply {
-                setText(value)
-                textSize = 15f
-                minLines = lines
-                maxLines = if (lines > 1) 5 else 1
-                inputType = InputType.TYPE_CLASS_TEXT or if (lines > 1) InputType.TYPE_TEXT_FLAG_MULTI_LINE else 0
-                setSingleLine(lines == 1)
-                setSelectAllOnFocus(false)
-                setPadding(dp(10), dp(8), dp(10), dp(8))
-                background = roundedRect(Color.WHITE, dp(10), Color.rgb(203, 213, 225), dp(1))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                root.addView(this)
-            }
-        }
-
-        val nameInput = input("Име / показвано име", titleText.ifBlank { phone })
-        input("Оригинален телефон за свързване", phone).apply {
-            isEnabled = false
-            setTextColor(Color.rgb(71, 85, 105))
-        }
-        val additionalPhoneInput = input("Допълнителен телефон (тестово)", "")
-        val organizationInput = input("Организация", "Call Report")
-        val jobTitleInput = input("Тип / длъжност", "CRM тест")
-        val websiteInput = input("Сайт / линк", "")
-        val groupInput = input("Група", "Call Report CRM")
-        val noteInput = input("Бележка", currentGeneralNote, lines = 3)
-        val customInput = input("Custom MIME текст", "CRM статус: тест\nПоследна уговорка: ", lines = 3)
-
-        AlertDialog.Builder(this)
-            .setTitle("Добави в CRM")
-            .setView(ScrollView(this).apply { addView(root) })
-            .setNegativeButton("Изход", null)
-            .setPositiveButton("Запис") { _, _ ->
-                saveCrmContactFields(
-                    CallReportStableCrmContactWriter.Fields(
-                        originalPhone = phone,
-                        displayName = nameInput.text?.toString().orEmpty(),
-                        additionalPhone = additionalPhoneInput.text?.toString().orEmpty(),
-                        organization = organizationInput.text?.toString().orEmpty(),
-                        jobTitle = jobTitleInput.text?.toString().orEmpty(),
-                        website = websiteInput.text?.toString().orEmpty(),
-                        note = noteInput.text?.toString().orEmpty(),
-                        groupName = groupInput.text?.toString().orEmpty(),
-                        customText = customInput.text?.toString().orEmpty(),
-                    )
-                )
-            }
-            .show()
+        CrmContactFieldsDialog.show(
+            activity = this,
+            phone = phone,
+            titleText = titleText,
+            currentGeneralNote = ContactNoteReader.generalNoteForPhone(this, phone),
+            onSave = ::saveCrmContactFields,
+        )
     }
 
     private fun saveCrmContactFields(fields: CallReportStableCrmContactWriter.Fields) {
