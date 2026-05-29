@@ -14,6 +14,7 @@ val timeVersionCode =
         buildTime.dayOfYear * 10_000 +
         buildTime.hour * 100 +
         buildTime.minute
+val appVersionCode = 1_000_000_000 + timeVersionCode
 val defaultAccessToken = System.getenv("CALLREPORT_DEFAULT_TOKEN").orEmpty()
 val fixedDebugKeystoreBase64File = rootProject.file("debug-signing/callreport-debug.keystore.base64")
 val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
@@ -25,12 +26,10 @@ fun ensureFixedDebugKeystore(): File {
     require(fixedDebugKeystoreBase64File.isFile) {
         "Missing fixed debug keystore: ${fixedDebugKeystoreBase64File.path}"
     }
-    if (!fixedDebugKeystoreFile.isFile) {
-        fixedDebugKeystoreFile.parentFile.mkdirs()
-        fixedDebugKeystoreFile.writeBytes(
-            Base64.getMimeDecoder().decode(fixedDebugKeystoreBase64File.readText().trim())
-        )
-    }
+    fixedDebugKeystoreFile.parentFile.mkdirs()
+    fixedDebugKeystoreFile.writeBytes(
+        Base64.getMimeDecoder().decode(fixedDebugKeystoreBase64File.readText().trim())
+    )
     return fixedDebugKeystoreFile
 }
 
@@ -42,8 +41,8 @@ android {
         applicationId = "com.onlineimoti.calllog"
         minSdk = 29
         targetSdk = 35
-        versionCode = timeVersionCode
-        versionName = "0.2.$timeVersionCode"
+        versionCode = appVersionCode
+        versionName = "0.3.$appVersionCode"
 
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
         buildConfigField("String", "DEFAULT_ACCESS_TOKEN", "\"$defaultAccessToken\"")
