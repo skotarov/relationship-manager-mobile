@@ -21,8 +21,10 @@ internal class MainContactsCleanupController(
     private var progressRow: LinearLayout? = null
     private var running = false
 
+    private val cleanupButton get() = binding.permissionsSection.cleanupContactsButton
+
     fun addProgressBar() {
-        val parent = binding.cleanupContactsButton.parent as? ViewGroup ?: return
+        val parent = cleanupButton.parent as? ViewGroup ?: return
         if (progressRow != null) return
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -43,10 +45,10 @@ internal class MainContactsCleanupController(
             text = "Почистване на Call Report записите…"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(binding.cleanupContactsButton.currentTextColor)
+            setTextColor(cleanupButton.currentTextColor)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
-        val cleanupIndex = parent.indexOfChild(binding.cleanupContactsButton)
+        val cleanupIndex = parent.indexOfChild(cleanupButton)
         parent.addView(row, if (cleanupIndex >= 0) cleanupIndex + 1 else parent.childCount)
         progress = spinner
         progressRow = row
@@ -70,7 +72,7 @@ internal class MainContactsCleanupController(
         running = value
         progressRow?.visibility = if (value) View.VISIBLE else View.GONE
         progress?.visibility = if (value) View.VISIBLE else View.GONE
-        binding.cleanupContactsButton.isEnabled = !value
-        binding.cleanupContactsButton.text = if (value) "Почистване…" else "Почисти Call Report от контактите"
+        cleanupButton.isEnabled = !value
+        cleanupButton.text = if (value) "Почистване…" else "Почисти Call Report от контактите"
     }
 }
