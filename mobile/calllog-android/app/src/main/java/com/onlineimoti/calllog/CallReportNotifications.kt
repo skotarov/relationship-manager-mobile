@@ -215,6 +215,7 @@ internal object CallReportNotifications {
         val rowsText = displayRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
         displayRows.forEach { inboxStyle.addLine(it) }
+        val customView = buildNotificationContentView(context, displayTitle, displayRows, editIntent, allNotesIntent)
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_transparent)
@@ -231,9 +232,11 @@ internal object CallReportNotifications {
             .setContentIntent(editIntent)
             .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
             .addAction(0, "История", allNotesIntent)
-        if (displayRows.isNotEmpty()) builder.setStyle(inboxStyle)
-        if (alertAgain && displayRows.isNotEmpty()) {
-            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, displayTitle, displayRows, editIntent, allNotesIntent))
+        if (displayRows.isNotEmpty()) {
+            builder.setStyle(inboxStyle)
+            builder.setCustomContentView(customView)
+            builder.setCustomBigContentView(customView)
+            builder.setCustomHeadsUpContentView(customView)
         }
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
@@ -241,7 +244,7 @@ internal object CallReportNotifications {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    private fun buildHeadsUpContentView(
+    private fun buildNotificationContentView(
         context: Context,
         title: String,
         rows: List<String>,
