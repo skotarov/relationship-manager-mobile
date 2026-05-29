@@ -16,6 +16,12 @@ object LookupPopupPresenter {
         val config = ConfigStore.load(context)
         val screenLocked = isScreenLocked(context)
         if (config.useOverlayPopups && config.useCustomStartPopup && Settings.canDrawOverlays(context) && !screenLocked) {
+            CallReportRuntime.showLookupShadeNotification(
+                context = context,
+                result = result,
+                phone = phone,
+                direction = direction,
+            )
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOOKUP)
@@ -35,7 +41,7 @@ object LookupPopupPresenter {
         CallReportRuntime.showLookupNotification(
             context = context,
             result = result,
-            fullscreen = fullscreen,
+            fullscreen = fullscreen && screenLocked,
             phone = phone,
             direction = direction,
         )
