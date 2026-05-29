@@ -17,8 +17,9 @@ class NoteEditorReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty()
         val callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         val duration = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
+        val config = ConfigStore.load(context)
 
-        if (ConfigStore.load(context).useCustomEndPopup && Settings.canDrawOverlays(context)) {
+        if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
