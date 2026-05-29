@@ -24,7 +24,8 @@ internal object MainPermissionSummary {
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
         val publicNotesGranted = LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
-        val overlayRequired = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
+        val overlaySelected = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
+        val overlayRequired = overlaySelected
         val callScreeningGranted = MainPermissionChecks.hasCallScreeningRole(activity)
         val fullscreenGranted = canUseFullScreenIntent(activity)
 
@@ -49,6 +50,12 @@ internal object MainPermissionSummary {
             if (index < rows.lastIndex) builder.append('\n')
         }
         permissions.permissionsSummaryText.text = builder
+
+        val overlayMissing = overlaySelected && !overlayGranted
+        popup.overlayPermissionWarningText.visibility = if (overlayMissing) View.VISIBLE else View.GONE
+        popup.useCustomStartPopupCheckBox.isEnabled = !overlayMissing
+        popup.useCustomEndPopupCheckBox.isEnabled = !overlayMissing
+        popup.overlayPopupOptionsGroup.alpha = if (overlayMissing) 0.55f else 1f
 
         val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted
         permissions.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
