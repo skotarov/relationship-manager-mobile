@@ -159,17 +159,24 @@ internal object CallReportNotifications {
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, callAt, duration)
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationTitle)
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
-        val rowsText = notificationRows.joinToString("\n")
-        val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(notificationTitle)
-        notificationRows.forEach { inboxStyle.addLine(it) }
+        val firstCallInfoRow = notificationRows.firstOrNull().orEmpty()
+        val displayTitle = firstCallInfoRow.ifBlank { notificationTitle }
+        val displayRows = if (firstCallInfoRow.isBlank()) {
+            notificationRows
+        } else {
+            listOf(notificationTitle) + notificationRows.drop(1)
+        }
+        val rowsText = displayRows.joinToString("\n")
+        val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
+        displayRows.forEach { inboxStyle.addLine(it) }
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_system_popup_callreport)
             .setColor(BRAND_BLUE)
             .setColorized(true)
             .setLargeIcon(systemPopupLargeIcon(context, phone, notificationRows.isNotEmpty()))
-            .setContentTitle(notificationTitle)
-            .setContentText(rowsText.ifBlank { notificationTitle })
+            .setContentTitle(displayTitle)
+            .setContentText(rowsText.ifBlank { displayTitle })
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
@@ -178,7 +185,7 @@ internal object CallReportNotifications {
             .setContentIntent(editIntent)
             .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
             .addAction(0, "История", allNotesIntent)
-        if (notificationRows.isNotEmpty()) builder.setStyle(inboxStyle)
+        if (displayRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
