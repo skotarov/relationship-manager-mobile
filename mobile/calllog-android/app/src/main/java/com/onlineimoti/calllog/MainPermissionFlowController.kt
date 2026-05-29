@@ -46,9 +46,9 @@ internal class MainPermissionFlowController(
     }
 
     fun onOverlaySettingsResult() {
-        if (Settings.canDrawOverlays(activity)) setStatus("Разрешението за кръгла floating икона е дадено.")
+        if (Settings.canDrawOverlays(activity)) setStatus("Разрешението Display over other apps е дадено.")
         refreshPermissionSummary()
-        requestNextStep()
+        isRunning = false
     }
 
     fun onFullscreenIntentSettingsResult() {
@@ -60,7 +60,7 @@ internal class MainPermissionFlowController(
     fun requestNextStep() {
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
-                setStatus("Разреши notifications, за да могат popup-ите да се показват.")
+                setStatus("Разреши notifications, за да могат системните popup-и да се показват.")
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             !hasPermission(Manifest.permission.READ_PHONE_STATE) -> {
@@ -82,10 +82,6 @@ internal class MainPermissionFlowController(
             !canUsePublicNotesFolder() -> {
                 setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
                 requestStorageManagerPermissionIfNeeded()
-            }
-            !Settings.canDrawOverlays(activity) -> {
-                setStatus("Разреши Display over other apps, за custom popup режимите.")
-                requestOverlayPermissionIfNeeded()
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
                 setStatus("Активирай Call screening, ако Android го предложи, за по-надежден popup при разговор.")
@@ -125,6 +121,17 @@ internal class MainPermissionFlowController(
         )
     }
 
+    fun requestOverlayPermissionIfNeeded() {
+        if (Settings.canDrawOverlays(activity)) {
+            setStatus("Display over other apps вече е разрешено.")
+            refreshPermissionSummary()
+            return
+        }
+        overlaySettingsLauncher.launch(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply { data = Uri.parse("package:${activity.packageName}") }
+        )
+    }
+
     private fun requestStorageManagerPermissionIfNeeded() {
         if (canUsePublicNotesFolder()) {
             requestNextStep()
@@ -137,16 +144,6 @@ internal class MainPermissionFlowController(
         } else {
             requestNextStep()
         }
-    }
-
-    private fun requestOverlayPermissionIfNeeded() {
-        if (Settings.canDrawOverlays(activity)) {
-            requestNextStep()
-            return
-        }
-        overlaySettingsLauncher.launch(
-            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply { data = Uri.parse("package:${activity.packageName}") }
-        )
     }
 
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
