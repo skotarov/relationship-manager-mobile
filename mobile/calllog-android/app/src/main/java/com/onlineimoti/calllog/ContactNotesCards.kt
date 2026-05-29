@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.graphics.Color
 import android.graphics.Typeface
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -37,7 +36,6 @@ internal class ContactNotesCards(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.WHITE, dp(12), colors.border, dp(1))
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
