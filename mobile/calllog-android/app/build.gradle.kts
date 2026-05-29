@@ -1,6 +1,7 @@
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.RenderingHints
+import java.awt.geom.Ellipse2D
 import java.awt.geom.Path2D
 import java.awt.image.BufferedImage
 import java.time.OffsetDateTime
@@ -27,7 +28,13 @@ val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
     .get()
     .asFile
-val launcherForegroundPngFile = project.file("src/main/res/drawable-nodpi/callreport_launcher_foreground.png")
+val launcherIconSizes = linkedMapOf(
+    "mipmap-mdpi" to 108,
+    "mipmap-hdpi" to 162,
+    "mipmap-xhdpi" to 216,
+    "mipmap-xxhdpi" to 324,
+    "mipmap-xxxhdpi" to 432,
+)
 
 fun ensureFixedDebugKeystore(): File {
     require(fixedDebugKeystoreBase64File.isFile) {
@@ -40,37 +47,53 @@ fun ensureFixedDebugKeystore(): File {
     return fixedDebugKeystoreFile
 }
 
-fun ensureLauncherForegroundPng() {
-    val size = 432
-    val image = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
-    val graphics = image.createGraphics()
-    graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-    graphics.color = Color(17, 17, 17, 255)
-    graphics.stroke = BasicStroke(22f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
-
-    fun path(vararg points: Pair<Double, Double>) {
-        val p = Path2D.Double()
-        p.moveTo(points[0].first, points[0].second)
-        points.drop(1).forEach { p.lineTo(it.first, it.second) }
-        graphics.draw(p)
+fun bubblePath(cx: Double, cy: Double, rx: Double, ry: Double, tailLeft: Boolean): Path2D.Double {
+    val path = Path2D.Double()
+    path.append(Ellipse2D.Double(cx - rx, cy - ry, rx * 2.0, ry * 2.0), false)
+    if (tailLeft) {
+        path.moveTo(cx - rx * 0.55, cy + ry * 0.62)
+        path.lineTo(cx - rx * 1.04, cy + ry * 1.08)
+        path.lineTo(cx - rx * 0.28, cy + ry * 0.78)
+    } else {
+        path.moveTo(cx + rx * 0.55, cy + ry * 0.62)
+        path.lineTo(cx + rx * 1.04, cy + ry * 1.08)
+        path.lineTo(cx + rx * 0.28, cy + ry * 0.78)
     }
-
-    path(95.0 to 205.0, 152.0 to 150.0, 205.0 to 200.0, 146.0 to 260.0, 95.0 to 205.0)
-    path(337.0 to 205.0, 280.0 to 150.0, 227.0 to 200.0, 286.0 to 260.0, 337.0 to 205.0)
-    path(152.0 to 192.0, 203.0 to 206.0, 230.0 to 192.0, 281.0 to 200.0, 296.0 to 257.0, 270.0 to 286.0, 228.0 to 249.0, 204.0 to 249.0, 184.0 to 281.0, 161.0 to 275.0, 148.0 to 258.0, 167.0 to 222.0)
-    path(146.0 to 260.0, 182.0 to 300.0, 225.0 to 338.0, 258.0 to 311.0, 286.0 to 260.0)
-    path(171.0 to 286.0, 150.0 to 306.0, 168.0 to 326.0, 190.0 to 305.0)
-    path(200.0 to 313.0, 180.0 to 335.0, 202.0 to 354.0, 225.0 to 329.0)
-    path(228.0 to 333.0, 211.0 to 354.0, 232.0 to 373.0, 254.0 to 346.0)
-    path(267.0 to 286.0, 303.0 to 320.0)
-    path(241.0 to 314.0, 276.0 to 347.0)
-
-    graphics.dispose()
-    launcherForegroundPngFile.parentFile.mkdirs()
-    ImageIO.write(image, "png", launcherForegroundPngFile)
+    path.closePath()
+    return path
 }
 
-ensureLauncherForegroundPng()
+fun drawLauncherForegroundPng(targetSize: Int, outputFile: File) {
+    val image = BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_ARGB)
+    val graphics = image.createGraphics()
+    val scale = targetSize / 432.0
+    graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    graphics.scale(scale, scale)
+
+    val dark = Color(17, 27, 39, 255)
+    graphics.color = dark
+    graphics.fill(bubblePath(270.0, 183.0, 92.0, 72.0, false))
+
+    graphics.color = Color(0, 0, 0, 0)
+    graphics.stroke = BasicStroke(34f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+    graphics.color = dark
+    graphics.draw(bubblePath(175.0, 238.0, 126.0, 88.0, true))
+
+    graphics.dispose()
+    outputFile.parentFile.mkdirs()
+    ImageIO.write(image, "png", outputFile)
+}
+
+fun ensureLauncherForegroundPngs() {
+    launcherIconSizes.forEach { (folder, size) ->
+        drawLauncherForegroundPng(
+            targetSize = size,
+            outputFile = project.file("src/main/res/$folder/callreport_launcher_foreground.png"),
+        )
+    }
+}
+
+ensureLauncherForegroundPngs()
 
 android {
     namespace = "com.onlineimoti.calllog"
