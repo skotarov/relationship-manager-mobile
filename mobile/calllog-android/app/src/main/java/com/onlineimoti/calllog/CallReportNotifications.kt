@@ -207,7 +207,7 @@ internal object CallReportNotifications {
             .addAction(0, "История", allNotesIntent)
         if (displayRows.isNotEmpty()) builder.setStyle(inboxStyle)
         if (alertAgain && displayRows.isNotEmpty()) {
-            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, displayTitle, displayRows))
+            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, displayTitle, displayRows, editIntent, allNotesIntent))
         }
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
@@ -215,12 +215,20 @@ internal object CallReportNotifications {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    private fun buildHeadsUpContentView(context: Context, title: String, rows: List<String>): RemoteViews {
+    private fun buildHeadsUpContentView(
+        context: Context,
+        title: String,
+        rows: List<String>,
+        editIntent: PendingIntent,
+        allNotesIntent: PendingIntent,
+    ): RemoteViews {
         return RemoteViews(context.packageName, R.layout.notification_lookup_heads_up).apply {
             setTextViewText(R.id.notificationHeadsUpTitle, title)
             bindHeadsUpRow(this, 0, rows.getOrNull(0))
             bindHeadsUpRow(this, 1, rows.getOrNull(1))
             bindHeadsUpRow(this, 2, rows.getOrNull(2))
+            setOnClickPendingIntent(R.id.notificationHeadsUpNoteAction, editIntent)
+            setOnClickPendingIntent(R.id.notificationHeadsUpHistoryAction, allNotesIntent)
         }
     }
 
