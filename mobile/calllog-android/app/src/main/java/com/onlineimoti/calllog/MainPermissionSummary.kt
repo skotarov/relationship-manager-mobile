@@ -14,6 +14,8 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object MainPermissionSummary {
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
+        val permissions = binding.permissionsSection
+        val popup = binding.popupSettingsSection
         val config = ConfigStore.load(activity)
         val notificationsGranted = hasNotificationPermission(activity)
         val phoneGranted = hasPermission(activity, Manifest.permission.READ_PHONE_STATE)
@@ -22,7 +24,7 @@ internal object MainPermissionSummary {
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
         val publicNotesGranted = LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
-        val overlayRequired = config.useOverlayPopups || binding.useOverlayPopupsCheckBox.isChecked
+        val overlayRequired = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
         val callScreeningGranted = MainPermissionChecks.hasCallScreeningRole(activity)
         val fullscreenGranted = canUseFullScreenIntent(activity)
 
@@ -46,13 +48,13 @@ internal object MainPermissionSummary {
             if (!row.second) builder.setSpan(ForegroundColorSpan(missingColor), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             if (index < rows.lastIndex) builder.append('\n')
         }
-        binding.permissionsSummaryText.text = builder
+        permissions.permissionsSummaryText.text = builder
 
         val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted
-        binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
-        binding.openOverlayPermissionButton.visibility = if (overlayRequired && !overlayGranted) View.VISIBLE else View.GONE
-        binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
-        binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
+        permissions.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
+        permissions.openOverlayPermissionButton.visibility = if (overlayRequired && !overlayGranted) View.VISIBLE else View.GONE
+        permissions.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
+        permissions.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
     }
 
     private fun permissionStateLabel(active: Boolean): String = if (active) "активно" else "липсва"
