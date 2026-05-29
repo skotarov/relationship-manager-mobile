@@ -9,7 +9,6 @@ import androidx.core.content.ContextCompat
 object LocalCallStatsProvider {
     private const val LOCAL_CALL_SCAN_LIMIT = 5000
     private const val CURRENT_CALL_PROTECTION_WINDOW_MS = 30_000L
-    private const val ICON_COMPLETED_CALL = "✆"
     private const val ICON_FAILED_CALL = "✕"
     private const val ICON_GENERAL_NOTE = "☰"
     private const val ICON_CALL_NOTE = "💬"
@@ -34,7 +33,7 @@ object LocalCallStatsProvider {
 
         return buildList {
             if (summary != null && summary.count > 0 && summary.lastCallAgo.isNotBlank()) {
-                add("${summary.statusIcon} ${summary.directionIcon} ${summary.lastCallAgo}")
+                add(callInfoLine(summary))
             }
             if (contactNote.isNotBlank()) {
                 add("$ICON_GENERAL_NOTE $contactNote")
@@ -64,8 +63,14 @@ object LocalCallStatsProvider {
             lastCallType = stats.lastCallType,
             lastDurationSeconds = stats.lastDurationSeconds,
             directionIcon = directionIcon(stats.lastCallType),
-            statusIcon = statusIcon(stats.lastCallType, stats.lastDurationSeconds),
+            failedIcon = failedIcon(stats.lastCallType, stats.lastDurationSeconds),
         )
+    }
+
+    private fun callInfoLine(summary: LocalCallSummary): String {
+        return listOf(summary.directionIcon, summary.failedIcon, summary.lastCallAgo)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
     }
 
     private fun getStats(context: Context, phone: String): LocalCallStats {
@@ -141,13 +146,13 @@ object LocalCallStatsProvider {
         }
     }
 
-    private fun statusIcon(callType: Int?, durationSeconds: Long?): String {
+    private fun failedIcon(callType: Int?, durationSeconds: Long?): String {
         return when (callType) {
             CallLog.Calls.MISSED_TYPE,
             CallLog.Calls.REJECTED_TYPE,
             CallLog.Calls.BLOCKED_TYPE -> ICON_FAILED_CALL
-            CallLog.Calls.OUTGOING_TYPE -> if ((durationSeconds ?: 0L) <= 0L) ICON_FAILED_CALL else ICON_COMPLETED_CALL
-            else -> if ((durationSeconds ?: 1L) <= 0L) ICON_FAILED_CALL else ICON_COMPLETED_CALL
+            CallLog.Calls.OUTGOING_TYPE -> if ((durationSeconds ?: 0L) <= 0L) ICON_FAILED_CALL else ""
+            else -> if ((durationSeconds ?: 1L) <= 0L) ICON_FAILED_CALL else ""
         }
     }
 
@@ -196,7 +201,7 @@ object LocalCallStatsProvider {
         val lastCallType: Int? = null,
         val lastDurationSeconds: Long? = null,
         val directionIcon: String = ICON_INCOMING,
-        val statusIcon: String = ICON_COMPLETED_CALL,
+        val failedIcon: String = "",
     )
 
     private data class LocalCallStats(
