@@ -80,7 +80,17 @@ internal class PostCallNoteEditor(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })
-        titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
+        val callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
+        titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
+            val noteText = callNoteInput.text?.toString().orEmpty()
+            setPendingCallNote(noteText)
+            if (saveCallNote(phoneValue, directionValue, callAtValue, durationValue, noteText)) {
+                notifyNotesChanged()
+                openCalendarEvent(titleText)
+            } else {
+                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            }
+        })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
         card.addView(titleRow)
 
@@ -115,7 +125,6 @@ internal class PostCallNoteEditor(
             card.addView(infoRow)
         }
 
-        val callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
         card.addView(callNoteInput)
 
         val actions = LinearLayout(service).apply {
@@ -138,13 +147,12 @@ internal class PostCallNoteEditor(
         })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
-            val callSaved = NotePersistence.saveOrDeleteCallNote(
-                context = service,
+            val callSaved = saveCallNote(
                 phoneNumber = phoneValue,
-                note = callNoteInput.text?.toString().orEmpty(),
-                direction = directionValue,
-                callAt = callAtValue,
-                durationSeconds = durationValue,
+                directionValue = directionValue,
+                callAtValue = callAtValue,
+                durationValue = durationValue,
+                noteText = callNoteInput.text?.toString().orEmpty(),
             )
             if (callSaved) notifyNotesChanged()
             Toast.makeText(service, if (callSaved) "Бележката към обаждането е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
@@ -157,5 +165,22 @@ internal class PostCallNoteEditor(
         handler.postDelayed({
             (service.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
+    }
+
+    private fun saveCallNote(
+        phoneNumber: String,
+        directionValue: String,
+        callAtValue: Long,
+        durationValue: Long,
+        noteText: String,
+    ): Boolean {
+        return NotePersistence.saveOrDeleteCallNote(
+            context = service,
+            phoneNumber = phoneNumber,
+            note = noteText,
+            direction = directionValue,
+            callAt = callAtValue,
+            durationSeconds = durationValue,
+        )
     }
 }
