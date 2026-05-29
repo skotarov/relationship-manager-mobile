@@ -54,7 +54,7 @@ class CallStateReceiver : BroadcastReceiver() {
 
     private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
         val config = ConfigStore.load(context)
-        if (!config.useCustomStartPopup || !Settings.canDrawOverlays(context) || isScreenLocked(context)) return
+        if (!config.useOverlayPopups || !config.useCustomStartPopup || !Settings.canDrawOverlays(context) || isScreenLocked(context)) return
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOADING)
@@ -150,7 +150,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 val config = ConfigStore.load(context)
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
 
-                if (!config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
+                if (!config.useOverlayPopups || !config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
                     openFullscreenNoteEditor(context, number, direction)
                     return@execute
                 }
