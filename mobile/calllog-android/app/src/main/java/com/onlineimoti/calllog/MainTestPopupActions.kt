@@ -18,7 +18,8 @@ internal object MainTestPopupActions {
             setStatus("Попълни телефон.")
             return
         }
-        binding.testStartPopupButton.isEnabled = false
+        val tests = binding.testsSection
+        tests.testStartPopupButton.isEnabled = false
         setStatus("Тест: показвам popup при старт за $phone …")
         executor.execute {
             val displayName = ContactGroupFilter.resolveDisplayName(activity, phone)
@@ -35,7 +36,7 @@ internal object MainTestPopupActions {
                 LookupResult(title, "Локален режим — без сървърни данни", emptyList(), "")
             }
             activity.runOnUiThread {
-                binding.testStartPopupButton.isEnabled = true
+                tests.testStartPopupButton.isEnabled = true
                 LookupPopupPresenter.show(activity, result, fullscreen = true, phone = phone, direction = direction)
                 setStatus("Показан е тестов popup при старт.")
             }
@@ -55,13 +56,14 @@ internal object MainTestPopupActions {
             setStatus("Попълни телефон.")
             return
         }
-        binding.testEndPopupButton.isEnabled = false
+        val tests = binding.testsSection
+        tests.testEndPopupButton.isEnabled = false
         setStatus("Тест: показвам popup след край за $phone …")
         executor.execute {
             val displayName = ContactGroupFilter.resolveDisplayName(activity, phone)
             val title = displayName.ifNullOrBlank { "Локални действия след разговора" }
             activity.runOnUiThread {
-                binding.testEndPopupButton.isEnabled = true
+                tests.testEndPopupButton.isEnabled = true
                 CallReportRuntime.showPostCallPromptNotification(
                     context = activity,
                     formUrl = formUrl,
