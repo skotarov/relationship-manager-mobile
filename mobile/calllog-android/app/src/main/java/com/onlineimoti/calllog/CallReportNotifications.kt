@@ -18,6 +18,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.ContactsContract
 import android.provider.Settings
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -204,10 +206,61 @@ internal object CallReportNotifications {
             .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
             .addAction(0, "История", allNotesIntent)
         if (displayRows.isNotEmpty()) builder.setStyle(inboxStyle)
+        if (alertAgain && notificationRows.isNotEmpty()) {
+            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, notificationTitle, notificationRows))
+        }
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+    }
+
+    private fun buildHeadsUpContentView(context: Context, title: String, rows: List<String>): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.notification_lookup_heads_up).apply {
+            setTextViewText(R.id.notificationHeadsUpTitle, title)
+            bindHeadsUpRow(this, 0, rows.getOrNull(0))
+            bindHeadsUpRow(this, 1, rows.getOrNull(1))
+            bindHeadsUpRow(this, 2, rows.getOrNull(2))
+        }
+    }
+
+    private fun bindHeadsUpRow(remoteViews: RemoteViews, index: Int, rawLine: String?) {
+        val rowId = when (index) {
+            0 -> R.id.notificationHeadsUpRow1
+            1 -> R.id.notificationHeadsUpRow2
+            else -> R.id.notificationHeadsUpRow3
+        }
+        val iconId = when (index) {
+            0 -> R.id.notificationHeadsUpIcon1
+            1 -> R.id.notificationHeadsUpIcon2
+            else -> R.id.notificationHeadsUpIcon3
+        }
+        val textId = when (index) {
+            0 -> R.id.notificationHeadsUpText1
+            1 -> R.id.notificationHeadsUpText2
+            else -> R.id.notificationHeadsUpText3
+        }
+        val line = rawLine.orEmpty().trim()
+        if (line.isBlank()) {
+            remoteViews.setViewVisibility(rowId, View.GONE)
+            return
+        }
+
+        remoteViews.setViewVisibility(rowId, View.VISIBLE)
+        when {
+            line.startsWith("☰") -> {
+                remoteViews.setImageViewResource(iconId, R.drawable.ic_note_lines)
+                remoteViews.setTextViewText(textId, line.removePrefix("☰").trim())
+            }
+            line.startsWith("💬") -> {
+                remoteViews.setImageViewResource(iconId, R.drawable.ic_chat_note)
+                remoteViews.setTextViewText(textId, line.removePrefix("💬").trim())
+            }
+            else -> {
+                remoteViews.setImageViewResource(iconId, R.drawable.ic_phone_call)
+                remoteViews.setTextViewText(textId, line)
+            }
+        }
     }
 
     private fun systemPopupLargeIcon(context: Context, phone: String, hasLoggedData: Boolean): Bitmap? {
