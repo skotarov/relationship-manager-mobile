@@ -17,6 +17,7 @@ data class AppConfig(
     val useOverlayPopups: Boolean,
     val useCustomStartPopup: Boolean,
     val useCustomEndPopup: Boolean,
+    val postCallEndAction: String,
     val contactLinkMode: String,
 )
 
@@ -35,12 +36,17 @@ object ConfigStore {
     private const val KEY_USE_OVERLAY_POPUPS = "use_overlay_popups"
     private const val KEY_USE_CUSTOM_START_POPUP = "use_custom_start_popup"
     private const val KEY_USE_CUSTOM_END_POPUP = "use_custom_end_popup"
+    private const val KEY_POST_CALL_END_ACTION = "post_call_end_action"
     private const val KEY_CONTACT_LINK_MODE = "contact_link_mode"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
     const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
+    const val POST_CALL_END_ACTION_EDIT = "edit"
+    const val POST_CALL_END_ACTION_HISTORY = "history"
+    const val POST_CALL_END_ACTION_NOTHING = "nothing"
+    const val DEFAULT_POST_CALL_END_ACTION = POST_CALL_END_ACTION_EDIT
     const val CONTACT_LINK_MODE_APP = "app"
     const val CONTACT_LINK_MODE_CONTACT = "contact"
     const val DEFAULT_CONTACT_LINK_MODE = CONTACT_LINK_MODE_APP
@@ -61,6 +67,7 @@ object ConfigStore {
             useOverlayPopups = prefs.getBoolean(KEY_USE_OVERLAY_POPUPS, false),
             useCustomStartPopup = prefs.getBoolean(KEY_USE_CUSTOM_START_POPUP, true),
             useCustomEndPopup = prefs.getBoolean(KEY_USE_CUSTOM_END_POPUP, true),
+            postCallEndAction = normalizePostCallEndAction(prefs.getString(KEY_POST_CALL_END_ACTION, DEFAULT_POST_CALL_END_ACTION).orEmpty()),
             contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
         )
     }
@@ -81,6 +88,7 @@ object ConfigStore {
             .putBoolean(KEY_USE_OVERLAY_POPUPS, config.useOverlayPopups)
             .putBoolean(KEY_USE_CUSTOM_START_POPUP, config.useCustomStartPopup)
             .putBoolean(KEY_USE_CUSTOM_END_POPUP, config.useCustomEndPopup)
+            .putString(KEY_POST_CALL_END_ACTION, normalizePostCallEndAction(config.postCallEndAction))
             .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
             .apply()
     }
@@ -89,6 +97,14 @@ object ConfigStore {
         val trimmed = path.trim()
         if (trimmed.isBlank()) return defaultPath
         return if (trimmed.startsWith('/')) trimmed else "/$trimmed"
+    }
+
+    private fun normalizePostCallEndAction(value: String): String {
+        return when (value.trim()) {
+            POST_CALL_END_ACTION_HISTORY -> POST_CALL_END_ACTION_HISTORY
+            POST_CALL_END_ACTION_NOTHING -> POST_CALL_END_ACTION_NOTHING
+            else -> POST_CALL_END_ACTION_EDIT
+        }
     }
 
     private fun normalizeContactLinkMode(value: String): String {
