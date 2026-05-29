@@ -149,9 +149,10 @@ class CallStateReceiver : BroadcastReceiver() {
             try {
                 val config = ConfigStore.load(context)
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
+                if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) return@execute
 
                 if (!config.useOverlayPopups || !config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
-                    openFullscreenNoteEditor(context, number, direction)
+                    showSystemPostCallAction(context, number, direction, config)
                     return@execute
                 }
 
@@ -196,11 +197,32 @@ class CallStateReceiver : BroadcastReceiver() {
                     title = result.title,
                 )
             } catch (_: Throwable) {
-                openFullscreenNoteEditor(context, number, direction)
+                val config = ConfigStore.load(context)
+                if (config.postCallEndAction != ConfigStore.POST_CALL_END_ACTION_NOTHING) {
+                    showSystemPostCallAction(context, number, direction, config)
+                }
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    private fun showSystemPostCallAction(context: Context, number: String, direction: String, config: AppConfig) {
+        when (config.postCallEndAction) {
+            ConfigStore.POST_CALL_END_ACTION_HISTORY -> openFullscreenHistory(context, number)
+            ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
+            else -> openFullscreenNoteEditor(context, number, direction)
+        }
+    }
+
+    private fun openFullscreenHistory(context: Context, number: String) {
+        val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+        context.startActivity(
+            Intent(context, ContactNotesActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, number)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "История" } })
+        )
     }
 
     private fun openFullscreenNoteEditor(context: Context, number: String, direction: String) {
