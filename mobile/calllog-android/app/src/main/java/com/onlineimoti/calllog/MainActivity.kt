@@ -68,36 +68,36 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         permissionFlowController.start()
 
-        binding.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            binding.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+        binding.remoteSettingsSection.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            binding.remoteSettingsSection.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
-        binding.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            binding.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+        binding.popupSettingsSection.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
             refreshPermissionSummary()
         }
-        binding.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
-        binding.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
-        binding.openCallScreeningButton.setOnClickListener { permissionFlowController.requestCallScreeningRoleIfNeeded() }
-        binding.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
-        binding.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
+        binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
+        binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
+        binding.permissionsSection.openCallScreeningButton.setOnClickListener { permissionFlowController.requestCallScreeningRoleIfNeeded() }
+        binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
+        binding.permissionsSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
             refreshPermissionSummary()
         }
-        binding.openFormButton.setOnClickListener {
+        binding.testsSection.openFormButton.setOnClickListener {
             saveConfig()
             openFormDirect()
         }
-        binding.testStartPopupButton.setOnClickListener {
+        binding.testsSection.testStartPopupButton.setOnClickListener {
             saveConfig()
             testStartPopup()
         }
-        binding.testEndPopupButton.setOnClickListener {
+        binding.testsSection.testEndPopupButton.setOnClickListener {
             saveConfig()
             testEndPopup()
         }
-        binding.testFullLogButton.setOnClickListener {
+        binding.testsSection.testFullLogButton.setOnClickListener {
             saveConfig()
             openFullLogDirect()
         }
@@ -118,8 +118,8 @@ class MainActivity : AppCompatActivity() {
         return ConfigStore.load(this)
     }
 
-    private fun directionValue(): String = if (binding.directionIn.isChecked) "in" else "out"
-    private fun phoneValue(): String = binding.phoneInput.text?.toString()?.trim().orEmpty()
+    private fun directionValue(): String = if (binding.testsSection.directionIn.isChecked) "in" else "out"
+    private fun phoneValue(): String = binding.testsSection.phoneInput.text?.toString()?.trim().orEmpty()
 
     private fun remoteReady(config: AppConfig): Boolean {
         return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
