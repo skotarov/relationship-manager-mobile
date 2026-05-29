@@ -21,6 +21,11 @@ object MainSettingsConfigUi {
         remote.formPathInput.setText(config.formPath)
         remote.historyPathInput.setText(config.historyPath)
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
+        when (config.postCallEndAction) {
+            ConfigStore.POST_CALL_END_ACTION_HISTORY -> popup.postCallEndActionHistory.isChecked = true
+            ConfigStore.POST_CALL_END_ACTION_NOTHING -> popup.postCallEndActionNothing.isChecked = true
+            else -> popup.postCallEndActionEdit.isChecked = true
+        }
         popup.useOverlayPopupsCheckBox.isChecked = config.useOverlayPopups
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
@@ -53,6 +58,11 @@ object MainSettingsConfigUi {
             useOverlayPopups = popup.useOverlayPopupsCheckBox.isChecked,
             useCustomStartPopup = popup.useCustomStartPopupCheckBox.isChecked,
             useCustomEndPopup = popup.useCustomEndPopupCheckBox.isChecked,
+            postCallEndAction = when {
+                popup.postCallEndActionHistory.isChecked -> ConfigStore.POST_CALL_END_ACTION_HISTORY
+                popup.postCallEndActionNothing.isChecked -> ConfigStore.POST_CALL_END_ACTION_NOTHING
+                else -> ConfigStore.POST_CALL_END_ACTION_EDIT
+            },
             contactLinkMode = if (contactLink.contactLinkModeContact.isChecked) {
                 ConfigStore.CONTACT_LINK_MODE_CONTACT
             } else {
