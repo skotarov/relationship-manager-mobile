@@ -37,7 +37,6 @@ internal class PostCallLookupPopup(
         val infoRows = LocalCallStatsProvider.buildPopupInfoRows(service, phoneValue)
         val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
         val remainingInfoRows = infoRows.drop(1)
-        val latestCallNote = ContactNoteReader.callNotesForPhone(phoneValue).firstOrNull()?.note.orEmpty().trim().replace(Regex("\\s+"), " ")
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -71,8 +70,8 @@ internal class PostCallLookupPopup(
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
 
-        if (remainingInfoRows.isNotEmpty() || latestCallNote.isNotBlank()) {
-            contentColumn.addView(buildDataColumn(remainingInfoRows, latestCallNote))
+        if (remainingInfoRows.isNotEmpty()) {
+            contentColumn.addView(buildDataColumn(remainingInfoRows))
         }
         contentRow.addView(contentColumn)
         contentRow.addView(ui.noteRightAction { showNoteEditor() })
@@ -80,27 +79,39 @@ internal class PostCallLookupPopup(
         addDraggableOverlay(ui.shadowScroll(card), false, ui.dp(74), timeoutMs)
     }
 
-    private fun buildDataColumn(infoRows: List<String>, latestCallNote: String): LinearLayout {
+    private fun buildDataColumn(infoRows: List<String>): LinearLayout {
         return LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, ui.dp(6), 0, 0)
             infoRows.forEachIndexed { index, line ->
-                if (line.startsWith("✎")) {
-                    addView(ui.generalNotePreviewRow(line.removePrefix("✎").trim(), if (index == 0) 0 else ui.dp(2)))
-                } else {
-                    addView(TextView(service).apply {
-                        text = line
-                        textSize = 14f
-                        setTextColor(Color.rgb(75, 85, 99))
-                        setPadding(0, if (index == 0) 0 else ui.dp(2), 0, 0)
-                        maxLines = 1
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                    })
+                when {
+                    line.startsWith("☰") -> {
+                        addView(ui.generalNotePreviewRow(line.removePrefix("☰").trim(), if (index == 0) 0 else ui.dp(2)))
+                    }
+                    line.startsWith("💬") -> {
+                        addView(
+                            ui.notePreviewRow(
+                                noteText = line.removePrefix("💬").trim(),
+                                textColor = NoteUiStyle.Call.text,
+                                backgroundColor = NoteUiStyle.Call.background,
+                                strokeColor = NoteUiStyle.Call.border,
+                                topMargin = if (index == 0) 0 else ui.dp(6),
+                                iconRes = R.drawable.ic_chat_note,
+                            )
+                        )
+                    }
+                    else -> {
+                        addView(TextView(service).apply {
+                            text = line
+                            textSize = 14f
+                            setTextColor(Color.rgb(75, 85, 99))
+                            setPadding(0, if (index == 0) 0 else ui.dp(2), 0, 0)
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                        })
+                    }
                 }
-            }
-            if (latestCallNote.isNotBlank()) {
-                addView(ui.notePreviewRow(latestCallNote, NoteUiStyle.Call.text, NoteUiStyle.Call.background, NoteUiStyle.Call.border, ui.dp(6), R.drawable.ic_chat_note))
             }
         }
     }
