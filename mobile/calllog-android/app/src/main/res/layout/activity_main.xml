@@ -129,19 +129,42 @@
             android:textStyle="bold" />
 
         <CheckBox
-            android:id="@+id/useCustomStartPopupCheckBox"
+            android:id="@+id/useOverlayPopupsCheckBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:checked="true"
-            android:text="Първият popup да е custom overlay" />
+            android:checked="false"
+            android:text="Използвай Display over other apps / overlay popup-и" />
 
-        <CheckBox
-            android:id="@+id/useCustomEndPopupCheckBox"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="Финалният popup да е custom floating иконка" />
+            android:layout_marginTop="2dp"
+            android:text="По подразбиране е изключено. Когато е изключено или липсва разрешение, първият popup е системен, а редакциите се отварят на цял екран."
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/overlayPopupOptionsGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <CheckBox
+                android:id="@+id/useCustomStartPopupCheckBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:checked="true"
+                android:text="Първият popup да е custom overlay" />
+
+            <CheckBox
+                android:id="@+id/useCustomEndPopupCheckBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Финалният popup да е custom floating иконка" />
+        </LinearLayout>
 
         <TextView
             android:layout_width="match_parent"
@@ -252,6 +275,13 @@
                 android:layout_height="wrap_content"
                 android:text="Отвори Permissions" />
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/openOverlayPermissionButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Разреши Display over other apps" />
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/openCallScreeningButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
@@ -328,59 +358,55 @@
                 </RadioGroup>
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/testStartPopupButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:text="Тест: popup при старт" />
+                    android:layout_marginTop="14dp"
+                    android:text="Тествай popup при старт" />
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/testEndPopupButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="Тест: popup след край" />
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/testFullLogButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="Тест: пълен лог" />
+                    android:layout_marginTop="8dp"
+                    android:text="Тествай popup след край" />
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/openFormButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/open_form_direct" />
+                    android:layout_marginTop="8dp"
+                    android:text="Отвори form.php" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/testFullLogButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Отвори history.php" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/saveSettingsButton"
-            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="@string/save_settings" />
+            android:text="Запази настройки" />
 
         <TextView
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:textColor="@color/calllog_muted_text"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/buildVersionText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:gravity="center"
+            android:layout_marginTop="16dp"
             android:textColor="@color/calllog_muted_text"
             android:textSize="12sp" />
-
     </LinearLayout>
 </ScrollView>
