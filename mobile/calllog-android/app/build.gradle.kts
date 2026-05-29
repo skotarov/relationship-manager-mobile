@@ -1,13 +1,6 @@
-import java.awt.BasicStroke
-import java.awt.Color
-import java.awt.RenderingHints
-import java.awt.geom.Ellipse2D
-import java.awt.geom.Path2D
-import java.awt.image.BufferedImage
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Base64
-import javax.imageio.ImageIO
 
 plugins {
     id("com.android.application")
@@ -28,13 +21,6 @@ val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
     .get()
     .asFile
-val launcherIconSizes = linkedMapOf(
-    "mipmap-mdpi" to 108,
-    "mipmap-hdpi" to 162,
-    "mipmap-xhdpi" to 216,
-    "mipmap-xxhdpi" to 324,
-    "mipmap-xxxhdpi" to 432,
-)
 
 fun ensureFixedDebugKeystore(): File {
     require(fixedDebugKeystoreBase64File.isFile) {
@@ -46,54 +32,6 @@ fun ensureFixedDebugKeystore(): File {
     )
     return fixedDebugKeystoreFile
 }
-
-fun bubblePath(cx: Double, cy: Double, rx: Double, ry: Double, tailLeft: Boolean): Path2D.Double {
-    val path = Path2D.Double()
-    path.append(Ellipse2D.Double(cx - rx, cy - ry, rx * 2.0, ry * 2.0), false)
-    if (tailLeft) {
-        path.moveTo(cx - rx * 0.55, cy + ry * 0.62)
-        path.lineTo(cx - rx * 1.04, cy + ry * 1.08)
-        path.lineTo(cx - rx * 0.28, cy + ry * 0.78)
-    } else {
-        path.moveTo(cx + rx * 0.55, cy + ry * 0.62)
-        path.lineTo(cx + rx * 1.04, cy + ry * 1.08)
-        path.lineTo(cx + rx * 0.28, cy + ry * 0.78)
-    }
-    path.closePath()
-    return path
-}
-
-fun drawLauncherForegroundPng(targetSize: Int, outputFile: File) {
-    val image = BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_ARGB)
-    val graphics = image.createGraphics()
-    val scale = targetSize / 432.0
-    graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-    graphics.scale(scale, scale)
-
-    val dark = Color(17, 27, 39, 255)
-    graphics.color = dark
-    graphics.fill(bubblePath(270.0, 183.0, 92.0, 72.0, false))
-
-    graphics.color = Color(0, 0, 0, 0)
-    graphics.stroke = BasicStroke(34f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
-    graphics.color = dark
-    graphics.draw(bubblePath(175.0, 238.0, 126.0, 88.0, true))
-
-    graphics.dispose()
-    outputFile.parentFile.mkdirs()
-    ImageIO.write(image, "png", outputFile)
-}
-
-fun ensureLauncherForegroundPngs() {
-    launcherIconSizes.forEach { (folder, size) ->
-        drawLauncherForegroundPng(
-            targetSize = size,
-            outputFile = project.file("src/main/res/$folder/callreport_launcher_foreground.png"),
-        )
-    }
-}
-
-ensureLauncherForegroundPngs()
 
 android {
     namespace = "com.onlineimoti.calllog"
