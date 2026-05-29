@@ -91,7 +91,7 @@ class PostCallOverlayService : Service() {
             setWindowManager = { windowManager = it },
             setOverlayView = { overlayView = it },
             removeOverlay = ::removeOverlay,
-            showNoteEditor = ::showNoteEditor,
+            openConfiguredAction = ::openConfiguredPostCallAction,
         )
     }
     private val calendarActions by lazy {
@@ -157,9 +157,21 @@ class PostCallOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showBubbleWithTimeout() {
+        if (ConfigStore.load(this).postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
+            stopSelf()
+            return
+        }
         bubble.show()
         val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
         handler.postDelayed({ stopSelf() }, timeout * 1000L)
+    }
+
+    private fun openConfiguredPostCallAction() {
+        when (ConfigStore.load(this).postCallEndAction) {
+            ConfigStore.POST_CALL_END_ACTION_HISTORY -> openContactNotesScreen()
+            ConfigStore.POST_CALL_END_ACTION_NOTHING -> stopSelf()
+            else -> showNoteEditor()
+        }
     }
 
     private fun showNoteEditor() {
