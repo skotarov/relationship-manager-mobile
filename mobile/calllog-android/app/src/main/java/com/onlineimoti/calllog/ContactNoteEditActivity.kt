@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.provider.CalendarContract
 import android.text.InputType
 import android.view.Gravity
 import android.view.WindowManager
@@ -54,7 +55,7 @@ class ContactNoteEditActivity : Activity() {
             elevation = dp(5).toFloat()
         }
 
-        card.addView(titleRow())
+        card.addView(titleRow(input))
         if (!isGeneralNote && callAt > 0L) card.addView(callInfoRow())
         card.addView(input)
         card.addView(actionRow(input))
@@ -68,7 +69,7 @@ class ContactNoteEditActivity : Activity() {
         return ScrollView(this).apply { addView(root) }
     }
 
-    private fun titleRow(): LinearLayout {
+    private fun titleRow(input: EditText): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -95,13 +96,11 @@ class ContactNoteEditActivity : Activity() {
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
             })
-            addView(ImageButton(this@ContactNoteEditActivity).apply {
-                setImageResource(R.drawable.ic_popup_close)
-                contentDescription = "Затвори"
-                background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
-                setPadding(dp(7), dp(7), dp(7), dp(7))
-                setOnClickListener { finish() }
-                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
+            addView(iconButton(R.drawable.ic_calendar_event, "Календар") {
+                saveAndOpenCalendar(input.text?.toString().orEmpty())
+            })
+            addView(iconButton(R.drawable.ic_popup_close, "Затвори") {
+                finish()
             })
         }
     }
@@ -161,6 +160,21 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun saveAndClose(noteText: String) {
+        val saved = saveCurrentNote(noteText)
+        Toast.makeText(this, if (saved) "Бележката е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+        if (saved) finish()
+    }
+
+    private fun saveAndOpenCalendar(noteText: String) {
+        val saved = saveCurrentNote(noteText)
+        if (!saved) {
+            Toast.makeText(this, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            return
+        }
+        openCalendarEvent()
+    }
+
+    private fun saveCurrentNote(noteText: String): Boolean {
         val saved = if (isGeneralNote) {
             NotePersistence.saveOrDeleteGeneralNote(this, phone, noteText)
         } else {
@@ -173,10 +187,41 @@ class ContactNoteEditActivity : Activity() {
                 durationSeconds = durationSeconds,
             )
         }
-        Toast.makeText(this, if (saved) "Бележката е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
-        if (saved) {
-            sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
-            finish()
+        if (saved) sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+        return saved
+    }
+
+    private fun openCalendarEvent() {
+        val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
+        val eventTitle = "Среща с $safeName"
+        val description = buildString {
+            appendLine("Име: $safeName")
+            if (phone.isNotBlank()) appendLine("Телефон: $phone")
+        }.trim()
+        val begin = System.currentTimeMillis() + 60 * 60 * 1000L
+        val end = begin + 60 * 60 * 1000L
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, eventTitle)
+            putExtra(CalendarContract.Events.DESCRIPTION, description)
+            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
+        }
+        runCatching {
+            startActivity(intent)
+        }.onFailure {
+            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
+        return ImageButton(this).apply {
+            setImageResource(drawableRes)
+            contentDescription = description
+            background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
         }
     }
 
