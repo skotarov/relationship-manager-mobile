@@ -15,7 +15,7 @@ object LookupPopupPresenter {
     ) {
         val config = ConfigStore.load(context)
         val screenLocked = isScreenLocked(context)
-        if (config.useCustomStartPopup && Settings.canDrawOverlays(context) && !screenLocked) {
+        if (config.useOverlayPopups && config.useCustomStartPopup && Settings.canDrawOverlays(context) && !screenLocked) {
             CallReportRuntime.showLookupShadeNotification(
                 context = context,
                 result = result,
