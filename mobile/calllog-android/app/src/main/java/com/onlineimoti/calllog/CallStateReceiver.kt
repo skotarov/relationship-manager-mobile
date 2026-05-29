@@ -150,6 +150,11 @@ class CallStateReceiver : BroadcastReceiver() {
                 val config = ConfigStore.load(context)
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
 
+                if (!config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
+                    openFullscreenNoteEditor(context, number, direction)
+                    return@execute
+                }
+
                 if (!remoteReady(config)) {
                     CallReportRuntime.showImmediatePostCallPrompt(
                         context = context,
@@ -191,17 +196,26 @@ class CallStateReceiver : BroadcastReceiver() {
                     title = result.title,
                 )
             } catch (_: Throwable) {
-                CallReportRuntime.showImmediatePostCallPrompt(
-                    context = context,
-                    formUrl = "",
-                    phone = number,
-                    direction = direction,
-                    title = "Локални действия след разговора",
-                )
+                openFullscreenNoteEditor(context, number, direction)
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    private fun openFullscreenNoteEditor(context: Context, number: String, direction: String) {
+        val latestCall = PhoneCallReader.callsForPhone(context, number, limit = 1).firstOrNull()
+        val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+        context.startActivity(
+            Intent(context, ContactNoteEditActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "Бележка от разговора" } })
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+        )
     }
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
