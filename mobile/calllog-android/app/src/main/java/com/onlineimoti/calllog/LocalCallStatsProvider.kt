@@ -11,7 +11,8 @@ object LocalCallStatsProvider {
     private const val CURRENT_CALL_PROTECTION_WINDOW_MS = 30_000L
     private const val ICON_COMPLETED_CALL = "✆"
     private const val ICON_FAILED_CALL = "✕"
-    private const val ICON_NOTE = "✎"
+    private const val ICON_GENERAL_NOTE = "☰"
+    private const val ICON_CALL_NOTE = "💬"
     private const val ICON_INCOMING = "↙"
     private const val ICON_OUTGOING = "↗"
 
@@ -24,13 +25,22 @@ object LocalCallStatsProvider {
         val contactNote = ContactNoteReader.noteForPhone(context, phone)
             .trim()
             .replace(Regex("\\s+"), " ")
+        val latestCallNote = ContactNoteReader.callNotesForPhone(phone)
+            .firstOrNull()
+            ?.note
+            .orEmpty()
+            .trim()
+            .replace(Regex("\\s+"), " ")
 
         return buildList {
             if (summary != null && summary.count > 0 && summary.lastCallAgo.isNotBlank()) {
                 add("${summary.statusIcon} ${summary.directionIcon} ${summary.lastCallAgo}")
             }
             if (contactNote.isNotBlank()) {
-                add("$ICON_NOTE $contactNote")
+                add("$ICON_GENERAL_NOTE $contactNote")
+            }
+            if (latestCallNote.isNotBlank()) {
+                add("$ICON_CALL_NOTE $latestCallNote")
             }
         }
     }
