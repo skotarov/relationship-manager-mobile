@@ -21,6 +21,8 @@ val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
     .get()
     .asFile
+val launcherForegroundBase64File = project.file("src/main/launcher-assets/relation-launcher-foreground.png.base64")
+val launcherForegroundPngFile = project.file("src/main/res/drawable-nodpi/callreport_launcher_foreground.png")
 
 fun ensureFixedDebugKeystore(): File {
     require(fixedDebugKeystoreBase64File.isFile) {
@@ -32,6 +34,18 @@ fun ensureFixedDebugKeystore(): File {
     )
     return fixedDebugKeystoreFile
 }
+
+fun ensureLauncherForegroundPng() {
+    require(launcherForegroundBase64File.isFile) {
+        "Missing launcher PNG source: ${launcherForegroundBase64File.path}"
+    }
+    launcherForegroundPngFile.parentFile.mkdirs()
+    launcherForegroundPngFile.writeBytes(
+        Base64.getMimeDecoder().decode(launcherForegroundBase64File.readText().trim())
+    )
+}
+
+ensureLauncherForegroundPng()
 
 android {
     namespace = "com.onlineimoti.calllog"
