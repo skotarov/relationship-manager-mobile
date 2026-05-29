@@ -16,7 +16,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="#111827"
-        android:textSize="14sp"
+        android:textSize="16sp"
         android:textStyle="bold" />
 
     <LinearLayout
@@ -42,7 +42,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="#4B5563"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -68,7 +68,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="#4B5563"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -94,7 +94,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="#4B5563"
-            android:textSize="12sp" />
+            android:textSize="14sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -117,7 +117,7 @@
             android:paddingBottom="4dp"
             android:text="Бележка"
             android:textColor="#1976F3"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
@@ -133,7 +133,7 @@
             android:paddingBottom="4dp"
             android:text="История"
             android:textColor="#1976F3"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
     </LinearLayout>
 
