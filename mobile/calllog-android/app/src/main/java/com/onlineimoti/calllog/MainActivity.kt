@@ -71,13 +71,19 @@ class MainActivity : AppCompatActivity() {
         binding.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
             binding.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
+        binding.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            binding.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+            refreshPermissionSummary()
+        }
         binding.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
+        binding.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
         binding.openCallScreeningButton.setOnClickListener { permissionFlowController.requestCallScreeningRoleIfNeeded() }
         binding.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
+            refreshPermissionSummary()
         }
         binding.openFormButton.setOnClickListener {
             saveConfig()
