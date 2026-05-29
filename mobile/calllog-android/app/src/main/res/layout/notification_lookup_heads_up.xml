@@ -32,7 +32,8 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
-            android:scaleType="fitCenter" />
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/notificationHeadsUpText1"
@@ -58,7 +59,8 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
-            android:scaleType="fitCenter" />
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/notificationHeadsUpText2"
@@ -84,7 +86,8 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
-            android:scaleType="fitCenter" />
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/notificationHeadsUpText3"
