@@ -29,6 +29,12 @@ class HomeActions(
     }
 
     fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
+        val config = ConfigStore.load(activity)
+        if (!config.useOverlayPopups) {
+            openContactNoteEditorForCall(call, displayName)
+            return
+        }
+
         if (!Settings.canDrawOverlays(activity)) {
             binding.homeStatusText.text = "За popup бележка разреши 'Показване върху други приложения' от Настройки."
             return
@@ -43,5 +49,17 @@ class HomeActions(
                 .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
         )
         startTemporaryNoteRefresh()
+    }
+
+    private fun openContactNoteEditorForCall(call: PhoneCallRecord, displayName: String) {
+        activity.startActivity(
+            Intent(activity, ContactNoteEditActivity::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, call.startedAt)
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
+        )
     }
 }
