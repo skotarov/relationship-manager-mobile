@@ -32,6 +32,7 @@ internal object CallReportNotifications {
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
     private const val UNKNOWN_CONTACT_TITLE = "Непознат"
+    private const val ICON_PERSON_TEXT = "👤"
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -257,16 +258,18 @@ internal object CallReportNotifications {
         remoteViews.setViewVisibility(rowId, View.VISIBLE)
         when {
             line.startsWith("☰") -> {
+                remoteViews.setViewVisibility(iconId, View.VISIBLE)
                 remoteViews.setImageViewResource(iconId, R.drawable.ic_note_lines)
                 remoteViews.setTextViewText(textId, line.removePrefix("☰").trim())
             }
             line.startsWith("💬") -> {
+                remoteViews.setViewVisibility(iconId, View.VISIBLE)
                 remoteViews.setImageViewResource(iconId, R.drawable.ic_chat_note)
                 remoteViews.setTextViewText(textId, line.removePrefix("💬").trim())
             }
             else -> {
-                remoteViews.setImageViewResource(iconId, R.drawable.ic_phone_call)
-                remoteViews.setTextViewText(textId, line)
+                remoteViews.setViewVisibility(iconId, View.GONE)
+                remoteViews.setTextViewText(textId, "$ICON_PERSON_TEXT $line")
             }
         }
     }
