@@ -14,6 +14,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object MainPermissionSummary {
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
+        val config = ConfigStore.load(activity)
         val notificationsGranted = hasNotificationPermission(activity)
         val phoneGranted = hasPermission(activity, Manifest.permission.READ_PHONE_STATE)
         val callLogGranted = hasPermission(activity, Manifest.permission.READ_CALL_LOG)
@@ -21,20 +22,21 @@ internal object MainPermissionSummary {
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
         val publicNotesGranted = LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
+        val overlayRequired = config.useOverlayPopups || binding.useOverlayPopupsCheckBox.isChecked
         val callScreeningGranted = MainPermissionChecks.hasCallScreeningRole(activity)
         val fullscreenGranted = canUseFullScreenIntent(activity)
 
-        val rows = listOf(
-            "Notifications" to notificationsGranted,
-            "Phone" to phoneGranted,
-            "Call report log" to callLogGranted,
-            "Contacts read" to contactsGranted,
-            "Contacts write" to contactsWriteGranted,
-            "Public notes folder" to publicNotesGranted,
-            "Floating icon" to overlayGranted,
-            "Call screening" to callScreeningGranted,
-            "Full-screen popup" to fullscreenGranted,
-        )
+        val rows = buildList {
+            add("Notifications" to notificationsGranted)
+            add("Phone" to phoneGranted)
+            add("Call report log" to callLogGranted)
+            add("Contacts read" to contactsGranted)
+            add("Contacts write" to contactsWriteGranted)
+            add("Public notes folder" to publicNotesGranted)
+            add("Display over other apps" to (!overlayRequired || overlayGranted))
+            add("Call screening" to callScreeningGranted)
+            add("Full-screen popup" to fullscreenGranted)
+        }
 
         val missingColor = ContextCompat.getColor(activity, R.color.calllog_error)
         val builder = SpannableStringBuilder()
@@ -46,8 +48,9 @@ internal object MainPermissionSummary {
         }
         binding.permissionsSummaryText.text = builder
 
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted || !overlayGranted
+        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted
         binding.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
+        binding.openOverlayPermissionButton.visibility = if (overlayRequired && !overlayGranted) View.VISIBLE else View.GONE
         binding.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
         binding.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
     }
