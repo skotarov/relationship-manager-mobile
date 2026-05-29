@@ -10,19 +10,35 @@ class NoteEditorReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         NotificationManagerCompat.from(context).cancel(CallReportRuntime.POST_CALL_NOTIFICATION_ID)
 
-        if (!Settings.canDrawOverlays(context)) return
-
         val mode = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE)
             ?: PostCallOverlayService.MODE_NOTE
+        val phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
+        val direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
+        val title = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty()
+        val callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
+        val duration = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
 
-        context.startService(
-            Intent(context, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty())
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty())
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty())
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L))
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L))
-        )
+        if (ConfigStore.load(context).useCustomEndPopup && Settings.canDrawOverlays(context)) {
+            context.startService(
+                Intent(context, PostCallOverlayService::class.java)
+                    .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
+                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+            )
+        } else {
+            context.startActivity(
+                Intent(context, ContactNoteEditActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
+                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+            )
+        }
     }
 }
