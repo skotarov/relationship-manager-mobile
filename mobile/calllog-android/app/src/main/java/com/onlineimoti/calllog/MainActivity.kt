@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
         binding.popupSettingsSection.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
             binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
             refreshPermissionSummary()
+            if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
         }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
