@@ -86,15 +86,29 @@ class ContactShareActivity : Activity() {
         text.replace("\r\n", "\n")
             .replace('\r', '\n')
             .split('\n')
-            .forEach { line ->
-                if ((line.startsWith(" ") || line.startsWith("\t")) && unfoldedLines.isNotEmpty()) {
-                    unfoldedLines[unfoldedLines.lastIndex] = unfoldedLines.last() + line.drop(1)
-                } else {
-                    unfoldedLines.add(line)
+            .forEach { rawLine ->
+                val line = rawLine
+                val previous = unfoldedLines.lastOrNull()
+                when {
+                    previous != null && (line.startsWith(" ") || line.startsWith("\t")) -> {
+                        unfoldedLines[unfoldedLines.lastIndex] = previous + line.drop(1)
+                    }
+                    previous != null && isQuotedPrintableSoftBreak(previous) -> {
+                        unfoldedLines[unfoldedLines.lastIndex] = previous.dropLast(1) + line.trimStart()
+                    }
+                    else -> {
+                        unfoldedLines.add(line)
+                    }
                 }
             }
 
         return unfoldedLines.joinToString("\n")
+    }
+
+    private fun isQuotedPrintableSoftBreak(line: String): Boolean {
+        val header = line.substringBefore(':', missingDelimiterValue = "")
+        if (!header.contains("ENCODING=QUOTED-PRINTABLE", ignoreCase = true)) return false
+        return line.endsWith("=")
     }
 
     private fun extractPhone(text: String): String {
