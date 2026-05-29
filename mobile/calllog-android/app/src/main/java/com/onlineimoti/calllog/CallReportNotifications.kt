@@ -87,7 +87,7 @@ internal object CallReportNotifications {
     fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
         NotificationManagerCompat.from(context).cancel(POST_CALL_NOTIFICATION_ID)
         val config = ConfigStore.load(context)
-        if (config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
+        if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
             context.startService(
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
@@ -96,7 +96,23 @@ internal object CallReportNotifications {
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                     .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
             )
+        } else {
+            showFullScreenNoteEditorPrompt(context, phone, direction, title)
         }
+    }
+
+    private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
+        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        context.startActivity(
+            Intent(context, ContactNoteEditActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
+                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
+                .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+        )
     }
 
     private fun editorPendingIntent(
