@@ -90,18 +90,34 @@ internal object CallReportNotifications {
     fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
         NotificationManagerCompat.from(context).cancel(POST_CALL_NOTIFICATION_ID)
         val config = ConfigStore.load(context)
-        if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
-            context.startService(
-                Intent(context, PostCallOverlayService::class.java)
-                    .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                    .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
-            )
-        } else {
-            showFullScreenNoteEditorPrompt(context, phone, direction, title)
+        when (config.postCallEndAction) {
+            ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
+            ConfigStore.POST_CALL_END_ACTION_HISTORY -> {
+                if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
+                    startPostCallOverlay(context, formUrl, phone, direction, title)
+                } else {
+                    openContactNotesScreen(context, phone, title)
+                }
+            }
+            else -> {
+                if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
+                    startPostCallOverlay(context, formUrl, phone, direction, title)
+                } else {
+                    showFullScreenNoteEditorPrompt(context, phone, direction, title)
+                }
+            }
         }
+    }
+
+    private fun startPostCallOverlay(context: Context, formUrl: String, phone: String, direction: String, title: String) {
+        context.startService(
+            Intent(context, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
+        )
     }
 
     private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
@@ -115,6 +131,15 @@ internal object CallReportNotifications {
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
                 .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
                 .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+        )
+    }
+
+    private fun openContactNotesScreen(context: Context, phone: String, title: String) {
+        context.startActivity(
+            Intent(context, ContactNotesActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "История" } })
         )
     }
 
