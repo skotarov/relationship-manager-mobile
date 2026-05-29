@@ -74,11 +74,21 @@ internal class PostCallGeneralNoteEditor(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })
-        titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) { openCalendarEvent(titleText) })
+        val generalNoteInput = ui.noteEditText(generalNote, "Основна бележка към контакта/номера", 4, ui.dp(12))
+        titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
+            val noteText = generalNoteInput.text?.toString().orEmpty()
+            setPendingGeneralNote(noteText)
+            val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, noteText)
+            if (saved) {
+                notifyNotesChanged()
+                openCalendarEvent(titleText)
+            } else {
+                Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+            }
+        })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
         card.addView(titleRow)
 
-        val generalNoteInput = ui.noteEditText(generalNote, "Основна бележка към контакта/номера", 4, ui.dp(12))
         card.addView(generalNoteInput)
 
         val actions = LinearLayout(service).apply {
