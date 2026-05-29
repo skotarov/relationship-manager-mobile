@@ -206,8 +206,8 @@ internal object CallReportNotifications {
             .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
             .addAction(0, "История", allNotesIntent)
         if (displayRows.isNotEmpty()) builder.setStyle(inboxStyle)
-        if (alertAgain && notificationRows.isNotEmpty()) {
-            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, notificationTitle, notificationRows))
+        if (alertAgain && displayRows.isNotEmpty()) {
+            builder.setCustomHeadsUpContentView(buildHeadsUpContentView(context, displayTitle, displayRows))
         }
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
