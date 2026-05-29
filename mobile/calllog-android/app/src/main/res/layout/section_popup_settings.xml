@@ -42,6 +42,16 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
+    <TextView
+        android:id="@+id/overlayPermissionWarningText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Overlay popup-ите са избрани, но Android разрешението липсва. Реално ще се показва системен popup, докато не разрешиш Display over other apps."
+        android:textColor="@color/calllog_error"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/overlayPopupOptionsGroup"
         android:layout_width="match_parent"
