@@ -29,6 +29,7 @@ internal object CallReportNotifications {
     private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
+    private const val UNKNOWN_CONTACT_TITLE = "Непознат"
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -153,7 +154,8 @@ internal object CallReportNotifications {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
             displayName.isNotBlank() -> displayName
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
-            else -> phone.ifBlank { result.title.ifBlank { "Call Report" } }
+            phone.isNotBlank() -> UNKNOWN_CONTACT_TITLE
+            else -> result.title.ifBlank { UNKNOWN_CONTACT_TITLE }
         }
 
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, callAt, duration)
