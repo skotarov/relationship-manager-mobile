@@ -14,6 +14,7 @@ data class AppConfig(
     val formPath: String,
     val historyPath: String,
     val postCallPromptTimeoutSeconds: Int,
+    val useOverlayPopups: Boolean,
     val useCustomStartPopup: Boolean,
     val useCustomEndPopup: Boolean,
     val contactLinkMode: String,
@@ -31,6 +32,7 @@ object ConfigStore {
     private const val KEY_FORM_PATH = "form_path"
     private const val KEY_HISTORY_PATH = "history_path"
     private const val KEY_POST_CALL_TIMEOUT = "post_call_timeout"
+    private const val KEY_USE_OVERLAY_POPUPS = "use_overlay_popups"
     private const val KEY_USE_CUSTOM_START_POPUP = "use_custom_start_popup"
     private const val KEY_USE_CUSTOM_END_POPUP = "use_custom_end_popup"
     private const val KEY_CONTACT_LINK_MODE = "contact_link_mode"
@@ -56,6 +58,7 @@ object ConfigStore {
             formPath = normalizePath(prefs.getString(KEY_FORM_PATH, DEFAULT_FORM_PATH)!!.trim(), DEFAULT_FORM_PATH),
             historyPath = normalizePath(prefs.getString(KEY_HISTORY_PATH, DEFAULT_HISTORY_PATH)!!.trim(), DEFAULT_HISTORY_PATH),
             postCallPromptTimeoutSeconds = prefs.getInt(KEY_POST_CALL_TIMEOUT, DEFAULT_POST_CALL_TIMEOUT_SECONDS).coerceIn(3, 120),
+            useOverlayPopups = prefs.getBoolean(KEY_USE_OVERLAY_POPUPS, false),
             useCustomStartPopup = prefs.getBoolean(KEY_USE_CUSTOM_START_POPUP, true),
             useCustomEndPopup = prefs.getBoolean(KEY_USE_CUSTOM_END_POPUP, true),
             contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
@@ -75,6 +78,7 @@ object ConfigStore {
             .putString(KEY_FORM_PATH, normalizePath(config.formPath, DEFAULT_FORM_PATH))
             .putString(KEY_HISTORY_PATH, normalizePath(config.historyPath, DEFAULT_HISTORY_PATH))
             .putInt(KEY_POST_CALL_TIMEOUT, config.postCallPromptTimeoutSeconds.coerceIn(3, 120))
+            .putBoolean(KEY_USE_OVERLAY_POPUPS, config.useOverlayPopups)
             .putBoolean(KEY_USE_CUSTOM_START_POPUP, config.useCustomStartPopup)
             .putBoolean(KEY_USE_CUSTOM_END_POPUP, config.useCustomEndPopup)
             .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
