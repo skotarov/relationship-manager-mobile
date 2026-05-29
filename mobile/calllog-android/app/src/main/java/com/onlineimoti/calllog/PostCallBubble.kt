@@ -17,7 +17,7 @@ internal class PostCallBubble(
     private val setWindowManager: (WindowManager) -> Unit,
     private val setOverlayView: (View) -> Unit,
     private val removeOverlay: () -> Unit,
-    private val showNoteEditor: () -> Unit,
+    private val openConfiguredAction: () -> Unit,
 ) {
     private var initialX = 0
     private var initialY = 0
@@ -32,7 +32,7 @@ internal class PostCallBubble(
         val size = ui.dp(46)
         val bubble = ImageButton(service).apply {
             setImageResource(R.drawable.ic_chat_note)
-            contentDescription = "Бележка"
+            contentDescription = "Действие след разговора"
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
@@ -71,7 +71,7 @@ internal class PostCallBubble(
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved < ui.dp(8)) showNoteEditor()
+                    if (moved < ui.dp(8)) openConfiguredAction()
                     true
                 }
                 else -> false
