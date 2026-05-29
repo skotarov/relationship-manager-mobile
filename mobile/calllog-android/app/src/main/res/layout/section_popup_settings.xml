@@ -21,6 +21,49 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:text="След приключване на разговора"
+        android:textColor="@color/calllog_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/postCallEndActionGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/postCallEndActionEdit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Едит бележка" />
+
+        <RadioButton
+            android:id="@+id/postCallEndActionHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="История екран" />
+
+        <RadioButton
+            android:id="@+id/postCallEndActionNothing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Нищо" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="При overlay режим се показва малко бутонче, което отваря избраното действие. При системен режим действието се отваря директно."
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="Вид на popup-ите"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
