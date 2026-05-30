@@ -16,13 +16,15 @@ internal object MainPermissionSummary {
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val permissions = binding.permissionsSection
         val popup = binding.popupSettingsSection
+        val storage = binding.storageSettingsSection
         val config = ConfigStore.load(activity)
         val notificationsGranted = hasNotificationPermission(activity)
         val phoneGranted = hasPermission(activity, Manifest.permission.READ_PHONE_STATE)
         val callLogGranted = hasPermission(activity, Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(activity, Manifest.permission.READ_CONTACTS)
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
-        val publicNotesGranted = LocalNotesFileStore.canUsePublicFolder()
+        val publicNotesSelected = config.usePublicNotesFolder || storage.usePublicNotesFolderCheckBox.isChecked
+        val publicNotesGranted = !publicNotesSelected || LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
         val overlaySelected = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
         val overlayRequired = overlaySelected
@@ -35,7 +37,7 @@ internal object MainPermissionSummary {
             add("Call report log" to callLogGranted)
             add("Contacts read" to contactsGranted)
             add("Contacts write" to contactsWriteGranted)
-            add("Public notes folder" to publicNotesGranted)
+            add((if (publicNotesSelected) "Public notes folder" else "Private notes storage") to publicNotesGranted)
             add("Display over other apps" to (!overlayRequired || overlayGranted))
             add("Call screening" to callScreeningGranted)
             add("Full-screen popup" to fullscreenGranted)
