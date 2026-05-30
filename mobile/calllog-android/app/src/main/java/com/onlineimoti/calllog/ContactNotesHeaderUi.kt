@@ -16,6 +16,7 @@ class ContactNotesHeaderUi(
     fun headerRow(
         title: String,
         phone: String,
+        contactExists: Boolean,
         openAllCallsLog: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
@@ -25,6 +26,8 @@ class ContactNotesHeaderUi(
             ?: phone.takeIf { it.isNotBlank() }
             ?: "Информация"
         val phoneLine = phone.takeIf { it.isNotBlank() && it != mainTitle }.orEmpty()
+        val contactIcon = if (contactExists) R.drawable.ic_contact_person else R.drawable.ic_contact_person_add
+        val contactDescription = if (contactExists) "Отвори контакт" else "Създай контакт"
 
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -57,7 +60,7 @@ class ContactNotesHeaderUi(
             })
             addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
             addView(iconButton(R.drawable.ic_calendar_event, "Календар", openCalendarEvent))
-            addView(iconButton(android.R.drawable.ic_menu_myplaces, "Контакт", openDefaultContact))
+            addView(iconButton(contactIcon, contactDescription, openDefaultContact))
         }
     }
 
