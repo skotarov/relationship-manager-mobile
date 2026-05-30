@@ -23,7 +23,7 @@ internal object MainPermissionSummary {
         val callLogGranted = hasPermission(activity, Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(activity, Manifest.permission.READ_CONTACTS)
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
-        val publicNotesSelected = config.usePublicNotesFolder || storage.usePublicNotesFolderCheckBox.isChecked
+        val publicNotesSelected = storage.usePublicNotesFolderCheckBox.isChecked
         val publicNotesGranted = !publicNotesSelected || LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
         val overlaySelected = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
