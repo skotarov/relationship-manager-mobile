@@ -76,6 +76,10 @@ class MainActivity : AppCompatActivity() {
             refreshPermissionSummary()
             if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
         }
+        binding.storageSettingsSection.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            refreshPermissionSummary()
+            if (isChecked) permissionFlowController.start()
+        }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
         binding.permissionsSection.openCallScreeningButton.setOnClickListener { permissionFlowController.requestCallScreeningRoleIfNeeded() }
@@ -83,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         binding.permissionsSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
             saveConfig()
-            setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.publicRootPath()}")
+            setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.activeRootPath(this)}")
             refreshPermissionSummary()
         }
         binding.testsSection.openFormButton.setOnClickListener {
