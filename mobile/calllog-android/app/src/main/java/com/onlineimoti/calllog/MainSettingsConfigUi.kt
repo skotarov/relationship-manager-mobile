@@ -19,6 +19,7 @@ object MainSettingsConfigUi {
         contactFilter.contactGroupsInput.setText(config.contactGroups)
         contactFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
         contactFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
+        contactFilter.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
         remote.lookupPathInput.setText(config.lookupPath)
         remote.formPathInput.setText(config.formPath)
         remote.historyPathInput.setText(config.historyPath)
@@ -57,6 +58,8 @@ object MainSettingsConfigUi {
             contactGroups = contactFilter.contactGroupsInput.text?.toString().orEmpty(),
             notifyUnknownContacts = contactFilter.notifyUnknownContactsCheckBox.isChecked,
             notifyKnownContacts = contactFilter.notifyKnownContactsCheckBox.isChecked,
+            homeCallPageSize = contactFilter.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
+                ?: ConfigStore.DEFAULT_HOME_CALL_PAGE_SIZE,
             lookupPath = remote.lookupPathInput.text?.toString().orEmpty(),
             formPath = remote.formPathInput.text?.toString().orEmpty(),
             historyPath = remote.historyPathInput.text?.toString().orEmpty(),
