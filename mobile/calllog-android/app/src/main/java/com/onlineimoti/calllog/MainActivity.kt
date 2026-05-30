@@ -10,7 +10,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var binding: ActivityHomeBinding
     private val executor = Executors.newSingleThreadExecutor()
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
@@ -77,6 +77,7 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
         }
         binding.storageSettingsSection.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            saveConfig()
             refreshPermissionSummary()
             if (isChecked) permissionFlowController.start()
         }
