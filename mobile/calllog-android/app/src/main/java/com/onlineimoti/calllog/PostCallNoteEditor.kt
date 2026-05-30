@@ -46,7 +46,7 @@ internal class PostCallNoteEditor(
         val durationValue = durationSeconds()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
-        val callNote = pendingCallNote() ?: ContactNoteReader.callNoteForPhone(phoneValue, callAtValue, directionValue)
+        val callNote = pendingCallNote() ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
