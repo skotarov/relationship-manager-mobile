@@ -79,7 +79,7 @@ internal class MainPermissionFlowController(
                 setStatus("Разреши Contacts write за съвместимост със старите бележки към контакти.")
                 requestPermissionLauncher.launch(Manifest.permission.WRITE_CONTACTS)
             }
-            !canUsePublicNotesFolder() -> {
+            publicNotesFolderSelected() && !canUsePublicNotesFolder() -> {
                 setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
                 requestStorageManagerPermissionIfNeeded()
             }
@@ -133,7 +133,7 @@ internal class MainPermissionFlowController(
     }
 
     private fun requestStorageManagerPermissionIfNeeded() {
-        if (canUsePublicNotesFolder()) {
+        if (!publicNotesFolderSelected() || canUsePublicNotesFolder()) {
             requestNextStep()
             return
         }
@@ -146,12 +146,13 @@ internal class MainPermissionFlowController(
         }
     }
 
+    private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
     private fun canUseFullScreenIntent(): Boolean = MainPermissionChecks.canUseFullScreenIntent(activity)
 
     private fun finishFlowWithSuccess() {
         isRunning = false
-        setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.publicRootPath()}.")
+        setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.activeRootPath(activity)}.")
         refreshPermissionSummary()
     }
 
