@@ -66,6 +66,14 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.onFullscreenIntentSettingsResult()
     }
 
+    private val createArchiveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) MainArchiveActions.createArchive(this, uri, ::setStatus)
+    }
+
+    private val restoreArchiveLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) MainArchiveActions.askRestoreMode(this, uri, ::setStatus)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
@@ -97,6 +105,12 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             setStatus("Server настройките са записани.")
             refreshPermissionSummary()
+        }
+        binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
+            createArchiveLauncher.launch(MainArchiveActions.archiveFileName())
+        }
+        binding.archiveSettingsSection.restoreArchiveButton.setOnClickListener {
+            restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
         }
         binding.testsSection.openFormButton.setOnClickListener {
             saveConfig()
