@@ -19,6 +19,12 @@
     <string name="settings_debug_section">🧪 Debug / Тестове</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно.</string>
 
+    <string name="language_title">Език</string>
+    <string name="language_system">Системен език</string>
+    <string name="language_bg">Български</string>
+    <string name="language_en">English</string>
+    <string name="language_description">Променя само езика на приложението. Езикът на телефона остава същият.</string>
+
     <string name="storage_title">Съхранение на бележките</string>
     <string name="storage_use_public_folder">Използвай обща файлова система — Documents/.callreport</string>
     <string name="storage_description">Включено: бележките са в обща папка и Android може да поиска All files access. Изключено: бележките се пазят само във вътрешната памет на приложението и не се иска достъп до общата файлова система.</string>
