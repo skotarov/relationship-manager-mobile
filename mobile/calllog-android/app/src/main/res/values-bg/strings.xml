@@ -6,9 +6,9 @@
     <string name="home_title">Call Log</string>
     <string name="home_settings_button">⚙ Settings</string>
     <string name="clear_filter_content_description">Изчисти филтъра</string>
-    <string name="search_content_description">Търсене</string>
+    <string name="search_content_description">Търсене в бележки</string>
     <string name="search_clear_content_description">Изчисти търсенето</string>
-    <string name="search_hint">Търси в имена, телефони и бележки</string>
+    <string name="search_hint">Търси в бележки</string>
     <string name="previous_20">Предишни 20</string>
     <string name="next_20">Следващи 20</string>
 
@@ -16,10 +16,14 @@
     <string name="settings_back_content_description">Назад</string>
     <string name="settings_description">Настройки на Android wrapper-а за call popup-и, локална история и server WebView форма.</string>
     <string name="settings_basic_section">☰ Основни настройки</string>
+    <string name="settings_archive_section">🗄 Архив</string>
+    <string name="settings_language_section">🌐 Език</string>
+    <string name="settings_storage_section">💾 Съхранение на бележките</string>
+    <string name="settings_call_log_section">📞 Call Log</string>
     <string name="settings_popup_section">💬 Popup поведение</string>
+    <string name="settings_crm_section">👤 CRM / Контакти</string>
     <string name="settings_permissions_section">🔐 Разрешения</string>
     <string name="settings_server_section">🌐 Server настройки</string>
-    <string name="settings_archive_section">🗄 Архив</string>
     <string name="settings_debug_section">🧪 Debug / Тестове</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно.</string>
 
@@ -34,6 +38,7 @@
     <string name="storage_description">Включено: бележките са в обща папка и Android може да поиска All files access. Изключено: бележките се пазят само във вътрешната памет на приложението и не се иска достъп до общата файлова система.</string>
 
     <string name="contact_filter_title">Popup и Call Log настройки</string>
+    <string name="popup_contact_filter_title">За кои контакти да се показват popup-и</string>
     <string name="home_call_page_size_hint">Разговори на страница</string>
     <string name="home_call_page_size_description">Колко реда от телефонния call log да се показват на първата и всяка следваща страница. Позволено: 5–100.</string>
     <string name="notify_unknown_contacts">Непознати номера</string>
