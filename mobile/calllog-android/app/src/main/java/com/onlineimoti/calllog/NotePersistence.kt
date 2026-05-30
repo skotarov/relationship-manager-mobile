@@ -3,8 +3,6 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Environment
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import org.json.JSONObject
@@ -13,8 +11,6 @@ import java.io.RandomAccessFile
 
 internal object NotePersistence {
     private const val LOCAL_NOTE_PREFS = "callreport_local_contact_notes"
-    private const val ROOT_DIR = ".callreport"
-    private const val NOTES_DIR = "notes"
     private const val CALL_LOG_FILE = "calllog.notes"
     private const val PROFILE_FILE = "profile.json"
 
@@ -43,7 +39,7 @@ internal object NotePersistence {
                 durationSeconds = durationSeconds,
             )
         }
-        return deleteCallNote(phoneNumber, callAt, direction)
+        return deleteCallNote(context, phoneNumber, callAt, direction)
     }
 
     private fun deleteGeneralNote(context: Context, phoneNumber: String): Boolean {
@@ -52,7 +48,7 @@ internal object NotePersistence {
         if (phoneKey.isBlank()) return false
         deleteAndroidContactNote(context, phoneNumber)
         deleteLocalGeneralNote(context, phoneKey)
-        deleteUnknownProfileGeneralNote(phoneNumber, phoneKey)
+        deleteUnknownProfileGeneralNote(context, phoneNumber, phoneKey)
         return true
     }
 
@@ -82,42 +78,42 @@ internal object NotePersistence {
         context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE).edit().remove(phoneKey).apply()
     }
 
-    private fun deleteUnknownProfileGeneralNote(phoneNumber: String, phoneKey: String) {
-        if (!canUsePublicFolder()) return
+    private fun deleteUnknownProfileGeneralNote(context: Context, phoneNumber: String, phoneKey: String) {
+        if (!LocalNotesFileStore.canUseConfiguredFolder(context)) return
         runCatching {
-            val file = profileFile(phoneKey, createDirs = false)
+            val file = profileFile(context, phoneKey, createDirs = false)
             if (!file.exists()) return@runCatching
             val profile = runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
             profile.remove("general_note")
             profile.remove("general_note_at")
-            cleanupOrWriteProfile(file, phoneNumber, phoneKey, profile)
+            cleanupOrWriteProfile(context, file, phoneNumber, phoneKey, profile)
         }
     }
 
-    private fun deleteCallNote(phoneNumber: String, callAt: Long, direction: String): Boolean {
+    private fun deleteCallNote(context: Context, phoneNumber: String, callAt: Long, direction: String): Boolean {
         val phoneKey = phoneNumber.normalizePhoneKey()
         if (phoneKey.isBlank()) return false
-        if (callAt <= 0L || !canUsePublicFolder()) return true
+        if (callAt <= 0L || !LocalNotesFileStore.canUseConfiguredFolder(context)) return true
         return runCatching {
-            val file = callLogFile(phoneKey, createDirs = false)
+            val file = callLogFile(context, phoneKey, createDirs = false)
             if (!file.exists()) return@runCatching true
             val keptLines = file.readLines().filterNot { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@filterNot false
                 sameCall(json, callAt, direction)
             }
             if (keptLines.isEmpty()) file.delete() else file.writeText(keptLines.joinToString("\n") + "\n")
-            refreshLatestProfileNote(phoneNumber, phoneKey)
+            refreshLatestProfileNote(context, phoneNumber, phoneKey)
             true
         }.getOrDefault(false)
     }
 
-    private fun refreshLatestProfileNote(phoneNumber: String, phoneKey: String) {
-        if (!canUsePublicFolder()) return
+    private fun refreshLatestProfileNote(context: Context, phoneNumber: String, phoneKey: String) {
+        if (!LocalNotesFileStore.canUseConfiguredFolder(context)) return
         runCatching {
-            val profileFile = profileFile(phoneKey, createDirs = false)
+            val profileFile = profileFile(context, phoneKey, createDirs = false)
             if (!profileFile.exists()) return@runCatching
             val profile = runCatching { JSONObject(profileFile.readText()) }.getOrDefault(JSONObject())
-            val latestLine = readLastNonBlankLine(callLogFile(phoneKey, createDirs = false))
+            val latestLine = readLastNonBlankLine(callLogFile(context, phoneKey, createDirs = false))
             val latestNote = if (latestLine.isBlank()) "" else runCatching { JSONObject(latestLine).optString("note") }.getOrDefault("").trim()
             if (latestNote.isBlank()) {
                 profile.remove("latest_note")
@@ -126,11 +122,11 @@ internal object NotePersistence {
                 profile.put("latest_note", latestNote)
                 profile.put("latest_note_at", System.currentTimeMillis())
             }
-            cleanupOrWriteProfile(profileFile, phoneNumber, phoneKey, profile)
+            cleanupOrWriteProfile(context, profileFile, phoneNumber, phoneKey, profile)
         }
     }
 
-    private fun cleanupOrWriteProfile(file: File, phoneNumber: String, phoneKey: String, profile: JSONObject) {
+    private fun cleanupOrWriteProfile(context: Context, file: File, phoneNumber: String, phoneKey: String, profile: JSONObject) {
         val hasGeneral = profile.optString("general_note").trim().isNotBlank()
         val hasLatest = profile.optString("latest_note").trim().isNotBlank()
         if (!hasGeneral && !hasLatest) {
@@ -141,6 +137,7 @@ internal object NotePersistence {
         profile.put("phone", phoneNumber)
         profile.put("normalized_phone", phoneKey)
         profile.put("has_android_contact", false)
+        profile.put("storage", if (LocalNotesFileStore.shouldUsePublicFolder(context)) "public" else "private")
         profile.put("updated_at", System.currentTimeMillis())
         file.writeText(profile.toString(2))
     }
@@ -152,12 +149,13 @@ internal object NotePersistence {
         return sameCallAt && sameDirection
     }
 
-    private fun callLogFile(phoneKey: String, createDirs: Boolean): File = File(phoneDir(phoneKey, createDirs), CALL_LOG_FILE)
-    private fun profileFile(phoneKey: String, createDirs: Boolean): File = File(phoneDir(phoneKey, createDirs), PROFILE_FILE)
+    private fun callLogFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), CALL_LOG_FILE)
+    private fun profileFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), PROFILE_FILE)
 
-    private fun phoneDir(phoneKey: String, createDirs: Boolean): File {
+    private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = phoneKey.filter { it.isDigit() }
-        val dir = File(File(File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR), NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
+        val root = File(LocalNotesFileStore.activeRootPath(context))
+        val dir = File(File(File(root, "notes"), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
     }
@@ -180,6 +178,5 @@ internal object NotePersistence {
         }.getOrDefault("")
     }
 
-    private fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
     private fun String.normalizePhoneKey(): String = filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
 }
