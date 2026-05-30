@@ -19,6 +19,7 @@ data class AppConfig(
     val useCustomEndPopup: Boolean,
     val postCallEndAction: String,
     val contactLinkMode: String,
+    val usePublicNotesFolder: Boolean,
 )
 
 object ConfigStore {
@@ -38,6 +39,7 @@ object ConfigStore {
     private const val KEY_USE_CUSTOM_END_POPUP = "use_custom_end_popup"
     private const val KEY_POST_CALL_END_ACTION = "post_call_end_action"
     private const val KEY_CONTACT_LINK_MODE = "contact_link_mode"
+    private const val KEY_USE_PUBLIC_NOTES_FOLDER = "use_public_notes_folder"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
@@ -50,6 +52,7 @@ object ConfigStore {
     const val CONTACT_LINK_MODE_APP = "app"
     const val CONTACT_LINK_MODE_CONTACT = "contact"
     const val DEFAULT_CONTACT_LINK_MODE = CONTACT_LINK_MODE_APP
+    const val DEFAULT_USE_PUBLIC_NOTES_FOLDER = true
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -69,6 +72,7 @@ object ConfigStore {
             useCustomEndPopup = prefs.getBoolean(KEY_USE_CUSTOM_END_POPUP, true),
             postCallEndAction = normalizePostCallEndAction(prefs.getString(KEY_POST_CALL_END_ACTION, DEFAULT_POST_CALL_END_ACTION).orEmpty()),
             contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
+            usePublicNotesFolder = prefs.getBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, DEFAULT_USE_PUBLIC_NOTES_FOLDER),
         )
     }
 
@@ -90,6 +94,7 @@ object ConfigStore {
             .putBoolean(KEY_USE_CUSTOM_END_POPUP, config.useCustomEndPopup)
             .putString(KEY_POST_CALL_END_ACTION, normalizePostCallEndAction(config.postCallEndAction))
             .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
+            .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, config.usePublicNotesFolder)
             .apply()
     }
 
