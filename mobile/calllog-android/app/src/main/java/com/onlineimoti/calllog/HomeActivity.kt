@@ -174,7 +174,7 @@ class HomeActivity : AppCompatActivity() {
         val query = activeSearchQuery
         if (HomeCallPageLoader.isSearchTooShort(query)) {
             currentCalls = emptyList()
-            binding.homeStatusText.text = "Въведи поне 2 символа за търсене или поне 3 цифри."
+            binding.homeStatusText.text = "Въведи поне 2 символа за търсене."
             binding.previousCallsButton.isEnabled = false
             binding.nextCallsButton.isEnabled = false
             binding.pageText.text = "Стр. ${pageIndex + 1}"
@@ -224,6 +224,7 @@ class HomeActivity : AppCompatActivity() {
                     displayName = displayName,
                     contactNote = renderData.contactNotesByNumber[key],
                     callNote = ContactNoteReader.callNoteForPhone(this, call.number, call.startedAt, call.direction),
+                    highlightQuery = activeSearchQuery,
                 )
             )
         }
