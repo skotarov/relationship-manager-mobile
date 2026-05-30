@@ -95,7 +95,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        root.addView(contactActionRow())
+        if (ConfigStore.load(this).showCrmActionButtons) root.addView(contactActionRow())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
             root = root,
