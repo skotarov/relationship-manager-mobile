@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.graphics.Typeface
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -46,9 +45,8 @@ internal class ContactNotesCards(
             ).apply { bottomMargin = dp(8) }
 
             addView(TextView(activity).apply {
-                text = "+ Добави бележка към последния разговор"
+                text = "+ Добави към последния разговор"
                 textSize = 14.5f
-                typeface = Typeface.DEFAULT_BOLD
                 setTextColor(mutedLinkColor)
             })
             addView(TextView(activity).apply {
