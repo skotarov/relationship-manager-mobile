@@ -81,9 +81,17 @@ class MainActivity : AppCompatActivity() {
             refreshPermissionSummary()
             if (isChecked) permissionFlowController.start()
         }
+        binding.permissionsSection.useCallScreeningCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            saveConfig()
+            refreshPermissionSummary()
+            if (isChecked) permissionFlowController.requestCallScreeningRoleIfNeeded()
+        }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
-        binding.permissionsSection.openCallScreeningButton.setOnClickListener { permissionFlowController.requestCallScreeningRoleIfNeeded() }
+        binding.permissionsSection.openCallScreeningButton.setOnClickListener {
+            saveConfig()
+            permissionFlowController.requestCallScreeningRoleIfNeeded()
+        }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.permissionsSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.saveSettingsButton.setOnClickListener {
