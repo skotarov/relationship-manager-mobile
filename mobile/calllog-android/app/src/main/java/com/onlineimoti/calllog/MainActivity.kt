@@ -17,6 +17,7 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
+    private var suppressAutoSave = false
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
             activity = this,
@@ -36,6 +37,8 @@ class MainActivity : AppCompatActivity() {
             fullscreenIntentSettingsLauncher = fullscreenIntentSettingsLauncher,
             hasPermission = ::hasPermission,
             canUsePublicNotesFolder = ::canUsePublicNotesFolder,
+            disablePublicNotesFolder = ::disablePublicNotesFolder,
+            disableOverlayPopups = ::disableOverlayPopups,
             refreshPermissionSummary = ::refreshPermissionSummary,
             setStatus = ::setStatus,
         )
@@ -181,6 +184,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun autoSaveSettings(): AppConfig {
+        if (suppressAutoSave) return ConfigStore.load(this)
         val config = saveConfig()
         refreshPermissionSummary()
         return config
@@ -190,6 +194,23 @@ class MainActivity : AppCompatActivity() {
         val config = MainSettingsConfigUi.read(binding)
         ConfigStore.save(this, config)
         return ConfigStore.load(this)
+    }
+
+    private fun disablePublicNotesFolder() {
+        suppressAutoSave = true
+        binding.storageSettingsSection.usePublicNotesFolderCheckBox.isChecked = false
+        suppressAutoSave = false
+        saveConfig()
+        refreshPermissionSummary()
+    }
+
+    private fun disableOverlayPopups() {
+        suppressAutoSave = true
+        binding.popupSettingsSection.useOverlayPopupsCheckBox.isChecked = false
+        binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = View.GONE
+        suppressAutoSave = false
+        saveConfig()
+        refreshPermissionSummary()
     }
 
     private fun directionValue(): String = if (binding.testsSection.directionIn.isChecked) "in" else "out"
