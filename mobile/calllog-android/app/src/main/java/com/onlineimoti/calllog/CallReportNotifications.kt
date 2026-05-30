@@ -1,28 +1,14 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Typeface
-import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Build
-import android.provider.ContactsContract
 import android.provider.Settings
-import android.view.View
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 
 internal object CallReportNotifications {
     private const val CHANNEL_ID = "callreport_lookup"
@@ -32,7 +18,6 @@ internal object CallReportNotifications {
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
     private const val UNKNOWN_CONTACT_TITLE = "Непознат"
-    private const val ICON_PERSON_TEXT = "👤"
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -215,13 +200,13 @@ internal object CallReportNotifications {
         val rowsText = displayRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
         displayRows.forEach { inboxStyle.addLine(it) }
-        val customView = buildNotificationContentView(context, displayTitle, displayRows, editIntent, allNotesIntent)
+        val customView = SystemLookupNotificationView.build(context, displayTitle, displayRows, editIntent, allNotesIntent)
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_transparent)
             .setColor(BRAND_BLUE)
             .setColorized(true)
-            .setLargeIcon(systemPopupLargeIcon(context, phone, notificationRows.isNotEmpty()))
+            .setLargeIcon(SystemPopupLargeIcon.bitmap(context, phone, notificationRows.isNotEmpty()))
             .setContentTitle(displayTitle)
             .setContentText(rowsText.ifBlank { displayTitle })
             .setPriority(priority)
@@ -251,114 +236,4 @@ internal object CallReportNotifications {
             }
         }
     }
-
-    private fun buildNotificationContentView(
-        context: Context,
-        title: String,
-        rows: List<String>,
-        editIntent: PendingIntent,
-        allNotesIntent: PendingIntent,
-    ): RemoteViews {
-        return RemoteViews(context.packageName, R.layout.notification_lookup_heads_up).apply {
-            setTextViewText(R.id.notificationHeadsUpTitle, title)
-            bindHeadsUpRow(this, 0, rows.getOrNull(0))
-            bindHeadsUpRow(this, 1, rows.getOrNull(1))
-            bindHeadsUpRow(this, 2, rows.getOrNull(2))
-            setOnClickPendingIntent(R.id.notificationHeadsUpNoteAction, editIntent)
-            setOnClickPendingIntent(R.id.notificationHeadsUpHistoryAction, allNotesIntent)
-        }
-    }
-
-    private fun bindHeadsUpRow(remoteViews: RemoteViews, index: Int, rawLine: String?) {
-        val rowId = when (index) {
-            0 -> R.id.notificationHeadsUpRow1
-            1 -> R.id.notificationHeadsUpRow2
-            else -> R.id.notificationHeadsUpRow3
-        }
-        val iconId = when (index) {
-            0 -> R.id.notificationHeadsUpIcon1
-            1 -> R.id.notificationHeadsUpIcon2
-            else -> R.id.notificationHeadsUpIcon3
-        }
-        val textId = when (index) {
-            0 -> R.id.notificationHeadsUpText1
-            1 -> R.id.notificationHeadsUpText2
-            else -> R.id.notificationHeadsUpText3
-        }
-        val line = rawLine.orEmpty().trim()
-        if (line.isBlank()) {
-            remoteViews.setViewVisibility(rowId, View.GONE)
-            return
-        }
-
-        remoteViews.setViewVisibility(rowId, View.VISIBLE)
-        when {
-            line.startsWith("☰") -> {
-                remoteViews.setViewVisibility(iconId, View.VISIBLE)
-                remoteViews.setImageViewResource(iconId, R.drawable.ic_note_lines)
-                remoteViews.setTextViewText(textId, line.removePrefix("☰").trim())
-            }
-            line.startsWith("💬") -> {
-                remoteViews.setViewVisibility(iconId, View.VISIBLE)
-                remoteViews.setImageViewResource(iconId, R.drawable.ic_chat_note)
-                remoteViews.setTextViewText(textId, line.removePrefix("💬").trim())
-            }
-            else -> {
-                remoteViews.setViewVisibility(iconId, View.GONE)
-                remoteViews.setTextViewText(textId, "$ICON_PERSON_TEXT $line")
-            }
-        }
-    }
-
-    private fun systemPopupLargeIcon(context: Context, phone: String, hasLoggedData: Boolean): Bitmap? {
-        contactPhotoBitmap(context, phone)?.let { return it }
-        return if (hasLoggedData) infoBitmap(context, 45) else null
-    }
-
-    private fun contactPhotoBitmap(context: Context, phoneNumber: String): Bitmap? {
-        if (phoneNumber.isBlank()) return null
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
-        val photoUri = context.contentResolver.query(
-            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phoneNumber).build(),
-            arrayOf(ContactsContract.PhoneLookup.PHOTO_URI, ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (!cursor.moveToFirst()) null else cursor.getString(0).orEmpty().ifBlank { cursor.getString(1).orEmpty() }.ifBlank { null }
-        } ?: return null
-        return runCatching {
-            context.contentResolver.openInputStream(Uri.parse(photoUri)).use { stream ->
-                val original = BitmapFactory.decodeStream(stream) ?: return@use null
-                Bitmap.createScaledBitmap(original, dp(context, 45), dp(context, 45), true)
-            }
-        }.getOrNull()
-    }
-
-    private fun infoBitmap(context: Context, sizeDp: Int): Bitmap {
-        val size = dp(context, sizeDp)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(14, 165, 233) }
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-        paint.color = Color.WHITE
-        paint.textAlign = Paint.Align.CENTER
-        paint.typeface = Typeface.DEFAULT_BOLD
-        paint.textSize = size * 0.56f
-        val y = size / 2f - (paint.descent() + paint.ascent()) / 2f
-        canvas.drawText("i", size / 2f, y, paint)
-        return bitmap
-    }
-
-    private fun drawableToBitmap(context: Context, drawableRes: Int, sizeDp: Int): Bitmap? {
-        val drawable: Drawable = ContextCompat.getDrawable(context, drawableRes) ?: return null
-        val sizePx = dp(context, sizeDp)
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bitmap
-    }
-
-    private fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
 }
