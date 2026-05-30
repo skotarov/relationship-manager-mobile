@@ -74,13 +74,6 @@
             android:id="@+id/testsSection"
             layout="@layout/section_tests" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveSettingsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="Запази настройки" />
-
         <TextView
             android:id="@+id/statusText"
             android:layout_width="match_parent"
