@@ -24,12 +24,12 @@ object ContactNoteReader {
         return readLocalNote(context, phoneNumber)
     }
 
-    fun callNoteForPhone(phoneNumber: String, callAt: Long, direction: String = ""): String {
-        return LocalNotesFileStore.noteForCall(phoneNumber, callAt, direction)
+    fun callNoteForPhone(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
+        return LocalNotesFileStore.noteForCall(context, phoneNumber, callAt, direction)
     }
 
-    fun callNotesForPhone(phoneNumber: String): List<ContactCallNote> {
-        return LocalNotesFileStore.allCallNotes(phoneNumber)
+    fun callNotesForPhone(context: Context, phoneNumber: String): List<ContactCallNote> {
+        return LocalNotesFileStore.allCallNotes(context, phoneNumber)
     }
 
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
@@ -49,6 +49,7 @@ object ContactNoteReader {
         if (phoneNumber.isBlank() || note.isBlank()) return false
         val hasContact = findContactId(context, phoneNumber) != null
         return LocalNotesFileStore.appendCallNote(
+            context = context,
             phoneNumber = phoneNumber,
             note = note,
             direction = direction,
