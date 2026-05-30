@@ -19,14 +19,12 @@ internal class ContactNotesActionRowUi(
         busy: Boolean,
         onToggle: () -> Unit,
         onEditCrm: () -> Unit,
-        onOpenDefaultContact: () -> Unit,
     ): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(contactRegistrationToggle(linked, busy, onToggle))
             if (linked) addView(editCrmContactButton(onEditCrm))
-            addView(openDefaultContactButton(onOpenDefaultContact))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -91,28 +89,6 @@ internal class ContactNotesActionRowUi(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.MATCH_PARENT,
             ).apply { marginStart = dp(8) }
-        }
-    }
-
-    private fun openDefaultContactButton(onOpen: () -> Unit): LinearLayout {
-        val label = activity.getString(R.string.open_default_contact)
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = roundedRect(Color.WHITE, dp(14), Color.rgb(226, 232, 240), dp(1))
-            isClickable = true
-            isFocusable = true
-            contentDescription = label
-            setOnClickListener { onOpen() }
-            layoutParams = LinearLayout.LayoutParams(dp(46), LinearLayout.LayoutParams.MATCH_PARENT).apply {
-                marginStart = dp(8)
-            }
-            addView(ImageView(activity).apply {
-                setImageResource(R.drawable.ic_contact_open)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
-            })
         }
     }
 }
