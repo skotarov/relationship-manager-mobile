@@ -68,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         permissionFlowController.start()
 
+        binding.backToHomeButton.setOnClickListener { finish() }
         binding.remoteSettingsSection.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
             binding.remoteSettingsSection.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
