@@ -75,6 +75,7 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        updateSearchButtonIcon()
 
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
@@ -273,13 +274,25 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun toggleSearchRow() {
-        binding.searchRow.visibility = if (binding.searchRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-        if (binding.searchRow.visibility == View.VISIBLE) {
+        val willShow = binding.searchRow.visibility != View.VISIBLE
+        if (willShow) {
+            binding.searchRow.visibility = View.VISIBLE
+            updateSearchButtonIcon()
             binding.searchInput.requestFocus()
             (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(binding.searchInput, InputMethodManager.SHOW_IMPLICIT)
         } else {
             clearSearch()
+            binding.searchRow.visibility = View.GONE
+            updateSearchButtonIcon()
         }
+    }
+
+    private fun updateSearchButtonIcon() {
+        val searchOpen = binding.searchRow.visibility == View.VISIBLE
+        binding.searchButton.setImageResource(if (searchOpen) R.drawable.ic_search_close else R.drawable.ic_search)
+        binding.searchButton.contentDescription = getString(
+            if (searchOpen) R.string.search_clear_content_description else R.string.search_content_description
+        )
     }
 
     private fun clearSearch() {
