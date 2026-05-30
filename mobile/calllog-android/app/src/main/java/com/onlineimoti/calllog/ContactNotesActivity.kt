@@ -114,6 +114,7 @@ class ContactNotesActivity : Activity() {
             openAllCallsLog = externalActions::openAllCallsLog,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
+            openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
         )
     }
 
@@ -124,7 +125,6 @@ class ContactNotesActivity : Activity() {
             busy = contactRegistrationBusy,
             onToggle = { crmController.toggle(linked) },
             onEditCrm = crmController::showDialog,
-            onOpenDefaultContact = { externalActions.openDefaultContact(phone) },
         )
     }
 
