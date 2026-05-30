@@ -24,10 +24,10 @@ class ContactNotesExternalActions(private val activity: Activity) {
         activity.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
     }
 
-    fun openDefaultContact(phone: String) {
+    fun openDefaultContact(phone: String, titleText: String = "") {
         if (phone.isBlank()) return
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(activity, activity.getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
+            openCreateContact(phone, titleText)
             return
         }
 
@@ -45,11 +45,22 @@ class ContactNotesExternalActions(private val activity: Activity) {
         }.getOrNull()
 
         if (lookupUri == null) {
-            Toast.makeText(activity, activity.getString(R.string.contact_not_found), Toast.LENGTH_SHORT).show()
+            openCreateContact(phone, titleText)
             return
         }
 
         runCatching { activity.startActivity(Intent(Intent.ACTION_VIEW, lookupUri)) }
+            .onFailure { Toast.makeText(activity, activity.getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun openCreateContact(phone: String, titleText: String) {
+        val safeName = titleText.takeUnless { it.isBlank() || it == phone || it == "Бележки" }.orEmpty()
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            type = ContactsContract.RawContacts.CONTENT_TYPE
+            if (safeName.isNotBlank()) putExtra(ContactsContract.Intents.Insert.NAME, safeName)
+            putExtra(ContactsContract.Intents.Insert.PHONE, phone)
+        }
+        runCatching { activity.startActivity(intent) }
             .onFailure { Toast.makeText(activity, activity.getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
     }
 
