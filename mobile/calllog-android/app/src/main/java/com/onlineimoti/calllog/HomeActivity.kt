@@ -9,6 +9,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
@@ -33,6 +37,7 @@ class HomeActivity : AppCompatActivity() {
     private var noteSavedReceiverRegistered = false
     private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
+    private var activeSearchQuery: String = ""
 
     private val noteSavedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -56,6 +61,17 @@ class HomeActivity : AppCompatActivity() {
 
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
+        binding.searchButton.setOnClickListener { toggleSearchRow() }
+        binding.clearSearchButton.setOnClickListener { clearSearch() }
+        binding.searchInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                activeSearchQuery = s?.toString().orEmpty()
+                pageIndex = 0
+                renderCalls()
+            }
+        })
         binding.previousCallsButton.setOnClickListener {
             if (pageIndex > 0) {
                 pageIndex -= 1
@@ -105,14 +121,14 @@ class HomeActivity : AppCompatActivity() {
         binding.previousCallsButton.text = "Предишни $pageSize"
         binding.nextCallsButton.text = "Следващи $pageSize"
         binding.homeCallsContainer.removeAllViews()
-        binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
+        binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
-            binding.paginationContainer.visibility = android.view.View.GONE
+            binding.paginationContainer.visibility = View.GONE
             return
         }
 
-        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, pageIndex, pageSize)
+        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, pageSize)
         if (currentCalls.isEmpty()) {
             renderEmptyState()
             return
@@ -136,6 +152,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderEmptyState() {
         binding.homeStatusText.text = when {
+            activeSearchQuery.isNotBlank() -> "Няма резултати за „${activeSearchQuery.trim()}“."
             activePhoneFilter.isNotBlank() && pageIndex == 0 -> "${activePhoneFilter} • няма разговори"
             pageIndex == 0 -> "Няма намерени разговори."
             else -> "Няма повече разговори."
@@ -143,21 +160,22 @@ class HomeActivity : AppCompatActivity() {
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = false
         binding.pageText.text = "Стр. ${pageIndex + 1}"
-        binding.paginationContainer.visibility = android.view.View.VISIBLE
+        binding.paginationContainer.visibility = View.VISIBLE
     }
 
     private fun renderStatusAndPagination(pageSize: Int) {
         val startNumber = pageIndex * pageSize + 1
         val endNumber = pageIndex * pageSize + currentCalls.size
-        binding.homeStatusText.text = if (activePhoneFilter.isBlank()) {
-            "Разговори $startNumber–$endNumber"
-        } else {
-            "${activePhoneFilter} • $startNumber–$endNumber"
+        binding.homeStatusText.text = when {
+            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> "Търсене „${activeSearchQuery.trim()}“ • ${activePhoneFilter} • $startNumber–$endNumber"
+            activeSearchQuery.isNotBlank() -> "Търсене „${activeSearchQuery.trim()}“ • $startNumber–$endNumber"
+            activePhoneFilter.isNotBlank() -> "${activePhoneFilter} • $startNumber–$endNumber"
+            else -> "Разговори $startNumber–$endNumber"
         }
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
         binding.pageText.text = "Стр. ${pageIndex + 1}"
-        binding.paginationContainer.visibility = android.view.View.VISIBLE
+        binding.paginationContainer.visibility = View.VISIBLE
     }
 
     private fun togglePhoneFilter(number: String) {
@@ -170,6 +188,23 @@ class HomeActivity : AppCompatActivity() {
     private fun clearPhoneFilter() {
         if (activePhoneFilter.isBlank()) return
         activePhoneFilter = ""
+        pageIndex = 0
+        renderCalls()
+    }
+
+    private fun toggleSearchRow() {
+        binding.searchRow.visibility = if (binding.searchRow.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        if (binding.searchRow.visibility == View.VISIBLE) {
+            binding.searchInput.requestFocus()
+            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(binding.searchInput, InputMethodManager.SHOW_IMPLICIT)
+        } else {
+            clearSearch()
+        }
+    }
+
+    private fun clearSearch() {
+        if (binding.searchInput.text?.isNotEmpty() == true) binding.searchInput.setText("")
+        activeSearchQuery = ""
         pageIndex = 0
         renderCalls()
     }
