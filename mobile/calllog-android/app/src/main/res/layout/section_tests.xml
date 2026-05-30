@@ -1,83 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="18dp"
-    app:cardBackgroundColor="@color/calllog_surface"
-    app:cardCornerRadius="18dp"
-    app:cardElevation="1dp"
-    app:strokeColor="@color/calllog_border"
-    app:strokeWidth="1dp">
+    android:orientation="vertical">
 
-    <LinearLayout
+    <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
-        <TextView
+        android:layout_marginTop="12dp"
+        android:hint="@string/test_phone_hint"
+        app:boxBackgroundColor="@android:color/white"
+        app:boxStrokeColor="@color/calllog_border">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/phoneInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/tests_title"
-            android:textColor="@color/calllog_text"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
+            android:background="@android:color/transparent"
+            android:inputType="phone"
+            android:text="0876442321" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <RadioGroup
+        android:id="@+id/directionGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+        <RadioButton
+            android:id="@+id/directionIn"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/test_phone_hint">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/phoneInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="phone"
-                android:text="0876442321" />
-        </com.google.android.material.textfield.TextInputLayout>
-        <RadioGroup
-            android:id="@+id/directionGroup"
-            android:layout_width="match_parent"
+            android:text="@string/direction_incoming" />
+        <RadioButton
+            android:id="@+id/directionOut"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
-            <RadioButton
-                android:id="@+id/directionIn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/direction_incoming" />
-            <RadioButton
-                android:id="@+id/directionOut"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="18dp"
-                android:checked="true"
-                android:text="@string/direction_outgoing" />
-        </RadioGroup>
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/testStartPopupButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="@string/test_start_popup" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/testEndPopupButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/test_end_popup" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openFormButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_form_php" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/testFullLogButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_history_php" />
-    </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+            android:layout_marginStart="18dp"
+            android:checked="true"
+            android:text="@string/direction_outgoing" />
+    </RadioGroup>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/testStartPopupButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/test_start_popup" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/testEndPopupButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/test_end_popup" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/openFormButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/open_form_php" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/testFullLogButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/open_history_php" />
+</LinearLayout>
