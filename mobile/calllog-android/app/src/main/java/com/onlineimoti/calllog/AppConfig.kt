@@ -23,6 +23,7 @@ data class AppConfig(
     val postCallEndAction: String,
     val contactLinkMode: String,
     val showCrmActionButtons: Boolean,
+    val appLanguage: String,
     val usePublicNotesFolder: Boolean,
     val useCallScreening: Boolean,
 )
@@ -46,6 +47,7 @@ object ConfigStore {
     private const val KEY_POST_CALL_END_ACTION = "post_call_end_action"
     private const val KEY_CONTACT_LINK_MODE = "contact_link_mode"
     private const val KEY_SHOW_CRM_ACTION_BUTTONS = "show_crm_action_buttons"
+    private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_USE_PUBLIC_NOTES_FOLDER = "use_public_notes_folder"
     private const val KEY_USE_CALL_SCREENING = "use_call_screening"
 
@@ -64,6 +66,10 @@ object ConfigStore {
     const val CONTACT_LINK_MODE_CONTACT = "contact"
     const val DEFAULT_CONTACT_LINK_MODE = CONTACT_LINK_MODE_APP
     const val DEFAULT_SHOW_CRM_ACTION_BUTTONS = true
+    const val LANGUAGE_SYSTEM = "system"
+    const val LANGUAGE_BG = "bg"
+    const val LANGUAGE_EN = "en"
+    const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM
     const val DEFAULT_USE_CALL_SCREENING = false
 
     fun load(context: Context): AppConfig {
@@ -86,6 +92,7 @@ object ConfigStore {
             postCallEndAction = normalizePostCallEndAction(prefs.getString(KEY_POST_CALL_END_ACTION, DEFAULT_POST_CALL_END_ACTION).orEmpty()),
             contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
             showCrmActionButtons = prefs.getBoolean(KEY_SHOW_CRM_ACTION_BUTTONS, DEFAULT_SHOW_CRM_ACTION_BUTTONS),
+            appLanguage = normalizeAppLanguage(prefs.getString(KEY_APP_LANGUAGE, DEFAULT_APP_LANGUAGE).orEmpty()),
             usePublicNotesFolder = if (prefs.contains(KEY_USE_PUBLIC_NOTES_FOLDER)) {
                 prefs.getBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, false)
             } else {
@@ -115,9 +122,18 @@ object ConfigStore {
             .putString(KEY_POST_CALL_END_ACTION, normalizePostCallEndAction(config.postCallEndAction))
             .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
             .putBoolean(KEY_SHOW_CRM_ACTION_BUTTONS, config.showCrmActionButtons)
+            .putString(KEY_APP_LANGUAGE, normalizeAppLanguage(config.appLanguage))
             .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, config.usePublicNotesFolder)
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
             .apply()
+    }
+
+    fun localeTagForLanguage(language: String): String {
+        return when (normalizeAppLanguage(language)) {
+            LANGUAGE_BG -> "bg"
+            LANGUAGE_EN -> "en"
+            else -> ""
+        }
     }
 
     private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
@@ -140,6 +156,14 @@ object ConfigStore {
         return when (value.trim()) {
             CONTACT_LINK_MODE_CONTACT -> CONTACT_LINK_MODE_CONTACT
             else -> CONTACT_LINK_MODE_APP
+        }
+    }
+
+    private fun normalizeAppLanguage(value: String): String {
+        return when (value.trim()) {
+            LANGUAGE_BG -> LANGUAGE_BG
+            LANGUAGE_EN -> LANGUAGE_EN
+            else -> LANGUAGE_SYSTEM
         }
     }
 
