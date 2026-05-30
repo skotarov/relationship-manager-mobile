@@ -16,6 +16,7 @@
     <string name="settings_popup_section">💬 Popup поведение</string>
     <string name="settings_permissions_section">🔐 Разрешения</string>
     <string name="settings_server_section">🌐 Server настройки</string>
+    <string name="settings_archive_section">🗄 Архив</string>
     <string name="settings_debug_section">🧪 Debug / Тестове</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно.</string>
 
@@ -72,6 +73,10 @@
     <string name="server_form_path_hint">Път до form файла</string>
     <string name="server_history_path_hint">Път до full/history log файла</string>
     <string name="save_server_settings">Запази server настройки</string>
+
+    <string name="archive_description">Създай или върни JSON архив на локалните бележки. Android контактите не се включват в архива.</string>
+    <string name="archive_create_button">Създай архив</string>
+    <string name="archive_restore_button">Върни архив</string>
 
     <string name="tests_title">Тестове</string>
     <string name="test_phone_hint">Телефон за тест</string>
