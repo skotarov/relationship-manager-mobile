@@ -19,6 +19,7 @@ internal class MainPermissionFlowController(
     private val canUsePublicNotesFolder: () -> Boolean,
     private val disablePublicNotesFolder: () -> Unit,
     private val disableOverlayPopups: () -> Unit,
+    private val disableCallScreening: () -> Unit,
     private val refreshPermissionSummary: () -> Unit,
     private val setStatus: (String) -> Unit,
 ) {
@@ -36,9 +37,18 @@ internal class MainPermissionFlowController(
     }
 
     fun onCallScreeningResult() {
-        if (hasCallScreeningRole()) setStatus("Call screening role е активирана.")
+        if (hasCallScreeningRole()) {
+            setStatus("Call screening role е активирана.")
+            refreshPermissionSummary()
+            requestNextStep()
+            return
+        }
+        if (callScreeningSelected()) {
+            disableCallScreening()
+            setStatus("Call screening / Caller ID ролята не е активирана. Настройката е изключена и приложението няма да я иска отново автоматично.")
+        }
         refreshPermissionSummary()
-        requestNextStep()
+        isRunning = false
     }
 
     fun onStorageSettingsResult() {
@@ -117,11 +127,11 @@ internal class MainPermissionFlowController(
             return
         }
         val roleManager = activity.getSystemService(RoleManager::class.java) ?: run {
-            isRunning = false
+            disableUnavailableCallScreeningIfSelected()
             return
         }
         if (!roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING)) {
-            finishFlowWithoutStatus()
+            disableUnavailableCallScreeningIfSelected()
             return
         }
         callScreeningRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
@@ -160,6 +170,15 @@ internal class MainPermissionFlowController(
         } else {
             requestNextStep()
         }
+    }
+
+    private fun disableUnavailableCallScreeningIfSelected() {
+        if (callScreeningSelected()) {
+            disableCallScreening()
+            setStatus("Call screening / Caller ID ролята не е налична на този телефон. Настройката е изключена.")
+        }
+        isRunning = false
+        refreshPermissionSummary()
     }
 
     private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
