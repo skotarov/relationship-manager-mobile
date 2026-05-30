@@ -19,6 +19,12 @@
     <string name="settings_debug_section">🧪 Debug / Tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
 
+    <string name="language_title">Language</string>
+    <string name="language_system">System default</string>
+    <string name="language_bg">Български</string>
+    <string name="language_en">English</string>
+    <string name="language_description">Changes only the app language. The phone language remains unchanged.</string>
+
     <string name="storage_title">Notes storage</string>
     <string name="storage_use_public_folder">Use shared file system — Documents/.callreport</string>
     <string name="storage_description">On: notes are stored in a shared folder and Android may ask for All files access. Off: notes are stored only in the app private storage and shared file access is not requested.</string>
