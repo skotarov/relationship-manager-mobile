@@ -28,8 +28,7 @@ object HomeCallPageLoader {
 
     fun isSearchTooShort(query: String): Boolean {
         val trimmed = query.trim()
-        val digits = trimmed.filter { it.isDigit() }
-        return trimmed.isNotBlank() && trimmed.length < 2 && digits.length < 3
+        return trimmed.isNotBlank() && trimmed.length < 2
     }
 
     fun clearSearchCache() {
@@ -44,34 +43,26 @@ object HomeCallPageLoader {
             PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = SEARCH_SCAN_LIMIT, offset = 0)
         }
         val loweredQuery = query.lowercase()
-        val digitsQuery = query.filter { it.isDigit() }
-        val shouldSearchNotes = query.length >= 3 || digitsQuery.length >= 3
-        val uniqueNumbers = source.map { it.number }.distinctBy { noteKey(it) }
-        val contactNamesByKey = uniqueNumbers.associate { number ->
-            val key = noteKey(number)
-            val cachedCallName = source.firstOrNull { noteKey(it.number) == key }?.name.orEmpty()
-            key to cachedCallName.ifBlank { ContactGroupFilter.resolveDisplayName(context, number).orEmpty() }
-        }
+        val latestGeneralNoteMatches = linkedSetOf<String>()
+        val matchedCalls = arrayListOf<PhoneCallRecord>()
 
-        val matches = source.filter { call ->
+        source.forEach { call ->
             val key = noteKey(call.number)
-            val displayName = contactNamesByKey[key].orEmpty().ifBlank { call.displayName }
-            val phoneOrNameMatches = listOf(call.number, displayName).any { value -> value.lowercase().contains(loweredQuery) } ||
-                digitsQuery.isNotBlank() && call.number.filter { it.isDigit() }.contains(digitsQuery) ||
-                digitsQuery.isNotBlank() && key.contains(digitsQuery)
-            if (phoneOrNameMatches) return@filter true
-            if (!shouldSearchNotes) return@filter false
-
             val notes = cachedNotesForNumber(context, call.number, key)
-            val generalNoteMatches = notes.generalNote.lowercase().contains(loweredQuery)
-            if (generalNoteMatches) return@filter true
 
-            notes.callNotes.any { note ->
+            if (notes.generalNote.lowercase().contains(loweredQuery) && latestGeneralNoteMatches.add(key)) {
+                matchedCalls.add(call)
+                return@forEach
+            }
+
+            val callNoteMatches = notes.callNotes.any { note ->
                 note.note.lowercase().contains(loweredQuery) && sameCallNote(call, note)
             }
+            if (callNoteMatches) matchedCalls.add(call)
         }
+
         val offset = pageIndex * pageSize
-        return matches.drop(offset).take(pageSize)
+        return matchedCalls.drop(offset).take(pageSize)
     }
 
     private fun cachedNotesForNumber(context: Context, number: String, key: String): NoteCacheEntry {
