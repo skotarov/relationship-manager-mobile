@@ -171,7 +171,7 @@ class ContactNoteEditActivity : Activity() {
             Toast.makeText(this, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
             return
         }
-        openCalendarEvent()
+        openCalendarEvent(noteText)
     }
 
     private fun saveCurrentNote(noteText: String): Boolean {
@@ -191,12 +191,25 @@ class ContactNoteEditActivity : Activity() {
         return saved
     }
 
-    private fun openCalendarEvent() {
+    private fun openCalendarEvent(noteText: String) {
         val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
         val eventTitle = "Среща с $safeName"
         val description = buildString {
             appendLine("Име: $safeName")
             if (phone.isNotBlank()) appendLine("Телефон: $phone")
+            if (!isGeneralNote && callAt > 0L) {
+                val callInfo = listOf(
+                    PhoneCallReader.directionLabel(direction),
+                    PhoneCallReader.formatStartedAt(callAt),
+                    PhoneCallReader.formatDuration(durationSeconds),
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                if (callInfo.isNotBlank()) appendLine("Разговор: $callInfo")
+            }
+            if (noteText.isNotBlank()) {
+                appendLine()
+                appendLine("Бележка:")
+                appendLine(noteText.trim())
+            }
         }.trim()
         val begin = System.currentTimeMillis() + 60 * 60 * 1000L
         val end = begin + 60 * 60 * 1000L
