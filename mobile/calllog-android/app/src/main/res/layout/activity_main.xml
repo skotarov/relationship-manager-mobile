@@ -46,17 +46,14 @@
             android:textColor="@color/calllog_muted_text"
             android:textSize="15sp" />
 
-        <include
-            android:id="@+id/remoteSettingsSection"
-            layout="@layout/section_remote_settings" />
-
-        <include
-            android:id="@+id/popupSettingsSection"
-            layout="@layout/section_popup_settings" />
-
-        <include
-            android:id="@+id/contactLinkSection"
-            layout="@layout/section_contact_link" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="☰ Основни настройки"
+            android:textColor="@color/calllog_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <include
             android:id="@+id/storageSettingsSection"
@@ -67,8 +64,64 @@
             layout="@layout/section_contact_filter" />
 
         <include
+            android:id="@+id/contactLinkSection"
+            layout="@layout/section_contact_link" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="💬 Popup поведение"
+            android:textColor="@color/calllog_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <include
+            android:id="@+id/popupSettingsSection"
+            layout="@layout/section_popup_settings" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="🔐 Разрешения"
+            android:textColor="@color/calllog_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <include
             android:id="@+id/permissionsSection"
             layout="@layout/section_permissions" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="🌐 Server настройки"
+            android:textColor="@color/calllog_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <include
+            android:id="@+id/remoteSettingsSection"
+            layout="@layout/section_remote_settings" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="🧪 Debug / Тестове"
+            android:textColor="@color/calllog_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно."
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="13sp" />
 
         <include
             android:id="@+id/testsSection"
