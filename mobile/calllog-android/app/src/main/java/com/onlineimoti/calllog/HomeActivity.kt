@@ -24,6 +24,22 @@ class HomeActivity : AppCompatActivity() {
     private val searchExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
     private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
+    private val searchController by lazy {
+        HomeSearchController(
+            context = this,
+            binding = binding,
+            handler = handler,
+            searchExecutor = searchExecutor,
+            searchGeneration = searchGeneration,
+            pageSize = ::pageSize,
+            activePhoneFilter = { activePhoneFilter },
+            activeSearchQuery = { activeSearchQuery },
+            pageIndex = { pageIndex },
+            setCurrentCalls = { currentCalls = it },
+            renderEmptyState = ::renderEmptyState,
+            applyRenderData = ::applyRenderData,
+        )
+    }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
@@ -42,12 +58,6 @@ class HomeActivity : AppCompatActivity() {
     private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
-
-    private data class RenderData(
-        val calls: List<PhoneCallRecord>,
-        val contactNotesByNumber: Map<String, String>,
-        val contactNamesByNumber: Map<String, String>,
-    )
 
     private val noteSavedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -141,9 +151,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderCalls() {
-        val pageSize = pageSize()
-        binding.previousCallsButton.text = "Предишни $pageSize"
-        binding.nextCallsButton.text = "Следващи $pageSize"
+        val size = pageSize()
+        binding.previousCallsButton.text = "Предишни $size"
+        binding.nextCallsButton.text = "Следващи $size"
         binding.homeCallsContainer.removeAllViews()
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         if (!PhoneCallReader.hasCallLogPermission(this)) {
@@ -151,68 +161,26 @@ class HomeActivity : AppCompatActivity() {
             binding.paginationContainer.visibility = View.GONE
             return
         }
-
         if (activeSearchQuery.isNotBlank()) {
-            renderSearchCallsAsync(pageSize)
+            searchController.renderSearchCallsAsync()
             return
         }
-
-        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, pageSize)
+        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, size)
         if (currentCalls.isEmpty()) {
             renderEmptyState()
             return
         }
-
-        val renderData = RenderData(
-            calls = currentCalls,
-            contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls),
-            contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls),
+        applyRenderData(
+            HomeRenderData(
+                calls = currentCalls,
+                contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls),
+                contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls),
+            ),
+            size,
         )
-        applyRenderData(renderData, pageSize)
     }
 
-    private fun renderSearchCallsAsync(pageSize: Int) {
-        val query = activeSearchQuery
-        if (HomeCallPageLoader.isSearchTooShort(query)) {
-            currentCalls = emptyList()
-            binding.homeStatusText.text = "Въведи поне 2 символа за търсене."
-            binding.previousCallsButton.isEnabled = false
-            binding.nextCallsButton.isEnabled = false
-            binding.pageText.text = "Стр. ${pageIndex + 1}"
-            binding.paginationContainer.visibility = View.VISIBLE
-            return
-        }
-
-        val generation = searchGeneration.incrementAndGet()
-        val phoneFilter = activePhoneFilter
-        val page = pageIndex
-        binding.homeStatusText.text = "Търси „${query.trim()}“…"
-        binding.previousCallsButton.isEnabled = false
-        binding.nextCallsButton.isEnabled = false
-        binding.paginationContainer.visibility = View.VISIBLE
-
-        searchExecutor.execute {
-            val calls = HomeCallPageLoader.calls(this, phoneFilter, query, page, pageSize)
-            val renderData = RenderData(
-                calls = calls,
-                contactNotesByNumber = HomeCallPageLoader.contactNotes(this, calls),
-                contactNamesByNumber = HomeCallPageLoader.contactNames(this, calls),
-            )
-            handler.post {
-                if (generation != searchGeneration.get()) return@post
-                if (query != activeSearchQuery || phoneFilter != activePhoneFilter || page != pageIndex) return@post
-                currentCalls = renderData.calls
-                if (renderData.calls.isEmpty()) {
-                    binding.homeCallsContainer.removeAllViews()
-                    renderEmptyState()
-                } else {
-                    applyRenderData(renderData, pageSize)
-                }
-            }
-        }
-    }
-
-    private fun applyRenderData(renderData: RenderData, pageSize: Int) {
+    private fun applyRenderData(renderData: HomeRenderData, pageSize: Int) {
         currentCalls = renderData.calls
         binding.homeCallsContainer.removeAllViews()
         renderStatusAndPagination(pageSize)
