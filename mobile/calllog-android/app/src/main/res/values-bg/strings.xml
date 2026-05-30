@@ -1,0 +1,86 @@
+<resources>
+    <string name="app_name">Relation Management</string>
+    <string name="notification_channel_name">Relation Management</string>
+    <string name="notification_channel_description">Проверка на номер и бързо отваряне</string>
+
+    <string name="home_title">Call Log</string>
+    <string name="home_settings_button">⚙ Settings</string>
+    <string name="clear_filter_content_description">Изчисти филтъра</string>
+    <string name="previous_20">Предишни 20</string>
+    <string name="next_20">Следващи 20</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_back_content_description">Назад</string>
+    <string name="settings_description">Настройки на Android wrapper-а за call popup-и, локална история и server WebView форма.</string>
+    <string name="settings_basic_section">☰ Основни настройки</string>
+    <string name="settings_popup_section">💬 Popup поведение</string>
+    <string name="settings_permissions_section">🔐 Разрешения</string>
+    <string name="settings_server_section">🌐 Server настройки</string>
+    <string name="settings_debug_section">🧪 Debug / Тестове</string>
+    <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно.</string>
+
+    <string name="storage_title">Съхранение на бележките</string>
+    <string name="storage_use_public_folder">Използвай обща файлова система — Documents/.callreport</string>
+    <string name="storage_description">Включено: бележките са в обща папка и Android може да поиска All files access. Изключено: бележките се пазят само във вътрешната памет на приложението и не се иска достъп до общата файлова система.</string>
+
+    <string name="contact_filter_title">За кои номера да се показва popup</string>
+    <string name="notify_unknown_contacts">Непознати номера</string>
+    <string name="notify_known_contacts">Познати контакти</string>
+    <string name="contact_groups_hint">Групи за познати контакти</string>
+    <string name="contact_groups_description">Ако „Познати контакти“ е включено: празно поле = всички познати; попълнено = само контактите от тези групи.</string>
+
+    <string name="contact_link_title">CRM свързване в Android контакти</string>
+    <string name="contact_link_mode_app">Като приложение — Relation Management да се показва в свързани приложения</string>
+    <string name="contact_link_mode_contact">Като контакт — Relation Management да се добавя като свързан контакт</string>
+    <string name="contact_link_description">Смяната важи при следващо Добави/Премахни от CRM.</string>
+
+    <string name="popup_timeout_hint">Секунди за auto-close на popup след край</string>
+    <string name="popup_after_call_title">След приключване на разговора</string>
+    <string name="popup_action_edit_note">Едит бележка</string>
+    <string name="popup_action_history_screen">История екран</string>
+    <string name="popup_action_nothing">Нищо</string>
+    <string name="popup_after_call_description">При overlay режим се показва малко бутонче, което отваря избраното действие. При системен режим действието се отваря директно.</string>
+    <string name="popup_type_title">Вид на popup-ите</string>
+    <string name="popup_use_overlay">Използвай Display over other apps / overlay popup-и</string>
+    <string name="popup_overlay_description">По подразбиране е изключено. Когато е изключено или липсва разрешение, първият popup е системен, а редакциите се отварят на цял екран.</string>
+    <string name="popup_overlay_warning">Overlay popup-ите са избрани, но Android разрешението липсва. Реално ще се показва системен popup, докато не разрешиш Display over other apps.</string>
+    <string name="popup_custom_start">Първият popup да е custom overlay</string>
+    <string name="popup_custom_end">Финалният popup да е custom floating иконка</string>
+
+    <string name="permissions_title">Статус на разрешенията</string>
+    <string name="permissions_open_button">Отвори Permissions</string>
+    <string name="permissions_overlay_button">Разреши Display over other apps</string>
+    <string name="permissions_call_screening_button">Активирай Call screening</string>
+    <string name="permissions_fullscreen_button">Разреши Full-screen popup</string>
+    <string name="permissions_cleanup_contacts_button">Почисти Relation Management от контактите</string>
+    <string name="permissions_use_call_screening">Използвай Call screening / Caller ID роля</string>
+    <string name="permissions_call_screening_description">Не е задължително. Активирай го само ако popup-ът не се показва навреме при входящ разговор или Android забавя информацията за разговора. Телефонът може да го покаже като Default caller ID / spam app.</string>
+
+    <string name="server_enabled">Сървър</string>
+    <string name="server_base_url_hint">Base URL</string>
+    <string name="server_access_token_hint">Access token</string>
+    <string name="server_lookup_path_hint">Път до lookup файла</string>
+    <string name="server_form_path_hint">Път до form файла</string>
+    <string name="server_history_path_hint">Път до full/history log файла</string>
+    <string name="save_server_settings">Запази server настройки</string>
+
+    <string name="tests_title">Тестове</string>
+    <string name="test_phone_hint">Телефон за тест</string>
+    <string name="direction_incoming">Входящо</string>
+    <string name="direction_outgoing">Изходящо</string>
+    <string name="test_start_popup">Тествай popup при старт</string>
+    <string name="test_end_popup">Тествай popup след край</string>
+    <string name="open_form_php">Отвори form.php</string>
+    <string name="open_history_php">Отвори history.php</string>
+
+    <string name="open_full_log">Пълен лог</string>
+    <string name="save_settings">Запази настройките</string>
+    <string name="open_form_direct">Отвори формата</string>
+    <string name="test_notification">Тествай notification</string>
+    <string name="crm_add_contact">Добави в CRM</string>
+    <string name="crm_remove_contact">Премахни от CRM</string>
+    <string name="crm_contact_processing">Обработва се…</string>
+    <string name="open_default_contact">Отвори контакта</string>
+    <string name="contact_not_found">Контактът не е намерен</string>
+    <string name="contacts_app_not_found">Няма приложение за контакти</string>
+</resources>
