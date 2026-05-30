@@ -9,6 +9,7 @@ import android.widget.CompoundButton
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
@@ -73,6 +74,9 @@ class MainActivity : AppCompatActivity() {
         wireSettingsAutoSave()
         permissionFlowController.start()
 
+        val quickStartButton = findViewById<MaterialButton>(R.id.testStartPopupButton)
+        val quickEndButton = findViewById<MaterialButton>(R.id.testEndPopupButton)
+
         binding.backToHomeButton.setOnClickListener { finish() }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
@@ -91,11 +95,11 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             openFormDirect()
         }
-        binding.testsSection.testStartPopupButton.setOnClickListener {
+        quickStartButton.setOnClickListener {
             saveConfig()
             testStartPopup()
         }
-        binding.testsSection.testEndPopupButton.setOnClickListener {
+        quickEndButton.setOnClickListener {
             saveConfig()
             testEndPopup()
         }
