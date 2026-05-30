@@ -2,10 +2,14 @@ package com.onlineimoti.calllog
 
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
+import android.widget.CompoundButton
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.material.textfield.TextInputEditText
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
@@ -66,27 +70,10 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionSummary()
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
+        wireSettingsAutoSave()
         permissionFlowController.start()
 
         binding.backToHomeButton.setOnClickListener { finish() }
-        binding.remoteSettingsSection.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            binding.remoteSettingsSection.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
-        }
-        binding.popupSettingsSection.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
-            refreshPermissionSummary()
-            if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
-        }
-        binding.storageSettingsSection.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            saveConfig()
-            refreshPermissionSummary()
-            if (isChecked) permissionFlowController.start()
-        }
-        binding.permissionsSection.useCallScreeningCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            saveConfig()
-            refreshPermissionSummary()
-            if (isChecked) permissionFlowController.requestCallScreeningRoleIfNeeded()
-        }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
         binding.permissionsSection.openCallScreeningButton.setOnClickListener {
@@ -95,9 +82,9 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.permissionsSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
-        binding.saveSettingsButton.setOnClickListener {
+        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
-            setStatus("Настройките са записани локално. Бележките са в ${LocalNotesFileStore.activeRootPath(this)}")
+            setStatus("Server настройките са записани.")
             refreshPermissionSummary()
         }
         binding.testsSection.openFormButton.setOnClickListener {
@@ -125,6 +112,74 @@ class MainActivity : AppCompatActivity() {
 
     private fun hydrateFields() {
         MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
+    }
+
+    private fun wireSettingsAutoSave() {
+        val remote = binding.remoteSettingsSection
+        val popup = binding.popupSettingsSection
+        val contactFilter = binding.contactFilterSection
+        val contactLink = binding.contactLinkSection
+        val storage = binding.storageSettingsSection
+        val permissions = binding.permissionsSection
+
+        remote.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            remote.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+            autoSaveSettings()
+        }
+
+        listOf(
+            remote.baseUrlInput,
+            remote.accessTokenInput,
+            remote.lookupPathInput,
+            remote.formPathInput,
+            remote.historyPathInput,
+            popup.postCallTimeoutInput,
+            contactFilter.contactGroupsInput,
+        ).forEach { input -> input.autoSaveTextChanges() }
+
+        popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
+        popup.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            popup.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+            autoSaveSettings()
+            if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
+        }
+        popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
+        popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
+
+        contactLink.contactLinkModeGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
+
+        storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            autoSaveSettings()
+            if (isChecked) permissionFlowController.start()
+        }
+
+        contactFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
+        contactFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
+
+        permissions.useCallScreeningCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            autoSaveSettings()
+            if (isChecked) permissionFlowController.requestCallScreeningRoleIfNeeded()
+        }
+    }
+
+    private fun TextInputEditText.autoSaveTextChanges() {
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                autoSaveSettings()
+            }
+        })
+    }
+
+    private fun CompoundButton.autoSaveCheckedChanges() {
+        setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
+    }
+
+    private fun autoSaveSettings(): AppConfig {
+        val config = saveConfig()
+        refreshPermissionSummary()
+        return config
     }
 
     private fun saveConfig(): AppConfig {
