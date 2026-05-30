@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="За кои номера да се показва popup"
+        android:text="@string/contact_filter_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -19,19 +19,19 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:checked="true"
-        android:text="Непознати номера" />
+        android:text="@string/notify_unknown_contacts" />
 
     <CheckBox
         android:id="@+id/notifyKnownContactsCheckBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Познати контакти" />
+        android:text="@string/notify_known_contacts" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="Групи за познати контакти">
+        android:hint="@string/contact_groups_hint">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/contactGroupsInput"
             android:layout_width="match_parent"
@@ -44,7 +44,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Ако „Познати контакти“ е включено: празно поле = всички познати; попълнено = само контактите от тези групи."
+        android:text="@string/contact_groups_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 </LinearLayout>
