@@ -24,7 +24,7 @@ object LocalCallStatsProvider {
         val contactNote = ContactNoteReader.noteForPhone(context, phone)
             .trim()
             .replace(Regex("\\s+"), " ")
-        val latestCallNote = ContactNoteReader.callNotesForPhone(phone)
+        val latestCallNote = ContactNoteReader.callNotesForPhone(context, phone)
             .firstOrNull()
             ?.note
             .orEmpty()
