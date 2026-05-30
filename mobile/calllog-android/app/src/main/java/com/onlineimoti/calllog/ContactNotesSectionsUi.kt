@@ -28,7 +28,7 @@ internal class ContactNotesSectionsUi(
     ) {
         root.addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
 
-        val callNotes = ContactNoteReader.callNotesForPhone(phone)
+        val callNotes = ContactNoteReader.callNotesForPhone(activity, phone)
         latestCallWithoutNote(phone, callNotes)?.let { latestCall ->
             root.addView(
                 cards.addCallNoteButton(latestCall) {
