@@ -1,6 +1,7 @@
 <resources>
     <color name="calllog_bg">#F4F4F5</color>
     <color name="calllog_surface">#FFFFFF</color>
+    <color name="calllog_debug_surface">#EEF0F3</color>
     <color name="calllog_text">#202124</color>
     <color name="calllog_muted_text">#6B7280</color>
     <color name="calllog_border">#DADCE0</color>
