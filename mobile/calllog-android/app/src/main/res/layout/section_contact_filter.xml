@@ -14,11 +14,35 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/home_call_page_size_hint"
+        app:boxBackgroundColor="@android:color/white"
+        app:boxStrokeColor="@color/calllog_border">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/homeCallPageSizeInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:inputType="number"
+            android:text="20" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/home_call_page_size_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
     <CheckBox
         android:id="@+id/notifyUnknownContactsCheckBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="10dp"
         android:checked="true"
         android:text="@string/notify_unknown_contacts" />
 
