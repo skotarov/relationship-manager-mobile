@@ -207,10 +207,10 @@ internal object CallReportNotifications {
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val firstCallInfoRow = notificationRows.firstOrNull().orEmpty()
         val displayTitle = firstCallInfoRow.ifBlank { notificationTitle }
-        val displayRows = if (firstCallInfoRow.isBlank()) {
-            notificationRows
-        } else {
-            listOf(notificationTitle) + notificationRows.drop(1)
+        val displayRows = when {
+            firstCallInfoRow.isNotBlank() -> listOf(notificationTitle) + notificationRows.drop(1)
+            notificationRows.isNotEmpty() -> notificationRows
+            else -> listOf(fallbackLookupRow(result, resolvedDirection))
         }
         val rowsText = displayRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
@@ -232,16 +232,24 @@ internal object CallReportNotifications {
             .setContentIntent(editIntent)
             .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
             .addAction(0, "История", allNotesIntent)
-        if (displayRows.isNotEmpty()) {
-            builder.setStyle(inboxStyle)
-            builder.setCustomContentView(customView)
-            builder.setCustomBigContentView(customView)
-            builder.setCustomHeadsUpContentView(customView)
-        }
+            .setStyle(inboxStyle)
+            .setCustomContentView(customView)
+            .setCustomBigContentView(customView)
+            .setCustomHeadsUpContentView(customView)
         if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+    }
+
+    private fun fallbackLookupRow(result: LookupResult, direction: String): String {
+        return result.subtitle.ifBlank {
+            when (direction) {
+                "out" -> "Изходящ разговор"
+                "in" -> "Входящ разговор"
+                else -> "Разговор"
+            }
+        }
     }
 
     private fun buildNotificationContentView(
