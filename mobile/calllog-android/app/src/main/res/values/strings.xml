@@ -23,7 +23,9 @@
     <string name="storage_use_public_folder">Use shared file system — Documents/.callreport</string>
     <string name="storage_description">On: notes are stored in a shared folder and Android may ask for All files access. Off: notes are stored only in the app private storage and shared file access is not requested.</string>
 
-    <string name="contact_filter_title">Show popup for these numbers</string>
+    <string name="contact_filter_title">Show popup and call log settings</string>
+    <string name="home_call_page_size_hint">Calls per page</string>
+    <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each next page. Allowed range: 5–100.</string>
     <string name="notify_unknown_contacts">Unknown numbers</string>
     <string name="notify_known_contacts">Known contacts</string>
     <string name="contact_groups_hint">Groups for known contacts</string>
