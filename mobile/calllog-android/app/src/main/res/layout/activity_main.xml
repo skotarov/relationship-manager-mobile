@@ -39,6 +39,10 @@
             layout="@layout/section_contact_link" />
 
         <include
+            android:id="@+id/storageSettingsSection"
+            layout="@layout/section_storage_settings" />
+
+        <include
             android:id="@+id/contactFilterSection"
             layout="@layout/section_contact_filter" />
 
