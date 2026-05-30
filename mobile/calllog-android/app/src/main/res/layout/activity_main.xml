@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/calllog_bg">
@@ -46,86 +47,171 @@
             android:textColor="@color/calllog_muted_text"
             android:textSize="15sp" />
 
-        <TextView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:text="@string/settings_basic_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="18dp"
+            app:cardBackgroundColor="@color/calllog_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp">
 
-        <include
-            android:id="@+id/storageSettingsSection"
-            layout="@layout/section_storage_settings" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <include
-            android:id="@+id/contactFilterSection"
-            layout="@layout/section_contact_filter" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_basic_section"
+                    android:textColor="@color/calllog_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-        <include
-            android:id="@+id/contactLinkSection"
-            layout="@layout/section_contact_link" />
+                <include
+                    android:id="@+id/storageSettingsSection"
+                    layout="@layout/section_storage_settings" />
 
-        <TextView
+                <include
+                    android:id="@+id/contactFilterSection"
+                    layout="@layout/section_contact_filter" />
+
+                <include
+                    android:id="@+id/contactLinkSection"
+                    layout="@layout/section_contact_link" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_popup_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/calllog_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp">
 
-        <include
-            android:id="@+id/popupSettingsSection"
-            layout="@layout/section_popup_settings" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <TextView
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_popup_section"
+                    android:textColor="@color/calllog_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/popupSettingsSection"
+                    layout="@layout/section_popup_settings" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_permissions_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/calllog_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp">
 
-        <include
-            android:id="@+id/permissionsSection"
-            layout="@layout/section_permissions" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <TextView
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_permissions_section"
+                    android:textColor="@color/calllog_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/permissionsSection"
+                    layout="@layout/section_permissions" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_server_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/calllog_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp">
 
-        <include
-            android:id="@+id/remoteSettingsSection"
-            layout="@layout/section_remote_settings" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <TextView
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_server_section"
+                    android:textColor="@color/calllog_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/remoteSettingsSection"
+                    layout="@layout/section_remote_settings" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_debug_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/calllog_surface"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/settings_debug_description"
-            android:textColor="@color/calllog_muted_text"
-            android:textSize="13sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <include
-            android:id="@+id/testsSection"
-            layout="@layout/section_tests" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_debug_section"
+                    android:textColor="@color/calllog_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/settings_debug_description"
+                    android:textColor="@color/calllog_muted_text"
+                    android:textSize="13sp" />
+
+                <include
+                    android:id="@+id/testsSection"
+                    layout="@layout/section_tests" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:id="@+id/statusText"
