@@ -2,14 +2,85 @@
     <string name="app_name">Relation Management</string>
     <string name="notification_channel_name">Relation Management</string>
     <string name="notification_channel_description">Caller lookup and quick open</string>
-    <string name="open_full_log">Пълен лог</string>
-    <string name="save_settings">Запази настройките</string>
-    <string name="open_form_direct">Отвори формата</string>
-    <string name="test_notification">Тествай notification</string>
-    <string name="crm_add_contact">Добави в CRM</string>
-    <string name="crm_remove_contact">Премахни от CRM</string>
-    <string name="crm_contact_processing">Обработва се…</string>
-    <string name="open_default_contact">Отвори контакта</string>
-    <string name="contact_not_found">Контактът не е намерен</string>
-    <string name="contacts_app_not_found">Няма приложение за контакти</string>
+
+    <string name="home_title">Call Log</string>
+    <string name="home_settings_button">⚙ Settings</string>
+    <string name="clear_filter_content_description">Clear filter</string>
+    <string name="previous_20">Previous 20</string>
+    <string name="next_20">Next 20</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_back_content_description">Back</string>
+    <string name="settings_description">Android wrapper settings for call popups, local history and server WebView form.</string>
+    <string name="settings_basic_section">☰ Basic settings</string>
+    <string name="settings_popup_section">💬 Popup behavior</string>
+    <string name="settings_permissions_section">🔐 Permissions</string>
+    <string name="settings_server_section">🌐 Server settings</string>
+    <string name="settings_debug_section">🧪 Debug / Tests</string>
+    <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
+
+    <string name="storage_title">Notes storage</string>
+    <string name="storage_use_public_folder">Use shared file system — Documents/.callreport</string>
+    <string name="storage_description">On: notes are stored in a shared folder and Android may ask for All files access. Off: notes are stored only in the app private storage and shared file access is not requested.</string>
+
+    <string name="contact_filter_title">Show popup for these numbers</string>
+    <string name="notify_unknown_contacts">Unknown numbers</string>
+    <string name="notify_known_contacts">Known contacts</string>
+    <string name="contact_groups_hint">Groups for known contacts</string>
+    <string name="contact_groups_description">If Known contacts is enabled: empty field = all known contacts; filled field = only contacts from these groups.</string>
+
+    <string name="contact_link_title">CRM linking in Android contacts</string>
+    <string name="contact_link_mode_app">As app — show Relation Management in linked apps</string>
+    <string name="contact_link_mode_contact">As contact — add Relation Management as linked contact</string>
+    <string name="contact_link_description">The change applies on the next Add/Remove from CRM action.</string>
+
+    <string name="popup_timeout_hint">Seconds for auto-close after call</string>
+    <string name="popup_after_call_title">After the call ends</string>
+    <string name="popup_action_edit_note">Edit note</string>
+    <string name="popup_action_history_screen">History screen</string>
+    <string name="popup_action_nothing">Nothing</string>
+    <string name="popup_after_call_description">In overlay mode a small button is shown and opens the selected action. In system mode the action opens directly.</string>
+    <string name="popup_type_title">Popup type</string>
+    <string name="popup_use_overlay">Use Display over other apps / overlay popups</string>
+    <string name="popup_overlay_description">Off by default. When off or permission is missing, the first popup is system-based and editing opens in full screen.</string>
+    <string name="popup_overlay_warning">Overlay popups are selected, but the Android permission is missing. A system popup will be shown until Display over other apps is allowed.</string>
+    <string name="popup_custom_start">First popup as custom overlay</string>
+    <string name="popup_custom_end">Final popup as custom floating icon</string>
+
+    <string name="permissions_title">Permission status</string>
+    <string name="permissions_open_button">Open Permissions</string>
+    <string name="permissions_overlay_button">Allow Display over other apps</string>
+    <string name="permissions_call_screening_button">Activate Call screening</string>
+    <string name="permissions_fullscreen_button">Allow Full-screen popup</string>
+    <string name="permissions_cleanup_contacts_button">Clean Relation Management from contacts</string>
+    <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
+    <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as Default caller ID / spam app.</string>
+
+    <string name="server_enabled">Server</string>
+    <string name="server_base_url_hint">Base URL</string>
+    <string name="server_access_token_hint">Access token</string>
+    <string name="server_lookup_path_hint">Path to lookup file</string>
+    <string name="server_form_path_hint">Path to form file</string>
+    <string name="server_history_path_hint">Path to full/history log file</string>
+    <string name="save_server_settings">Save server settings</string>
+
+    <string name="tests_title">Tests</string>
+    <string name="test_phone_hint">Test phone</string>
+    <string name="direction_incoming">Incoming</string>
+    <string name="direction_outgoing">Outgoing</string>
+    <string name="test_start_popup">Test start popup</string>
+    <string name="test_end_popup">Test end popup</string>
+    <string name="open_form_php">Open form.php</string>
+    <string name="open_history_php">Open history.php</string>
+
+    <string name="open_full_log">Full log</string>
+    <string name="save_settings">Save settings</string>
+    <string name="open_form_direct">Open form</string>
+    <string name="test_notification">Test notification</string>
+    <string name="crm_add_contact">Add to CRM</string>
+    <string name="crm_remove_contact">Remove from CRM</string>
+    <string name="crm_contact_processing">Processing…</string>
+    <string name="open_default_contact">Open contact</string>
+    <string name="contact_not_found">Contact not found</string>
+    <string name="contacts_app_not_found">No contacts app found</string>
 </resources>
