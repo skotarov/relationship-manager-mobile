@@ -112,10 +112,6 @@ class MainActivity : AppCompatActivity() {
         binding.archiveSettingsSection.restoreArchiveButton.setOnClickListener {
             restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
         }
-        binding.testsSection.openFormButton.setOnClickListener {
-            saveConfig()
-            openFormDirect()
-        }
         quickStartButton.setOnClickListener {
             saveConfig()
             testStartPopup()
@@ -123,10 +119,6 @@ class MainActivity : AppCompatActivity() {
         quickEndButton.setOnClickListener {
             saveConfig()
             testEndPopup()
-        }
-        binding.testsSection.testFullLogButton.setOnClickListener {
-            saveConfig()
-            openFullLogDirect()
         }
     }
 
@@ -257,30 +249,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun remoteReady(config: AppConfig): Boolean {
         return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
-    }
-
-    private fun openFormDirect() {
-        val config = ConfigStore.load(this)
-        MainRemoteActions.openFormDirect(
-            activity = this,
-            config = config,
-            phone = phoneValue(),
-            direction = directionValue(),
-            remoteReady = remoteReady(config),
-            setStatus = ::setStatus,
-        )
-    }
-
-    private fun openFullLogDirect() {
-        val config = ConfigStore.load(this)
-        MainRemoteActions.openFullLogDirect(
-            activity = this,
-            config = config,
-            phone = phoneValue(),
-            direction = directionValue(),
-            remoteReady = remoteReady(config),
-            setStatus = ::setStatus,
-        )
     }
 
     private fun testStartPopup() {
