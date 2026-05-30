@@ -17,6 +17,8 @@ internal class MainPermissionFlowController(
     private val fullscreenIntentSettingsLauncher: ActivityResultLauncher<Intent>,
     private val hasPermission: (String) -> Boolean,
     private val canUsePublicNotesFolder: () -> Boolean,
+    private val disablePublicNotesFolder: () -> Unit,
+    private val disableOverlayPopups: () -> Unit,
     private val refreshPermissionSummary: () -> Unit,
     private val setStatus: (String) -> Unit,
 ) {
@@ -40,13 +42,27 @@ internal class MainPermissionFlowController(
     }
 
     fun onStorageSettingsResult() {
-        if (canUsePublicNotesFolder()) setStatus("Публичната папка за бележки е достъпна: ${LocalNotesFileStore.publicRootPath()}")
+        if (canUsePublicNotesFolder()) {
+            setStatus("Публичната папка за бележки е достъпна: ${LocalNotesFileStore.publicRootPath()}")
+            refreshPermissionSummary()
+            requestNextStep()
+            return
+        }
+        if (publicNotesFolderSelected()) {
+            disablePublicNotesFolder()
+            setStatus("Достъпът до общата файлова система не е разрешен. Настройката е изключена и бележките ще се пазят във вътрешната памет на приложението.")
+        }
         refreshPermissionSummary()
-        requestNextStep()
+        isRunning = false
     }
 
     fun onOverlaySettingsResult() {
-        if (Settings.canDrawOverlays(activity)) setStatus("Разрешението Display over other apps е дадено.")
+        if (Settings.canDrawOverlays(activity)) {
+            setStatus("Разрешението Display over other apps е дадено.")
+        } else if (overlayPopupsSelected()) {
+            disableOverlayPopups()
+            setStatus("Overlay разрешението не е дадено. Настройката е изключена и приложението ще използва системен popup.")
+        }
         refreshPermissionSummary()
         isRunning = false
     }
@@ -147,6 +163,7 @@ internal class MainPermissionFlowController(
     }
 
     private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
+    private fun overlayPopupsSelected(): Boolean = ConfigStore.load(activity).useOverlayPopups
     private fun callScreeningSelected(): Boolean = ConfigStore.load(activity).useCallScreening
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
     private fun canUseFullScreenIntent(): Boolean = MainPermissionChecks.canUseFullScreenIntent(activity)
