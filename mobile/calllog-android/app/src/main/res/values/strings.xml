@@ -6,9 +6,9 @@
     <string name="home_title">Call Log</string>
     <string name="home_settings_button">⚙ Settings</string>
     <string name="clear_filter_content_description">Clear filter</string>
-    <string name="search_content_description">Search</string>
+    <string name="search_content_description">Search notes</string>
     <string name="search_clear_content_description">Clear search</string>
-    <string name="search_hint">Search names, phones and notes</string>
+    <string name="search_hint">Search in notes</string>
     <string name="previous_20">Previous 20</string>
     <string name="next_20">Next 20</string>
 
@@ -16,10 +16,14 @@
     <string name="settings_back_content_description">Back</string>
     <string name="settings_description">Android wrapper settings for call popups, local history and server WebView form.</string>
     <string name="settings_basic_section">☰ Basic settings</string>
+    <string name="settings_archive_section">🗄 Archive</string>
+    <string name="settings_language_section">🌐 Language</string>
+    <string name="settings_storage_section">💾 Notes storage</string>
+    <string name="settings_call_log_section">📞 Call Log</string>
     <string name="settings_popup_section">💬 Popup behavior</string>
+    <string name="settings_crm_section">👤 CRM / Contacts</string>
     <string name="settings_permissions_section">🔐 Permissions</string>
     <string name="settings_server_section">🌐 Server settings</string>
-    <string name="settings_archive_section">🗄 Archive</string>
     <string name="settings_debug_section">🧪 Debug / Tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
 
@@ -34,6 +38,7 @@
     <string name="storage_description">On: notes are stored in a shared folder and Android may ask for All files access. Off: notes are stored only in the app private storage and shared file access is not requested.</string>
 
     <string name="contact_filter_title">Show popup and call log settings</string>
+    <string name="popup_contact_filter_title">Which contacts trigger popups</string>
     <string name="home_call_page_size_hint">Calls per page</string>
     <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each next page. Allowed range: 5–100.</string>
     <string name="notify_unknown_contacts">Unknown numbers</string>
