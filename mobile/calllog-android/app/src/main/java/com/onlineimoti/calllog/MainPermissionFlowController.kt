@@ -83,8 +83,8 @@ internal class MainPermissionFlowController(
                 setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
                 requestStorageManagerPermissionIfNeeded()
             }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
-                setStatus("Активирай Call screening, ако Android го предложи, за по-надежден popup при разговор.")
+            callScreeningSelected() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasCallScreeningRole() -> {
+                setStatus("Call screening е опционално. Активирай го, ако popup-ът не се показва навреме при входящ разговор.")
                 requestCallScreeningRoleIfNeeded()
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
@@ -147,6 +147,7 @@ internal class MainPermissionFlowController(
     }
 
     private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
+    private fun callScreeningSelected(): Boolean = ConfigStore.load(activity).useCallScreening
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
     private fun canUseFullScreenIntent(): Boolean = MainPermissionChecks.canUseFullScreenIntent(activity)
 
