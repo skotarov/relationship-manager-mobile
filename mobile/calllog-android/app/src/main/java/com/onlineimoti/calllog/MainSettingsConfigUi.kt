@@ -7,19 +7,21 @@ object MainSettingsConfigUi {
     fun hydrate(binding: ActivityMainBinding, config: AppConfig) {
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
-        val contactFilter = binding.contactFilterSection
+        val popupFilter = binding.popupContactFilterSection
+        val callLog = binding.callLogSettingsSection
         val contactLink = binding.contactLinkSection
         val storage = binding.storageSettingsSection
+        val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
 
         remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
         remote.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
         remote.baseUrlInput.setText(config.baseUrl)
         remote.accessTokenInput.setText(config.accessToken)
-        contactFilter.contactGroupsInput.setText(config.contactGroups)
-        contactFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
-        contactFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
-        contactFilter.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
+        popupFilter.contactGroupsInput.setText(config.contactGroups)
+        popupFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
+        popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
+        callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
         remote.lookupPathInput.setText(config.lookupPath)
         remote.formPathInput.setText(config.formPath)
         remote.historyPathInput.setText(config.historyPath)
@@ -40,9 +42,9 @@ object MainSettingsConfigUi {
         }
         contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
         when (config.appLanguage) {
-            ConfigStore.LANGUAGE_BG -> storage.appLanguageBg.isChecked = true
-            ConfigStore.LANGUAGE_EN -> storage.appLanguageEn.isChecked = true
-            else -> storage.appLanguageSystem.isChecked = true
+            ConfigStore.LANGUAGE_BG -> language.appLanguageBg.isChecked = true
+            ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
+            else -> language.appLanguageSystem.isChecked = true
         }
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
         permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
@@ -51,19 +53,21 @@ object MainSettingsConfigUi {
     fun read(binding: ActivityMainBinding): AppConfig {
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
-        val contactFilter = binding.contactFilterSection
+        val popupFilter = binding.popupContactFilterSection
+        val callLog = binding.callLogSettingsSection
         val contactLink = binding.contactLinkSection
         val storage = binding.storageSettingsSection
+        val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
 
         return AppConfig(
             remoteEnabled = remote.remoteEnabledCheckBox.isChecked,
             baseUrl = remote.baseUrlInput.text?.toString().orEmpty(),
             accessToken = remote.accessTokenInput.text?.toString().orEmpty(),
-            contactGroups = contactFilter.contactGroupsInput.text?.toString().orEmpty(),
-            notifyUnknownContacts = contactFilter.notifyUnknownContactsCheckBox.isChecked,
-            notifyKnownContacts = contactFilter.notifyKnownContactsCheckBox.isChecked,
-            homeCallPageSize = contactFilter.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
+            contactGroups = popupFilter.contactGroupsInput.text?.toString().orEmpty(),
+            notifyUnknownContacts = popupFilter.notifyUnknownContactsCheckBox.isChecked,
+            notifyKnownContacts = popupFilter.notifyKnownContactsCheckBox.isChecked,
+            homeCallPageSize = callLog.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_HOME_CALL_PAGE_SIZE,
             lookupPath = remote.lookupPathInput.text?.toString().orEmpty(),
             formPath = remote.formPathInput.text?.toString().orEmpty(),
@@ -85,8 +89,8 @@ object MainSettingsConfigUi {
             },
             showCrmActionButtons = contactLink.showCrmActionButtonsCheckBox.isChecked,
             appLanguage = when {
-                storage.appLanguageBg.isChecked -> ConfigStore.LANGUAGE_BG
-                storage.appLanguageEn.isChecked -> ConfigStore.LANGUAGE_EN
+                language.appLanguageBg.isChecked -> ConfigStore.LANGUAGE_BG
+                language.appLanguageEn.isChecked -> ConfigStore.LANGUAGE_EN
                 else -> ConfigStore.LANGUAGE_SYSTEM
             },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
