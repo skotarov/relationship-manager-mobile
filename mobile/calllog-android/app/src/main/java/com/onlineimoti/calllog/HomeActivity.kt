@@ -15,10 +15,14 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
+    private val searchExecutor = Executors.newSingleThreadExecutor()
+    private val searchGeneration = AtomicInteger(0)
     private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
@@ -39,8 +43,15 @@ class HomeActivity : AppCompatActivity() {
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
 
+    private data class RenderData(
+        val calls: List<PhoneCallRecord>,
+        val contactNotesByNumber: Map<String, String>,
+        val contactNamesByNumber: Map<String, String>,
+    )
+
     private val noteSavedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            HomeCallPageLoader.clearSearchCache()
             renderCalls()
         }
     }
@@ -104,6 +115,12 @@ class HomeActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onDestroy() {
+        searchGeneration.incrementAndGet()
+        searchExecutor.shutdownNow()
+        super.onDestroy()
+    }
+
     private fun registerNoteSavedReceiver() {
         if (noteSavedReceiverRegistered) return
         val filter = IntentFilter(ACTION_CONTACT_NOTE_SAVED)
@@ -134,22 +151,78 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
+        if (activeSearchQuery.isNotBlank()) {
+            renderSearchCallsAsync(pageSize)
+            return
+        }
+
         currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, pageSize)
         if (currentCalls.isEmpty()) {
             renderEmptyState()
             return
         }
 
+        val renderData = RenderData(
+            calls = currentCalls,
+            contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls),
+            contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls),
+        )
+        applyRenderData(renderData, pageSize)
+    }
+
+    private fun renderSearchCallsAsync(pageSize: Int) {
+        val query = activeSearchQuery
+        if (HomeCallPageLoader.isSearchTooShort(query)) {
+            currentCalls = emptyList()
+            binding.homeStatusText.text = "Въведи поне 2 символа за търсене или поне 3 цифри."
+            binding.previousCallsButton.isEnabled = false
+            binding.nextCallsButton.isEnabled = false
+            binding.pageText.text = "Стр. ${pageIndex + 1}"
+            binding.paginationContainer.visibility = View.VISIBLE
+            return
+        }
+
+        val generation = searchGeneration.incrementAndGet()
+        val phoneFilter = activePhoneFilter
+        val page = pageIndex
+        binding.homeStatusText.text = "Търси „${query.trim()}“…"
+        binding.previousCallsButton.isEnabled = false
+        binding.nextCallsButton.isEnabled = false
+        binding.paginationContainer.visibility = View.VISIBLE
+
+        searchExecutor.execute {
+            val calls = HomeCallPageLoader.calls(this, phoneFilter, query, page, pageSize)
+            val renderData = RenderData(
+                calls = calls,
+                contactNotesByNumber = HomeCallPageLoader.contactNotes(this, calls),
+                contactNamesByNumber = HomeCallPageLoader.contactNames(this, calls),
+            )
+            handler.post {
+                if (generation != searchGeneration.get()) return@post
+                if (query != activeSearchQuery || phoneFilter != activePhoneFilter || page != pageIndex) return@post
+                currentCalls = renderData.calls
+                if (renderData.calls.isEmpty()) {
+                    binding.homeCallsContainer.removeAllViews()
+                    renderEmptyState()
+                } else {
+                    applyRenderData(renderData, pageSize)
+                }
+            }
+        }
+    }
+
+    private fun applyRenderData(renderData: RenderData, pageSize: Int) {
+        currentCalls = renderData.calls
+        binding.homeCallsContainer.removeAllViews()
         renderStatusAndPagination(pageSize)
-        val contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls)
-        val contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls)
-        currentCalls.forEach { call ->
-            val displayName = contactNamesByNumber[HomeCallPageLoader.noteKey(call.number)].orEmpty().ifBlank { call.displayName }
+        renderData.calls.forEach { call ->
+            val key = HomeCallPageLoader.noteKey(call.number)
+            val displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName }
             binding.homeCallsContainer.addView(
                 homeCallRowRenderer.compactCallRow(
                     call = call,
                     displayName = displayName,
-                    contactNote = contactNotesByNumber[HomeCallPageLoader.noteKey(call.number)],
+                    contactNote = renderData.contactNotesByNumber[key],
                     callNote = ContactNoteReader.callNoteForPhone(this, call.number, call.startedAt, call.direction),
                 )
             )
@@ -210,6 +283,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun clearSearch() {
         handler.removeCallbacks(searchRunnable)
+        searchGeneration.incrementAndGet()
         if (binding.searchInput.text?.isNotEmpty() == true) binding.searchInput.setText("")
         activeSearchQuery = ""
         pageIndex = 0
