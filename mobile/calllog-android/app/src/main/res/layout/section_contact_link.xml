@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="CRM свързване в Android контакти"
+        android:text="@string/contact_link_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -24,19 +24,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="Като приложение — Call Report да се показва в свързани приложения" />
+            android:text="@string/contact_link_mode_app" />
         <RadioButton
             android:id="@+id/contactLinkModeContact"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Като контакт — Call Report да се добавя като свързан контакт" />
+            android:text="@string/contact_link_mode_contact" />
     </RadioGroup>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Смяната важи при следващо Добави/Премахни от CRM."
+        android:text="@string/contact_link_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 </LinearLayout>
