@@ -115,6 +115,7 @@ class ContactNotesActivity : Activity() {
         return headerUi.headerRow(
             title = titleText,
             phone = phone,
+            contactExists = externalActions.hasDefaultContact(phone),
             openAllCallsLog = externalActions::openAllCallsLog,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
