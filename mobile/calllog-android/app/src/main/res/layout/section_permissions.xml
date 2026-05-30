@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Статус на разрешенията"
+        android:text="@string/permissions_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -27,13 +27,13 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:checked="false"
-        android:text="Използвай Call screening / Caller ID роля" />
+        android:text="@string/permissions_use_call_screening" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Не е задължително. Активирай го само ако popup-ът не се показва навреме при входящ разговор или Android забавя информацията за разговора. Телефонът може да го покаже като Default caller ID / spam app."
+        android:text="@string/permissions_call_screening_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -47,34 +47,34 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Отвори Permissions" />
+            android:text="@string/permissions_open_button" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openOverlayPermissionButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Разреши Display over other apps" />
+            android:text="@string/permissions_overlay_button" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openCallScreeningButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Активирай Call screening" />
+            android:text="@string/permissions_call_screening_button" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openFullscreenIntentButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Разреши Full-screen popup" />
+            android:text="@string/permissions_fullscreen_button" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/cleanupContactsButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Почисти Call Report от контактите" />
+            android:text="@string/permissions_cleanup_contacts_button" />
     </LinearLayout>
 </LinearLayout>
