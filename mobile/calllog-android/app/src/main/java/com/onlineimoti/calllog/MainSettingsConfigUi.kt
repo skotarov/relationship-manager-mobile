@@ -10,6 +10,7 @@ object MainSettingsConfigUi {
         val contactFilter = binding.contactFilterSection
         val contactLink = binding.contactLinkSection
         val storage = binding.storageSettingsSection
+        val permissions = binding.permissionsSection
 
         remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
         remote.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
@@ -37,6 +38,7 @@ object MainSettingsConfigUi {
             contactLink.contactLinkModeApp.isChecked = true
         }
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
+        permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
     }
 
     fun read(binding: ActivityMainBinding): AppConfig {
@@ -45,6 +47,7 @@ object MainSettingsConfigUi {
         val contactFilter = binding.contactFilterSection
         val contactLink = binding.contactLinkSection
         val storage = binding.storageSettingsSection
+        val permissions = binding.permissionsSection
 
         return AppConfig(
             remoteEnabled = remote.remoteEnabledCheckBox.isChecked,
@@ -72,6 +75,7 @@ object MainSettingsConfigUi {
                 ConfigStore.CONTACT_LINK_MODE_APP
             },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
+            useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
         )
     }
 }
