@@ -123,7 +123,7 @@ class ContactNoteEditActivity : Activity() {
         val value = if (isGeneralNote) {
             ContactNoteReader.generalNoteForPhone(this, phone)
         } else {
-            ContactNoteReader.callNoteForPhone(phone, callAt, direction)
+            ContactNoteReader.callNoteForPhone(this, phone, callAt, direction)
         }
         return EditText(this).apply {
             setText(value)
