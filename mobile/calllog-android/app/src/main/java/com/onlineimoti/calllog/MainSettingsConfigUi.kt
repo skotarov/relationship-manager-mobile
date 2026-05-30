@@ -37,6 +37,7 @@ object MainSettingsConfigUi {
         } else {
             contactLink.contactLinkModeApp.isChecked = true
         }
+        contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
         permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
     }
@@ -74,6 +75,7 @@ object MainSettingsConfigUi {
             } else {
                 ConfigStore.CONTACT_LINK_MODE_APP
             },
+            showCrmActionButtons = contactLink.showCrmActionButtonsCheckBox.isChecked,
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
             useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
         )
