@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import android.os.Build
 import android.os.Environment
 import org.json.JSONObject
@@ -13,19 +14,23 @@ object LocalNotesFileStore {
     private const val PROFILE_FILE = "profile.json"
 
     fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+    fun shouldUsePublicFolder(context: Context): Boolean = ConfigStore.load(context).usePublicNotesFolder
+    fun canUseConfiguredFolder(context: Context): Boolean = !shouldUsePublicFolder(context) || canUsePublicFolder()
     fun publicRootPath(): String = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR).absolutePath
+    fun privateRootPath(context: Context): String = File(context.filesDir, ROOT_DIR).absolutePath
+    fun activeRootPath(context: Context): String = if (shouldUsePublicFolder(context)) publicRootPath() else privateRootPath(context)
 
-    fun latestNoteForPhone(phoneNumber: String): String {
+    fun latestNoteForPhone(context: Context, phoneNumber: String): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || !canUsePublicFolder()) return ""
-        val line = readLastNonBlankLine(callLogFile(phoneKey, createDirs = false))
+        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return ""
+        val line = readLastNonBlankLine(callLogFile(context, phoneKey, createDirs = false))
         return if (line.isBlank()) "" else runCatching { JSONObject(line).optString("note") }.getOrDefault("").trim()
     }
 
-    fun noteForCall(phoneNumber: String, callAt: Long, direction: String = ""): String {
+    fun noteForCall(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || callAt <= 0L || !canUsePublicFolder()) return ""
-        val file = callLogFile(phoneKey, createDirs = false)
+        if (phoneKey.isBlank() || callAt <= 0L || !canUseConfiguredFolder(context)) return ""
+        val file = callLogFile(context, phoneKey, createDirs = false)
         if (!file.exists()) return ""
         return runCatching {
             file.readLines().asReversed().firstNotNullOfOrNull { line ->
@@ -36,10 +41,10 @@ object LocalNotesFileStore {
         }.getOrDefault("")
     }
 
-    fun allCallNotes(phoneNumber: String): List<ContactCallNote> {
+    fun allCallNotes(context: Context, phoneNumber: String): List<ContactCallNote> {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || !canUsePublicFolder()) return emptyList()
-        val file = callLogFile(phoneKey, createDirs = false)
+        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return emptyList()
+        val file = callLogFile(context, phoneKey, createDirs = false)
         if (!file.exists()) return emptyList()
         return runCatching {
             val seen = linkedSetOf<String>()
@@ -63,20 +68,20 @@ object LocalNotesFileStore {
         }.getOrDefault(emptyList())
     }
 
-    fun profileGeneralNote(phoneNumber: String): String {
+    fun profileGeneralNote(context: Context, phoneNumber: String): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || !canUsePublicFolder()) return ""
-        val file = profileFile(phoneKey, createDirs = false)
+        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return ""
+        val file = profileFile(context, phoneKey, createDirs = false)
         if (!file.exists()) return ""
         return runCatching { JSONObject(file.readText()).optString("general_note") }.getOrDefault("").trim()
     }
 
-    fun saveUnknownGeneralNote(phoneNumber: String, note: String): Boolean {
+    fun saveUnknownGeneralNote(context: Context, phoneNumber: String, note: String): Boolean {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || !canUsePublicFolder()) return false
+        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return false
         return runCatching {
             val now = System.currentTimeMillis()
-            val file = profileFile(phoneKey, createDirs = true)
+            val file = profileFile(context, phoneKey, createDirs = true)
             val profile = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
             profile.put("v", 1)
             profile.put("phone", phoneNumber)
@@ -91,6 +96,7 @@ object LocalNotesFileStore {
     }
 
     fun appendCallNote(
+        context: Context,
         phoneNumber: String,
         note: String,
         direction: String = "",
@@ -100,7 +106,7 @@ object LocalNotesFileStore {
     ): Boolean {
         val phoneKey = phoneNumber.normalizePhoneKey()
         val trimmedNote = note.trim()
-        if (phoneKey.isBlank() || trimmedNote.isBlank() || !canUsePublicFolder()) return false
+        if (phoneKey.isBlank() || trimmedNote.isBlank() || !canUseConfiguredFolder(context)) return false
         return runCatching {
             val now = System.currentTimeMillis()
             val record = JSONObject().apply {
@@ -115,7 +121,7 @@ object LocalNotesFileStore {
                 if (durationSeconds > 0L) put("duration", durationSeconds)
                 put("note", trimmedNote)
             }
-            val file = callLogFile(phoneKey, createDirs = true)
+            val file = callLogFile(context, phoneKey, createDirs = true)
             if (callAt > 0L && file.exists()) {
                 val keptLines = file.readLines().filterNot { line ->
                     val json = runCatching { JSONObject(line) }.getOrNull() ?: return@filterNot false
@@ -125,7 +131,7 @@ object LocalNotesFileStore {
             } else {
                 file.appendText(record.toString() + "\n")
             }
-            if (isUnknownContact) writeUnknownLatestProfile(phoneNumber, phoneKey, trimmedNote, now)
+            if (isUnknownContact) writeUnknownLatestProfile(context, phoneNumber, phoneKey, trimmedNote, now)
             true
         }.getOrDefault(false)
     }
@@ -137,8 +143,8 @@ object LocalNotesFileStore {
         return sameCallAt && sameDirection
     }
 
-    private fun writeUnknownLatestProfile(phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
-        val file = profileFile(phoneKey, createDirs = true)
+    private fun writeUnknownLatestProfile(context: Context, phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
+        val file = profileFile(context, phoneKey, createDirs = true)
         val profile = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
         profile.put("v", 1)
         profile.put("phone", phoneNumber)
@@ -150,12 +156,17 @@ object LocalNotesFileStore {
         file.writeText(profile.toString(2))
     }
 
-    private fun callLogFile(phoneKey: String, createDirs: Boolean): File = File(phoneDir(phoneKey, createDirs), CALL_LOG_FILE)
-    private fun profileFile(phoneKey: String, createDirs: Boolean): File = File(phoneDir(phoneKey, createDirs), PROFILE_FILE)
+    private fun callLogFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), CALL_LOG_FILE)
+    private fun profileFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), PROFILE_FILE)
 
-    private fun phoneDir(phoneKey: String, createDirs: Boolean): File {
+    private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = phoneKey.filter { it.isDigit() }
-        val dir = File(File(File(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR), NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
+        val root = if (shouldUsePublicFolder(context)) {
+            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR)
+        } else {
+            File(context.filesDir, ROOT_DIR)
+        }
+        val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
     }
