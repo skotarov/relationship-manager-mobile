@@ -28,6 +28,7 @@ internal object MainPermissionSummary {
         val overlayGranted = Settings.canDrawOverlays(activity)
         val overlaySelected = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
         val overlayRequired = overlaySelected
+        val callScreeningSelected = permissions.useCallScreeningCheckBox.isChecked
         val callScreeningGranted = MainPermissionChecks.hasCallScreeningRole(activity)
         val fullscreenGranted = canUseFullScreenIntent(activity)
 
@@ -39,7 +40,7 @@ internal object MainPermissionSummary {
             add("Contacts write" to contactsWriteGranted)
             add((if (publicNotesSelected) "Public notes folder" else "Private notes storage") to publicNotesGranted)
             add("Display over other apps" to (!overlayRequired || overlayGranted))
-            add("Call screening" to callScreeningGranted)
+            add("Call screening" to (!callScreeningSelected || callScreeningGranted))
             add("Full-screen popup" to fullscreenGranted)
         }
 
@@ -62,7 +63,7 @@ internal object MainPermissionSummary {
         val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted
         permissions.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
         permissions.openOverlayPermissionButton.visibility = if (overlayRequired && !overlayGranted) View.VISIBLE else View.GONE
-        permissions.openCallScreeningButton.visibility = if (callScreeningGranted) View.GONE else View.VISIBLE
+        permissions.openCallScreeningButton.visibility = if (callScreeningSelected && !callScreeningGranted) View.VISIBLE else View.GONE
         permissions.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
     }
 
