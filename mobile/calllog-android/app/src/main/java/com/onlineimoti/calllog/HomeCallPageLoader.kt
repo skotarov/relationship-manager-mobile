@@ -3,7 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 
 object HomeCallPageLoader {
-    private const val SEARCH_SCAN_LIMIT = 500
+    private const val SEARCH_SCAN_LIMIT = 200
 
     fun calls(context: Context, activePhoneFilter: String, searchQuery: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val normalizedSearch = searchQuery.trim()
@@ -24,11 +24,22 @@ object HomeCallPageLoader {
         }
         val loweredQuery = query.lowercase()
         val digitsQuery = query.filter { it.isDigit() }
+        val uniqueNumbers = source.map { it.number }.distinctBy { noteKey(it) }
+        val generalNotesByKey = uniqueNumbers.associate { number -> noteKey(number) to ContactNoteReader.generalNoteForPhone(context, number) }
+        val callNotesByKey = uniqueNumbers.associate { number ->
+            noteKey(number) to ContactNoteReader.callNotesForPhone(context, number).joinToString("\n") { it.note }
+        }
+        val contactNamesByKey = uniqueNumbers.associate { number ->
+            val key = noteKey(number)
+            val cachedCallName = source.firstOrNull { noteKey(it.number) == key }?.name.orEmpty()
+            key to cachedCallName.ifBlank { ContactGroupFilter.resolveDisplayName(context, number).orEmpty() }
+        }
+
         val matches = source.filter { call ->
             val key = noteKey(call.number)
-            val displayName = ContactGroupFilter.resolveDisplayName(context, call.number).orEmpty().ifBlank { call.displayName }
-            val generalNote = ContactNoteReader.generalNoteForPhone(context, call.number)
-            val callNotes = ContactNoteReader.callNotesForPhone(context, call.number).joinToString("\n") { it.note }
+            val displayName = contactNamesByKey[key].orEmpty().ifBlank { call.displayName }
+            val generalNote = generalNotesByKey[key].orEmpty()
+            val callNotes = callNotesByKey[key].orEmpty()
             listOf(call.number, displayName, generalNote, callNotes).any { value -> value.lowercase().contains(loweredQuery) } ||
                 digitsQuery.isNotBlank() && call.number.filter { it.isDigit() }.contains(digitsQuery) ||
                 digitsQuery.isNotBlank() && key.contains(digitsQuery)
