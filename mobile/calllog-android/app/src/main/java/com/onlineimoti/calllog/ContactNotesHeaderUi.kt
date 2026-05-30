@@ -19,6 +19,7 @@ class ContactNotesHeaderUi(
         openAllCallsLog: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
+        openDefaultContact: () -> Unit,
     ): LinearLayout {
         val mainTitle = title.takeIf { it.isNotBlank() && it != "Бележки" }
             ?: phone.takeIf { it.isNotBlank() }
@@ -56,6 +57,7 @@ class ContactNotesHeaderUi(
             })
             addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
             addView(iconButton(R.drawable.ic_calendar_event, "Календар", openCalendarEvent))
+            addView(iconButton(android.R.drawable.ic_menu_myplaces, "Контакт", openDefaultContact))
         }
     }
 
