@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
         android:checked="true"
-        android:text="Сървър" />
+        android:text="@string/server_enabled" />
 
     <LinearLayout
         android:id="@+id/remoteSettingsGroup"
@@ -22,7 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Base URL">
+            android:hint="@string/server_base_url_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/baseUrlInput"
                 android:layout_width="match_parent"
@@ -35,7 +35,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Access token">
+            android:hint="@string/server_access_token_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/accessTokenInput"
                 android:layout_width="match_parent"
@@ -47,7 +47,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Път до lookup файла">
+            android:hint="@string/server_lookup_path_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/lookupPathInput"
                 android:layout_width="match_parent"
@@ -60,7 +60,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Път до form файла">
+            android:hint="@string/server_form_path_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/formPathInput"
                 android:layout_width="match_parent"
@@ -73,7 +73,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Път до full/history log файла">
+            android:hint="@string/server_history_path_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/historyPathInput"
                 android:layout_width="match_parent"
@@ -87,6 +87,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Запази server настройки" />
+            android:text="@string/save_server_settings" />
     </LinearLayout>
 </LinearLayout>
