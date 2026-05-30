@@ -1,23 +1,29 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.widget.LinearLayout
 
 internal class ContactNotesSectionsUi(
     private val activity: Activity,
     private val headerUi: ContactNotesHeaderUi,
     private val cards: ContactNotesCards,
+    private val dp: (Int) -> Int,
+    private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
-        root.addView(headerUi.sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
-        root.addView(
-            cards.generalNoteCard(
-                generalNote.ifBlank { "+ Добави" },
-                generalNote.isBlank(),
-                onEdit,
+        root.addView(sectionContainer().apply {
+            addView(headerUi.sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
+            addView(
+                cards.generalNoteCard(
+                    generalNote.ifBlank { "+ Добави" },
+                    generalNote.isBlank(),
+                    onEdit,
+                )
             )
-        )
+        })
     }
 
     fun addCallNotes(
@@ -26,19 +32,38 @@ internal class ContactNotesSectionsUi(
         onAddLatestCallNote: (ContactCallNote) -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
-        root.addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
-
         val callNotes = ContactNoteReader.callNotesForPhone(activity, phone)
-        latestCallWithoutNote(phone, callNotes)?.let { latestCall ->
-            root.addView(
-                cards.addCallNoteButton(latestCall) {
-                    onAddLatestCallNote(latestCall.toContactCallNote())
-                }
-            )
-        }
+        root.addView(sectionContainer().apply {
+            addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
 
-        callNotes.forEach { note ->
-            root.addView(cards.callNoteCard(note) { onEditCallNote(note) })
+            latestCallWithoutNote(phone, callNotes)?.let { latestCall ->
+                addView(
+                    cards.addCallNoteButton(latestCall) {
+                        onAddLatestCallNote(latestCall.toContactCallNote())
+                    }
+                )
+            }
+
+            callNotes.forEach { note ->
+                addView(cards.callNoteCard(note) { onEditCallNote(note) })
+            }
+        })
+    }
+
+    private fun sectionContainer(): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(8), dp(14), dp(12))
+            background = roundedRect(
+                Color.WHITE,
+                dp(18),
+                Color.rgb(218, 220, 224),
+                dp(1),
+            )
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(14) }
         }
     }
 
