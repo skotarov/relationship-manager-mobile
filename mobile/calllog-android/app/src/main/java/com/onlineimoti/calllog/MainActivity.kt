@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
             canUsePublicNotesFolder = ::canUsePublicNotesFolder,
             disablePublicNotesFolder = ::disablePublicNotesFolder,
             disableOverlayPopups = ::disableOverlayPopups,
+            disableCallScreening = ::disableCallScreening,
             refreshPermissionSummary = ::refreshPermissionSummary,
             setStatus = ::setStatus,
         )
@@ -208,6 +209,14 @@ class MainActivity : AppCompatActivity() {
         suppressAutoSave = true
         binding.popupSettingsSection.useOverlayPopupsCheckBox.isChecked = false
         binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = View.GONE
+        suppressAutoSave = false
+        saveConfig()
+        refreshPermissionSummary()
+    }
+
+    private fun disableCallScreening() {
+        suppressAutoSave = true
+        binding.permissionsSection.useCallScreeningCheckBox.isChecked = false
         suppressAutoSave = false
         saveConfig()
         refreshPermissionSummary()
