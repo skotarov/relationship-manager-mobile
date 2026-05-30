@@ -42,25 +42,11 @@
     </RadioGroup>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/testStartPopupButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:text="@string/test_start_popup" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/testEndPopupButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/test_end_popup" />
-
-    <com.google.android.material.button.MaterialButton
         android:id="@+id/openFormButton"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="14dp"
         android:text="@string/open_form_php" />
 
     <com.google.android.material.button.MaterialButton
