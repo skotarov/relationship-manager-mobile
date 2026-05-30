@@ -18,7 +18,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Тестове"
+            android:text="@string/tests_title"
             android:textColor="@color/calllog_text"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -26,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="Телефон за тест">
+            android:hint="@string/test_phone_hint">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/phoneInput"
                 android:layout_width="match_parent"
@@ -44,40 +44,40 @@
                 android:id="@+id/directionIn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Входящо" />
+                android:text="@string/direction_incoming" />
             <RadioButton
                 android:id="@+id/directionOut"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="18dp"
                 android:checked="true"
-                android:text="Изходящо" />
+                android:text="@string/direction_outgoing" />
         </RadioGroup>
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testStartPopupButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Тествай popup при старт" />
+            android:text="@string/test_start_popup" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testEndPopupButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Тествай popup след край" />
+            android:text="@string/test_end_popup" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openFormButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Отвори form.php" />
+            android:text="@string/open_form_php" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testFullLogButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Отвори history.php" />
+            android:text="@string/open_history_php" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
