@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.widget.LinearLayout
@@ -32,6 +31,8 @@ class ContactNotesActivity : Activity() {
             activity = this,
             headerUi = headerUi,
             cards = contactNotesCards(),
+            dp = ::dp,
+            roundedRect = ::roundedRect,
         )
     }
     private val crmController by lazy {
@@ -91,7 +92,7 @@ class ContactNotesActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
-            setBackgroundColor(Color.rgb(248, 250, 252))
+            setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
         }
 
         root.addView(headerRow())
@@ -104,7 +105,10 @@ class ContactNotesActivity : Activity() {
             onEditCallNote = ::openCallNoteEditor,
         )
 
-        return ScrollView(this).apply { addView(root) }
+        return ScrollView(this).apply {
+            setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
+            addView(root)
+        }
     }
 
     private fun headerRow(): LinearLayout {
