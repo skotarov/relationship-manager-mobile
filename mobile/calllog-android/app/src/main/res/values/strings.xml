@@ -16,6 +16,7 @@
     <string name="settings_popup_section">💬 Popup behavior</string>
     <string name="settings_permissions_section">🔐 Permissions</string>
     <string name="settings_server_section">🌐 Server settings</string>
+    <string name="settings_archive_section">🗄 Archive</string>
     <string name="settings_debug_section">🧪 Debug / Tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
 
@@ -72,6 +73,10 @@
     <string name="server_form_path_hint">Path to form file</string>
     <string name="server_history_path_hint">Path to full/history log file</string>
     <string name="save_server_settings">Save server settings</string>
+
+    <string name="archive_description">Create or restore a JSON archive of the local notes data. Android contacts are not included.</string>
+    <string name="archive_create_button">Create archive</string>
+    <string name="archive_restore_button">Restore archive</string>
 
     <string name="tests_title">Tests</string>
     <string name="test_phone_hint">Test phone</string>
