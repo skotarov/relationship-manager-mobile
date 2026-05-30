@@ -12,6 +12,7 @@ data class AppConfig(
     val contactGroups: String,
     val notifyUnknownContacts: Boolean,
     val notifyKnownContacts: Boolean,
+    val homeCallPageSize: Int,
     val lookupPath: String,
     val formPath: String,
     val historyPath: String,
@@ -34,6 +35,7 @@ object ConfigStore {
     private const val KEY_CONTACT_GROUPS = "contact_groups"
     private const val KEY_NOTIFY_UNKNOWN_CONTACTS = "notify_unknown_contacts"
     private const val KEY_NOTIFY_KNOWN_CONTACTS = "notify_known_contacts"
+    private const val KEY_HOME_CALL_PAGE_SIZE = "home_call_page_size"
     private const val KEY_LOOKUP_PATH = "lookup_path"
     private const val KEY_FORM_PATH = "form_path"
     private const val KEY_HISTORY_PATH = "history_path"
@@ -51,6 +53,9 @@ object ConfigStore {
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
     const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
+    const val DEFAULT_HOME_CALL_PAGE_SIZE = 20
+    const val MIN_HOME_CALL_PAGE_SIZE = 5
+    const val MAX_HOME_CALL_PAGE_SIZE = 100
     const val POST_CALL_END_ACTION_EDIT = "edit"
     const val POST_CALL_END_ACTION_HISTORY = "history"
     const val POST_CALL_END_ACTION_NOTHING = "nothing"
@@ -70,6 +75,7 @@ object ConfigStore {
             contactGroups = prefs.getString(KEY_CONTACT_GROUPS, "")!!.trim(),
             notifyUnknownContacts = prefs.getBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, true),
             notifyKnownContacts = prefs.getBoolean(KEY_NOTIFY_KNOWN_CONTACTS, false),
+            homeCallPageSize = prefs.getInt(KEY_HOME_CALL_PAGE_SIZE, DEFAULT_HOME_CALL_PAGE_SIZE).coerceHomeCallPageSize(),
             lookupPath = normalizePath(prefs.getString(KEY_LOOKUP_PATH, DEFAULT_LOOKUP_PATH)!!.trim(), DEFAULT_LOOKUP_PATH),
             formPath = normalizePath(prefs.getString(KEY_FORM_PATH, DEFAULT_FORM_PATH)!!.trim(), DEFAULT_FORM_PATH),
             historyPath = normalizePath(prefs.getString(KEY_HISTORY_PATH, DEFAULT_HISTORY_PATH)!!.trim(), DEFAULT_HISTORY_PATH),
@@ -98,6 +104,7 @@ object ConfigStore {
             .putString(KEY_CONTACT_GROUPS, config.contactGroups.trim())
             .putBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, config.notifyUnknownContacts)
             .putBoolean(KEY_NOTIFY_KNOWN_CONTACTS, config.notifyKnownContacts)
+            .putInt(KEY_HOME_CALL_PAGE_SIZE, config.homeCallPageSize.coerceHomeCallPageSize())
             .putString(KEY_LOOKUP_PATH, normalizePath(config.lookupPath, DEFAULT_LOOKUP_PATH))
             .putString(KEY_FORM_PATH, normalizePath(config.formPath, DEFAULT_FORM_PATH))
             .putString(KEY_HISTORY_PATH, normalizePath(config.historyPath, DEFAULT_HISTORY_PATH))
@@ -112,6 +119,8 @@ object ConfigStore {
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
             .apply()
     }
+
+    private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
 
     private fun normalizePath(path: String, defaultPath: String): String {
         val trimmed = path.trim()
