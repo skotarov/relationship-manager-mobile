@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Съхранение на бележките"
+        android:text="@string/storage_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -19,13 +19,13 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:checked="true"
-        android:text="Използвай обща файлова система — Documents/.callreport" />
+        android:text="@string/storage_use_public_folder" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Включено: бележките са в обща папка и Android може да поиска All files access. Изключено: бележките се пазят само във вътрешната памет на приложението и не се иска достъп до общата файлова система."
+        android:text="@string/storage_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 </LinearLayout>
