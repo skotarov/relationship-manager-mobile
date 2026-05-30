@@ -33,6 +33,7 @@ internal class ContactNotesCards(
 
     fun addCallNoteButton(call: PhoneCallRecord, onClick: () -> Unit): LinearLayout {
         val colors = NoteUiStyle.Call
+        val mutedLinkColor = NoteUiStyle.General.mutedText
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -48,7 +49,7 @@ internal class ContactNotesCards(
                 text = "+ Добави бележка към последния разговор"
                 textSize = 14.5f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(colors.metaText)
+                setTextColor(mutedLinkColor)
             })
             addView(TextView(activity).apply {
                 text = listOf(
