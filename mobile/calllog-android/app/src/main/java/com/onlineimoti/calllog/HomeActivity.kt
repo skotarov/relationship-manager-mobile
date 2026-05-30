@@ -62,7 +62,7 @@ class HomeActivity : AppCompatActivity() {
             }
         }
         binding.nextCallsButton.setOnClickListener {
-            if (currentCalls.size >= PAGE_SIZE) {
+            if (currentCalls.size >= pageSize()) {
                 pageIndex += 1
                 renderCalls()
             }
@@ -100,6 +100,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderCalls() {
+        val pageSize = pageSize()
+        binding.previousCallsButton.text = "Предишни $pageSize"
+        binding.nextCallsButton.text = "Следващи $pageSize"
         binding.homeCallsContainer.removeAllViews()
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
         if (!PhoneCallReader.hasCallLogPermission(this)) {
@@ -108,13 +111,13 @@ class HomeActivity : AppCompatActivity() {
             return
         }
 
-        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, pageIndex, PAGE_SIZE)
+        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, pageIndex, pageSize)
         if (currentCalls.isEmpty()) {
             renderEmptyState()
             return
         }
 
-        renderStatusAndPagination()
+        renderStatusAndPagination(pageSize)
         val contactNotesByNumber = HomeCallPageLoader.contactNotes(this, currentCalls)
         val contactNamesByNumber = HomeCallPageLoader.contactNames(this, currentCalls)
         currentCalls.forEach { call ->
@@ -142,16 +145,16 @@ class HomeActivity : AppCompatActivity() {
         binding.paginationContainer.visibility = android.view.View.VISIBLE
     }
 
-    private fun renderStatusAndPagination() {
-        val startNumber = pageIndex * PAGE_SIZE + 1
-        val endNumber = pageIndex * PAGE_SIZE + currentCalls.size
+    private fun renderStatusAndPagination(pageSize: Int) {
+        val startNumber = pageIndex * pageSize + 1
+        val endNumber = pageIndex * pageSize + currentCalls.size
         binding.homeStatusText.text = if (activePhoneFilter.isBlank()) {
             "Разговори $startNumber–$endNumber"
         } else {
             "${activePhoneFilter} • $startNumber–$endNumber"
         }
         binding.previousCallsButton.isEnabled = pageIndex > 0
-        binding.nextCallsButton.isEnabled = currentCalls.size >= PAGE_SIZE
+        binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
         binding.pageText.text = "Стр. ${pageIndex + 1}"
         binding.paginationContainer.visibility = android.view.View.VISIBLE
     }
@@ -176,6 +179,8 @@ class HomeActivity : AppCompatActivity() {
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
     }
 
+    private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize
+
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -190,7 +195,6 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_NOTE_PHONE = "phone"
-        private const val PAGE_SIZE = 20
         private const val NOTE_REFRESH_INTERVAL_MS = 1000L
         private const val NOTE_REFRESH_WINDOW_MS = 120_000L
     }
