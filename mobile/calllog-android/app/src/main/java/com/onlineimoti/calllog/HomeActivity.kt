@@ -124,7 +124,7 @@ class HomeActivity : AppCompatActivity() {
                     call = call,
                     displayName = displayName,
                     contactNote = contactNotesByNumber[HomeCallPageLoader.noteKey(call.number)],
-                    callNote = ContactNoteReader.callNoteForPhone(call.number, call.startedAt, call.direction),
+                    callNote = ContactNoteReader.callNoteForPhone(this, call.number, call.startedAt, call.direction),
                 )
             )
         }
