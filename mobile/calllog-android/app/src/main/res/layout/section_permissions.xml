@@ -21,6 +21,22 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
+    <CheckBox
+        android:id="@+id/useCallScreeningCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:checked="false"
+        android:text="Използвай Call screening / Caller ID роля" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Не е задължително. Активирай го само ако popup-ът не се показва навреме при входящ разговор или Android забавя информацията за разговора. Телефонът може да го покаже като Default caller ID / spam app."
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
