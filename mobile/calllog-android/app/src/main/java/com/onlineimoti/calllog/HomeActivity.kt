@@ -53,6 +53,12 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private val searchRunnable = Runnable {
+        activeSearchQuery = binding.searchInput.text?.toString().orEmpty()
+        pageIndex = 0
+        renderCalls()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
@@ -67,9 +73,8 @@ class HomeActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
-                activeSearchQuery = s?.toString().orEmpty()
-                pageIndex = 0
-                renderCalls()
+                handler.removeCallbacks(searchRunnable)
+                handler.postDelayed(searchRunnable, SEARCH_DEBOUNCE_MS)
             }
         })
         binding.previousCallsButton.setOnClickListener {
@@ -95,6 +100,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onPause() {
         unregisterNoteSavedReceiver()
         handler.removeCallbacks(noteRefreshRunnable)
+        handler.removeCallbacks(searchRunnable)
         super.onPause()
     }
 
@@ -203,6 +209,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun clearSearch() {
+        handler.removeCallbacks(searchRunnable)
         if (binding.searchInput.text?.isNotEmpty() == true) binding.searchInput.setText("")
         activeSearchQuery = ""
         pageIndex = 0
@@ -233,5 +240,6 @@ class HomeActivity : AppCompatActivity() {
         const val EXTRA_NOTE_PHONE = "phone"
         private const val NOTE_REFRESH_INTERVAL_MS = 1000L
         private const val NOTE_REFRESH_WINDOW_MS = 120_000L
+        private const val SEARCH_DEBOUNCE_MS = 450L
     }
 }
