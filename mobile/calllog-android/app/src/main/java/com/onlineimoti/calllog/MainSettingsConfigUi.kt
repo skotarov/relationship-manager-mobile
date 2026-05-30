@@ -39,6 +39,11 @@ object MainSettingsConfigUi {
             contactLink.contactLinkModeApp.isChecked = true
         }
         contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
+        when (config.appLanguage) {
+            ConfigStore.LANGUAGE_BG -> storage.appLanguageBg.isChecked = true
+            ConfigStore.LANGUAGE_EN -> storage.appLanguageEn.isChecked = true
+            else -> storage.appLanguageSystem.isChecked = true
+        }
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
         permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
     }
@@ -79,6 +84,11 @@ object MainSettingsConfigUi {
                 ConfigStore.CONTACT_LINK_MODE_APP
             },
             showCrmActionButtons = contactLink.showCrmActionButtonsCheckBox.isChecked,
+            appLanguage = when {
+                storage.appLanguageBg.isChecked -> ConfigStore.LANGUAGE_BG
+                storage.appLanguageEn.isChecked -> ConfigStore.LANGUAGE_EN
+                else -> ConfigStore.LANGUAGE_SYSTEM
+            },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
             useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
         )
