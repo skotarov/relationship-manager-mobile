@@ -154,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
 
+        contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.contactLinkModeGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
 
         storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
