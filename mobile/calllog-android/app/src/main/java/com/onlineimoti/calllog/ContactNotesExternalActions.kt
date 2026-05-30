@@ -24,6 +24,12 @@ class ContactNotesExternalActions(private val activity: Activity) {
         activity.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
     }
 
+    fun hasDefaultContact(phone: String): Boolean {
+        if (phone.isBlank()) return false
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
+        return lookupContactUri(phone) != null
+    }
+
     fun openDefaultContact(phone: String, titleText: String = "") {
         if (phone.isBlank()) return
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
@@ -31,7 +37,18 @@ class ContactNotesExternalActions(private val activity: Activity) {
             return
         }
 
-        val lookupUri = runCatching {
+        val lookupUri = lookupContactUri(phone)
+        if (lookupUri == null) {
+            openCreateContact(phone, titleText)
+            return
+        }
+
+        runCatching { activity.startActivity(Intent(Intent.ACTION_VIEW, lookupUri)) }
+            .onFailure { Toast.makeText(activity, activity.getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun lookupContactUri(phone: String): Uri? {
+        return runCatching {
             activity.contentResolver.query(
                 ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
                 arrayOf(ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup._ID),
@@ -43,14 +60,6 @@ class ContactNotesExternalActions(private val activity: Activity) {
                 ContactsContract.Contacts.getLookupUri(cursor.getLong(1), cursor.getString(0))
             }
         }.getOrNull()
-
-        if (lookupUri == null) {
-            openCreateContact(phone, titleText)
-            return
-        }
-
-        runCatching { activity.startActivity(Intent(Intent.ACTION_VIEW, lookupUri)) }
-            .onFailure { Toast.makeText(activity, activity.getString(R.string.contacts_app_not_found), Toast.LENGTH_SHORT).show() }
     }
 
     private fun openCreateContact(phone: String, titleText: String) {
