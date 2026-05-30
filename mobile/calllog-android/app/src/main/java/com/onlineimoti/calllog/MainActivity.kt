@@ -10,7 +10,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityHomeBinding
+    private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
