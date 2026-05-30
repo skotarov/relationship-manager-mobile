@@ -9,7 +9,7 @@ object HomeCallPageLoader {
 
     private data class NoteCacheEntry(
         val generalNote: String,
-        val callNotes: String,
+        val callNotes: List<ContactCallNote>,
         val loadedAt: Long,
     )
 
@@ -61,8 +61,14 @@ object HomeCallPageLoader {
                 digitsQuery.isNotBlank() && key.contains(digitsQuery)
             if (phoneOrNameMatches) return@filter true
             if (!shouldSearchNotes) return@filter false
+
             val notes = cachedNotesForNumber(context, call.number, key)
-            notes.generalNote.lowercase().contains(loweredQuery) || notes.callNotes.lowercase().contains(loweredQuery)
+            val generalNoteMatches = notes.generalNote.lowercase().contains(loweredQuery)
+            if (generalNoteMatches) return@filter true
+
+            notes.callNotes.any { note ->
+                note.note.lowercase().contains(loweredQuery) && sameCallNote(call, note)
+            }
         }
         val offset = pageIndex * pageSize
         return matches.drop(offset).take(pageSize)
@@ -73,7 +79,7 @@ object HomeCallPageLoader {
         noteCache[key]?.takeIf { now - it.loadedAt <= NOTE_CACHE_TTL_MS }?.let { return it }
         val entry = NoteCacheEntry(
             generalNote = ContactNoteReader.generalNoteForPhone(context, number),
-            callNotes = ContactNoteReader.callNotesForPhone(context, number).joinToString("\n") { it.note },
+            callNotes = ContactNoteReader.callNotesForPhone(context, number),
             loadedAt = now,
         )
         noteCache[key] = entry
@@ -82,6 +88,13 @@ object HomeCallPageLoader {
             noteCache.remove(firstKey)
         }
         return entry
+    }
+
+    private fun sameCallNote(call: PhoneCallRecord, note: ContactCallNote): Boolean {
+        if (note.callAt <= 0L) return false
+        val sameCallAt = note.callAt == call.startedAt
+        val sameDirection = note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction
+        return sameCallAt && sameDirection
     }
 
     fun contactNotes(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
