@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:hint="Секунди за auto-close на popup след край">
+        android:hint="@string/popup_timeout_hint">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/postCallTimeoutInput"
             android:layout_width="match_parent"
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="След приключване на разговора"
+        android:text="@string/popup_after_call_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -37,26 +37,26 @@
             android:id="@+id/postCallEndActionEdit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Едит бележка" />
+            android:text="@string/popup_action_edit_note" />
 
         <RadioButton
             android:id="@+id/postCallEndActionHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="История екран" />
+            android:text="@string/popup_action_history_screen" />
 
         <RadioButton
             android:id="@+id/postCallEndActionNothing"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Нищо" />
+            android:text="@string/popup_action_nothing" />
     </RadioGroup>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="При overlay режим се показва малко бутонче, което отваря избраното действие. При системен режим действието се отваря директно."
+        android:text="@string/popup_after_call_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -64,7 +64,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Вид на popup-ите"
+        android:text="@string/popup_type_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -75,13 +75,13 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:checked="false"
-        android:text="Използвай Display over other apps / overlay popup-и" />
+        android:text="@string/popup_use_overlay" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="По подразбиране е изключено. Когато е изключено или липсва разрешение, първият popup е системен, а редакциите се отварят на цял екран."
+        android:text="@string/popup_overlay_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -90,7 +90,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Overlay popup-ите са избрани, но Android разрешението липсва. Реално ще се показва системен popup, докато не разрешиш Display over other apps."
+        android:text="@string/popup_overlay_warning"
         android:textColor="@color/calllog_error"
         android:textSize="13sp"
         android:visibility="gone" />
@@ -107,13 +107,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:checked="true"
-            android:text="Първият popup да е custom overlay" />
+            android:text="@string/popup_custom_start" />
 
         <CheckBox
             android:id="@+id/useCustomEndPopupCheckBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="Финалният popup да е custom floating иконка" />
+            android:text="@string/popup_custom_end" />
     </LinearLayout>
 </LinearLayout>
