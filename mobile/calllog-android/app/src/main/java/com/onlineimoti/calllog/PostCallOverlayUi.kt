@@ -46,9 +46,9 @@ internal class PostCallOverlayUi(private val context: Context) {
         return ImageButton(context).apply {
             setImageResource(R.drawable.ic_chat_note)
             contentDescription = "Добави бележка"
-            background = roundedRect(Color.WHITE, dp(22), Color.rgb(75, 85, 99), dp(1))
+            background = roundedRect(Color.TRANSPARENT, dp(22), Color.TRANSPARENT, 0)
             scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(dp(6), dp(6), dp(6), dp(6))
             isClickable = true
             isFocusable = true
             layoutParams = LinearLayout.LayoutParams(dp(45), dp(45)).apply {
