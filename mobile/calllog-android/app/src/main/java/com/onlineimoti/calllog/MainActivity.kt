@@ -142,6 +142,7 @@ class MainActivity : AppCompatActivity() {
             remote.formPathInput,
             remote.historyPathInput,
             popup.postCallTimeoutInput,
+            contactFilter.homeCallPageSizeInput,
             contactFilter.contactGroupsInput,
         ).forEach { input -> input.autoSaveTextChanges() }
 
