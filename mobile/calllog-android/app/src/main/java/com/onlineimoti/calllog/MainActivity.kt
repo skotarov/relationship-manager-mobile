@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
     private var suppressAutoSave = false
+    private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
             activity = this,
@@ -66,7 +67,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+        currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -158,6 +161,10 @@ class MainActivity : AppCompatActivity() {
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.contactLinkModeGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
 
+        storage.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
+            val config = autoSaveSettings()
+            applyLanguageIfChanged(config.appLanguage)
+        }
         storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
             autoSaveSettings()
             if (isChecked) permissionFlowController.start()
@@ -197,6 +204,13 @@ class MainActivity : AppCompatActivity() {
         val config = MainSettingsConfigUi.read(binding)
         ConfigStore.save(this, config)
         return ConfigStore.load(this)
+    }
+
+    private fun applyLanguageIfChanged(language: String) {
+        if (language == currentLanguage) return
+        currentLanguage = language
+        AppLanguageManager.applyLanguage(language)
+        recreate()
     }
 
     private fun disablePublicNotesFolder() {
