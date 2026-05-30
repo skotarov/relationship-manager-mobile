@@ -6,6 +6,9 @@
     <string name="home_title">Call Log</string>
     <string name="home_settings_button">⚙ Settings</string>
     <string name="clear_filter_content_description">Clear filter</string>
+    <string name="search_content_description">Search</string>
+    <string name="search_clear_content_description">Clear search</string>
+    <string name="search_hint">Search names, phones and notes</string>
     <string name="previous_20">Previous 20</string>
     <string name="next_20">Next 20</string>
 
