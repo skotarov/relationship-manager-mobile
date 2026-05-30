@@ -8,6 +8,47 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:text="@string/language_title"
+        android:textColor="@color/calllog_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/appLanguageGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical">
+        <RadioButton
+            android:id="@+id/appLanguageSystem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/language_system" />
+        <RadioButton
+            android:id="@+id/appLanguageBg"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/language_bg" />
+        <RadioButton
+            android:id="@+id/appLanguageEn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/language_en" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/language_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="@string/storage_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
