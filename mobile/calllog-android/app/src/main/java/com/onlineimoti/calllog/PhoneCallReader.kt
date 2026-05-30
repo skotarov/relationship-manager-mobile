@@ -33,14 +33,14 @@ object PhoneCallReader {
 
     fun recentCalls(context: Context, limit: Int = 20, offset: Int = 0): List<PhoneCallRecord> {
         if (!hasCallLogPermission(context)) return emptyList()
-        val safeLimit = limit.coerceIn(1, 50)
+        val safeLimit = limit.coerceIn(1, 500)
         val safeOffset = offset.coerceAtLeast(0)
         return runCatching { readRecentCalls(context, safeLimit, safeOffset, phoneFilter = "") }.getOrElse { emptyList() }
     }
 
     fun callsForPhone(context: Context, phone: String, limit: Int = 50, offset: Int = 0): List<PhoneCallRecord> {
         if (!hasCallLogPermission(context) || phone.isBlank()) return emptyList()
-        val safeLimit = limit.coerceIn(1, 100)
+        val safeLimit = limit.coerceIn(1, 500)
         val safeOffset = offset.coerceAtLeast(0)
         return runCatching { readRecentCalls(context, safeLimit, safeOffset, phoneFilter = phone) }.getOrElse { emptyList() }
     }
