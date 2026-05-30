@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -22,11 +23,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="@string/server_base_url_hint">
+            android:hint="@string/server_base_url_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/baseUrlInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:inputType="textUri"
                 android:text="https://onlineimoti.com" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -35,11 +39,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/server_access_token_hint">
+            android:hint="@string/server_access_token_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/accessTokenInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:inputType="textNoSuggestions" />
         </com.google.android.material.textfield.TextInputLayout>
 
@@ -47,11 +54,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/server_lookup_path_hint">
+            android:hint="@string/server_lookup_path_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/lookupPathInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:inputType="textUri"
                 android:text="/broker/callreport/lookup.php" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -60,11 +70,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/server_form_path_hint">
+            android:hint="@string/server_form_path_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/formPathInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:inputType="textUri"
                 android:text="/broker/callreport/form.php" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -73,11 +86,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:hint="@string/server_history_path_hint">
+            android:hint="@string/server_history_path_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/historyPathInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
                 android:inputType="textUri"
                 android:text="/broker/callreport/history.php" />
         </com.google.android.material.textfield.TextInputLayout>
