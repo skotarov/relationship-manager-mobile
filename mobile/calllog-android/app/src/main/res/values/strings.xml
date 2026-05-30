@@ -30,6 +30,7 @@
     <string name="contact_groups_description">If Known contacts is enabled: empty field = all known contacts; filled field = only contacts from these groups.</string>
 
     <string name="contact_link_title">CRM linking in Android contacts</string>
+    <string name="contact_link_show_crm_buttons">Show Add to CRM / Edit buttons</string>
     <string name="contact_link_mode_app">As app — show Relation Management in linked apps</string>
     <string name="contact_link_mode_contact">As contact — add Relation Management as linked contact</string>
     <string name="contact_link_description">The change applies on the next Add/Remove from CRM action.</string>
