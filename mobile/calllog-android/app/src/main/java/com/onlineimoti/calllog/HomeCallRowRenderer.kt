@@ -4,6 +4,10 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageButton
@@ -26,6 +30,7 @@ internal class HomeCallRowRenderer(
         displayName: String,
         contactNote: String? = null,
         callNote: String? = null,
+        highlightQuery: String = "",
     ): MaterialCardView {
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
@@ -79,7 +84,7 @@ internal class HomeCallRowRenderer(
         if (!contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
             textColumn.addView(TextView(activity).apply {
-                text = contactNote
+                text = highlightedNoteText(contactNote, highlightQuery, colors.text)
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
                 compoundDrawablePadding = dp(4)
                 setTextColor(colors.text)
@@ -93,7 +98,7 @@ internal class HomeCallRowRenderer(
         if (!callNote.isNullOrBlank()) {
             val colors = NoteUiStyle.Call
             textColumn.addView(TextView(activity).apply {
-                text = callNote
+                text = highlightedNoteText(callNote, highlightQuery, colors.text)
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
                 compoundDrawablePadding = dp(5)
                 setTextColor(colors.text)
@@ -118,6 +123,22 @@ internal class HomeCallRowRenderer(
 
         card.addView(row)
         return card
+    }
+
+    private fun highlightedNoteText(value: String, query: String, textColor: Int): CharSequence {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) return value
+        val lowerValue = value.lowercase()
+        val lowerQuery = trimmedQuery.lowercase()
+        val spannable = SpannableString(value)
+        var start = lowerValue.indexOf(lowerQuery)
+        while (start >= 0) {
+            val end = start + trimmedQuery.length
+            spannable.setSpan(BackgroundColorSpan(textColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(ForegroundColorSpan(Color.WHITE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            start = lowerValue.indexOf(lowerQuery, end)
+        }
+        return spannable
     }
 
     private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
