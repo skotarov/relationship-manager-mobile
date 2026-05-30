@@ -30,6 +30,7 @@
     <string name="contact_groups_description">Ако „Познати контакти“ е включено: празно поле = всички познати; попълнено = само контактите от тези групи.</string>
 
     <string name="contact_link_title">CRM свързване в Android контакти</string>
+    <string name="contact_link_show_crm_buttons">Показвай бутоните Добави в CRM / Едит</string>
     <string name="contact_link_mode_app">Като приложение — Relation Management да се показва в свързани приложения</string>
     <string name="contact_link_mode_contact">Като контакт — Relation Management да се добавя като свързан контакт</string>
     <string name="contact_link_description">Смяната важи при следващо Добави/Премахни от CRM.</string>
