@@ -134,9 +134,11 @@ class MainActivity : AppCompatActivity() {
     private fun wireSettingsAutoSave() {
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
-        val contactFilter = binding.contactFilterSection
+        val popupFilter = binding.popupContactFilterSection
+        val callLog = binding.callLogSettingsSection
         val contactLink = binding.contactLinkSection
         val storage = binding.storageSettingsSection
+        val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
 
         remote.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
@@ -151,8 +153,8 @@ class MainActivity : AppCompatActivity() {
             remote.formPathInput,
             remote.historyPathInput,
             popup.postCallTimeoutInput,
-            contactFilter.homeCallPageSizeInput,
-            contactFilter.contactGroupsInput,
+            callLog.homeCallPageSizeInput,
+            popupFilter.contactGroupsInput,
         ).forEach { input -> input.autoSaveTextChanges() }
 
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
@@ -167,7 +169,7 @@ class MainActivity : AppCompatActivity() {
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.contactLinkModeGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
 
-        storage.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
+        language.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
             val config = autoSaveSettings()
             applyLanguageIfChanged(config.appLanguage)
         }
@@ -176,8 +178,8 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) permissionFlowController.start()
         }
 
-        contactFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
-        contactFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
+        popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
+        popupFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
 
         permissions.useCallScreeningCheckBox.setOnCheckedChangeListener { _, isChecked ->
             autoSaveSettings()
