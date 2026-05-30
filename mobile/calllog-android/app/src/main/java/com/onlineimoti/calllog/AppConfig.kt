@@ -2,6 +2,8 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 
 data class AppConfig(
     val remoteEnabled: Boolean,
@@ -52,7 +54,6 @@ object ConfigStore {
     const val CONTACT_LINK_MODE_APP = "app"
     const val CONTACT_LINK_MODE_CONTACT = "contact"
     const val DEFAULT_CONTACT_LINK_MODE = CONTACT_LINK_MODE_APP
-    const val DEFAULT_USE_PUBLIC_NOTES_FOLDER = true
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -72,7 +73,11 @@ object ConfigStore {
             useCustomEndPopup = prefs.getBoolean(KEY_USE_CUSTOM_END_POPUP, true),
             postCallEndAction = normalizePostCallEndAction(prefs.getString(KEY_POST_CALL_END_ACTION, DEFAULT_POST_CALL_END_ACTION).orEmpty()),
             contactLinkMode = normalizeContactLinkMode(prefs.getString(KEY_CONTACT_LINK_MODE, DEFAULT_CONTACT_LINK_MODE).orEmpty()),
-            usePublicNotesFolder = prefs.getBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, DEFAULT_USE_PUBLIC_NOTES_FOLDER),
+            usePublicNotesFolder = if (prefs.contains(KEY_USE_PUBLIC_NOTES_FOLDER)) {
+                prefs.getBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, false)
+            } else {
+                canUsePublicNotesFolderByDefault()
+            },
         )
     }
 
@@ -117,6 +122,10 @@ object ConfigStore {
             CONTACT_LINK_MODE_CONTACT -> CONTACT_LINK_MODE_CONTACT
             else -> CONTACT_LINK_MODE_APP
         }
+    }
+
+    private fun canUsePublicNotesFolderByDefault(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
     }
 }
 
