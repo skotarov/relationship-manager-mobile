@@ -4,8 +4,8 @@ import android.content.Context
 
 object HomeCallPageLoader {
     private const val SEARCH_SCAN_LIMIT = 150
-    private const val NOTE_CACHE_TTL_MS = 60_000L
-    private const val MAX_NOTE_CACHE_SIZE = 300
+    private const val CACHE_TTL_MS = 60_000L
+    private const val MAX_CACHE_SIZE = 300
 
     private data class NoteCacheEntry(
         val generalNote: String,
@@ -13,7 +13,13 @@ object HomeCallPageLoader {
         val loadedAt: Long,
     )
 
+    private data class ContactNameCacheEntry(
+        val name: String,
+        val loadedAt: Long,
+    )
+
     private val noteCache = linkedMapOf<String, NoteCacheEntry>()
+    private val contactNameCache = linkedMapOf<String, ContactNameCacheEntry>()
 
     fun calls(context: Context, activePhoneFilter: String, searchQuery: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val normalizedSearch = searchQuery.trim()
@@ -34,6 +40,7 @@ object HomeCallPageLoader {
 
     fun clearSearchCache() {
         noteCache.clear()
+        contactNameCache.clear()
     }
 
     private fun searchCalls(context: Context, activePhoneFilter: String, query: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
@@ -45,62 +52,63 @@ object HomeCallPageLoader {
         }
         val loweredQuery = query.lowercase()
         val digitsQuery = query.filter { it.isDigit() }
-        val contactNamesByKey = contactNamesForSearch(context, source)
+        if (digitsQuery.length >= 3 && query.all { it.isDigit() || it.isWhitespace() || it == '+' }) {
+            return source.filter { call -> phoneMatches(call, digitsQuery) }.page(pageIndex, pageSize)
+        }
+
         val latestGeneralNoteMatches = linkedSetOf<String>()
         val matchedCalls = arrayListOf<PhoneCallRecord>()
-
         source.forEach { call ->
             val key = noteKey(call.number)
-            val displayName = contactNamesByKey[key].orEmpty().ifBlank { call.displayName }
-            if (phoneOrNameMatches(call, displayName, loweredQuery, digitsQuery, key)) {
+            if (phoneMatches(call, digitsQuery) || call.name.lowercase().contains(loweredQuery)) {
                 matchedCalls.add(call)
                 return@forEach
             }
-
             val notes = cachedNotesForNumber(context, call.number, key)
             if (notes.generalNote.lowercase().contains(loweredQuery) && latestGeneralNoteMatches.add(key)) {
                 matchedCalls.add(call)
                 return@forEach
             }
-
-            val callNoteMatches = notes.callNotes.any { note ->
-                note.note.lowercase().contains(loweredQuery) && sameCallNote(call, note)
+            if (notes.callNotes.any { it.note.lowercase().contains(loweredQuery) && sameCallNote(call, it) }) {
+                matchedCalls.add(call)
+                return@forEach
             }
-            if (callNoteMatches) matchedCalls.add(call)
+            val contactName = cachedContactName(context, call.number, key)
+            if (contactName.lowercase().contains(loweredQuery)) matchedCalls.add(call)
         }
-
-        val offset = pageIndex * pageSize
-        return matchedCalls.drop(offset).take(pageSize)
+        return matchedCalls.page(pageIndex, pageSize)
     }
 
-    private fun contactNamesForSearch(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
-        return calls.map { it.number }.distinctBy { noteKey(it) }.associate { number ->
-            val key = noteKey(number)
-            val cachedCallName = calls.firstOrNull { noteKey(it.number) == key }?.name.orEmpty()
-            key to cachedCallName.ifBlank { ContactGroupFilter.resolveDisplayName(context, number).orEmpty() }
-        }
+    private fun phoneMatches(call: PhoneCallRecord, digitsQuery: String): Boolean {
+        if (digitsQuery.length < 3) return false
+        val callDigits = call.number.filter { it.isDigit() }
+        return callDigits.contains(digitsQuery) || noteKey(call.number).contains(digitsQuery)
     }
 
-    private fun phoneOrNameMatches(call: PhoneCallRecord, displayName: String, loweredQuery: String, digitsQuery: String, key: String): Boolean {
-        val textMatch = displayName.lowercase().contains(loweredQuery) || call.number.lowercase().contains(loweredQuery)
-        val digitMatch = digitsQuery.length >= 3 && (call.number.filter { it.isDigit() }.contains(digitsQuery) || key.contains(digitsQuery))
-        return textMatch || digitMatch
+    private fun cachedContactName(context: Context, number: String, key: String): String {
+        val now = System.currentTimeMillis()
+        contactNameCache[key]?.takeIf { now - it.loadedAt <= CACHE_TTL_MS }?.let { return it.name }
+        val name = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+        contactNameCache[key] = ContactNameCacheEntry(name, now)
+        trimCache(contactNameCache)
+        return name
     }
 
     private fun cachedNotesForNumber(context: Context, number: String, key: String): NoteCacheEntry {
         val now = System.currentTimeMillis()
-        noteCache[key]?.takeIf { now - it.loadedAt <= NOTE_CACHE_TTL_MS }?.let { return it }
+        noteCache[key]?.takeIf { now - it.loadedAt <= CACHE_TTL_MS }?.let { return it }
         val entry = NoteCacheEntry(
             generalNote = ContactNoteReader.generalNoteForPhone(context, number),
             callNotes = ContactNoteReader.callNotesForPhone(context, number),
             loadedAt = now,
         )
         noteCache[key] = entry
-        while (noteCache.size > MAX_NOTE_CACHE_SIZE) {
-            val firstKey = noteCache.keys.firstOrNull() ?: break
-            noteCache.remove(firstKey)
-        }
+        trimCache(noteCache)
         return entry
+    }
+
+    private fun <T> trimCache(cache: MutableMap<String, T>) {
+        while (cache.size > MAX_CACHE_SIZE) cache.remove(cache.keys.firstOrNull() ?: break)
     }
 
     private fun sameCallNote(call: PhoneCallRecord, note: ContactCallNote): Boolean {
@@ -108,6 +116,10 @@ object HomeCallPageLoader {
         val sameCallAt = note.callAt == call.startedAt
         val sameDirection = note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction
         return sameCallAt && sameDirection
+    }
+
+    private fun List<PhoneCallRecord>.page(pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+        return drop(pageIndex * pageSize).take(pageSize)
     }
 
     fun contactNotes(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
