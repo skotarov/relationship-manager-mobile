@@ -61,7 +61,7 @@ internal object CallLogOverlayTargetResolver {
         if (hasContactHistoryHints(allBlob)) return ScreenKind.CONTACT_HISTORY
         if (hasContactDetailHints(allBlob)) return ScreenKind.CONTACT_DETAIL
         if (hasGeneralLogHints(allBlob)) return ScreenKind.GENERAL_LOG
-        if (phoneCount >= 2 && titleTexts.none { extractPhoneCandidate(it).isNotBlank() }) return ScreenKind.GENERAL_LOG
+        if (phoneCount >= 2 && titleTexts.none { extractPhoneCandidate(it).orEmpty().isNotBlank() }) return ScreenKind.GENERAL_LOG
         return ScreenKind.UNKNOWN
     }
 
