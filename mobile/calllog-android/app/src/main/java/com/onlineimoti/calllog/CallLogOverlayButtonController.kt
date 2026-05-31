@@ -23,7 +23,7 @@ internal data class CallLogOverlayTarget(
 
 internal class CallLogOverlayButtonController(private val context: Context) {
     private var windowManager: WindowManager? = null
-    private var buttonView: View? = null
+    private var buttonView: ImageButton? = null
     private var layoutParams: WindowManager.LayoutParams? = null
     private var shownPosition: String = ""
     private var currentTarget: CallLogOverlayTarget = CallLogOverlayTarget()
@@ -35,7 +35,11 @@ internal class CallLogOverlayButtonController(private val context: Context) {
             return
         }
         val normalizedPosition = CallLogOverlaySettings.normalizePosition(position)
-        if (buttonView != null) return
+        buttonView?.let { existingButton ->
+            existingButton.setImageResource(iconForTarget(target))
+            existingButton.contentDescription = descriptionForTarget(target)
+            return
+        }
         hide()
 
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -44,8 +48,8 @@ internal class CallLogOverlayButtonController(private val context: Context) {
 
         val size = dp(48)
         val button = ImageButton(context).apply {
-            setImageResource(R.drawable.ic_chat_note)
-            contentDescription = "Call Report"
+            setImageResource(iconForTarget(target))
+            contentDescription = descriptionForTarget(target)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
@@ -110,6 +114,14 @@ internal class CallLogOverlayButtonController(private val context: Context) {
         context.startActivity(
             ExternalLaunchNavigation.apply(Intent(context, HomeActivity::class.java))
         )
+    }
+
+    private fun iconForTarget(target: CallLogOverlayTarget): Int {
+        return if (target.phone.isBlank()) R.drawable.ic_call_log_bubbles else R.drawable.ic_chat_note
+    }
+
+    private fun descriptionForTarget(target: CallLogOverlayTarget): String {
+        return if (target.phone.isBlank()) "Call Report call log" else "Call Report contact history"
     }
 
     private inner class DragTouchListener(
