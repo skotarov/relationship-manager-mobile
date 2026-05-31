@@ -28,7 +28,8 @@ object HomeCallPageLoader {
 
     fun isSearchTooShort(query: String): Boolean {
         val trimmed = query.trim()
-        return trimmed.isNotBlank() && trimmed.length < 2
+        val digits = trimmed.filter { it.isDigit() }
+        return trimmed.isNotBlank() && trimmed.length < 2 && digits.length < 3
     }
 
     fun clearSearchCache() {
@@ -43,13 +44,20 @@ object HomeCallPageLoader {
             PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = SEARCH_SCAN_LIMIT, offset = 0)
         }
         val loweredQuery = query.lowercase()
+        val digitsQuery = query.filter { it.isDigit() }
+        val contactNamesByKey = contactNamesForSearch(context, source)
         val latestGeneralNoteMatches = linkedSetOf<String>()
         val matchedCalls = arrayListOf<PhoneCallRecord>()
 
         source.forEach { call ->
             val key = noteKey(call.number)
-            val notes = cachedNotesForNumber(context, call.number, key)
+            val displayName = contactNamesByKey[key].orEmpty().ifBlank { call.displayName }
+            if (phoneOrNameMatches(call, displayName, loweredQuery, digitsQuery, key)) {
+                matchedCalls.add(call)
+                return@forEach
+            }
 
+            val notes = cachedNotesForNumber(context, call.number, key)
             if (notes.generalNote.lowercase().contains(loweredQuery) && latestGeneralNoteMatches.add(key)) {
                 matchedCalls.add(call)
                 return@forEach
@@ -63,6 +71,20 @@ object HomeCallPageLoader {
 
         val offset = pageIndex * pageSize
         return matchedCalls.drop(offset).take(pageSize)
+    }
+
+    private fun contactNamesForSearch(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
+        return calls.map { it.number }.distinctBy { noteKey(it) }.associate { number ->
+            val key = noteKey(number)
+            val cachedCallName = calls.firstOrNull { noteKey(it.number) == key }?.name.orEmpty()
+            key to cachedCallName.ifBlank { ContactGroupFilter.resolveDisplayName(context, number).orEmpty() }
+        }
+    }
+
+    private fun phoneOrNameMatches(call: PhoneCallRecord, displayName: String, loweredQuery: String, digitsQuery: String, key: String): Boolean {
+        val textMatch = displayName.lowercase().contains(loweredQuery) || call.number.lowercase().contains(loweredQuery)
+        val digitMatch = digitsQuery.length >= 3 && (call.number.filter { it.isDigit() }.contains(digitsQuery) || key.contains(digitsQuery))
+        return textMatch || digitMatch
     }
 
     private fun cachedNotesForNumber(context: Context, number: String, key: String): NoteCacheEntry {
