@@ -4,14 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Point
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
+import kotlin.math.abs
 
 internal data class CallLogOverlayTarget(
     val phone: String = "",
@@ -21,6 +24,7 @@ internal data class CallLogOverlayTarget(
 internal class CallLogOverlayButtonController(private val context: Context) {
     private var windowManager: WindowManager? = null
     private var buttonView: View? = null
+    private var layoutParams: WindowManager.LayoutParams? = null
     private var shownPosition: String = ""
     private var currentTarget: CallLogOverlayTarget = CallLogOverlayTarget()
 
@@ -31,7 +35,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
             return
         }
         val normalizedPosition = CallLogOverlaySettings.normalizePosition(position)
-        if (buttonView != null && shownPosition == normalizedPosition) return
+        if (buttonView != null) return
         hide()
 
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -51,7 +55,6 @@ internal class CallLogOverlayButtonController(private val context: Context) {
             setPadding(dp(8), dp(8), dp(8), dp(8))
             elevation = dp(8).toFloat()
             translationZ = dp(2).toFloat()
-            setOnClickListener { openTarget() }
         }
 
         val params = WindowManager.LayoutParams(
@@ -61,20 +64,33 @@ internal class CallLogOverlayButtonController(private val context: Context) {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = gravityFor(normalizedPosition)
-            x = dp(16)
-            y = yOffsetFor(normalizedPosition)
+            gravity = Gravity.TOP or Gravity.START
+            val saved = CallLogOverlaySettings.loadSavedPosition(context)
+            if (saved != null) {
+                x = saved.x
+                y = saved.y
+            } else {
+                val fallback = fallbackPoint(normalizedPosition, size)
+                x = fallback.x
+                y = fallback.y
+            }
         }
 
+        button.setOnTouchListener(DragTouchListener(params, size))
         buttonView = button
+        layoutParams = params
         runCatching { manager.addView(button, params) }
-            .onFailure { buttonView = null }
+            .onFailure {
+                buttonView = null
+                layoutParams = null
+            }
     }
 
     fun hide() {
         val view = buttonView ?: return
         runCatching { windowManager?.removeView(view) }
         buttonView = null
+        layoutParams = null
         shownPosition = ""
         currentTarget = CallLogOverlayTarget()
     }
@@ -96,27 +112,81 @@ internal class CallLogOverlayButtonController(private val context: Context) {
         )
     }
 
-    private fun gravityFor(position: String): Int {
-        val vertical = if (position == CallLogOverlaySettings.POSITION_BOTTOM_END || position == CallLogOverlaySettings.POSITION_BOTTOM_START) {
-            Gravity.BOTTOM
-        } else {
-            Gravity.TOP
+    private inner class DragTouchListener(
+        private val params: WindowManager.LayoutParams,
+        private val viewSize: Int,
+    ) : View.OnTouchListener {
+        private var downRawX = 0f
+        private var downRawY = 0f
+        private var startX = 0
+        private var startY = 0
+        private var dragged = false
+
+        override fun onTouch(view: View, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downRawX = event.rawX
+                    downRawY = event.rawY
+                    startX = params.x
+                    startY = params.y
+                    dragged = false
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downRawX
+                    val dy = event.rawY - downRawY
+                    if (abs(dx) > dp(4) || abs(dy) > dp(4)) dragged = true
+                    params.x = (startX + dx.toInt()).coerceIn(0, maxX(viewSize))
+                    params.y = (startY + dy.toInt()).coerceIn(0, maxY(viewSize))
+                    runCatching { windowManager?.updateViewLayout(view, params) }
+                    return true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (dragged) {
+                        params.x = params.x.coerceIn(0, maxX(viewSize))
+                        params.y = params.y.coerceIn(0, maxY(viewSize))
+                        CallLogOverlaySettings.saveDraggedPosition(context, params.x, params.y)
+                    } else {
+                        view.performClick()
+                        openTarget()
+                    }
+                    return true
+                }
+                MotionEvent.ACTION_CANCEL -> return true
+            }
+            return false
         }
-        val horizontal = if (position == CallLogOverlaySettings.POSITION_TOP_START || position == CallLogOverlaySettings.POSITION_BOTTOM_START) {
-            Gravity.START
-        } else {
-            Gravity.END
-        }
-        return vertical or horizontal
     }
 
-    private fun yOffsetFor(position: String): Int {
-        return if (position == CallLogOverlaySettings.POSITION_BOTTOM_END || position == CallLogOverlaySettings.POSITION_BOTTOM_START) {
-            dp(96)
+    private fun fallbackPoint(position: String, size: Int): Point {
+        val margin = dp(16)
+        val top = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) dp(104) else dp(92)
+        val bottom = dp(96)
+        val x = if (position == CallLogOverlaySettings.POSITION_TOP_START || position == CallLogOverlaySettings.POSITION_BOTTOM_START) {
+            margin
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) dp(104) else dp(92)
+            maxX(size) - margin
+        }
+        val y = if (position == CallLogOverlaySettings.POSITION_BOTTOM_END || position == CallLogOverlaySettings.POSITION_BOTTOM_START) {
+            maxY(size) - bottom
+        } else {
+            top
+        }
+        return Point(x.coerceIn(0, maxX(size)), y.coerceIn(0, maxY(size)))
+    }
+
+    private fun screenSize(): Point {
+        val manager = windowManager ?: context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = manager.currentWindowMetrics.bounds
+            Point(bounds.width(), bounds.height())
+        } else {
+            @Suppress("DEPRECATION")
+            Point().also { manager.defaultDisplay.getSize(it) }
         }
     }
 
+    private fun maxX(viewSize: Int): Int = (screenSize().x - viewSize).coerceAtLeast(0)
+    private fun maxY(viewSize: Int): Int = (screenSize().y - viewSize).coerceAtLeast(0)
     private fun dp(value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 }
