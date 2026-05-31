@@ -99,16 +99,16 @@ internal class CallLogOverlayButtonController(private val context: Context) {
         val target = currentTarget
         if (target.phone.isNotBlank()) {
             context.startActivity(
-                Intent(context, ContactNotesActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    .putExtra(ContactNotesActivity.EXTRA_PHONE, target.phone)
-                    .putExtra(ContactNotesActivity.EXTRA_TITLE, target.title.ifBlank { target.phone })
+                ExternalLaunchNavigation.apply(
+                    Intent(context, ContactNotesActivity::class.java)
+                        .putExtra(ContactNotesActivity.EXTRA_PHONE, target.phone)
+                        .putExtra(ContactNotesActivity.EXTRA_TITLE, target.title.ifBlank { target.phone })
+                )
             )
             return
         }
         context.startActivity(
-            Intent(context, HomeActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            ExternalLaunchNavigation.apply(Intent(context, HomeActivity::class.java))
         )
     }
 
