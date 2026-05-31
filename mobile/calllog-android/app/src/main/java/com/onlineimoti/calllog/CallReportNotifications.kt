@@ -108,23 +108,25 @@ internal object CallReportNotifications {
     private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
         val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         context.startActivity(
-            Intent(context, ContactNoteEditActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+            ExternalLaunchNavigation.apply(
+                Intent(context, ContactNoteEditActivity::class.java)
+                    .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+            )
         )
     }
 
     private fun openContactNotesScreen(context: Context, phone: String, title: String) {
         context.startActivity(
-            Intent(context, ContactNotesActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "История" } })
+            ExternalLaunchNavigation.apply(
+                Intent(context, ContactNotesActivity::class.java)
+                    .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                    .putExtra(ContactNotesActivity.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "История" } })
+            )
         )
     }
 
@@ -149,9 +151,11 @@ internal object CallReportNotifications {
     }
 
     private fun contactNotesPendingIntent(context: Context, requestCode: Int, phone: String, title: String): PendingIntent {
-        val intent = Intent(context, ContactNotesActivity::class.java)
-            .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-            .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
+        val intent = ExternalLaunchNavigation.apply(
+            Intent(context, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
+        )
         return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
