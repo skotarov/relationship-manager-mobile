@@ -41,6 +41,15 @@
     <string name="popup_contact_filter_title">За кои контакти да се показват popup-и</string>
     <string name="home_call_page_size_hint">Разговори на страница</string>
     <string name="home_call_page_size_description">Колко реда от телефонния call log да се показват на първата и всяка следваща страница. Позволено: 5–100.</string>
+    <string name="call_log_overlay_button_enabled">Показвай кръгъл Call Report бутон върху системния call log</string>
+    <string name="call_log_overlay_button_description">Показва се само докато е отворен default телефонният call log от това приложение. Изисква Accessibility и Display over other apps.</string>
+    <string name="call_log_overlay_access_button">Отвори Accessibility настройките за бутона</string>
+    <string name="call_log_overlay_button_position_title">Позиция на бутона</string>
+    <string name="call_log_overlay_position_top_end">Горе вдясно</string>
+    <string name="call_log_overlay_position_top_start">Горе вляво</string>
+    <string name="call_log_overlay_position_bottom_end">Долу вдясно</string>
+    <string name="call_log_overlay_position_bottom_start">Долу вляво</string>
+    <string name="call_log_overlay_accessibility_description">Показва малък Call Report бутон върху телефонния call log само докато този прозорец е отворен.</string>
     <string name="notify_unknown_contacts">Непознати номера</string>
     <string name="notify_known_contacts">Познати контакти</string>
     <string name="contact_groups_hint">Групи за познати контакти</string>
