@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.telecom.TelecomManager
@@ -53,7 +54,7 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
     }
 
     private fun isDefaultDialerWindowInFront(): Boolean {
-        val defaultDialerPackage = (getSystemService(TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage.orEmpty()
+        val defaultDialerPackage = (getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage.orEmpty()
         if (defaultDialerPackage.isBlank()) return false
         return rootInActiveWindow?.packageName?.toString() == defaultDialerPackage
     }
