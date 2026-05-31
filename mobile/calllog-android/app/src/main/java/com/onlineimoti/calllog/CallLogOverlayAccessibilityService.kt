@@ -41,7 +41,7 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
 
     private fun refreshOverlay() {
         val settings = CallLogOverlaySettings.load(this)
-        if (!settings.enabled || !CallLogOverlaySettings.isExpectedCallLogWindow(this)) {
+        if (!settings.enabled) {
             controller.hide()
             return
         }
@@ -54,8 +54,10 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
     }
 
     private fun isDefaultDialerWindowInFront(): Boolean {
+        val packageName = rootInActiveWindow?.packageName?.toString().orEmpty()
+        if (packageName.isBlank()) return false
         val defaultDialerPackage = (getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage.orEmpty()
-        if (defaultDialerPackage.isBlank()) return false
-        return rootInActiveWindow?.packageName?.toString() == defaultDialerPackage
+        if (defaultDialerPackage.isNotBlank() && packageName == defaultDialerPackage) return true
+        return packageName.contains("dialer", ignoreCase = true) || packageName.contains("contacts", ignoreCase = true)
     }
 }
