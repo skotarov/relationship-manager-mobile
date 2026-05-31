@@ -8,6 +8,9 @@ import androidx.core.content.ContextCompat
 
 internal object CallLogOverlayTargetResolver {
     fun detect(context: Context, titleTexts: List<String>, screenTexts: List<String>): CallLogOverlayTarget {
+        val screenOnlyKind = classifyScreen(emptyList(), screenTexts)
+        if (screenOnlyKind == ScreenKind.GENERAL_LOG) return CallLogOverlayTarget()
+
         val titleTarget = targetFromTexts(context, titleTexts, allowNameLookup = true)
         if (titleTarget.phone.isNotBlank()) return titleTarget
 
