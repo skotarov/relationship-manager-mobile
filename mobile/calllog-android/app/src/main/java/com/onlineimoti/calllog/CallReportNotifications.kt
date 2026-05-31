@@ -9,11 +9,13 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 
 internal object CallReportNotifications {
     private const val CHANNEL_ID = "callreport_lookup"
     private const val PASSIVE_CHANNEL_ID = "callreport_lookup_passive"
-    private const val LOOKUP_NOTIFICATION_ID = 2001
+    const val LOOKUP_NOTIFICATION_ID = 2001
+    const val KEY_INLINE_NOTE_REPLY = "inline_note_reply"
     private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
@@ -150,6 +152,43 @@ internal object CallReportNotifications {
         return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
+    private fun inlineNotePendingIntent(
+        context: Context,
+        requestCode: Int,
+        phone: String,
+        direction: String,
+        callAt: Long,
+        durationSeconds: Long,
+    ): PendingIntent {
+        val intent = Intent(context, InlineNoteReplyReceiver::class.java)
+            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+            .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
+            .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
+        return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+    }
+
+    private fun inlineNoteAction(
+        context: Context,
+        phone: String,
+        direction: String,
+        callAt: Long,
+        durationSeconds: Long,
+    ): NotificationCompat.Action {
+        val remoteInput = RemoteInput.Builder(KEY_INLINE_NOTE_REPLY)
+            .setLabel("Напиши бележка…")
+            .build()
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_chat_note,
+            "Бележка",
+            inlineNotePendingIntent(context, 1101, phone, direction, callAt, durationSeconds),
+        )
+            .addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(false)
+            .setShowsUserInterface(false)
+            .build()
+    }
+
     private fun contactNotesPendingIntent(context: Context, requestCode: Int, phone: String, title: String): PendingIntent {
         val intent = ExternalLaunchNavigation.apply(
             Intent(context, ContactNotesActivity::class.java)
@@ -193,6 +232,7 @@ internal object CallReportNotifications {
 
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, callAt, duration)
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationTitle)
+        val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, callAt, duration)
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val firstCallInfoRow = notificationRows.firstOrNull().orEmpty()
         val displayTitle = firstCallInfoRow.ifBlank { notificationTitle }
@@ -219,7 +259,7 @@ internal object CallReportNotifications {
             .setOngoing(false)
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(editIntent)
-            .addAction(R.drawable.ic_chat_note, "Бележка", editIntent)
+            .addAction(noteReplyAction)
             .addAction(0, "История", allNotesIntent)
             .setStyle(inboxStyle)
             .setCustomContentView(customView)
