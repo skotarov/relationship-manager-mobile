@@ -1,17 +1,13 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import androidx.core.content.ContextCompat
 
 class CallLogOverlayAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -27,8 +23,10 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event != null && isSupportedDialerPackage(event.packageName?.toString().orEmpty())) {
             lastEventTexts = buildList {
-                event.text.forEach { value -> value?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(::add) }
-                event.contentDescription?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(::add)
+                event.text.forEach { value ->
+                    value?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(::add)
+                }
+                event.contentDescription?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(::add)
             }.distinct()
         }
         when (event?.eventType) {
@@ -67,7 +65,14 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
             return
         }
 
-        controller.show(settings.position, detectTarget(root))
+        controller.show(
+            settings.position,
+            CallLogOverlayTargetResolver.detect(
+                context = this,
+                titleTexts = collectTitleTexts(root),
+                screenTexts = collectScreenTexts(root),
+            )
+        )
     }
 
     private fun isDefaultDialerWindowInFront(root: AccessibilityNodeInfo?): Boolean {
@@ -78,56 +83,41 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
         if (packageName.isBlank()) return false
         val defaultDialerPackage = (getSystemService(Context.TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage.orEmpty()
         if (defaultDialerPackage.isNotBlank() && packageName == defaultDialerPackage) return true
-        return packageName.contains("dialer", ignoreCase = true) || packageName.contains("contacts", ignoreCase = true)
+        return packageName.contains("dialer", ignoreCase = true) ||
+            packageName.contains("contacts", ignoreCase = true) ||
+            packageName.contains("phone", ignoreCase = true)
     }
 
-    private fun detectTarget(root: AccessibilityNodeInfo?): CallLogOverlayTarget {
-        if (root == null) return CallLogOverlayTarget()
-        val screenTexts = mutableListOf<String>()
-        collectTexts(root, screenTexts, limit = 80)
-        val titleTexts = collectTitleTexts(root)
-        val cleanedTexts = (titleTexts + screenTexts)
-            .map { it.trim() }
-            .filter { isUsableCandidateText(it) }
-            .distinct()
-        val phones = cleanedTexts.mapNotNull(::extractPhoneCandidate).distinct()
-        val title = firstLikelyTitle(cleanedTexts)
-
-        if (phones.size == 1) {
-            return CallLogOverlayTarget(phone = phones.first(), title = title)
-        }
-
-        val phoneFromName = resolvePhoneFromVisibleContactName(cleanedTexts)
-        if (phoneFromName.isNotBlank()) {
-            return CallLogOverlayTarget(phone = phoneFromName, title = title.ifBlank { firstMatchingContactTitle(cleanedTexts) })
-        }
-
-        return CallLogOverlayTarget()
-    }
-
-    private fun collectTitleTexts(root: AccessibilityNodeInfo): List<String> {
+    private fun collectTitleTexts(root: AccessibilityNodeInfo?): List<String> {
+        if (root == null) return emptyList()
         return buildList {
-            addAll(lastEventTexts.filter(::isUsableCandidateText))
+            addAll(lastEventTexts.filter(CallLogOverlayTargetResolver::keepText))
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                root.paneTitle?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(::add)
+                root.paneTitle?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(::add)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 windows.forEach { window ->
                     val windowRootPackage = window.root?.packageName?.toString().orEmpty()
                     if (isSupportedDialerPackage(windowRootPackage)) {
-                        window.title?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(::add)
+                        window.title?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(::add)
                     }
                 }
             }
         }.distinct()
     }
 
+    private fun collectScreenTexts(root: AccessibilityNodeInfo?): List<String> {
+        val texts = mutableListOf<String>()
+        if (root != null) collectTexts(root, texts, limit = 100)
+        return texts.distinct()
+    }
+
     private fun collectTexts(node: AccessibilityNodeInfo, out: MutableList<String>, limit: Int) {
         if (out.size >= limit) return
-        node.text?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(out::add)
-        node.contentDescription?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(out::add)
+        node.text?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(out::add)
+        node.contentDescription?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(out::add)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            node.paneTitle?.toString()?.trim()?.takeIf { isUsableCandidateText(it) }?.let(out::add)
+            node.paneTitle?.toString()?.trim()?.takeIf(CallLogOverlayTargetResolver::keepText)?.let(out::add)
         }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
@@ -135,144 +125,5 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
             child.recycle()
             if (out.size >= limit) return
         }
-    }
-
-    private fun resolvePhoneFromVisibleContactName(texts: List<String>): String {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
-        val candidates = texts
-            .map { it.trim() }
-            .filter { isUsableCandidateText(it) }
-            .filter { it.length in 2..80 }
-            .filter { extractPhoneCandidate(it).isNullOrBlank() }
-            .distinct()
-
-        candidates.forEach { candidate ->
-            val phones = phonesForExactContactName(candidate)
-            if (phones.size == 1) return phones.first()
-        }
-        return ""
-    }
-
-    private fun firstMatchingContactTitle(texts: List<String>): String {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
-        return texts.firstOrNull { text ->
-            val candidate = text.trim()
-            candidate.length in 2..80 &&
-                isUsableCandidateText(candidate) &&
-                extractPhoneCandidate(candidate).isNullOrBlank() &&
-                phonesForExactContactName(candidate).size == 1
-        }.orEmpty()
-    }
-
-    private fun phonesForExactContactName(name: String): List<String> {
-        val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-        )
-        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY} = ? OR ${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ?"
-        val args = arrayOf(name, name)
-        return runCatching {
-            contentResolver.query(uri, projection, selection, args, null)?.use { cursor ->
-                val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                val result = mutableListOf<String>()
-                while (cursor.moveToNext()) {
-                    val phone = cursor.getString(numberIndex).orEmpty().trim()
-                    val normalized = normalizePhone(phone)
-                    if (normalized.isNotBlank()) result.add(normalized)
-                }
-                result.distinctBy { normalizeForCompare(it) }
-            }.orEmpty()
-        }.getOrDefault(emptyList())
-    }
-
-    private fun firstLikelyTitle(texts: List<String>): String {
-        return texts.firstOrNull { text ->
-            val trimmed = text.trim()
-            trimmed.isNotBlank() &&
-                isUsableCandidateText(trimmed) &&
-                extractPhoneCandidate(trimmed).isNullOrBlank()
-        }.orEmpty()
-    }
-
-    private fun extractPhoneCandidate(text: String): String? {
-        val matches = PHONE_PATTERN.findAll(text).map { it.value }.toList()
-        if (matches.size != 1) return null
-        return normalizePhone(matches.first()).takeIf { it.isNotBlank() }
-    }
-
-    private fun normalizePhone(raw: String): String {
-        val digits = raw.filter { it.isDigit() }
-        if (digits.length < 7) return ""
-        return when {
-            raw.trim().startsWith("+") -> "+$digits"
-            digits.startsWith("359") -> "+$digits"
-            else -> digits
-        }
-    }
-
-    private fun normalizeForCompare(phone: String): String {
-        val digits = phone.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
-    }
-
-    private fun isUsableCandidateText(text: String): Boolean {
-        val trimmed = text.trim()
-        if (trimmed.isBlank()) return false
-        if (isUiChromeText(trimmed)) return false
-        if (looksLikeCallMetaText(trimmed)) return false
-        if (looksLikeClassName(trimmed)) return false
-        return true
-    }
-
-    private fun isUiChromeText(text: String): Boolean {
-        val lower = text.lowercase()
-        return lower in setOf(
-            "call log",
-            "calls",
-            "recents",
-            "contacts",
-            "phone",
-            "history",
-            "search",
-            "edit",
-            "add",
-            "block",
-            "delete",
-            "share",
-            "mobile",
-            "home",
-            "work",
-            "message",
-            "video call",
-            "details",
-            "more options",
-            "navigation bar",
-            "status bar",
-            "system navigation",
-            "back",
-            "recent apps",
-            "overview",
-        )
-    }
-
-    private fun looksLikeCallMetaText(text: String): Boolean {
-        val lower = text.lowercase()
-        if (lower.contains("ago") || lower.contains("today") || lower.contains("yesterday")) return true
-        if (lower.contains("преди") || lower.contains("днес") || lower.contains("вчера")) return true
-        if (lower.contains("incoming") || lower.contains("outgoing") || lower.contains("missed")) return true
-        if (lower.contains("входящ") || lower.contains("изходящ") || lower.contains("пропуснат")) return true
-        if (TIME_PATTERN.matches(lower)) return true
-        return false
-    }
-
-    private fun looksLikeClassName(text: String): Boolean {
-        return text.contains('.') || text.contains('$') || text.startsWith("android.") || text.startsWith("com.")
-    }
-
-    companion object {
-        private val PHONE_PATTERN = Regex("(?<!\\d)(?:\\+?\\d[\\d\\s().-]{5,}\\d)(?!\\d)")
-        private val TIME_PATTERN = Regex(".*\\b\\d{1,2}:\\d{2}\\b.*")
     }
 }
