@@ -121,7 +121,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
     }
 
     private fun descriptionForTarget(target: CallLogOverlayTarget): String {
-        return if (target.phone.isBlank()) "Call Report call log" else "Call Report contact history"
+        return if (target.phone.isBlank()) "Call Log" else "История"
     }
 
     private inner class DragTouchListener(
