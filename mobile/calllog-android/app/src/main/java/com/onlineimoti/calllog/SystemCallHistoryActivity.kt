@@ -29,6 +29,7 @@ class SystemCallHistoryActivity : Activity() {
     }
 
     private fun openSystemCallHistory(phone: String): Boolean {
+        CallLogOverlaySettings.markExpectedCallLogWindow(this)
         val defaultDialerPackage = getDefaultDialerPackageName()
         val intents = buildList {
             defaultDialerPackage?.let { packageName ->
