@@ -17,10 +17,11 @@ internal class PostCallNavigationActions(
         handler.removeCallbacksAndMessages(null)
         removeOverlay()
         service.startActivity(
-            Intent(service, ContactNotesActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phoneValue)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty().ifBlank { title().ifBlank { phoneValue } })
+            ExternalLaunchNavigation.apply(
+                Intent(service, ContactNotesActivity::class.java)
+                    .putExtra(ContactNotesActivity.EXTRA_PHONE, phoneValue)
+                    .putExtra(ContactNotesActivity.EXTRA_TITLE, ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty().ifBlank { title().ifBlank { phoneValue } })
+            )
         )
         stopOverlay()
     }
