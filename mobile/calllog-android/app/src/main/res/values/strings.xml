@@ -49,6 +49,7 @@
     <string name="call_log_overlay_position_top_start">Top left</string>
     <string name="call_log_overlay_position_bottom_end">Bottom right</string>
     <string name="call_log_overlay_position_bottom_start">Bottom left</string>
+    <string name="call_log_overlay_accessibility_label">Call Report button over Call Log</string>
     <string name="call_log_overlay_accessibility_description">Shows a small Call Report button over the phone call log only while that window is open.</string>
     <string name="notify_unknown_contacts">Unknown numbers</string>
     <string name="notify_known_contacts">Known contacts</string>
