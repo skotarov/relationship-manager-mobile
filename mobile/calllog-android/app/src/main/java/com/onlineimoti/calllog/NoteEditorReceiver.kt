@@ -31,14 +31,15 @@ class NoteEditorReceiver : BroadcastReceiver() {
             )
         } else {
             context.startActivity(
-                Intent(context, ContactNoteEditActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+                ExternalLaunchNavigation.apply(
+                    Intent(context, ContactNoteEditActivity::class.java)
+                        .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
+                        .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                        .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                        .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                        .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
+                        .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+                )
             )
         }
     }
