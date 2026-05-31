@@ -41,6 +41,15 @@
     <string name="popup_contact_filter_title">Which contacts trigger popups</string>
     <string name="home_call_page_size_hint">Calls per page</string>
     <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each next page. Allowed range: 5–100.</string>
+    <string name="call_log_overlay_button_enabled">Show round Call Report button over system call log</string>
+    <string name="call_log_overlay_button_description">Shows only while the default phone call log window opened from this app is visible. Requires Accessibility and Display over other apps.</string>
+    <string name="call_log_overlay_access_button">Open Accessibility settings for this button</string>
+    <string name="call_log_overlay_button_position_title">Button position</string>
+    <string name="call_log_overlay_position_top_end">Top right</string>
+    <string name="call_log_overlay_position_top_start">Top left</string>
+    <string name="call_log_overlay_position_bottom_end">Bottom right</string>
+    <string name="call_log_overlay_position_bottom_start">Bottom left</string>
+    <string name="call_log_overlay_accessibility_description">Shows a small Call Report button over the phone call log only while that window is open.</string>
     <string name="notify_unknown_contacts">Unknown numbers</string>
     <string name="notify_known_contacts">Known contacts</string>
     <string name="contact_groups_hint">Groups for known contacts</string>
