@@ -61,11 +61,16 @@ internal object CallLogOverlayTargetResolver {
         val screenBlob = screenTexts.joinToString(" ").lowercase()
         val allBlob = "$titleBlob $screenBlob"
         val phoneCount = screenTexts.mapNotNull(::extractPhoneCandidate).distinct().size
+        if (hasKeypadHints(allBlob)) return ScreenKind.GENERAL_LOG
         if (hasContactHistoryHints(allBlob)) return ScreenKind.CONTACT_HISTORY
         if (hasContactDetailHints(allBlob)) return ScreenKind.CONTACT_DETAIL
         if (hasGeneralLogHints(allBlob)) return ScreenKind.GENERAL_LOG
         if (phoneCount >= 2 && titleTexts.none { extractPhoneCandidate(it).orEmpty().isNotBlank() }) return ScreenKind.GENERAL_LOG
         return ScreenKind.UNKNOWN
+    }
+
+    private fun hasKeypadHints(blob: String): Boolean {
+        return listOf("keypad", "dial pad", "dialpad", "showing default suggestions", "default suggestions", "suggestions", "цифри", "клавиатура").any { blob.contains(it) }
     }
 
     private fun hasGeneralLogHints(blob: String): Boolean {
@@ -170,7 +175,7 @@ internal object CallLogOverlayTargetResolver {
         val lower = text.trim().lowercase()
         if (lower.isBlank()) return false
         if (lower == "navigation bar" || lower == "status bar") return false
-        return hasGeneralLogHints(lower) || hasContactDetailHints(lower) || hasContactHistoryHints(lower)
+        return hasKeypadHints(lower) || hasGeneralLogHints(lower) || hasContactDetailHints(lower) || hasContactHistoryHints(lower)
     }
 
     private fun isUiText(text: String): Boolean {
