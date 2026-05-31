@@ -58,14 +58,12 @@ class HomeActivity : AppCompatActivity() {
     private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
-
     private val noteSavedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             HomeCallPageLoader.clearSearchCache()
             renderCalls()
         }
     }
-
     private val noteRefreshRunnable = object : Runnable {
         override fun run() {
             if (System.currentTimeMillis() > noteRefreshUntilMs) return
@@ -73,7 +71,6 @@ class HomeActivity : AppCompatActivity() {
             handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
         }
     }
-
     private val searchRunnable = Runnable {
         activeSearchQuery = binding.searchInput.text?.toString().orEmpty()
         pageIndex = 0
@@ -279,7 +276,6 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize
-
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -288,7 +284,6 @@ class HomeActivity : AppCompatActivity() {
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
     }
-
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
