@@ -85,6 +85,7 @@ class HomeActivity : AppCompatActivity() {
         updateSearchButtonIcon()
 
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
+        binding.defaultCallLogButton.setOnClickListener { openDefaultCallLog() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
         binding.clearSearchButton.setOnClickListener { clearSearch() }
@@ -236,6 +237,13 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = ""
         pageIndex = 0
         renderCalls()
+    }
+
+    private fun openDefaultCallLog() {
+        startActivity(
+            Intent(this, SystemCallHistoryActivity::class.java)
+                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL)
+        )
     }
 
     private fun toggleSearchRow() {
