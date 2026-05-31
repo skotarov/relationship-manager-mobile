@@ -89,7 +89,7 @@ class CallStateReceiver : BroadcastReceiver() {
                         context = context,
                         result = LookupResult(
                             title = title,
-                            subtitle = "Локален режим — без сървърни данни",
+                            subtitle = number,
                             lines = emptyList(),
                             openFormUrl = "",
                         ),
@@ -129,7 +129,7 @@ class CallStateReceiver : BroadcastReceiver() {
                     context = context,
                     result = LookupResult(
                         title = number,
-                        subtitle = "Локален режим",
+                        subtitle = number,
                         lines = emptyList(),
                         openFormUrl = "",
                     ),
@@ -218,10 +218,11 @@ class CallStateReceiver : BroadcastReceiver() {
     private fun openFullscreenHistory(context: Context, number: String) {
         val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
         context.startActivity(
-            Intent(context, ContactNotesActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, number)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "История" } })
+            ExternalLaunchNavigation.apply(
+                Intent(context, ContactNotesActivity::class.java)
+                    .putExtra(ContactNotesActivity.EXTRA_PHONE, number)
+                    .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "История" } })
+            )
         )
     }
 
@@ -229,14 +230,15 @@ class CallStateReceiver : BroadcastReceiver() {
         val latestCall = PhoneCallReader.callsForPhone(context, number, limit = 1).firstOrNull()
         val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
         context.startActivity(
-            Intent(context, ContactNoteEditActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "Бележка от разговора" } })
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+            ExternalLaunchNavigation.apply(
+                Intent(context, ContactNoteEditActivity::class.java)
+                    .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
+                    .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                    .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "Бележка от разговора" } })
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+            )
         )
     }
 
