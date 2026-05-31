@@ -4,6 +4,7 @@ import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
@@ -16,6 +17,7 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private val controller by lazy { CallLogOverlayButtonController(this) }
     private val refreshRunnable = Runnable { refreshOverlay() }
+    private var lastEventTexts: List<String> = emptyList()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -23,6 +25,13 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event != null) {
+            lastEventTexts = buildList {
+                event.text.forEach { value -> value?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add) }
+                event.contentDescription?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+                event.className?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+            }.distinct()
+        }
         when (event?.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOWS_CHANGED,
@@ -72,9 +81,13 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
 
     private fun detectTarget(root: AccessibilityNodeInfo?): CallLogOverlayTarget {
         if (root == null) return CallLogOverlayTarget()
-        val texts = mutableListOf<String>()
-        collectTexts(root, texts, limit = 80)
-        val cleanedTexts = texts.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        val screenTexts = mutableListOf<String>()
+        collectTexts(root, screenTexts, limit = 80)
+        val titleTexts = collectTitleTexts(root)
+        val cleanedTexts = (titleTexts + screenTexts)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
         val phones = cleanedTexts.mapNotNull(::extractPhoneCandidate).distinct()
         val title = firstLikelyTitle(cleanedTexts)
 
@@ -90,10 +103,27 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
         return CallLogOverlayTarget()
     }
 
+    private fun collectTitleTexts(root: AccessibilityNodeInfo): List<String> {
+        return buildList {
+            addAll(lastEventTexts)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                root.paneTitle?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                windows.forEach { window ->
+                    window.title?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+                }
+            }
+        }.distinct()
+    }
+
     private fun collectTexts(node: AccessibilityNodeInfo, out: MutableList<String>, limit: Int) {
         if (out.size >= limit) return
         node.text?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
         node.contentDescription?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            node.paneTitle?.toString()?.trim()?.takeIf { it.isNotBlank() }?.let(out::add)
+        }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             collectTexts(child, out, limit)
@@ -110,6 +140,7 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
             .filter { extractPhoneCandidate(it).isNullOrBlank() }
             .filterNot(::isUiChromeText)
             .filterNot(::looksLikeCallMetaText)
+            .filterNot(::looksLikeClassName)
             .distinct()
 
         candidates.forEach { candidate ->
@@ -127,6 +158,7 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
                 extractPhoneCandidate(candidate).isNullOrBlank() &&
                 !isUiChromeText(candidate) &&
                 !looksLikeCallMetaText(candidate) &&
+                !looksLikeClassName(candidate) &&
                 phonesForExactContactName(candidate).size == 1
         }.orEmpty()
     }
@@ -160,7 +192,8 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
             trimmed.isNotBlank() &&
                 extractPhoneCandidate(trimmed).isNullOrBlank() &&
                 !isUiChromeText(trimmed) &&
-                !looksLikeCallMetaText(trimmed)
+                !looksLikeCallMetaText(trimmed) &&
+                !looksLikeClassName(trimmed)
         }.orEmpty()
     }
 
@@ -218,6 +251,10 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
         if (lower.contains("входящ") || lower.contains("изходящ") || lower.contains("пропуснат")) return true
         if (TIME_PATTERN.matches(lower)) return true
         return false
+    }
+
+    private fun looksLikeClassName(text: String): Boolean {
+        return text.contains('.') || text.contains('$') || text.startsWith("android.") || text.startsWith("com.")
     }
 
     companion object {
