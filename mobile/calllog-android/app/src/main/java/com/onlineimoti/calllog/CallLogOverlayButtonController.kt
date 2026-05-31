@@ -13,12 +13,19 @@ import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
 
+internal data class CallLogOverlayTarget(
+    val phone: String = "",
+    val title: String = "",
+)
+
 internal class CallLogOverlayButtonController(private val context: Context) {
     private var windowManager: WindowManager? = null
     private var buttonView: View? = null
     private var shownPosition: String = ""
+    private var currentTarget: CallLogOverlayTarget = CallLogOverlayTarget()
 
-    fun show(position: String) {
+    fun show(position: String, target: CallLogOverlayTarget = CallLogOverlayTarget()) {
+        currentTarget = target
         if (!Settings.canDrawOverlays(context)) {
             hide()
             return
@@ -44,7 +51,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
             setPadding(dp(8), dp(8), dp(8), dp(8))
             elevation = dp(8).toFloat()
             translationZ = dp(2).toFloat()
-            setOnClickListener { openAppHome() }
+            setOnClickListener { openTarget() }
         }
 
         val params = WindowManager.LayoutParams(
@@ -69,9 +76,20 @@ internal class CallLogOverlayButtonController(private val context: Context) {
         runCatching { windowManager?.removeView(view) }
         buttonView = null
         shownPosition = ""
+        currentTarget = CallLogOverlayTarget()
     }
 
-    private fun openAppHome() {
+    private fun openTarget() {
+        val target = currentTarget
+        if (target.phone.isNotBlank()) {
+            context.startActivity(
+                Intent(context, ContactNotesActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(ContactNotesActivity.EXTRA_PHONE, target.phone)
+                    .putExtra(ContactNotesActivity.EXTRA_TITLE, target.title.ifBlank { target.phone })
+            )
+            return
+        }
         context.startActivity(
             Intent(context, HomeActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
