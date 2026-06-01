@@ -77,38 +77,15 @@
                 app:strokeColor="@color/calllog_border"
                 app:strokeWidth="1dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_language_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_application_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/settings_language_section" android:textColor="@color/calllog_text" android:textSize="15sp" android:textStyle="bold" />
                     <include android:id="@+id/languageSettingsSection" layout="@layout/section_language_settings" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/calllog_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/calllog_border"
-                app:strokeWidth="1dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_storage_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/settings_storage_section" android:textColor="@color/calllog_text" android:textSize="15sp" android:textStyle="bold" />
                     <include android:id="@+id/storageSettingsSection" layout="@layout/section_storage_settings" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/calllog_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/calllog_border"
-                app:strokeWidth="1dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_call_log_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
-                    <include android:id="@+id/callLogSettingsSection" layout="@layout/section_call_log_settings" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/settings_crm_section" android:textColor="@color/calllog_text" android:textSize="15sp" android:textStyle="bold" />
+                    <include android:id="@+id/contactLinkSection" layout="@layout/section_contact_link" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/settings_permissions_section" android:textColor="@color/calllog_text" android:textSize="15sp" android:textStyle="bold" />
+                    <include android:id="@+id/permissionsSection" layout="@layout/section_permissions" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -138,23 +115,8 @@
                 app:strokeColor="@color/calllog_border"
                 app:strokeWidth="1dp">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_crm_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
-                    <include android:id="@+id/contactLinkSection" layout="@layout/section_contact_link" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                app:cardBackgroundColor="@color/calllog_surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/calllog_border"
-                app:strokeWidth="1dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_permissions_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
-                    <include android:id="@+id/permissionsSection" layout="@layout/section_permissions" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/settings_call_log_section" android:textColor="@color/calllog_text" android:textSize="18sp" android:textStyle="bold" />
+                    <include android:id="@+id/callLogSettingsSection" layout="@layout/section_call_log_settings" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
