@@ -36,7 +36,7 @@ internal object CallLogOverlayTargetResolver {
         }
 
         val phones = allTexts.mapNotNull(::extractPhoneCandidate).distinct()
-        return if (phones.size == 1) {
+        return if (phones.size == 1 && screenKind != ScreenKind.UNKNOWN) {
             CallLogOverlayTarget(phone = phones.first(), title = firstLikelyTitle(allTexts))
         } else {
             CallLogOverlayTarget()
@@ -103,8 +103,27 @@ internal object CallLogOverlayTargetResolver {
     }
 
     private fun hasContactDetailHints(blob: String): Boolean {
-        val actionCount = listOf("call", "message", "video", "email", "обаждане", "съобщение", "имейл").count { blob.contains(it) }
-        val fieldHint = listOf("other", "default", "address", "recent activity", "source: contact", "адрес", "скорошна активност").any { blob.contains(it) }
+        val actionCount = listOf("call", "message", "video", "email", "location sharing", "обаждане", "съобщение", "имейл", "местоположение").count { blob.contains(it) }
+        val fieldHint = listOf(
+            "mobile",
+            "mobile default",
+            "mobile · default",
+            "other",
+            "other default",
+            "other · default",
+            "default",
+            "address",
+            "recent activity",
+            "source: contact",
+            "emergency contact",
+            "family group",
+            "near ",
+            "can see your location",
+            "адрес",
+            "скорошна активност",
+            "спешен контакт",
+            "семейна група",
+        ).any { blob.contains(it) }
         return actionCount >= 2 || fieldHint
     }
 
