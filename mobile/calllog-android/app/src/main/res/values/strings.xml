@@ -19,6 +19,7 @@
     <string name="settings_description">Android wrapper settings for call popups, local history and server WebView form.</string>
     <string name="settings_basic_section">☰ Basic settings</string>
     <string name="settings_archive_section">🗄 Archive</string>
+    <string name="settings_application_section">⚙ Application</string>
     <string name="settings_language_section">🌐 Language</string>
     <string name="settings_storage_section">💾 Notes storage</string>
     <string name="settings_call_log_section">📞 Call Log</string>
