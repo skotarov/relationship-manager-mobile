@@ -23,7 +23,7 @@
     <string name="settings_call_log_section">📞 Call Log</string>
     <string name="settings_call_log_overlay_section">☎ Overlay бутон върху Call Log</string>
     <string name="settings_popup_section">💬 Popup поведение</string>
-    <string name="settings_crm_section">👤 CRM / Контакти</string>
+    <string name="settings_crm_section">👤 Внедряване с контакти</string>
     <string name="settings_permissions_section">🔐 Разрешения</string>
     <string name="settings_server_section">🌐 Server настройки</string>
     <string name="settings_debug_section">🧪 Debug / Тестове</string>
