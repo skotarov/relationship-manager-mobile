@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <CheckBox
+        android:id="@+id/useCallLogOverlayButtonCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:checked="true"
+        android:text="@string/call_log_overlay_button_enabled" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/call_log_overlay_button_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <CheckBox
+        android:id="@+id/callLogOverlayDebugCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/call_log_overlay_debug_enabled" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/call_log_overlay_debug_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/openCallLogOverlayAccessButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/call_log_overlay_access_button" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/call_log_overlay_button_position_title"
+        android:textColor="@color/calllog_text"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/callLogOverlayButtonPositionGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/callLogOverlayPositionTopEnd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/call_log_overlay_position_top_end" />
+
+        <RadioButton
+            android:id="@+id/callLogOverlayPositionTopStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/call_log_overlay_position_top_start" />
+
+        <RadioButton
+            android:id="@+id/callLogOverlayPositionBottomEnd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/call_log_overlay_position_bottom_end" />
+
+        <RadioButton
+            android:id="@+id/callLogOverlayPositionBottomStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/call_log_overlay_position_bottom_start" />
+    </RadioGroup>
+</LinearLayout>
