@@ -21,6 +21,7 @@
     <string name="settings_language_section">🌐 Език</string>
     <string name="settings_storage_section">💾 Съхранение на бележките</string>
     <string name="settings_call_log_section">📞 Call Log</string>
+    <string name="settings_call_log_overlay_section">☎ Overlay бутон върху Call Log</string>
     <string name="settings_popup_section">💬 Popup поведение</string>
     <string name="settings_crm_section">👤 CRM / Контакти</string>
     <string name="settings_permissions_section">🔐 Разрешения</string>
@@ -44,6 +45,8 @@
     <string name="home_call_page_size_description">Колко реда от телефонния call log да се показват на първата и всяка следваща страница. Позволено: 5–100.</string>
     <string name="call_log_overlay_button_enabled">Показвай кръгъл Call Report бутон върху системния call log</string>
     <string name="call_log_overlay_button_description">Показва се само докато е отворен default телефонният call log от това приложение. Изисква Accessibility и Display over other apps.</string>
+    <string name="call_log_overlay_debug_enabled">Show overlay detection debug</string>
+    <string name="call_log_overlay_debug_description">Когато е включено, под плаващия бутон се показва малък debug текст с разпознатия екран и видимите текстове.</string>
     <string name="call_log_overlay_access_button">Отвори Accessibility настройките за бутона</string>
     <string name="call_log_overlay_button_position_title">Позиция на бутона</string>
     <string name="call_log_overlay_position_top_end">Горе вдясно</string>
