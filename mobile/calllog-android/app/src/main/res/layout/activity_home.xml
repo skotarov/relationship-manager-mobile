@@ -33,18 +33,16 @@
             android:scaleType="center"
             android:src="@drawable/ic_search" />
 
-        <com.google.android.material.button.MaterialButton
+        <ImageButton
             android:id="@+id/defaultCallLogButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="44dp"
-            android:layout_height="40dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="4dp"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/open_default_call_log"
-            android:minHeight="40dp"
-            android:minWidth="0dp"
-            android:paddingStart="0dp"
-            android:paddingEnd="0dp"
-            android:text="@string/open_default_call_log_short" />
+            android:padding="6dp"
+            android:scaleType="center"
+            android:src="@drawable/ic_system_call_log" />
 
         <ImageButton
             android:id="@+id/settingsButton"
