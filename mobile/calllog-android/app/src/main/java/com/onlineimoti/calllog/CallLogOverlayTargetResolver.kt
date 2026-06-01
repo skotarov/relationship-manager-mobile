@@ -56,9 +56,9 @@ internal object CallLogOverlayTargetResolver {
         val title = firstLikelyTitle(cleanedTexts)
         if (phones.size == 1) return CallLogOverlayTarget(phone = phones.first(), title = title)
         if (allowNameLookup) {
-            val phoneFromName = resolvePhoneFromVisibleContactName(context, cleanedTexts)
-            if (phoneFromName.isNotBlank()) {
-                return CallLogOverlayTarget(phone = phoneFromName, title = title.ifBlank { firstMatchingContactTitle(context, cleanedTexts) })
+            val resolved = resolvePhoneAndTitleFromVisibleContactName(context, cleanedTexts)
+            if (resolved.phone.isNotBlank()) {
+                return CallLogOverlayTarget(phone = resolved.phone, title = title.ifBlank { resolved.title })
             }
         }
         return CallLogOverlayTarget()
@@ -86,7 +86,6 @@ internal object CallLogOverlayTargetResolver {
             "suggestions",
             "search contacts",
             "search calls",
-            "favorites",
             "view contacts",
             "recents",
             "recent calls",
@@ -96,14 +95,23 @@ internal object CallLogOverlayTargetResolver {
             "цифри",
             "клавиатура",
             "търси контакти",
-            "любими",
             "последни",
             "пропуснати",
         ).any { blob.contains(it) }
     }
 
     private fun hasContactDetailHints(blob: String): Boolean {
-        val actionCount = listOf("call", "message", "video", "email", "location sharing", "обаждане", "съобщение", "имейл", "местоположение").count { blob.contains(it) }
+        val actionCount = listOf(
+            "call",
+            "message",
+            "video",
+            "email",
+            "location sharing",
+            "обаждане",
+            "съобщение",
+            "имейл",
+            "местоположение",
+        ).count { blob.contains(it) }
         val fieldHint = listOf(
             "mobile",
             "mobile default",
@@ -117,6 +125,10 @@ internal object CallLogOverlayTargetResolver {
             "source: contact",
             "emergency contact",
             "family group",
+            "add to favorites",
+            "remove from favorites",
+            "starred",
+            "unstarred",
             "near ",
             "can see your location",
             "адрес",
@@ -133,54 +145,85 @@ internal object CallLogOverlayTargetResolver {
         return callRow && section
     }
 
-    private fun resolvePhoneFromVisibleContactName(context: Context, texts: List<String>): String {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
+    private fun resolvePhoneAndTitleFromVisibleContactName(context: Context, texts: List<String>): ResolvedContactTarget {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ResolvedContactTarget()
         texts
             .map { it.trim() }
             .filter { isValidContactNameCandidateShape(it) }
+            .filterNot { isScreenHintText(it) }
             .filter { extractPhoneCandidate(it).isNullOrBlank() }
             .distinct()
             .forEach { candidate ->
-                val phones = phonesForExactContactName(context, candidate)
-                if (phones.size == 1) return phones.first()
+                val match = contactMatchForVisibleName(context, candidate)
+                if (match.phone.isNotBlank()) return match
             }
-        return ""
+        return ResolvedContactTarget()
     }
 
-    private fun firstMatchingContactTitle(context: Context, texts: List<String>): String {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
-        return texts.firstOrNull { text ->
-            val candidate = text.trim()
-            isValidContactNameCandidateShape(candidate) && extractPhoneCandidate(candidate).isNullOrBlank() && phonesForExactContactName(context, candidate).size == 1
-        }.orEmpty()
+    private fun contactMatchForVisibleName(context: Context, visibleName: String): ResolvedContactTarget {
+        val exactRows = contactRows(context, exactName = visibleName)
+        val exactMatch = uniquePhoneFromRows(exactRows)
+        if (exactMatch.phone.isNotBlank() || exactRows.isNotEmpty()) return exactMatch
+
+        val normalizedVisibleName = normalizeNameForCompare(visibleName)
+        if (normalizedVisibleName.length < 3) return ResolvedContactTarget()
+        val visibleTokens = normalizedVisibleName.split(' ').filter { it.length >= 2 }
+        val fuzzyRows = contactRows(context, exactName = null).filter { row ->
+            val contactName = normalizeNameForCompare(row.displayName)
+            contactName.isNotBlank() && (
+                contactName == normalizedVisibleName ||
+                    contactName.contains(normalizedVisibleName) ||
+                    normalizedVisibleName.contains(contactName) ||
+                    (visibleTokens.size >= 2 && visibleTokens.all { token -> contactName.contains(token) }) ||
+                    (visibleTokens.size == 1 && visibleTokens.first().length >= 4 && contactName.split(' ').any { it.startsWith(visibleTokens.first()) })
+                )
+        }
+        return uniquePhoneFromRows(fuzzyRows)
     }
 
-    private fun phonesForExactContactName(context: Context, name: String): List<String> {
+    private fun contactRows(context: Context, exactName: String?): List<ContactPhoneRow> {
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
         val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.NUMBER,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         )
-        val selection = "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY} = ? OR ${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ?"
-        val args = arrayOf(name, name)
+        val selection = exactName?.let {
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY} = ? OR ${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} = ?"
+        }
+        val args = exactName?.let { arrayOf(it, it) }
         return runCatching {
             context.contentResolver.query(uri, projection, selection, args, null)?.use { cursor ->
+                val idIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
                 val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                val result = mutableListOf<String>()
-                while (cursor.moveToNext()) {
-                    val normalized = normalizePhone(cursor.getString(numberIndex).orEmpty())
-                    if (normalized.isNotBlank()) result.add(normalized)
+                val primaryNameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME_PRIMARY)
+                val displayNameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idIndex)
+                        val displayName = cursor.getString(primaryNameIndex).orEmpty().ifBlank { cursor.getString(displayNameIndex).orEmpty() }.trim()
+                        val phone = normalizePhone(cursor.getString(numberIndex).orEmpty())
+                        if (displayName.isNotBlank() && phone.isNotBlank()) add(ContactPhoneRow(id, displayName, phone))
+                    }
                 }
-                result.distinctBy { normalizeForCompare(it) }
             }.orEmpty()
         }.getOrDefault(emptyList())
+    }
+
+    private fun uniquePhoneFromRows(rows: List<ContactPhoneRow>): ResolvedContactTarget {
+        val byContact = rows.groupBy { it.contactId }
+        if (byContact.size != 1) return ResolvedContactTarget()
+        val contactRows = byContact.values.first()
+        val phones = contactRows.map { it.phone }.distinctBy { normalizeForCompare(it) }
+        if (phones.size != 1) return ResolvedContactTarget()
+        return ResolvedContactTarget(phone = phones.first(), title = contactRows.firstOrNull()?.displayName.orEmpty())
     }
 
     private fun firstLikelyTitle(texts: List<String>): String {
         return texts.firstOrNull { text ->
             val trimmed = text.trim()
-            isValidContactNameCandidateShape(trimmed) && extractPhoneCandidate(trimmed).isNullOrBlank()
+            isValidContactNameCandidateShape(trimmed) && !isScreenHintText(trimmed) && extractPhoneCandidate(trimmed).isNullOrBlank()
         }.orEmpty()
     }
 
@@ -203,6 +246,14 @@ internal object CallLogOverlayTargetResolver {
     private fun normalizeForCompare(phone: String): String {
         val digits = phone.filter { it.isDigit() }
         return if (digits.length > 9) digits.takeLast(9) else digits
+    }
+
+    private fun normalizeNameForCompare(name: String): String {
+        return name
+            .lowercase()
+            .replace(Regex("[^\\p{L}\\p{Nd}]+"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
     }
 
     private fun isValidPhoneText(text: String): Boolean {
@@ -248,6 +299,17 @@ internal object CallLogOverlayTargetResolver {
     private fun looksLikeClassName(text: String): Boolean {
         return text.contains('.') || text.contains('$') || text.startsWith("android.") || text.startsWith("com.")
     }
+
+    private data class ContactPhoneRow(
+        val contactId: Long,
+        val displayName: String,
+        val phone: String,
+    )
+
+    private data class ResolvedContactTarget(
+        val phone: String = "",
+        val title: String = "",
+    )
 
     private enum class ScreenKind { GENERAL_LOG, CONTACT_DETAIL, CONTACT_HISTORY, UNKNOWN }
 
