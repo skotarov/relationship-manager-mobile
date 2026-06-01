@@ -17,7 +17,7 @@ class ContactNotesHeaderUi(
         title: String,
         phone: String,
         contactExists: Boolean,
-        openAllCallsLog: () -> Unit,
+        goBack: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
         openDefaultContact: () -> Unit,
@@ -33,7 +33,7 @@ class ContactNotesHeaderUi(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, dp(12))
-            addView(iconButton(R.drawable.ic_arrow_back, "Към лога", openAllCallsLog).apply {
+            addView(iconButton(R.drawable.ic_arrow_back, "Назад", goBack).apply {
                 layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
             })
             addView(LinearLayout(activity).apply {
