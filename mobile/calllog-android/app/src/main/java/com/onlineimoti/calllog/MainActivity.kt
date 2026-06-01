@@ -168,6 +168,7 @@ class MainActivity : AppCompatActivity() {
             saveCallLogOverlayButtonSettings()
             if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
         }
+        callLog.callLogOverlayDebugCheckBox.setOnCheckedChangeListener { _, _ -> saveCallLogOverlayButtonSettings() }
         callLog.callLogOverlayButtonPositionGroup.setOnCheckedChangeListener { _, _ -> saveCallLogOverlayButtonSettings() }
 
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
@@ -204,6 +205,7 @@ class MainActivity : AppCompatActivity() {
         val callLog = binding.callLogSettingsSection
         val settings = CallLogOverlaySettings.load(this)
         callLog.useCallLogOverlayButtonCheckBox.isChecked = settings.enabled
+        callLog.callLogOverlayDebugCheckBox.isChecked = settings.debugEnabled
         when (settings.position) {
             CallLogOverlaySettings.POSITION_TOP_START -> callLog.callLogOverlayPositionTopStart.isChecked = true
             CallLogOverlaySettings.POSITION_BOTTOM_END -> callLog.callLogOverlayPositionBottomEnd.isChecked = true
@@ -226,6 +228,7 @@ class MainActivity : AppCompatActivity() {
             CallLogOverlayButtonSettings(
                 enabled = callLog.useCallLogOverlayButtonCheckBox.isChecked,
                 position = position,
+                debugEnabled = callLog.callLogOverlayDebugCheckBox.isChecked,
             )
         )
     }
@@ -261,84 +264,25 @@ class MainActivity : AppCompatActivity() {
     private fun applyLanguageIfChanged(language: String) {
         if (language == currentLanguage) return
         currentLanguage = language
-        AppLanguageManager.applyLanguage(language)
+        AppLanguageManager.applyFromConfig(this)
         recreate()
     }
 
-    private fun disablePublicNotesFolder() {
-        suppressAutoSave = true
-        binding.storageSettingsSection.usePublicNotesFolderCheckBox.isChecked = false
-        suppressAutoSave = false
-        saveConfig()
-        refreshPermissionSummary()
-    }
-
-    private fun disableOverlayPopups() {
-        suppressAutoSave = true
-        binding.popupSettingsSection.useOverlayPopupsCheckBox.isChecked = false
-        binding.popupSettingsSection.overlayPopupOptionsGroup.visibility = View.GONE
-        suppressAutoSave = false
-        saveConfig()
-        refreshPermissionSummary()
-    }
-
-    private fun disableCallScreening() {
-        suppressAutoSave = true
-        binding.permissionsSection.useCallScreeningCheckBox.isChecked = false
-        suppressAutoSave = false
-        saveConfig()
-        refreshPermissionSummary()
-    }
-
-    private fun directionValue(): String = if (binding.testsSection.directionIn.isChecked) "in" else "out"
-    private fun phoneValue(): String = binding.testsSection.phoneInput.text?.toString()?.trim().orEmpty()
-
-    private fun remoteReady(config: AppConfig): Boolean {
-        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
-    }
-
-    private fun testStartPopup() {
-        val config = ConfigStore.load(this)
-        MainTestPopupActions.testStartPopup(
-            activity = this,
-            binding = binding,
-            executor = executor,
-            config = config,
-            phone = phoneValue(),
-            direction = directionValue(),
-            remoteReady = remoteReady(config),
-            setStatus = ::setStatus,
-        )
-    }
-
-    private fun testEndPopup() {
-        val config = ConfigStore.load(this)
-        val phone = phoneValue()
-        MainTestPopupActions.testEndPopup(
-            activity = this,
-            binding = binding,
-            executor = executor,
-            phone = phone,
-            direction = directionValue(),
-            formUrl = if (remoteReady(config)) MainRemoteActions.buildFormUrl(config, phone, directionValue()) else "",
-            setStatus = ::setStatus,
-        )
-    }
-
     private fun setStatus(message: String) {
-        binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
     }
 
-    private fun renderBuildVersion() {
-        binding.buildVersionText.text = "Версия: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) • ${BuildConfig.BUILD_TIME}"
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun refreshPermissionSummary() {
-        MainPermissionSummary.refresh(this, binding)
-    }
-
-    private fun hasPermission(permission: String): Boolean = ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
+    private fun canUsePublicNotesFolder(): Boolean = MainStorageSettings.canUsePublicNotesFolder(this)
+    private fun disablePublicNotesFolder() = MainStorageSettings.disablePublicNotesFolder(this)
+    private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
+    private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
+    private fun refreshPermissionSummary() = MainPermissionSummary.refresh(this, binding)
+    private fun renderBuildVersion() = MainBuildVersion.render(this, binding)
+    private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
+    private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
