@@ -46,16 +46,15 @@
             android:paddingEnd="0dp"
             android:text="@string/open_default_call_log_short" />
 
-        <com.google.android.material.button.MaterialButton
+        <ImageButton
             android:id="@+id/settingsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minHeight="40dp"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="@string/home_settings_button" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/home_settings_button"
+            android:padding="6dp"
+            android:scaleType="center"
+            android:src="@drawable/ic_settings_gear" />
     </LinearLayout>
 
     <LinearLayout
