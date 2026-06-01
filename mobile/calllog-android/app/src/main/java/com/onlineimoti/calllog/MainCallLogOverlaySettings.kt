@@ -9,15 +9,15 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object MainCallLogOverlaySettings {
     fun hydrate(activity: AppCompatActivity, binding: ActivityMainBinding) {
-        val callLog = binding.callLogSettingsSection
+        val overlay = binding.callLogOverlaySettingsSection
         val settings = CallLogOverlaySettings.load(activity)
-        callLog.useCallLogOverlayButtonCheckBox.isChecked = settings.enabled
-        callLog.callLogOverlayDebugCheckBox.isChecked = settings.debugEnabled
+        overlay.useCallLogOverlayButtonCheckBox.isChecked = settings.enabled
+        overlay.callLogOverlayDebugCheckBox.isChecked = settings.debugEnabled
         when (settings.position) {
-            CallLogOverlaySettings.POSITION_TOP_START -> callLog.callLogOverlayPositionTopStart.isChecked = true
-            CallLogOverlaySettings.POSITION_BOTTOM_END -> callLog.callLogOverlayPositionBottomEnd.isChecked = true
-            CallLogOverlaySettings.POSITION_BOTTOM_START -> callLog.callLogOverlayPositionBottomStart.isChecked = true
-            else -> callLog.callLogOverlayPositionTopEnd.isChecked = true
+            CallLogOverlaySettings.POSITION_TOP_START -> overlay.callLogOverlayPositionTopStart.isChecked = true
+            CallLogOverlaySettings.POSITION_BOTTOM_END -> overlay.callLogOverlayPositionBottomEnd.isChecked = true
+            CallLogOverlaySettings.POSITION_BOTTOM_START -> overlay.callLogOverlayPositionBottomStart.isChecked = true
+            else -> overlay.callLogOverlayPositionTopEnd.isChecked = true
         }
     }
 
@@ -28,34 +28,34 @@ internal object MainCallLogOverlaySettings {
         requestOverlayPermissionIfNeeded: () -> Unit,
         setStatus: (String) -> Unit,
     ) {
-        val callLog = binding.callLogSettingsSection
-        callLog.openCallLogOverlayAccessButton.setOnClickListener {
+        val overlay = binding.callLogOverlaySettingsSection
+        overlay.openCallLogOverlayAccessButton.setOnClickListener {
             activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             setStatus("В Accessibility включи Relation Management, за да се показва бутонът върху системния call log.")
         }
-        callLog.useCallLogOverlayButtonCheckBox.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+        overlay.useCallLogOverlayButtonCheckBox.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
             saveOverlaySettings()
             if (isChecked) requestOverlayPermissionIfNeeded()
         }
-        callLog.callLogOverlayDebugCheckBox.setOnCheckedChangeListener { _: CompoundButton, _: Boolean -> saveOverlaySettings() }
-        callLog.callLogOverlayButtonPositionGroup.setOnCheckedChangeListener { _: RadioGroup, _: Int -> saveOverlaySettings() }
+        overlay.callLogOverlayDebugCheckBox.setOnCheckedChangeListener { _: CompoundButton, _: Boolean -> saveOverlaySettings() }
+        overlay.callLogOverlayButtonPositionGroup.setOnCheckedChangeListener { _: RadioGroup, _: Int -> saveOverlaySettings() }
     }
 
     fun save(activity: AppCompatActivity, binding: ActivityMainBinding, suppressAutoSave: Boolean) {
         if (suppressAutoSave) return
-        val callLog = binding.callLogSettingsSection
+        val overlay = binding.callLogOverlaySettingsSection
         val position = when {
-            callLog.callLogOverlayPositionTopStart.isChecked -> CallLogOverlaySettings.POSITION_TOP_START
-            callLog.callLogOverlayPositionBottomEnd.isChecked -> CallLogOverlaySettings.POSITION_BOTTOM_END
-            callLog.callLogOverlayPositionBottomStart.isChecked -> CallLogOverlaySettings.POSITION_BOTTOM_START
+            overlay.callLogOverlayPositionTopStart.isChecked -> CallLogOverlaySettings.POSITION_TOP_START
+            overlay.callLogOverlayPositionBottomEnd.isChecked -> CallLogOverlaySettings.POSITION_BOTTOM_END
+            overlay.callLogOverlayPositionBottomStart.isChecked -> CallLogOverlaySettings.POSITION_BOTTOM_START
             else -> CallLogOverlaySettings.POSITION_TOP_END
         }
         CallLogOverlaySettings.save(
             activity,
             CallLogOverlayButtonSettings(
-                enabled = callLog.useCallLogOverlayButtonCheckBox.isChecked,
+                enabled = overlay.useCallLogOverlayButtonCheckBox.isChecked,
                 position = position,
-                debugEnabled = callLog.callLogOverlayDebugCheckBox.isChecked,
+                debugEnabled = overlay.callLogOverlayDebugCheckBox.isChecked,
             )
         )
     }
