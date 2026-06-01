@@ -23,6 +23,7 @@
     <string name="settings_language_section">🌐 Language</string>
     <string name="settings_storage_section">💾 Notes storage</string>
     <string name="settings_call_log_section">📞 Call Log</string>
+    <string name="settings_call_log_overlay_section">☎ Call Log overlay button</string>
     <string name="settings_popup_section">💬 Popup behavior</string>
     <string name="settings_crm_section">👤 CRM / Contacts</string>
     <string name="settings_permissions_section">🔐 Permissions</string>
