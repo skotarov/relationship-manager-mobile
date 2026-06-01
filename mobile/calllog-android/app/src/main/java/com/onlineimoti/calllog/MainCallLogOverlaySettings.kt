@@ -2,6 +2,8 @@ package com.onlineimoti.calllog
 
 import android.content.Intent
 import android.provider.Settings
+import android.widget.CompoundButton
+import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
@@ -31,12 +33,12 @@ internal object MainCallLogOverlaySettings {
             activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             setStatus("В Accessibility включи Relation Management, за да се показва бутонът върху системния call log.")
         }
-        callLog.useCallLogOverlayButtonCheckBox.setOnCheckedChangeListener { _, isChecked ->
+        callLog.useCallLogOverlayButtonCheckBox.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
             saveOverlaySettings()
             if (isChecked) requestOverlayPermissionIfNeeded()
         }
-        callLog.callLogOverlayDebugCheckBox.setOnCheckedChangeListener { _, _ -> saveOverlaySettings() }
-        callLog.callLogOverlayButtonPositionGroup.setOnCheckedChangeListener { _, _ -> saveOverlaySettings() }
+        callLog.callLogOverlayDebugCheckBox.setOnCheckedChangeListener { _: CompoundButton, _: Boolean -> saveOverlaySettings() }
+        callLog.callLogOverlayButtonPositionGroup.setOnCheckedChangeListener { _: RadioGroup, _: Int -> saveOverlaySettings() }
     }
 
     fun save(activity: AppCompatActivity, binding: ActivityMainBinding, suppressAutoSave: Boolean) {
