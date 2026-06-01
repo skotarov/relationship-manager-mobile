@@ -116,7 +116,7 @@ class ContactNotesActivity : Activity() {
             title = titleText,
             phone = phone,
             contactExists = externalActions.hasDefaultContact(phone),
-            openAllCallsLog = externalActions::openAllCallsLog,
+            goBack = ::finish,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
