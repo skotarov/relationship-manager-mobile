@@ -65,14 +65,26 @@ class CallLogOverlayAccessibilityService : AccessibilityService() {
             return
         }
 
-        controller.show(
-            settings.position,
-            CallLogOverlayTargetResolver.detect(
-                context = this,
-                titleTexts = collectTitleTexts(root),
-                screenTexts = collectScreenTexts(root),
-            )
+        val titleTexts = collectTitleTexts(root)
+        val screenTexts = collectScreenTexts(root)
+        val target = CallLogOverlayTargetResolver.detect(
+            context = this,
+            titleTexts = titleTexts,
+            screenTexts = screenTexts,
         )
+
+        controller.show(
+            position = settings.position,
+            target = target,
+            debugText = if (settings.debugEnabled) buildDebugText(target, titleTexts, screenTexts) else "",
+        )
+    }
+
+    private fun buildDebugText(target: CallLogOverlayTarget, titleTexts: List<String>, screenTexts: List<String>): String {
+        val targetLine = if (target.phone.isBlank()) "target: CALL LOG" else "target: ${target.phone}"
+        val titleLine = "title: " + titleTexts.take(4).joinToString(" | ").ifBlank { "-" }
+        val screenLine = "screen: " + screenTexts.take(8).joinToString(" | ").ifBlank { "-" }
+        return listOf(targetLine, titleLine, screenLine).joinToString("\n")
     }
 
     private fun isDefaultDialerWindowInFront(root: AccessibilityNodeInfo?): Boolean {
