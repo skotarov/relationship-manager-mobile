@@ -14,6 +14,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.TextView
 import kotlin.math.abs
 
 internal data class CallLogOverlayTarget(
@@ -24,11 +25,17 @@ internal data class CallLogOverlayTarget(
 internal class CallLogOverlayButtonController(private val context: Context) {
     private var windowManager: WindowManager? = null
     private var buttonView: ImageButton? = null
+    private var debugView: TextView? = null
     private var layoutParams: WindowManager.LayoutParams? = null
+    private var debugLayoutParams: WindowManager.LayoutParams? = null
     private var shownPosition: String = ""
     private var currentTarget: CallLogOverlayTarget = CallLogOverlayTarget()
 
-    fun show(position: String, target: CallLogOverlayTarget = CallLogOverlayTarget()) {
+    fun show(
+        position: String,
+        target: CallLogOverlayTarget = CallLogOverlayTarget(),
+        debugText: String = "",
+    ) {
         currentTarget = target
         if (!Settings.canDrawOverlays(context)) {
             hide()
@@ -38,6 +45,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
         buttonView?.let { existingButton ->
             existingButton.setImageResource(iconForTarget(target))
             existingButton.contentDescription = descriptionForTarget(target)
+            updateDebugLabel(debugText)
             return
         }
         hide()
@@ -88,15 +96,58 @@ internal class CallLogOverlayButtonController(private val context: Context) {
                 buttonView = null
                 layoutParams = null
             }
+        updateDebugLabel(debugText)
     }
 
     fun hide() {
-        val view = buttonView ?: return
-        runCatching { windowManager?.removeView(view) }
+        val view = buttonView
+        val debug = debugView
+        runCatching { if (debug != null) windowManager?.removeView(debug) }
+        runCatching { if (view != null) windowManager?.removeView(view) }
         buttonView = null
+        debugView = null
         layoutParams = null
+        debugLayoutParams = null
         shownPosition = ""
         currentTarget = CallLogOverlayTarget()
+    }
+
+    private fun updateDebugLabel(debugText: String) {
+        val manager = windowManager ?: return
+        val params = layoutParams ?: return
+        if (debugText.isBlank()) {
+            debugView?.let { view -> runCatching { manager.removeView(view) } }
+            debugView = null
+            debugLayoutParams = null
+            return
+        }
+
+        val label = debugView ?: TextView(context).apply {
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            maxLines = 6
+            background = GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(Color.argb(210, 31, 41, 55))
+            }
+        }.also { newView ->
+            debugView = newView
+            val debugParams = WindowManager.LayoutParams(
+                dp(230),
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT,
+            ).apply { gravity = Gravity.TOP or Gravity.START }
+            debugLayoutParams = debugParams
+            runCatching { manager.addView(newView, debugParams) }
+        }
+        label.text = debugText
+        val debugParams = debugLayoutParams ?: return
+        debugParams.x = params.x.coerceIn(0, maxX(dp(230)))
+        debugParams.y = (params.y + dp(54)).coerceIn(0, maxY(dp(80)))
+        runCatching { manager.updateViewLayout(label, debugParams) }
     }
 
     private fun openTarget() {
@@ -151,6 +202,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
                     params.x = (startX + dx.toInt()).coerceIn(0, maxX(viewSize))
                     params.y = (startY + dy.toInt()).coerceIn(0, maxY(viewSize))
                     runCatching { windowManager?.updateViewLayout(view, params) }
+                    updateDebugLabel(debugView?.text?.toString().orEmpty())
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -158,6 +210,7 @@ internal class CallLogOverlayButtonController(private val context: Context) {
                         params.x = params.x.coerceIn(0, maxX(viewSize))
                         params.y = params.y.coerceIn(0, maxY(viewSize))
                         CallLogOverlaySettings.saveDraggedPosition(context, params.x, params.y)
+                        updateDebugLabel(debugView?.text?.toString().orEmpty())
                     } else {
                         view.performClick()
                         openTarget()
