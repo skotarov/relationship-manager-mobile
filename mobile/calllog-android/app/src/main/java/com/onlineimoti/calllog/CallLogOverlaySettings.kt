@@ -5,6 +5,7 @@ import android.content.Context
 internal data class CallLogOverlayButtonSettings(
     val enabled: Boolean,
     val position: String,
+    val debugEnabled: Boolean = false,
 )
 
 internal data class CallLogOverlaySavedPosition(
@@ -16,6 +17,7 @@ internal object CallLogOverlaySettings {
     private const val PREFS = "call_log_overlay_button"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_POSITION = "position"
+    private const val KEY_DEBUG_ENABLED = "debug_enabled"
     private const val KEY_SAVED_X = "saved_x"
     private const val KEY_SAVED_Y = "saved_y"
     private const val KEY_HAS_SAVED_POSITION = "has_saved_position"
@@ -28,12 +30,14 @@ internal object CallLogOverlaySettings {
     const val POSITION_BOTTOM_START = "bottom_start"
     const val DEFAULT_POSITION = POSITION_TOP_END
     const val DEFAULT_ENABLED = true
+    const val DEFAULT_DEBUG_ENABLED = false
 
     fun load(context: Context): CallLogOverlayButtonSettings {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return CallLogOverlayButtonSettings(
             enabled = prefs.getBoolean(KEY_ENABLED, DEFAULT_ENABLED),
             position = normalizePosition(prefs.getString(KEY_POSITION, DEFAULT_POSITION).orEmpty()),
+            debugEnabled = prefs.getBoolean(KEY_DEBUG_ENABLED, DEFAULT_DEBUG_ENABLED),
         )
     }
 
@@ -42,6 +46,7 @@ internal object CallLogOverlaySettings {
             .edit()
             .putBoolean(KEY_ENABLED, settings.enabled)
             .putString(KEY_POSITION, normalizePosition(settings.position))
+            .putBoolean(KEY_DEBUG_ENABLED, settings.debugEnabled)
             .apply()
     }
 
