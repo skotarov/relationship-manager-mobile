@@ -17,6 +17,7 @@
     <string name="settings_description">Настройки на Android wrapper-а за call popup-и, локална история и server WebView форма.</string>
     <string name="settings_basic_section">☰ Основни настройки</string>
     <string name="settings_archive_section">🗄 Архив</string>
+    <string name="settings_application_section">⚙ Приложение</string>
     <string name="settings_language_section">🌐 Език</string>
     <string name="settings_storage_section">💾 Съхранение на бележките</string>
     <string name="settings_call_log_section">📞 Call Log</string>
