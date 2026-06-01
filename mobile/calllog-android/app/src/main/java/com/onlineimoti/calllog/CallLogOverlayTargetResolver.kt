@@ -11,21 +11,26 @@ internal object CallLogOverlayTargetResolver {
         val screenOnlyKind = classifyScreen(emptyList(), screenTexts)
         if (screenOnlyKind == ScreenKind.GENERAL_LOG) return CallLogOverlayTarget()
 
-        val titleTarget = targetFromTexts(context, titleTexts, allowNameLookup = true)
-        if (titleTarget.phone.isNotBlank()) return titleTarget
+        val titlePhoneTarget = targetFromTexts(context, titleTexts, allowNameLookup = false)
+        if (titlePhoneTarget.phone.isNotBlank()) return titlePhoneTarget
 
         val screenKind = classifyScreen(titleTexts, screenTexts)
         if (screenKind == ScreenKind.GENERAL_LOG) return CallLogOverlayTarget()
 
-        val headerTarget = targetFromTexts(context, titleTexts + screenTexts.take(16), allowNameLookup = screenKind != ScreenKind.UNKNOWN)
+        val allowContactNameLookup = screenKind == ScreenKind.CONTACT_DETAIL || screenKind == ScreenKind.CONTACT_HISTORY
+
+        val titleTarget = targetFromTexts(context, titleTexts, allowNameLookup = allowContactNameLookup)
+        if (titleTarget.phone.isNotBlank()) return titleTarget
+
+        val headerTarget = targetFromTexts(context, titleTexts + screenTexts.take(16), allowNameLookup = allowContactNameLookup)
         if (headerTarget.phone.isNotBlank()) return headerTarget
 
         val allTexts = (titleTexts + screenTexts)
             .map { it.trim() }
-            .filter { isUsableCandidateText(it) }
+            .filter { isValidPhoneText(it) || isValidContactNameCandidateShape(it) }
             .distinct()
 
-        if (screenKind != ScreenKind.UNKNOWN) {
+        if (allowContactNameLookup) {
             val wholeTarget = targetFromTexts(context, allTexts, allowNameLookup = true)
             if (wholeTarget.phone.isNotBlank()) return wholeTarget
         }
@@ -39,11 +44,14 @@ internal object CallLogOverlayTargetResolver {
     }
 
     fun keepText(text: String): Boolean {
-        return isUsableCandidateText(text) || isScreenHintText(text)
+        return isValidPhoneText(text) || isValidContactNameCandidateShape(text) || isScreenHintText(text)
     }
 
     private fun targetFromTexts(context: Context, texts: List<String>, allowNameLookup: Boolean): CallLogOverlayTarget {
-        val cleanedTexts = texts.map { it.trim() }.filter { isUsableCandidateText(it) }.distinct()
+        val cleanedTexts = texts
+            .map { it.trim() }
+            .filter { isValidPhoneText(it) || isValidContactNameCandidateShape(it) }
+            .distinct()
         val phones = cleanedTexts.mapNotNull(::extractPhoneCandidate).distinct()
         val title = firstLikelyTitle(cleanedTexts)
         if (phones.size == 1) return CallLogOverlayTarget(phone = phones.first(), title = title)
@@ -61,20 +69,37 @@ internal object CallLogOverlayTargetResolver {
         val screenBlob = screenTexts.joinToString(" ").lowercase()
         val allBlob = "$titleBlob $screenBlob"
         val phoneCount = screenTexts.mapNotNull(::extractPhoneCandidate).distinct().size
-        if (hasKeypadHints(allBlob)) return ScreenKind.GENERAL_LOG
+        if (hasGeneralSurfaceHints(allBlob)) return ScreenKind.GENERAL_LOG
         if (hasContactHistoryHints(allBlob)) return ScreenKind.CONTACT_HISTORY
         if (hasContactDetailHints(allBlob)) return ScreenKind.CONTACT_DETAIL
-        if (hasGeneralLogHints(allBlob)) return ScreenKind.GENERAL_LOG
         if (phoneCount >= 2 && titleTexts.none { extractPhoneCandidate(it).orEmpty().isNotBlank() }) return ScreenKind.GENERAL_LOG
         return ScreenKind.UNKNOWN
     }
 
-    private fun hasKeypadHints(blob: String): Boolean {
-        return listOf("keypad", "dial pad", "dialpad", "showing default suggestions", "default suggestions", "suggestions", "цифри", "клавиатура").any { blob.contains(it) }
-    }
-
-    private fun hasGeneralLogHints(blob: String): Boolean {
-        return listOf("search contacts", "search calls", "favorites", "view contacts", "recents", "recent calls", "missed", "търси контакти", "любими", "последни", "пропуснати").any { blob.contains(it) }
+    private fun hasGeneralSurfaceHints(blob: String): Boolean {
+        return listOf(
+            "keypad",
+            "dial pad",
+            "dialpad",
+            "showing default suggestions",
+            "default suggestions",
+            "suggestions",
+            "search contacts",
+            "search calls",
+            "favorites",
+            "view contacts",
+            "recents",
+            "recent calls",
+            "missed",
+            "non-spam",
+            "spam",
+            "цифри",
+            "клавиатура",
+            "търси контакти",
+            "любими",
+            "последни",
+            "пропуснати",
+        ).any { blob.contains(it) }
     }
 
     private fun hasContactDetailHints(blob: String): Boolean {
@@ -93,8 +118,7 @@ internal object CallLogOverlayTargetResolver {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
         texts
             .map { it.trim() }
-            .filter { isUsableCandidateText(it) }
-            .filter { it.length in 2..80 }
+            .filter { isValidContactNameCandidateShape(it) }
             .filter { extractPhoneCandidate(it).isNullOrBlank() }
             .distinct()
             .forEach { candidate ->
@@ -108,7 +132,7 @@ internal object CallLogOverlayTargetResolver {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return ""
         return texts.firstOrNull { text ->
             val candidate = text.trim()
-            candidate.length in 2..80 && isUsableCandidateText(candidate) && extractPhoneCandidate(candidate).isNullOrBlank() && phonesForExactContactName(context, candidate).size == 1
+            isValidContactNameCandidateShape(candidate) && extractPhoneCandidate(candidate).isNullOrBlank() && phonesForExactContactName(context, candidate).size == 1
         }.orEmpty()
     }
 
@@ -137,7 +161,7 @@ internal object CallLogOverlayTargetResolver {
     private fun firstLikelyTitle(texts: List<String>): String {
         return texts.firstOrNull { text ->
             val trimmed = text.trim()
-            trimmed.isNotBlank() && isUsableCandidateText(trimmed) && extractPhoneCandidate(trimmed).isNullOrBlank()
+            isValidContactNameCandidateShape(trimmed) && extractPhoneCandidate(trimmed).isNullOrBlank()
         }.orEmpty()
     }
 
@@ -162,34 +186,44 @@ internal object CallLogOverlayTargetResolver {
         return if (digits.length > 9) digits.takeLast(9) else digits
     }
 
-    private fun isUsableCandidateText(text: String): Boolean {
+    private fun isValidPhoneText(text: String): Boolean {
+        return extractPhoneCandidate(text).orEmpty().isNotBlank()
+    }
+
+    private fun isValidContactNameCandidateShape(text: String): Boolean {
         val trimmed = text.trim()
-        if (trimmed.isBlank()) return false
-        if (isUiText(trimmed)) return false
-        if (looksLikeMeta(trimmed)) return false
+        if (trimmed.length !in 2..80) return false
+        if (!trimmed.any { it.isLetter() }) return false
         if (looksLikeClassName(trimmed)) return false
+        if (looksLikeSystemChrome(trimmed)) return false
+        if (looksLikeCallMeta(trimmed)) return false
         return true
     }
 
     private fun isScreenHintText(text: String): Boolean {
         val lower = text.trim().lowercase()
         if (lower.isBlank()) return false
-        if (lower == "navigation bar" || lower == "status bar") return false
-        return hasKeypadHints(lower) || hasGeneralLogHints(lower) || hasContactDetailHints(lower) || hasContactHistoryHints(lower)
+        if (looksLikeSystemChrome(lower)) return false
+        return hasGeneralSurfaceHints(lower) || hasContactDetailHints(lower) || hasContactHistoryHints(lower)
     }
 
-    private fun isUiText(text: String): Boolean {
-        val lower = text.lowercase()
-        return lower in setOf("call log", "calls", "recents", "contacts", "phone", "history", "search", "edit", "add", "delete", "share", "mobile", "home", "work", "message", "video call", "details", "more options", "navigation bar", "status bar", "system navigation", "back", "recent apps", "overview")
-    }
-
-    private fun looksLikeMeta(text: String): Boolean {
+    private fun looksLikeCallMeta(text: String): Boolean {
         val lower = text.lowercase()
         if (lower.contains("ago") || lower.contains("today") || lower.contains("yesterday")) return true
         if (lower.contains("преди") || lower.contains("днес") || lower.contains("вчера")) return true
         if (lower.contains("incoming") || lower.contains("outgoing") || lower.contains("missed")) return true
         if (lower.contains("входящ") || lower.contains("изходящ") || lower.contains("пропуснат")) return true
         return TIME_PATTERN.matches(lower)
+    }
+
+    private fun looksLikeSystemChrome(text: String): Boolean {
+        val lower = text.lowercase()
+        return lower == "navigation bar" ||
+            lower == "status bar" ||
+            lower == "system navigation" ||
+            lower == "back" ||
+            lower == "recent apps" ||
+            lower == "overview"
     }
 
     private fun looksLikeClassName(text: String): Boolean {
