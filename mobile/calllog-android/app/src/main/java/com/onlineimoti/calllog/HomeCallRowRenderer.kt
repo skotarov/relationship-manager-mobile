@@ -64,18 +64,21 @@ internal class HomeCallRowRenderer(
         }
         textColumn.addView(TextView(activity).apply {
             val hasContactName = displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
-            text = listOf(
+            val metaText = listOf(
                 PhoneCallReader.formatStartedAt(call.startedAt),
                 PhoneCallReader.formatDuration(call.durationSeconds),
                 call.number.takeIf { hasContactName },
             ).filter { !it.isNullOrBlank() }.joinToString(" • ")
-            setTextColor(activity.getColor(R.color.calllog_muted_text))
+            val mutedTextColor = activity.getColor(R.color.calllog_muted_text)
+            text = highlightedText(metaText, highlightQuery, mutedTextColor)
+            setTextColor(mutedTextColor)
             textSize = 12.5f
             maxLines = 1
         })
         textColumn.addView(TextView(activity).apply {
-            text = displayName
-            setTextColor(activity.getColor(R.color.calllog_text))
+            val mainTextColor = activity.getColor(R.color.calllog_text)
+            text = highlightedText(displayName, highlightQuery, mainTextColor)
+            setTextColor(mainTextColor)
             textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
             maxLines = 1
@@ -84,7 +87,7 @@ internal class HomeCallRowRenderer(
         if (!contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
             textColumn.addView(TextView(activity).apply {
-                text = highlightedNoteText(contactNote, highlightQuery, colors.text)
+                text = highlightedText(contactNote, highlightQuery, colors.text)
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
                 compoundDrawablePadding = dp(4)
                 setTextColor(colors.text)
@@ -98,7 +101,7 @@ internal class HomeCallRowRenderer(
         if (!callNote.isNullOrBlank()) {
             val colors = NoteUiStyle.Call
             textColumn.addView(TextView(activity).apply {
-                text = highlightedNoteText(callNote, highlightQuery, colors.text)
+                text = highlightedText(callNote, highlightQuery, colors.text)
                 setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
                 compoundDrawablePadding = dp(5)
                 setTextColor(colors.text)
@@ -125,20 +128,43 @@ internal class HomeCallRowRenderer(
         return card
     }
 
-    private fun highlightedNoteText(value: String, query: String, textColor: Int): CharSequence {
+    private fun highlightedText(value: String, query: String, textColor: Int): CharSequence {
         val trimmedQuery = query.trim()
-        if (trimmedQuery.isBlank()) return value
-        val lowerValue = value.lowercase()
-        val lowerQuery = trimmedQuery.lowercase()
+        if (value.isBlank() || trimmedQuery.isBlank()) return value
         val spannable = SpannableString(value)
+        applyTextHighlight(spannable, value, trimmedQuery, textColor)
+        applyDigitHighlight(spannable, value, trimmedQuery, textColor)
+        return spannable
+    }
+
+    private fun applyTextHighlight(spannable: SpannableString, value: String, query: String, textColor: Int) {
+        val lowerValue = value.lowercase()
+        val lowerQuery = query.lowercase()
         var start = lowerValue.indexOf(lowerQuery)
         while (start >= 0) {
-            val end = start + trimmedQuery.length
-            spannable.setSpan(BackgroundColorSpan(textColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            spannable.setSpan(ForegroundColorSpan(Color.WHITE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            start = lowerValue.indexOf(lowerQuery, end)
+            applyHighlightSpan(spannable, start, start + query.length, textColor)
+            start = lowerValue.indexOf(lowerQuery, start + query.length)
         }
-        return spannable
+    }
+
+    private fun applyDigitHighlight(spannable: SpannableString, value: String, query: String, textColor: Int) {
+        val queryDigits = query.filter { it.isDigit() }
+        if (queryDigits.length < 3) return
+        val digitCharIndexes = value.mapIndexedNotNull { index, char -> index.takeIf { char.isDigit() } }
+        val valueDigits = digitCharIndexes.map { value[it] }.joinToString("")
+        var digitStart = valueDigits.indexOf(queryDigits)
+        while (digitStart >= 0) {
+            val charStart = digitCharIndexes.getOrNull(digitStart) ?: break
+            val charEnd = (digitCharIndexes.getOrNull(digitStart + queryDigits.length - 1) ?: break) + 1
+            applyHighlightSpan(spannable, charStart, charEnd, textColor)
+            digitStart = valueDigits.indexOf(queryDigits, digitStart + queryDigits.length)
+        }
+    }
+
+    private fun applyHighlightSpan(spannable: SpannableString, start: Int, end: Int, textColor: Int) {
+        if (start < 0 || end <= start || end > spannable.length) return
+        spannable.setSpan(BackgroundColorSpan(textColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        spannable.setSpan(ForegroundColorSpan(Color.WHITE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
 
     private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
