@@ -45,6 +45,8 @@
     <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each next page. Allowed range: 5–100.</string>
     <string name="call_log_overlay_button_enabled">Show round Call Report button over system call log</string>
     <string name="call_log_overlay_button_description">Shows only while the default phone call log window opened from this app is visible. Requires Accessibility and Display over other apps.</string>
+    <string name="call_log_overlay_debug_enabled">Show overlay detection debug</string>
+    <string name="call_log_overlay_debug_description">When enabled, a small debug label is shown under the floating button with detected target and visible texts.</string>
     <string name="call_log_overlay_access_button">Open Accessibility settings for this button</string>
     <string name="call_log_overlay_button_position_title">Button position</string>
     <string name="call_log_overlay_position_top_end">Top right</string>
