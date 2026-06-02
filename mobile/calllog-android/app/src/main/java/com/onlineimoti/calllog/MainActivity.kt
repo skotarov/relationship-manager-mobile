@@ -236,6 +236,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setStatus(message: String) {
+        binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
     }
 
