@@ -73,7 +73,6 @@ internal class MainContactsCleanupController(
             }
             activity.runOnUiThread {
                 setRunning(false, "")
-                registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
                 setStatus("Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}")
             }
         }
@@ -81,11 +80,16 @@ internal class MainContactsCleanupController(
 
     fun cleanupCallReportContacts() {
         if (running) return
-        setRunning(true, "Почистване…")
-        setStatus("Почиствам Call Report записите от контактите…")
+        setRunning(true, "Почистване 0%")
+        updateCleanupButtonProgress(0)
+        setStatus("Почиствам Call Report записите от контактите… 0%")
         val appContext = activity.applicationContext
         executor.execute {
-            val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext)
+            val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext) { progress ->
+                activity.runOnUiThread {
+                    updateCleanupProgress(progress)
+                }
+            }
             activity.runOnUiThread {
                 setRunning(false, "")
                 setStatus("Премахнати Call Report записи от контактите: $deleted")
@@ -100,8 +104,19 @@ internal class MainContactsCleanupController(
         setStatus("Регистрирам всички контакти към Call Report… ${progress.percent}%")
     }
 
+    private fun updateCleanupProgress(progress: BulkContactRegistrationProgress) {
+        val label = "Почистване ${progress.percent}%"
+        progressText?.text = "$label (${progress.processed}/${progress.total})"
+        cleanupButton.text = label
+        setStatus("Почиствам Call Report записите от контактите… ${progress.percent}%")
+    }
+
     private fun updateRegisterButtonProgress(percent: Int) {
         registerAllButton.text = "Регистриране $percent%"
+    }
+
+    private fun updateCleanupButtonProgress(percent: Int) {
+        cleanupButton.text = "Почистване $percent%"
     }
 
     private fun setRunning(value: Boolean, label: String) {
@@ -111,6 +126,9 @@ internal class MainContactsCleanupController(
         progressText?.text = label.ifBlank { "Обработка на Call Report записите…" }
         cleanupButton.isEnabled = !value
         registerAllButton.isEnabled = !value
-        if (!value) cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
+        if (!value) {
+            cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
+            registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
+        }
     }
 }
