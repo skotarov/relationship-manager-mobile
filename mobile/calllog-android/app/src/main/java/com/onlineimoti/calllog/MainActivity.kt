@@ -100,7 +100,8 @@ class MainActivity : AppCompatActivity() {
             permissionFlowController.requestCallScreeningRoleIfNeeded()
         }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
-        binding.permissionsSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
+        binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.registerAllCallReportContacts() }
+        binding.contactLinkSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Server настройките са записани.")
