@@ -69,12 +69,5 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/permissions_fullscreen_button" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/cleanupContactsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/permissions_cleanup_contacts_button" />
     </LinearLayout>
 </LinearLayout>
