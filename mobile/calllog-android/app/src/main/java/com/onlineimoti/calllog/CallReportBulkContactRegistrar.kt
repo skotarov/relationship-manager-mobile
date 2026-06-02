@@ -13,7 +13,7 @@ internal data class BulkContactRegistrationResult(
     val failed: Int,
 )
 
-internal data class BulkContactRegistrationProgress(
+data class BulkContactRegistrationProgress(
     val processed: Int,
     val total: Int,
 ) {
