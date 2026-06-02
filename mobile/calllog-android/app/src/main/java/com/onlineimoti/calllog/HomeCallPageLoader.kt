@@ -31,19 +31,19 @@ object HomeCallPageLoader {
         } else {
             PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = SEARCH_SCAN_LIMIT, offset = 0)
         }
-        val contactResults = ContactSearchProvider.search(context, query)
-            .filter { activePhoneFilter.isBlank() || noteKey(it.phone) == noteKey(activePhoneFilter) }
-        val noteResults = StoredNoteSearchProvider.search(context, query)
-            .filter { activePhoneFilter.isBlank() || it.phoneKey == noteKey(activePhoneFilter) }
+        val contactResults: List<ContactSearchResult> = ContactSearchProvider.search(context, query)
+            .filter { result: ContactSearchResult -> activePhoneFilter.isBlank() || noteKey(result.phone) == noteKey(activePhoneFilter) }
+        val noteResults: List<StoredNoteSearchResult> = StoredNoteSearchProvider.search(context, query)
+            .filter { result: StoredNoteSearchResult -> activePhoneFilter.isBlank() || result.phoneKey == noteKey(activePhoneFilter) }
 
         val seen = linkedSetOf<String>()
         val ordered = arrayListOf<PhoneCallRecord>()
-        contactResults.forEach { contact ->
+        contactResults.forEach { contact: ContactSearchResult ->
             val key = noteKey(contact.phone)
             if (!seen.add("contact:$key")) return@forEach
             ordered.add(bestCallForPhone(recentCalls, contact.phone, contact.name, 0L, ""))
         }
-        noteResults.forEach { note ->
+        noteResults.forEach { note: StoredNoteSearchResult ->
             val resultKey = if (note.isCallNote && note.callAt > 0L) "call:${note.phoneKey}:${note.callAt}:${note.direction}" else "note:${note.phoneKey}"
             if (!seen.add(resultKey)) return@forEach
             ordered.add(bestCallForPhone(recentCalls, note.phone, note.phone, note.callAt, note.direction))
@@ -54,9 +54,9 @@ object HomeCallPageLoader {
     private fun bestCallForPhone(calls: List<PhoneCallRecord>, phone: String, fallbackName: String, callAt: Long, direction: String): PhoneCallRecord {
         val key = noteKey(phone)
         val exact = if (callAt > 0L) {
-            calls.firstOrNull { noteKey(it.number) == key && it.startedAt == callAt && (direction.isBlank() || it.direction == direction) }
+            calls.firstOrNull { call: PhoneCallRecord -> noteKey(call.number) == key && call.startedAt == callAt && (direction.isBlank() || call.direction == direction) }
         } else null
-        val latest = calls.firstOrNull { noteKey(it.number) == key }
+        val latest = calls.firstOrNull { call: PhoneCallRecord -> noteKey(call.number) == key }
         return exact ?: latest ?: PhoneCallRecord(
             number = phone,
             name = fallbackName.takeIf { it.isNotBlank() && noteKey(it) != key }.orEmpty(),
@@ -72,8 +72,8 @@ object HomeCallPageLoader {
 
     fun contactNotes(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
         val notes = linkedMapOf<String, String>()
-        calls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
-            ContactNoteReader.generalNoteForPhone(context, number).takeIf { it.isNotBlank() }?.let { note ->
+        calls.map { call: PhoneCallRecord -> call.number }.distinctBy { number: String -> noteKey(number) }.forEach { number: String ->
+            ContactNoteReader.generalNoteForPhone(context, number).takeIf { note: String -> note.isNotBlank() }?.let { note: String ->
                 notes[noteKey(number)] = note
             }
         }
@@ -82,8 +82,8 @@ object HomeCallPageLoader {
 
     fun contactNames(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
         val names = linkedMapOf<String, String>()
-        calls.map { it.number }.distinctBy { noteKey(it) }.forEach { number ->
-            ContactGroupFilter.resolveDisplayName(context, number).orEmpty().takeIf { it.isNotBlank() }?.let { name ->
+        calls.map { call: PhoneCallRecord -> call.number }.distinctBy { number: String -> noteKey(number) }.forEach { number: String ->
+            ContactGroupFilter.resolveDisplayName(context, number).orEmpty().takeIf { name: String -> name.isNotBlank() }?.let { name: String ->
                 names[noteKey(number)] = name
             }
         }
