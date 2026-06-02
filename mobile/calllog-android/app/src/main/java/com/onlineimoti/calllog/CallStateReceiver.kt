@@ -176,25 +176,25 @@ class CallStateReceiver : BroadcastReceiver() {
                         "access_token" to config.accessToken,
                     )
                 )
-                CallReportRuntime.showImmediatePostCallPrompt(
-                    context = context,
-                    formUrl = fallbackFormUrl,
-                    phone = number,
-                    direction = direction,
-                    title = "Бележка след разговора",
-                )
-
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-                val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
-                    if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
+                val result = runCatching {
+                    CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                        if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
+                    }
+                }.getOrElse {
+                    LookupResult(
+                        title = displayName.ifBlank { "Бележка след разговора" },
+                        subtitle = number,
+                        lines = emptyList(),
+                        openFormUrl = fallbackFormUrl,
+                    )
                 }
-
                 CallReportRuntime.showPostCallPromptNotification(
                     context = context,
                     formUrl = result.openFormUrl.ifBlank { fallbackFormUrl },
                     phone = number,
                     direction = direction,
-                    title = result.title,
+                    title = result.title.ifBlank { "Бележка след разговора" },
                 )
             } catch (_: Throwable) {
                 val config = ConfigStore.load(context)
