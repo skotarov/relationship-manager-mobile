@@ -112,6 +112,28 @@ object CallReportContactIntegration {
         }.getOrDefault(false)
     }
 
+    fun linkContactAsAppIfMissing(context: Context, phone: String): Boolean {
+        return runCatching {
+            val cleanedPhone = cleanPhone(phone)
+            if (cleanedPhone.isBlank()) return@runCatching false
+            if (!canReadAndWriteContacts(context)) return@runCatching false
+
+            ensureAccount(context)
+            if (findCallReportRawContactId(context, cleanedPhone) > 0L) return@runCatching true
+
+            val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
+            val operations = arrayListOf<ContentProviderOperation>()
+            addCreateCallReportRawContactOperations(
+                operations = operations,
+                phone = cleanedPhone,
+                title = cleanedPhone,
+                existingRawContactId = existingRawContactId,
+            )
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
+            findCallReportRawContactId(context, cleanedPhone) > 0L
+        }.getOrDefault(false)
+    }
+
     fun phoneFromDataUri(context: Context, uri: Uri?): String {
         if (uri == null) return ""
         return runCatching {
