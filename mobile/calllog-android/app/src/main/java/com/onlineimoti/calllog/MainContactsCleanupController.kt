@@ -61,13 +61,19 @@ internal class MainContactsCleanupController(
 
     fun registerAllCallReportContacts() {
         if (running) return
-        setRunning(true, "Регистриране…")
-        setStatus("Регистрирам всички контакти към Call Report…")
+        setRunning(true, "Регистриране 0%")
+        updateRegisterButtonProgress(0)
+        setStatus("Регистрирам всички контакти към Call Report… 0%")
         val appContext = activity.applicationContext
         executor.execute {
-            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(appContext)
+            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(appContext) { progress ->
+                activity.runOnUiThread {
+                    updateRegisterProgress(progress)
+                }
+            }
             activity.runOnUiThread {
                 setRunning(false, "")
+                registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
                 setStatus("Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}")
             }
         }
@@ -87,6 +93,17 @@ internal class MainContactsCleanupController(
         }
     }
 
+    private fun updateRegisterProgress(progress: BulkContactRegistrationProgress) {
+        val label = "Регистриране ${progress.percent}%"
+        progressText?.text = "$label (${progress.processed}/${progress.total})"
+        registerAllButton.text = label
+        setStatus("Регистрирам всички контакти към Call Report… ${progress.percent}%")
+    }
+
+    private fun updateRegisterButtonProgress(percent: Int) {
+        registerAllButton.text = "Регистриране $percent%"
+    }
+
     private fun setRunning(value: Boolean, label: String) {
         running = value
         progressRow?.visibility = if (value) View.VISIBLE else View.GONE
@@ -94,5 +111,6 @@ internal class MainContactsCleanupController(
         progressText?.text = label.ifBlank { "Обработка на Call Report записите…" }
         cleanupButton.isEnabled = !value
         registerAllButton.isEnabled = !value
+        if (!value) cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
     }
 }
