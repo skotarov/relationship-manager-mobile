@@ -46,7 +46,7 @@ internal object CallReportBulkContactRegistrar {
         phones.forEachIndexed { index: Int, phone: String ->
             if (CallReportContactIntegration.isContactLinked(context, phone)) {
                 skippedExisting += 1
-            } else if (CallReportContactIntegration.linkContact(context, phone, "")) {
+            } else if (CallReportContactIntegration.linkContactAsAppIfMissing(context, phone)) {
                 created += 1
             } else {
                 failed += 1
