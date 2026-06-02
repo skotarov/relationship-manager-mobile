@@ -19,12 +19,15 @@ internal class MainContactsCleanupController(
 ) {
     private var progress: ProgressBar? = null
     private var progressRow: LinearLayout? = null
+    private var progressText: TextView? = null
     private var running = false
 
-    private val cleanupButton get() = binding.permissionsSection.cleanupContactsButton
+    private val contactLink get() = binding.contactLinkSection
+    private val cleanupButton get() = contactLink.cleanupContactsButton
+    private val registerAllButton get() = contactLink.registerAllContactsButton
 
     fun addProgressBar() {
-        val parent = cleanupButton.parent as? ViewGroup ?: return
+        val parent = contactLink.contactLinkBulkActionsGroup.parent as? ViewGroup ?: return
         if (progressRow != null) return
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -40,39 +43,56 @@ internal class MainContactsCleanupController(
             isIndeterminate = true
             layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
         }
-        row.addView(spinner)
-        row.addView(TextView(activity).apply {
-            text = "Почистване на Call Report записите…"
+        val label = TextView(activity).apply {
+            text = "Обработка на Call Report записите…"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(cleanupButton.currentTextColor)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        })
-        val cleanupIndex = parent.indexOfChild(cleanupButton)
-        parent.addView(row, if (cleanupIndex >= 0) cleanupIndex + 1 else parent.childCount)
+        }
+        row.addView(spinner)
+        row.addView(label)
+        val actionsIndex = parent.indexOfChild(contactLink.contactLinkBulkActionsGroup)
+        parent.addView(row, if (actionsIndex >= 0) actionsIndex + 1 else parent.childCount)
         progress = spinner
+        progressText = label
         progressRow = row
+    }
+
+    fun registerAllCallReportContacts() {
+        if (running) return
+        setRunning(true, "Регистриране…")
+        setStatus("Регистрирам всички контакти към Call Report…")
+        val appContext = activity.applicationContext
+        executor.execute {
+            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(appContext)
+            activity.runOnUiThread {
+                setRunning(false, "")
+                setStatus("Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}")
+            }
+        }
     }
 
     fun cleanupCallReportContacts() {
         if (running) return
-        setRunning(true)
+        setRunning(true, "Почистване…")
         setStatus("Почиствам Call Report записите от контактите…")
         val appContext = activity.applicationContext
         executor.execute {
             val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext)
             activity.runOnUiThread {
-                setRunning(false)
+                setRunning(false, "")
                 setStatus("Премахнати Call Report записи от контактите: $deleted")
             }
         }
     }
 
-    private fun setRunning(value: Boolean) {
+    private fun setRunning(value: Boolean, label: String) {
         running = value
         progressRow?.visibility = if (value) View.VISIBLE else View.GONE
         progress?.visibility = if (value) View.VISIBLE else View.GONE
+        progressText?.text = label.ifBlank { "Обработка на Call Report записите…" }
         cleanupButton.isEnabled = !value
-        cleanupButton.text = if (value) "Почистване…" else "Почисти Call Report от контактите"
+        registerAllButton.isEnabled = !value
     }
 }
