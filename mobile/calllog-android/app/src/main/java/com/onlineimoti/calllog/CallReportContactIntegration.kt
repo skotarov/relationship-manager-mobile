@@ -42,15 +42,34 @@ object CallReportContactIntegration {
         }
     }
 
-    fun removeAllCallReportContacts(context: Context): Int {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) return 0
-        val deleted = runCatching {
-            context.contentResolver.delete(
-                ContactsContract.RawContacts.CONTENT_URI,
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME),
-            )
-        }.getOrDefault(0)
+    fun removeAllCallReportContacts(
+        context: Context,
+        onProgress: (BulkContactRegistrationProgress) -> Unit = {},
+    ): Int {
+        if (!canReadAndWriteContacts(context)) return 0
+        val rawContactIds = findAllCallReportRawContactIds(context)
+        val total = rawContactIds.size
+        var deleted = 0
+        var lastPercent = -1
+
+        fun report(processed: Int) {
+            val progress = BulkContactRegistrationProgress(processed, total)
+            if (progress.percent == lastPercent && processed != total) return
+            lastPercent = progress.percent
+            onProgress(progress)
+        }
+
+        report(0)
+        rawContactIds.forEachIndexed { index: Int, rawContactId: Long ->
+            deleted += runCatching {
+                context.contentResolver.delete(
+                    ContactsContract.RawContacts.CONTENT_URI,
+                    "${ContactsContract.RawContacts._ID}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                    arrayOf(rawContactId.toString(), ACCOUNT_TYPE, ACCOUNT_NAME),
+                )
+            }.getOrDefault(0)
+            report(index + 1)
+        }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST_SYNC_MS).apply()
         return deleted
     }
@@ -337,6 +356,22 @@ object CallReportContactIntegration {
                 null,
             )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
+    }
+
+    private fun findAllCallReportRawContactIds(context: Context): List<Long> {
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts._ID),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(ACCOUNT_TYPE, ACCOUNT_NAME),
+                ContactsContract.RawContacts._ID + " ASC",
+            )?.use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) add(cursor.getLong(0))
+                }
+            }.orEmpty()
+        }.getOrDefault(emptyList())
     }
 
     private fun findExistingRawContactId(context: Context, phone: String): Long {
