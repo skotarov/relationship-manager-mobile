@@ -1,19 +1,12 @@
 package com.onlineimoti.calllog
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.View
-import android.widget.CompoundButton
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
@@ -22,12 +15,7 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var suppressAutoSave = false
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
-    private var selectedSettingsSection: SettingsSection? = null
-    private val settingsBackCallback = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() {
-            showSettingsMenu()
-        }
-    }
+
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
             activity = this,
@@ -37,6 +25,25 @@ class MainActivity : AppCompatActivity() {
             dp = ::dp,
         )
     }
+
+    private val settingsNavigationController by lazy {
+        MainSettingsNavigationController(
+            activity = this,
+            binding = binding,
+        )
+    }
+
+    private val settingsAutoSaveController by lazy {
+        MainSettingsAutoSaveController(
+            binding = binding,
+            autoSaveSettings = ::autoSaveSettings,
+            applyLanguageIfChanged = ::applyLanguageIfChanged,
+            requestOverlayPermissionIfNeeded = { permissionFlowController.requestOverlayPermissionIfNeeded() },
+            requestCallScreeningRoleIfNeeded = { permissionFlowController.requestCallScreeningRoleIfNeeded() },
+            startPermissionFlow = { permissionFlowController.start() },
+        )
+    }
+
     private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
@@ -89,7 +96,6 @@ class MainActivity : AppCompatActivity() {
         currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
 
         CallReportRuntime.ensureNotificationChannel(this)
         CallReportRuntime.ensureContactsSync(this)
@@ -97,11 +103,33 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionSummary()
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
-        wireSettingsAutoSave()
-        wireSettingsNavigation()
-        showSettingsMenu()
+        settingsAutoSaveController.wire()
+        wireSettingsActions()
+        settingsNavigationController.wire()
+        settingsNavigationController.showMenu()
         permissionFlowController.start()
+    }
 
+    override fun onResume() {
+        super.onResume()
+        CallReportRuntime.ensureContactsSync(this)
+        contactsCleanupController.addProgressBar()
+        contactsCleanupController.refreshFromCurrentTask()
+        refreshPermissionSummary()
+    }
+
+    override fun onDestroy() {
+        contactsCleanupController.release()
+        executor.shutdown()
+        super.onDestroy()
+    }
+
+    private fun hydrateFields() {
+        MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
+        MainCallLogOverlaySettings.hydrate(this, binding)
+    }
+
+    private fun wireSettingsActions() {
         val quickStartButton = findViewById<MaterialButton>(R.id.testStartPopupButton)
         val quickEndButton = findViewById<MaterialButton>(R.id.testEndPopupButton)
 
@@ -136,90 +164,6 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             testEndPopup()
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        CallReportRuntime.ensureContactsSync(this)
-        contactsCleanupController.addProgressBar()
-        contactsCleanupController.refreshFromCurrentTask()
-        refreshPermissionSummary()
-    }
-
-    override fun onDestroy() {
-        contactsCleanupController.release()
-        executor.shutdown()
-        super.onDestroy()
-    }
-
-    private fun hydrateFields() {
-        MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
-        MainCallLogOverlaySettings.hydrate(this, binding)
-    }
-
-    private fun wireSettingsNavigation() {
-        binding.settingsDetailBackButton.setOnClickListener { showSettingsMenu() }
-        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSettingsSection(SettingsSection.APPLICATION) }
-        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSettingsSection(SettingsSection.POPUP) }
-        binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSettingsSection(SettingsSection.CALL_LOG) }
-        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSettingsSection(SettingsSection.RM_CONTACTS) }
-        binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSettingsSection(SettingsSection.SERVER) }
-        binding.settingsMenuGroup.settingsPermissionsButton.setOnClickListener { showSettingsSection(SettingsSection.PERMISSIONS) }
-        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSettingsSection(SettingsSection.DATA_ARCHIVE) }
-        binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSettingsSection(SettingsSection.DEBUG) }
-    }
-
-    private fun showSettingsMenu() {
-        selectedSettingsSection = null
-        settingsBackCallback.isEnabled = false
-        binding.settingsMenuGroup.root.visibility = View.VISIBLE
-        binding.settingsDescriptionText.visibility = View.VISIBLE
-        binding.settingsDetailHeader.visibility = View.GONE
-        binding.quickTestBar.visibility = View.GONE
-        allSettingsGroupViews().forEach { it.visibility = View.GONE }
-        binding.settingsScrollView.post { binding.settingsScrollView.scrollTo(0, 0) }
-    }
-
-    private fun showSettingsSection(section: SettingsSection) {
-        selectedSettingsSection = section
-        settingsBackCallback.isEnabled = true
-        binding.settingsMenuGroup.root.visibility = View.GONE
-        binding.settingsDescriptionText.visibility = View.GONE
-        binding.settingsDetailHeader.visibility = View.VISIBLE
-        binding.settingsDetailTitle.text = getString(section.titleRes)
-        allSettingsGroupViews().forEach { it.visibility = View.GONE }
-        section.view(binding).visibility = View.VISIBLE
-        binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG) View.VISIBLE else View.GONE
-        binding.settingsScrollView.post { binding.settingsScrollView.scrollTo(0, 0) }
-    }
-
-    private fun allSettingsGroupViews(): List<View> = SettingsSection.values().map { it.view(binding) }
-
-    private fun wireSettingsAutoSave() {
-        val remote = binding.remoteSettingsSection
-        val popup = binding.popupSettingsSection
-        val popupFilter = binding.popupContactFilterSection
-        val callLog = binding.callLogSettingsSection
-        val contactLink = binding.contactLinkSection
-        val storage = binding.storageSettingsSection
-        val language = binding.languageSettingsSection
-        val permissions = binding.permissionsSection
-
-        remote.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            remote.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
-            autoSaveSettings()
-        }
-
-        listOf(
-            remote.baseUrlInput,
-            remote.accessTokenInput,
-            remote.lookupPathInput,
-            remote.formPathInput,
-            remote.historyPathInput,
-            popup.postCallTimeoutInput,
-            callLog.homeCallPageSizeInput,
-            popupFilter.contactGroupsInput,
-        ).forEach { input -> input.autoSaveTextChanges() }
 
         MainCallLogOverlaySettings.wire(
             activity = this,
@@ -228,53 +172,10 @@ class MainActivity : AppCompatActivity() {
             requestOverlayPermissionIfNeeded = { permissionFlowController.requestOverlayPermissionIfNeeded() },
             setStatus = ::setStatus,
         )
-
-        popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
-        popup.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            popup.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
-            autoSaveSettings()
-            if (isChecked) permissionFlowController.requestOverlayPermissionIfNeeded()
-        }
-        popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
-        popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
-
-        contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
-        contactLink.contactLinkModeGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
-
-        language.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
-            val config = autoSaveSettings()
-            applyLanguageIfChanged(config.appLanguage)
-        }
-        storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            autoSaveSettings()
-            if (isChecked) permissionFlowController.start()
-        }
-
-        popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
-        popupFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
-
-        permissions.useCallScreeningCheckBox.setOnCheckedChangeListener { _, isChecked ->
-            autoSaveSettings()
-            if (isChecked) permissionFlowController.requestCallScreeningRoleIfNeeded()
-        }
     }
 
     private fun saveCallLogOverlayButtonSettings() {
         MainCallLogOverlaySettings.save(this, binding, suppressAutoSave)
-    }
-
-    private fun TextInputEditText.autoSaveTextChanges() {
-        addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) {
-                autoSaveSettings()
-            }
-        })
-    }
-
-    private fun CompoundButton.autoSaveCheckedChanges() {
-        setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -299,7 +200,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setStatus(message: String) {
-        binding.statusText.visibility = View.VISIBLE
+        binding.statusText.visibility = android.view.View.VISIBLE
         binding.statusText.text = message
     }
 
@@ -310,16 +211,6 @@ class MainActivity : AppCompatActivity() {
             }
         )
         finish()
-    }
-
-    private fun debugCrmContactName() {
-        val phone = binding.testsSection.phoneInput.text?.toString().orEmpty()
-        val report = CrmContactDebugInspector.inspect(this, phone)
-        AlertDialog.Builder(this)
-            .setTitle("RM record check")
-            .setMessage(report)
-            .setPositiveButton("OK", null)
-            .show()
     }
 
     private fun hasPermission(permission: String): Boolean {
@@ -335,28 +226,4 @@ class MainActivity : AppCompatActivity() {
     private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
     private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-
-    private enum class SettingsSection(val titleRes: Int) {
-        APPLICATION(R.string.settings_application_section),
-        POPUP(R.string.settings_popup_section),
-        CALL_LOG(R.string.settings_call_log_section),
-        RM_CONTACTS(R.string.settings_crm_section),
-        SERVER(R.string.settings_server_section),
-        PERMISSIONS(R.string.settings_permissions_section),
-        DATA_ARCHIVE(R.string.settings_storage_section),
-        DEBUG(R.string.settings_debug_section);
-
-        fun view(binding: ActivityMainBinding): View {
-            return when (this) {
-                APPLICATION -> binding.settingsApplicationGroup.root
-                POPUP -> binding.settingsPopupGroup.root
-                CALL_LOG -> binding.settingsCallLogGroup.root
-                RM_CONTACTS -> binding.settingsRmContactsGroup.root
-                SERVER -> binding.settingsServerGroup.root
-                PERMISSIONS -> binding.settingsPermissionsGroup.root
-                DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
-                DEBUG -> binding.settingsDebugGroup.root
-            }
-        }
-    }
 }
