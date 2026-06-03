@@ -57,7 +57,7 @@ object CrmContactFieldsDialog {
         val advancedInputs = CrmAdvancedContactInputs.build(ui, advancedSection, savedFields)
 
         AlertDialog.Builder(activity)
-            .setTitle(if (savedFields == null) "CRM контакт" else "Редакция на CRM контакт")
+            .setTitle(if (savedFields == null) "RM контакт" else "Редакция на RM контакт")
             .setView(ScrollView(activity).apply { addView(root) })
             .setNegativeButton("Изход", null)
             .setPositiveButton("Запис") { _, _ ->
