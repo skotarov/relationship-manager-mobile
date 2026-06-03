@@ -24,7 +24,6 @@ data class BulkContactRegistrationProgress(
 }
 
 internal object CallReportBulkContactRegistrar {
-    private const val MAX_CONTACTS_PER_RUN = 2500
     private const val APP_LINK_BATCH_SIZE = 25
     private const val APP_LINK_BATCH_PAUSE_MS = 80L
     private const val FALLBACK_CONTACT_PAUSE_MS = 15L
@@ -36,9 +35,11 @@ internal object CallReportBulkContactRegistrar {
     ): BulkContactRegistrationResult {
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
         if (!canReadAndWriteContacts(context)) return BulkContactRegistrationResult(0, 0, 0, 0)
+
         val mode = ConfigStore.load(context).contactLinkMode
-        val contacts = collectUniqueContacts(context)
-        val existingPhoneRawIds = findCallReportPhoneRawContactIds(context)
+        val contacts = BulkContactCollector.collectUniqueContacts(context)
+        val existingPhoneRawIds = BulkContactCollector.findCallReportPhoneRawContactIds(context)
+
         return if (mode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
             registerOneByOneLikeModal(
                 context = context,
@@ -116,9 +117,7 @@ internal object CallReportBulkContactRegistrar {
             }
 
             pending.add(contact)
-            if (pending.size >= APP_LINK_BATCH_SIZE) {
-                flushPending()
-            }
+            if (pending.size >= APP_LINK_BATCH_SIZE) flushPending()
         }
 
         if (!canceled) flushPending()
@@ -276,114 +275,6 @@ internal object CallReportBulkContactRegistrar {
         )
     }
 
-    private fun collectUniqueContacts(context: Context): List<BulkContactCandidate> {
-        val callReportRawContactIds = findCallReportRawContactIds(context)
-        val contactsByPhone = linkedMapOf<String, BulkContactCandidate>()
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.Data.RAW_CONTACT_ID,
-        )
-        context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
-            null,
-            null,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC",
-        )?.use { cursor ->
-            val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val rawContactIndex = cursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
-            if (numberIndex < 0) return@use
-            var scanned = 0
-            while (cursor.moveToNext() && contactsByPhone.size < MAX_CONTACTS_PER_RUN) {
-                val rawContactId = if (rawContactIndex >= 0) cursor.getLong(rawContactIndex) else 0L
-                if (rawContactId > 0L && callReportRawContactIds.contains(rawContactId)) continue
-                val originalPhone = cursor.getString(numberIndex).orEmpty()
-                val phone = PhoneNormalizer.normalize(originalPhone)
-                if (phone.isBlank() || contactsByPhone.containsKey(phone)) continue
-                val fallbackDisplayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
-                val displayName = exactStructuredDisplayName(context, rawContactId, fallbackDisplayName)
-                contactsByPhone[phone] = BulkContactCandidate(
-                    phone = phone,
-                    displayPhone = originalPhone,
-                    displayName = displayName,
-                    existingRawContactId = rawContactId,
-                )
-                scanned += 1
-                if (scanned % 250 == 0) Thread.yield()
-            }
-        }
-        return contactsByPhone.values.toList()
-    }
-
-    private fun exactStructuredDisplayName(context: Context, rawContactId: Long, fallback: String): String {
-        if (rawContactId <= 0L) return fallback
-        return runCatching {
-            context.contentResolver.query(
-                ContactsContract.Data.CONTENT_URI,
-                arrayOf(
-                    ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,
-                    ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME,
-                    ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME,
-                    ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME,
-                ),
-                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
-                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE),
-                null,
-            )?.use { cursor ->
-                if (!cursor.moveToFirst()) return@use fallback
-                val firstSecondThird = listOf(
-                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME),
-                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME),
-                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME),
-                ).filter { it.isNotBlank() }.joinToString(" ")
-                if (firstSecondThird.isNotBlank()) return@use firstSecondThird
-                cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME).ifBlank { fallback }
-            }.orEmpty().ifBlank { fallback }
-        }.getOrDefault(fallback)
-    }
-
-    private fun android.database.Cursor.getStringOrEmpty(column: String): String {
-        val index = getColumnIndex(column)
-        return if (index >= 0) getString(index).orEmpty() else ""
-    }
-
-    private fun findCallReportRawContactIds(context: Context): Set<Long> {
-        return runCatching {
-            context.contentResolver.query(
-                ContactsContract.RawContacts.CONTENT_URI,
-                arrayOf(ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, CrmContactAccountStore.ACCOUNT_NAME),
-                null,
-            )?.use { cursor ->
-                buildSet {
-                    while (cursor.moveToNext()) add(cursor.getLong(0))
-                }
-            }.orEmpty()
-        }.getOrDefault(emptySet())
-    }
-
-    private fun findCallReportPhoneRawContactIds(context: Context): Map<String, Long> {
-        return runCatching {
-            context.contentResolver.query(
-                ContactsContract.RawContacts.CONTENT_URI,
-                arrayOf(ContactsContract.RawContacts.SYNC1, ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, CrmContactAccountStore.ACCOUNT_NAME),
-                null,
-            )?.use { cursor ->
-                buildMap {
-                    while (cursor.moveToNext()) {
-                        val phone = PhoneNormalizer.normalize(cursor.getString(0).orEmpty())
-                        if (phone.isNotBlank()) put(phone, cursor.getLong(1))
-                    }
-                }
-            }.orEmpty()
-        }.getOrDefault(emptyMap())
-    }
-
     private fun canReadAndWriteContacts(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
@@ -392,13 +283,6 @@ internal object CallReportBulkContactRegistrar {
     private fun sleepQuietly(ms: Long) {
         runCatching { Thread.sleep(ms) }
     }
-
-    private data class BulkContactCandidate(
-        val phone: String,
-        val displayPhone: String,
-        val displayName: String,
-        val existingRawContactId: Long,
-    )
 
     private data class BatchCreateResult(
         val created: Int,
