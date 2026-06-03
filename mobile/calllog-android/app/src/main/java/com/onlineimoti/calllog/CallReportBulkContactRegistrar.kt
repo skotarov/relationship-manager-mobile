@@ -53,12 +53,10 @@ internal object CallReportBulkContactRegistrar {
             return BulkContactRegistrationResult(0, 0, 0, 0)
         }
 
-        val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
-        val skippedExisting = total - contactsToCreate.size
-
         var created = 0
+        var relinkedExisting = 0
         var failed = 0
-        var processed = skippedExisting
+        var processed = 0
         var canceled = false
         var lastPercent = -1
 
@@ -70,15 +68,16 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report()
-        for (contact in contactsToCreate) {
+        for (contact in contacts) {
             if (shouldCancel()) {
                 canceled = true
                 break
             }
 
+            val alreadyLinked = existingPhones.contains(contact.phone)
             val title = contact.displayName.ifBlank { contact.phone }
             if (CallReportContactIntegration.linkContact(context, contact.phone, title)) {
-                created += 1
+                if (alreadyLinked) relinkedExisting += 1 else created += 1
             } else {
                 failed += 1
             }
@@ -91,7 +90,7 @@ internal object CallReportBulkContactRegistrar {
         return BulkContactRegistrationResult(
             scanned = processed,
             created = created,
-            skippedExisting = skippedExisting,
+            skippedExisting = relinkedExisting,
             failed = failed,
             canceled = canceled,
         )
