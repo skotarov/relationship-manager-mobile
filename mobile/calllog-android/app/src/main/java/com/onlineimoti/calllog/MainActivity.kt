@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.registerAllCallReportContacts() }
-        binding.contactLinkSection.debugCrmContactNameButton.setOnClickListener { debugCrmContactName() }
+        binding.contactLinkSection.debugCrmContactNameButton.setOnClickListener { contactsCleanupController.repairAllRmContacts() }
         binding.contactLinkSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         val phone = binding.testsSection.phoneInput.text?.toString().orEmpty()
         val report = CrmContactDebugInspector.inspect(this, phone)
         AlertDialog.Builder(this)
-            .setTitle("CRM record check")
+            .setTitle("RM record check")
             .setMessage(report)
             .setPositiveButton("OK", null)
             .show()
