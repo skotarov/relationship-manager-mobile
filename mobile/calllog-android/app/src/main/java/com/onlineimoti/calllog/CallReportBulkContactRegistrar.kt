@@ -162,7 +162,8 @@ internal object CallReportBulkContactRegistrar {
         allowYield: Boolean,
     ) {
         val rawContactBackRef = ops.size
-        val title = contact.displayName.ifBlank { contact.phone }
+        val title = contact.displayName.ifBlank { contact.displayPhone.ifBlank { contact.phone } }
+        val visiblePhone = contact.displayPhone.ifBlank { contact.phone }
         val rawInsert = ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
             .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
             .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, CrmContactAccountStore.ACCOUNT_NAME)
@@ -182,7 +183,7 @@ internal object CallReportBulkContactRegistrar {
             ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactBackRef)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, contact.phone)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, visiblePhone)
                 .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
                 .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, CrmContactAccountStore.ACCOUNT_NAME)
                 .build()
@@ -242,7 +243,7 @@ internal object CallReportBulkContactRegistrar {
                 break
             }
 
-            val title = contact.displayName.ifBlank { contact.phone }
+            val title = contact.displayName.ifBlank { contact.displayPhone.ifBlank { contact.phone } }
             val fields = CallReportStableCrmContactWriter.Fields(
                 originalPhone = contact.phone,
                 displayName = title,
@@ -298,11 +299,13 @@ internal object CallReportBulkContactRegistrar {
             while (cursor.moveToNext() && contactsByPhone.size < MAX_CONTACTS_PER_RUN) {
                 val rawContactId = if (rawContactIndex >= 0) cursor.getLong(rawContactIndex) else 0L
                 if (rawContactId > 0L && callReportRawContactIds.contains(rawContactId)) continue
-                val phone = PhoneNormalizer.normalize(cursor.getString(numberIndex).orEmpty())
+                val originalPhone = cursor.getString(numberIndex).orEmpty()
+                val phone = PhoneNormalizer.normalize(originalPhone)
                 if (phone.isBlank() || contactsByPhone.containsKey(phone)) continue
                 val displayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
+                    displayPhone = originalPhone,
                     displayName = displayName,
                     existingRawContactId = rawContactId,
                 )
@@ -359,6 +362,7 @@ internal object CallReportBulkContactRegistrar {
 
     private data class BulkContactCandidate(
         val phone: String,
+        val displayPhone: String,
         val displayName: String,
         val existingRawContactId: Long,
     )
