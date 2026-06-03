@@ -74,10 +74,13 @@ class ContactNotesCrmController(
         phone: String,
         title: String,
     ): Boolean {
-        return when (mode) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportStableCrmContactWriter.save(context, fields)
-            else -> CallReportContactIntegration.linkContact(context, phone, title)
-        }
+        return CrmContactLinkSaver.save(
+            context = context,
+            fields = fields,
+            mode = mode,
+            phone = phone,
+            title = title,
+        )
     }
 
     private fun removeCrmLink(context: Context, phone: String): Int {
