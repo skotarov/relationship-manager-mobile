@@ -4,5 +4,5 @@
     android:accountType="com.onlineimoti.calllog.account"
     android:userVisible="true"
     android:supportsUploading="false"
-    android:isAlwaysSyncable="false"
+    android:isAlwaysSyncable="true"
     android:allowParallelSyncs="false" />
