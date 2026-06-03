@@ -67,11 +67,21 @@ internal class MainContactsCleanupController(
     }
 
     fun registerAllCallReportContacts() {
-        BulkContactsTaskRunner.registerAll(activity.applicationContext)
+        val state = BulkContactsTaskRunner.currentState()
+        if (state.running && state.action == BulkContactsTaskAction.REGISTER) {
+            BulkContactsTaskRunner.cancel()
+        } else {
+            BulkContactsTaskRunner.registerAll(activity.applicationContext)
+        }
     }
 
     fun cleanupCallReportContacts() {
-        BulkContactsTaskRunner.cleanupAll(activity.applicationContext)
+        val state = BulkContactsTaskRunner.currentState()
+        if (state.running && state.action == BulkContactsTaskAction.CLEANUP) {
+            BulkContactsTaskRunner.cancel()
+        } else {
+            BulkContactsTaskRunner.cleanupAll(activity.applicationContext)
+        }
     }
 
     fun release() {
@@ -87,17 +97,25 @@ internal class MainContactsCleanupController(
             state.running -> state.status.ifBlank { "Обработка на Call Report записите…" }
             else -> state.status.ifBlank { "Обработка на Call Report записите…" }
         }
-        cleanupButton.isEnabled = !state.running
-        registerAllButton.isEnabled = !state.running
 
         if (state.running) {
             when (state.action) {
-                BulkContactsTaskAction.REGISTER -> registerAllButton.text = "Регистриране ${state.progress.percent}%"
-                BulkContactsTaskAction.CLEANUP -> cleanupButton.text = "Почистване ${state.progress.percent}%"
+                BulkContactsTaskAction.REGISTER -> {
+                    registerAllButton.isEnabled = !state.stopping
+                    registerAllButton.text = if (state.stopping) "Спиране…" else "Стоп"
+                    cleanupButton.isEnabled = false
+                }
+                BulkContactsTaskAction.CLEANUP -> {
+                    cleanupButton.isEnabled = !state.stopping
+                    cleanupButton.text = if (state.stopping) "Спиране…" else "Стоп"
+                    registerAllButton.isEnabled = false
+                }
                 BulkContactsTaskAction.IDLE -> Unit
             }
             setStatus(state.status)
         } else {
+            cleanupButton.isEnabled = true
+            registerAllButton.isEnabled = true
             cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
             registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
             if (state.status.isNotBlank()) setStatus(state.status)
