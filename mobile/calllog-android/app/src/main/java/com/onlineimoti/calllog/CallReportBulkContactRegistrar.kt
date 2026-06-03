@@ -32,30 +32,33 @@ internal object CallReportBulkContactRegistrar {
         if (!canReadAndWriteContacts(context)) return BulkContactRegistrationResult(0, 0, 0, 0)
         val mode = ConfigStore.load(context).contactLinkMode
         val contacts = collectUniqueContacts(context)
+        val existingPhones = findCallReportPhones(context)
         return if (mode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
-            registerContactMode(context, contacts, onProgress)
+            registerContactMode(context, contacts, existingPhones, onProgress)
         } else {
-            registerLinkedAppMode(context, contacts, onProgress)
+            registerLinkedAppMode(context, contacts, existingPhones, onProgress)
         }
     }
 
     private fun registerLinkedAppMode(
         context: Context,
         contacts: List<BulkContactCandidate>,
+        existingPhones: Set<String>,
         onProgress: (BulkContactRegistrationProgress) -> Unit,
     ): BulkContactRegistrationResult {
+        val total = contacts.size
         if (contacts.isEmpty()) {
             onProgress(BulkContactRegistrationProgress(0, 0))
             return BulkContactRegistrationResult(0, 0, 0, 0)
         }
 
         CrmContactAccountStore.ensureAccount(context)
-        deleteExistingCallReportRawContacts(context)
+        val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
+        val skippedExisting = total - contactsToCreate.size
 
         var created = 0
         var failed = 0
-        var processed = 0
-        val total = contacts.size
+        var processed = skippedExisting
         var lastPercent = -1
 
         fun report() {
@@ -66,7 +69,7 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report()
-        contacts.chunked(CONTACTS_PER_BATCH).forEach { chunk ->
+        contactsToCreate.chunked(CONTACTS_PER_BATCH).forEach { chunk ->
             val saved = createLinkedAppChunk(context, chunk)
             if (saved) {
                 created += chunk.size
@@ -86,7 +89,7 @@ internal object CallReportBulkContactRegistrar {
         return BulkContactRegistrationResult(
             scanned = total,
             created = created,
-            skippedExisting = 0,
+            skippedExisting = skippedExisting,
             failed = failed,
         )
     }
@@ -94,24 +97,26 @@ internal object CallReportBulkContactRegistrar {
     private fun registerContactMode(
         context: Context,
         contacts: List<BulkContactCandidate>,
+        existingPhones: Set<String>,
         onProgress: (BulkContactRegistrationProgress) -> Unit,
     ): BulkContactRegistrationResult {
-        var created = 0
-        var skippedExisting = 0
-        var failed = 0
+        val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
         val total = contacts.size
+        var created = 0
+        val skippedExisting = total - contactsToCreate.size
+        var failed = 0
+        var processed = skippedExisting
         var lastPercent = -1
 
-        fun report(processed: Int) {
+        fun report() {
             val progress = BulkContactRegistrationProgress(processed, total)
             if (progress.percent == lastPercent && processed != total) return
             lastPercent = progress.percent
             onProgress(progress)
         }
 
-        report(0)
-        contacts.forEachIndexed { index, contact ->
-            val alreadyLinked = CallReportContactIntegration.isContactLinked(context, contact.phone)
+        report()
+        contactsToCreate.forEach { contact ->
             val saved = CallReportStableCrmContactWriter.save(
                 context,
                 CallReportStableCrmContactWriter.Fields(
@@ -119,17 +124,15 @@ internal object CallReportBulkContactRegistrar {
                     displayName = contact.displayName.ifBlank { contact.phone },
                 ),
             )
-            when {
-                saved && alreadyLinked -> skippedExisting += 1
-                saved -> created += 1
-                else -> failed += 1
-            }
-            report(index + 1)
+            if (saved) created += 1 else failed += 1
+            processed += 1
+            report()
         }
         return BulkContactRegistrationResult(total, created, skippedExisting, failed)
     }
 
     private fun createLinkedAppChunk(context: Context, contacts: List<BulkContactCandidate>): Boolean {
+        if (contacts.isEmpty()) return true
         val operations = arrayListOf<ContentProviderOperation>()
         contacts.forEach { contact ->
             addCreateLinkedAppOperations(operations, contact)
@@ -225,16 +228,6 @@ internal object CallReportBulkContactRegistrar {
         return contactsByPhone.values.toList()
     }
 
-    private fun deleteExistingCallReportRawContacts(context: Context): Int {
-        return runCatching {
-            context.contentResolver.delete(
-                ContactsContract.RawContacts.CONTENT_URI,
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, CrmContactAccountStore.ACCOUNT_NAME),
-            )
-        }.getOrDefault(0)
-    }
-
     private fun findCallReportRawContactIds(context: Context): Set<Long> {
         return runCatching {
             context.contentResolver.query(
@@ -246,6 +239,25 @@ internal object CallReportBulkContactRegistrar {
             )?.use { cursor ->
                 buildSet {
                     while (cursor.moveToNext()) add(cursor.getLong(0))
+                }
+            }.orEmpty()
+        }.getOrDefault(emptySet())
+    }
+
+    private fun findCallReportPhones(context: Context): Set<String> {
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts.SYNC1),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, CrmContactAccountStore.ACCOUNT_NAME),
+                null,
+            )?.use { cursor ->
+                buildSet {
+                    while (cursor.moveToNext()) {
+                        val phone = PhoneNormalizer.normalize(cursor.getString(0).orEmpty())
+                        if (phone.isNotBlank()) add(phone)
+                    }
                 }
             }.orEmpty()
         }.getOrDefault(emptySet())
