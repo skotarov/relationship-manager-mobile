@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.content.ContentProviderOperation
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
@@ -34,17 +33,21 @@ internal object CallReportBulkContactRegistrar {
         val mode = ConfigStore.load(context).contactLinkMode
         val contacts = collectUniqueContacts(context)
         val existingPhones = findCallReportPhones(context)
-        return if (mode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
-            registerContactMode(context, contacts, existingPhones, onProgress, shouldCancel)
-        } else {
-            registerLinkedAppMode(context, contacts, existingPhones, onProgress, shouldCancel)
-        }
+        return registerOneByOneLikeModal(
+            context = context,
+            contacts = contacts,
+            existingPhones = existingPhones,
+            mode = mode,
+            onProgress = onProgress,
+            shouldCancel = shouldCancel,
+        )
     }
 
-    private fun registerLinkedAppMode(
+    private fun registerOneByOneLikeModal(
         context: Context,
         contacts: List<BulkContactCandidate>,
         existingPhones: Set<String>,
+        mode: String,
         onProgress: (BulkContactRegistrationProgress) -> Unit,
         shouldCancel: () -> Boolean,
     ): BulkContactRegistrationResult {
@@ -55,7 +58,7 @@ internal object CallReportBulkContactRegistrar {
         }
 
         var created = 0
-        var relinkedExisting = 0
+        var updatedExisting = 0
         var failed = 0
         var processed = 0
         var canceled = false
@@ -75,12 +78,21 @@ internal object CallReportBulkContactRegistrar {
                 break
             }
 
-            val alreadyLinked = existingPhones.contains(contact.phone)
             val title = contact.displayName.ifBlank { contact.phone }
-            val linked = CallReportContactIntegration.linkContact(context, contact.phone, title)
-            val aggregated = forceKeepTogetherToSourceRaw(context, contact.phone, contact.sourceRawContactId)
-            if (linked && aggregated) {
-                if (alreadyLinked) relinkedExisting += 1 else created += 1
+            val fields = CallReportStableCrmContactWriter.Fields(
+                originalPhone = contact.phone,
+                displayName = title,
+            )
+            val saved = CrmContactLinkSaver.save(
+                context = context,
+                fields = fields,
+                mode = mode,
+                phone = contact.phone,
+                title = title,
+            )
+
+            if (saved) {
+                if (existingPhones.contains(contact.phone)) updatedExisting += 1 else created += 1
             } else {
                 failed += 1
             }
@@ -93,73 +105,10 @@ internal object CallReportBulkContactRegistrar {
         return BulkContactRegistrationResult(
             scanned = processed,
             created = created,
-            skippedExisting = relinkedExisting,
+            skippedExisting = updatedExisting,
             failed = failed,
             canceled = canceled,
         )
-    }
-
-    private fun registerContactMode(
-        context: Context,
-        contacts: List<BulkContactCandidate>,
-        existingPhones: Set<String>,
-        onProgress: (BulkContactRegistrationProgress) -> Unit,
-        shouldCancel: () -> Boolean,
-    ): BulkContactRegistrationResult {
-        val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
-        val total = contacts.size
-        var created = 0
-        val skippedExisting = total - contactsToCreate.size
-        var failed = 0
-        var processed = skippedExisting
-        var canceled = false
-        var lastPercent = -1
-
-        fun report() {
-            val progress = BulkContactRegistrationProgress(processed, total)
-            if (progress.percent == lastPercent && processed != total) return
-            lastPercent = progress.percent
-            onProgress(progress)
-        }
-
-        report()
-        for (contact in contactsToCreate) {
-            if (shouldCancel()) {
-                canceled = true
-                break
-            }
-            val saved = CallReportStableCrmContactWriter.save(
-                context,
-                CallReportStableCrmContactWriter.Fields(
-                    originalPhone = contact.phone,
-                    displayName = contact.displayName.ifBlank { contact.phone },
-                ),
-            )
-            if (saved) created += 1 else failed += 1
-            processed += 1
-            report()
-            Thread.sleep(25L)
-        }
-        return BulkContactRegistrationResult(processed, created, skippedExisting, failed, canceled)
-    }
-
-    private fun forceKeepTogetherToSourceRaw(context: Context, phone: String, sourceRawContactId: Long): Boolean {
-        if (sourceRawContactId <= 0L) return true
-        val cleanedPhone = PhoneNormalizer.normalize(phone)
-        if (cleanedPhone.isBlank()) return false
-        val callReportRawContactId = CrmContactAccountStore.findCallReportRawContactId(context, cleanedPhone)
-        if (callReportRawContactId <= 0L) return false
-        if (callReportRawContactId == sourceRawContactId) return true
-
-        return runCatching {
-            val operation = ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
-                .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
-                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, sourceRawContactId)
-                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, callReportRawContactId)
-                .build()
-            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, arrayListOf(operation))
-            true
-        }.getOrDefault(false)
     }
 
     private fun collectUniqueContacts(context: Context): List<BulkContactCandidate> {
@@ -190,7 +139,6 @@ internal object CallReportBulkContactRegistrar {
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
                     displayName = displayName,
-                    sourceRawContactId = rawContactId,
                 )
             }
         }
@@ -240,6 +188,5 @@ internal object CallReportBulkContactRegistrar {
     private data class BulkContactCandidate(
         val phone: String,
         val displayName: String,
-        val sourceRawContactId: Long,
     )
 }
