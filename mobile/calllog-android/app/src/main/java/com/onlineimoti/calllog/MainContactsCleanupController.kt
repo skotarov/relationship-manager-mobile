@@ -24,6 +24,7 @@ internal class MainContactsCleanupController(
     private val contactLink get() = binding.contactLinkSection
     private val cleanupButton get() = contactLink.cleanupContactsButton
     private val registerAllButton get() = contactLink.registerAllContactsButton
+    private val repairButton get() = contactLink.debugCrmContactNameButton
 
     private val taskListener: (BulkContactsTaskState) -> Unit = { state ->
         applyTaskState(state)
@@ -54,7 +55,7 @@ internal class MainContactsCleanupController(
             layoutParams = LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
         }
         val label = TextView(activity).apply {
-            text = "Обработка на Call Report записите…"
+            text = "Обработка на RM записите…"
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(cleanupButton.currentTextColor)
@@ -83,6 +84,15 @@ internal class MainContactsCleanupController(
         }
     }
 
+    fun repairAllRmContacts() {
+        val state = BulkContactsTaskRunner.currentState()
+        if (state.running && state.action == BulkContactsTaskAction.REPAIR) {
+            BulkContactsTaskRunner.cancel()
+        } else if (!state.running) {
+            BulkContactsTaskRunner.repairAll(activity.applicationContext)
+        }
+    }
+
     fun cleanupCallReportContacts() {
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.CLEANUP) {
@@ -102,21 +112,26 @@ internal class MainContactsCleanupController(
         progress?.visibility = if (state.running) View.VISIBLE else View.GONE
         progressText?.text = when {
             state.running && state.progress.total > 0 -> taskLabel(state)
-            state.running -> state.status.ifBlank { "Обработка на Call Report записите…" }
-            else -> state.status.ifBlank { "Обработка на Call Report записите…" }
+            state.running -> state.status.ifBlank { "Обработка на RM записите…" }
+            else -> state.status.ifBlank { "Обработка на RM записите…" }
         }
 
         if (state.running) {
+            registerAllButton.isEnabled = false
+            repairButton.isEnabled = false
+            cleanupButton.isEnabled = false
             when (state.action) {
                 BulkContactsTaskAction.REGISTER -> {
                     registerAllButton.isEnabled = !state.stopping
                     registerAllButton.text = if (state.stopping) "Спиране…" else "Стоп"
-                    cleanupButton.isEnabled = false
+                }
+                BulkContactsTaskAction.REPAIR -> {
+                    repairButton.isEnabled = !state.stopping
+                    repairButton.text = if (state.stopping) "Спиране…" else "Стоп"
                 }
                 BulkContactsTaskAction.CLEANUP -> {
                     cleanupButton.isEnabled = !state.stopping
                     cleanupButton.text = if (state.stopping) "Спиране…" else "Стоп"
-                    registerAllButton.isEnabled = false
                 }
                 BulkContactsTaskAction.IDLE -> Unit
             }
@@ -124,8 +139,10 @@ internal class MainContactsCleanupController(
         } else {
             cleanupButton.isEnabled = true
             registerAllButton.isEnabled = true
+            repairButton.isEnabled = true
             cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
             registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
+            repairButton.text = activity.getString(R.string.contact_link_debug_button)
             if (state.status.isNotBlank()) setStatus(state.status)
         }
     }
@@ -133,6 +150,7 @@ internal class MainContactsCleanupController(
     private fun taskLabel(state: BulkContactsTaskState): String {
         val label = when (state.action) {
             BulkContactsTaskAction.REGISTER -> "Регистриране ${state.progress.percent}%"
+            BulkContactsTaskAction.REPAIR -> "Поправяне ${state.progress.percent}%"
             BulkContactsTaskAction.CLEANUP -> "Почистване ${state.progress.percent}%"
             BulkContactsTaskAction.IDLE -> "Обработка ${state.progress.percent}%"
         }
