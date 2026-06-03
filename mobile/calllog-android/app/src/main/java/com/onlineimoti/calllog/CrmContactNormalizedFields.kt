@@ -55,11 +55,11 @@ data class CrmContactNormalizedFields(
         fun from(
             fields: CallReportStableCrmContactWriter.Fields,
             originalPhone: String,
-            existingRawContactId: Long,
+            @Suppress("UNUSED_PARAMETER") existingRawContactId: Long,
         ): CrmContactNormalizedFields {
             return CrmContactNormalizedFields(
                 originalPhone = originalPhone,
-                displayName = if (existingRawContactId > 0L) "" else fields.displayName.trim().ifBlank { originalPhone },
+                displayName = fields.displayName.trim().ifBlank { originalPhone },
                 additionalPhone = PhoneNormalizer.normalize(fields.additionalPhone).takeIf { it.isNotBlank() && it != originalPhone }.orEmpty(),
                 organization = fields.organization.trim(),
                 jobTitle = fields.jobTitle.trim(),
