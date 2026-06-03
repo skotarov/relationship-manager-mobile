@@ -3,8 +3,8 @@
     <string name="notification_channel_name">Relation Management</string>
     <string name="notification_channel_description">Проверка на номер и бързо отваряне</string>
 
-    <string name="home_title">Call Log</string>
-    <string name="home_settings_button">⚙ Settings</string>
+    <string name="home_title">RM Col Log</string>
+    <string name="home_settings_button">Settings</string>
     <string name="clear_filter_content_description">Изчисти филтъра</string>
     <string name="search_content_description">Търсене в бележки</string>
     <string name="search_clear_content_description">Изчисти търсенето</string>
@@ -15,18 +15,18 @@
     <string name="settings_title">Settings</string>
     <string name="settings_back_content_description">Назад</string>
     <string name="settings_description">Настройки на Android wrapper-а за call popup-и, локална история и server WebView форма.</string>
-    <string name="settings_basic_section">☰ Основни настройки</string>
-    <string name="settings_archive_section">🗄 Архив</string>
-    <string name="settings_application_section">⚙ Приложение</string>
-    <string name="settings_language_section">🌐 Език</string>
-    <string name="settings_storage_section">💾 Съхранение на бележките</string>
-    <string name="settings_call_log_section">📞 Call Log</string>
-    <string name="settings_call_log_overlay_section">☎ Overlay бутон върху Call Log</string>
-    <string name="settings_popup_section">💬 Popup поведение</string>
-    <string name="settings_crm_section">👤 Внедряване с контакти</string>
-    <string name="settings_permissions_section">🔐 Разрешения</string>
-    <string name="settings_server_section">🌐 Server настройки</string>
-    <string name="settings_debug_section">🧪 Debug / Тестове</string>
+    <string name="settings_basic_section">Основни настройки</string>
+    <string name="settings_archive_section">Архив</string>
+    <string name="settings_application_section">Приложение</string>
+    <string name="settings_language_section">Език</string>
+    <string name="settings_storage_section">Съхранение на бележките</string>
+    <string name="settings_call_log_section">Call Log</string>
+    <string name="settings_call_log_overlay_section">Overlay бутон върху Call Log</string>
+    <string name="settings_popup_section">Popup поведение</string>
+    <string name="settings_crm_section">Relationship Management контакти</string>
+    <string name="settings_permissions_section">Разрешения</string>
+    <string name="settings_server_section">Server настройки</string>
+    <string name="settings_debug_section">Debug / Тестове</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, server връзката и WebView екраните работят правилно.</string>
 
     <string name="language_title">Език</string>
@@ -45,7 +45,7 @@
     <string name="home_call_page_size_description">Колко реда от телефонния call log да се показват на първата и всяка следваща страница. Позволено: 5–100.</string>
     <string name="call_log_overlay_button_enabled">Показвай кръгъл Call Report бутон върху системния call log</string>
     <string name="call_log_overlay_button_description">Показва се само докато е отворен default телефонният call log от това приложение. Изисква Accessibility и Display over other apps.</string>
-    <string name="call_log_overlay_debug_enabled">Show overlay detection debug</string>
+    <string name="call_log_overlay_debug_enabled">Показвай overlay detection debug</string>
     <string name="call_log_overlay_debug_description">Когато е включено, под плаващия бутон се показва малък debug текст с разпознатия екран и видимите текстове.</string>
     <string name="call_log_overlay_access_button">Отвори Accessibility настройките за бутона</string>
     <string name="call_log_overlay_button_position_title">Позиция на бутона</string>
@@ -59,14 +59,16 @@
     <string name="contact_groups_hint">Групи за познати контакти</string>
     <string name="contact_groups_description">Ако „Познати контакти“ е включено: празно поле = всички познати; попълнено = само контактите от тези групи.</string>
 
-    <string name="contact_link_title">CRM свързване в Android контакти</string>
-    <string name="contact_link_show_crm_buttons">Показвай бутоните Добави в CRM / Едит</string>
+    <string name="contact_link_title">RM свързване в Android контакти</string>
+    <string name="contact_link_show_crm_buttons">Показвай бутоните Добави в RM / Едит</string>
     <string name="contact_link_mode_app">Като приложение — Relation Management да се показва в свързани приложения</string>
     <string name="contact_link_mode_contact">Като контакт — Relation Management да се добавя като свързан контакт</string>
-    <string name="contact_link_description">Смяната важи при следващо Добави/Премахни от CRM.</string>
+    <string name="contact_link_description">Смяната важи при следващо Добави/Премахни от RM.</string>
     <string name="contact_link_bulk_title">Масово внедряване</string>
     <string name="contact_link_register_all_button">Регистрирай всички</string>
-    <string name="contact_link_bulk_description">Регистрира само телефонна връзка за съществуващите контакти. Ако вече има Call Report регистрация, тя се пропуска и не се променя.</string>
+    <string name="contact_link_debug_button">Поправи RM записите</string>
+    <string name="contact_link_clean_orphans_button">Почисти осиротели RM записи</string>
+    <string name="contact_link_bulk_description">Регистрира само телефонна връзка за съществуващите контакти. Ако вече има Relation Management регистрация, тя се пропуска и не се променя.</string>
 
     <string name="popup_timeout_hint">Секунди за auto-close на popup след край</string>
     <string name="popup_after_call_title">След приключване на разговора</string>
@@ -86,7 +88,7 @@
     <string name="permissions_overlay_button">Разреши Display over other apps</string>
     <string name="permissions_call_screening_button">Активирай Call screening</string>
     <string name="permissions_fullscreen_button">Разреши Full-screen popup</string>
-    <string name="permissions_cleanup_contacts_button">Почисти Relation Management от контактите</string>
+    <string name="permissions_cleanup_contacts_button">Почисти всички Relation Management записи</string>
     <string name="permissions_use_call_screening">Използвай Call screening / Caller ID роля</string>
     <string name="permissions_call_screening_description">Не е задължително. Активирай го само ако popup-ът не се показва навреме при входящ разговор или Android забавя информацията за разговора. Телефонът може да го покаже като Default caller ID / spam app.</string>
 
@@ -115,8 +117,8 @@
     <string name="save_settings">Запази настройките</string>
     <string name="open_form_direct">Отвори формата</string>
     <string name="test_notification">Тествай notification</string>
-    <string name="crm_add_contact">Добави в CRM</string>
-    <string name="crm_remove_contact">Премахни от CRM</string>
+    <string name="crm_add_contact">Добави в RM</string>
+    <string name="crm_remove_contact">Премахни от RM</string>
     <string name="crm_contact_processing">Обработва се…</string>
     <string name="open_default_contact">Отвори контакта</string>
     <string name="contact_not_found">Контактът не е намерен</string>
