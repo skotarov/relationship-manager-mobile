@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.Editable
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         val quickStartButton = findViewById<MaterialButton>(R.id.testStartPopupButton)
         val quickEndButton = findViewById<MaterialButton>(R.id.testEndPopupButton)
 
-        binding.backToHomeButton.setOnClickListener { finish() }
+        binding.backToHomeButton.setOnClickListener { openCallLogHome() }
         binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
         binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
         binding.permissionsSection.openCallScreeningButton.setOnClickListener {
@@ -251,6 +252,15 @@ class MainActivity : AppCompatActivity() {
     private fun setStatus(message: String) {
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
+    }
+
+    private fun openCallLogHome() {
+        startActivity(
+            Intent(this, HomeActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+        )
+        finish()
     }
 
     private fun debugCrmContactName() {
