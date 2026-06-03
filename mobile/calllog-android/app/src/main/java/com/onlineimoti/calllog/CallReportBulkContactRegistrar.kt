@@ -45,12 +45,12 @@ internal object CallReportBulkContactRegistrar {
 
         report(0)
         contacts.forEachIndexed { index: Int, contact: BulkContactCandidate ->
-            if (CallReportContactIntegration.isContactLinked(context, contact.phone)) {
-                skippedExisting += 1
-            } else if (saveCrmLink(context, mode, contact)) {
-                created += 1
-            } else {
-                failed += 1
+            val alreadyLinked = CallReportContactIntegration.isContactLinked(context, contact.phone)
+            val saved = saveCrmLink(context, mode, contact)
+            when {
+                saved && alreadyLinked -> skippedExisting += 1
+                saved -> created += 1
+                else -> failed += 1
             }
             report(index + 1)
         }
