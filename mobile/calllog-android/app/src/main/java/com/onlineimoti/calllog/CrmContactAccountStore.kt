@@ -9,15 +9,20 @@ import android.content.Context
 import android.provider.ContactsContract
 
 object CrmContactAccountStore {
-    const val ACCOUNT_NAME = "Call Report"
-    const val EXTRA_PHONE_LABEL = "Call Report доп."
+    const val ACCOUNT_NAME = "Relation Management"
+    const val LEGACY_ACCOUNT_NAME = "Call Report"
+    const val EXTRA_PHONE_LABEL = "RM доп."
 
     fun ensureAccount(context: Context, syncAutomatically: Boolean = false) {
         val account = Account(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val manager = AccountManager.get(context)
         runCatching {
-            if (manager.getAccountsByType(CallReportContactIntegration.ACCOUNT_TYPE).none { it.name == ACCOUNT_NAME }) {
-                manager.addAccountExplicitly(account, null, null)
+            val accounts = manager.getAccountsByType(CallReportContactIntegration.ACCOUNT_TYPE)
+            val hasNew = accounts.any { it.name == ACCOUNT_NAME }
+            if (!hasNew) manager.addAccountExplicitly(account, null, null)
+            accounts.firstOrNull { it.name == LEGACY_ACCOUNT_NAME }?.let { legacy ->
+                if (hasNew) return@let
+                manager.renameAccount(legacy, ACCOUNT_NAME, null, null)
             }
         }
         runCatching {
@@ -28,8 +33,19 @@ object CrmContactAccountStore {
     }
 
     private fun ensureAccountVisibility(context: Context, shouldSync: Boolean) {
+        upsertAccountVisibility(context, ACCOUNT_NAME, shouldSync)
+        runCatching {
+            context.contentResolver.delete(
+                ContactsContract.Settings.CONTENT_URI,
+                "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
+                arrayOf(LEGACY_ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+            )
+        }
+    }
+
+    private fun upsertAccountVisibility(context: Context, accountName: String, shouldSync: Boolean) {
         val values = ContentValues().apply {
-            put(ContactsContract.Settings.ACCOUNT_NAME, ACCOUNT_NAME)
+            put(ContactsContract.Settings.ACCOUNT_NAME, accountName)
             put(ContactsContract.Settings.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
             put(ContactsContract.Settings.UNGROUPED_VISIBLE, 1)
             put(ContactsContract.Settings.SHOULD_SYNC, if (shouldSync) 1 else 0)
@@ -39,7 +55,7 @@ object CrmContactAccountStore {
                 ContactsContract.Settings.CONTENT_URI,
                 arrayOf(ContactsContract.Settings.ACCOUNT_NAME),
                 "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
-                arrayOf(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                arrayOf(accountName, CallReportContactIntegration.ACCOUNT_TYPE),
                 null,
             )?.use { it.moveToFirst() } ?: false
         }.getOrDefault(false)
@@ -50,7 +66,7 @@ object CrmContactAccountStore {
                     ContactsContract.Settings.CONTENT_URI,
                     values,
                     "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
-                    arrayOf(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                    arrayOf(accountName, CallReportContactIntegration.ACCOUNT_TYPE),
                 )
             } else {
                 context.contentResolver.insert(ContactsContract.Settings.CONTENT_URI, values)
@@ -65,8 +81,8 @@ object CrmContactAccountStore {
             context.contentResolver.query(
                 ContactsContract.Groups.CONTENT_URI,
                 arrayOf(ContactsContract.Groups._ID),
-                "${ContactsContract.Groups.ACCOUNT_TYPE}=? AND ${ContactsContract.Groups.ACCOUNT_NAME}=? AND ${ContactsContract.Groups.TITLE}=? AND ${ContactsContract.Groups.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, groupTitle),
+                "${ContactsContract.Groups.ACCOUNT_TYPE}=? AND ${ContactsContract.Groups.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.Groups.TITLE}=? AND ${ContactsContract.Groups.DELETED}=0",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, LEGACY_ACCOUNT_NAME, groupTitle),
                 null,
             )?.use { if (it.moveToFirst()) it.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
@@ -92,8 +108,8 @@ object CrmContactAccountStore {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, phone),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, LEGACY_ACCOUNT_NAME, phone),
                 null,
             )?.use { if (it.moveToFirst()) it.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
