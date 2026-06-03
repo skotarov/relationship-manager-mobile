@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.Editable
@@ -102,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.registerAllCallReportContacts() }
+        binding.contactLinkSection.debugCrmContactNameButton.setOnClickListener { debugCrmContactName() }
         binding.contactLinkSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
@@ -249,6 +251,16 @@ class MainActivity : AppCompatActivity() {
     private fun setStatus(message: String) {
         binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
+    }
+
+    private fun debugCrmContactName() {
+        val phone = binding.testsSection.phoneInput.text?.toString().orEmpty()
+        val report = CrmContactDebugInspector.inspect(this, phone)
+        AlertDialog.Builder(this)
+            .setTitle("CRM record check")
+            .setMessage(report)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun hasPermission(permission: String): Boolean {
