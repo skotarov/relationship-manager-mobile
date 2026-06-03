@@ -50,7 +50,7 @@
             android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/home_settings_button"
-            android:padding="10dp"
+            android:padding="12dp"
             android:scaleType="center"
             android:src="@drawable/ic_settings_gear" />
     </LinearLayout>
