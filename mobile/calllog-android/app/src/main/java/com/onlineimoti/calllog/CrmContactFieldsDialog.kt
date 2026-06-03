@@ -16,6 +16,7 @@ object CrmContactFieldsDialog {
         currentGeneralNote: String,
         onSave: (CallReportStableCrmContactWriter.Fields) -> Unit,
     ) {
+        val savedFields = CrmContactFieldsReader.load(activity, phone)
         val ui = CrmContactDialogUi(activity)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -51,11 +52,12 @@ object CrmContactFieldsDialog {
             phone = phone,
             titleText = titleText,
             currentGeneralNote = currentGeneralNote,
+            savedFields = savedFields,
         )
-        val advancedInputs = CrmAdvancedContactInputs.build(ui, advancedSection)
+        val advancedInputs = CrmAdvancedContactInputs.build(ui, advancedSection, savedFields)
 
         AlertDialog.Builder(activity)
-            .setTitle("CRM контакт")
+            .setTitle(if (savedFields == null) "CRM контакт" else "Редакция на CRM контакт")
             .setView(ScrollView(activity).apply { addView(root) })
             .setNegativeButton("Изход", null)
             .setPositiveButton("Запис") { _, _ ->
