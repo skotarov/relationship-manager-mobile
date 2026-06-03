@@ -16,18 +16,19 @@ internal object CallReportContactsSyncBridge {
 
     fun ensureAccountAndRequestSync(context: Context, force: Boolean = false) {
         val appContext = context.applicationContext
-        CrmContactAccountStore.ensureAccount(appContext)
+        CrmContactAccountStore.ensureAccount(appContext, syncAutomatically = false)
+        if (!force) return
         if (!canReadAndWriteContacts(appContext)) return
 
         val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val lastRequest = prefs.getLong(KEY_LAST_SYNC_REQUEST_MS, 0L)
-        if (!force && now - lastRequest < SYNC_REQUEST_INTERVAL_MS) return
+        if (now - lastRequest < SYNC_REQUEST_INTERVAL_MS) return
 
         val account = Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val extras = Bundle().apply {
-            putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, force)
-            putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, force)
+            putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true)
+            putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
         }
 
         runCatching {
