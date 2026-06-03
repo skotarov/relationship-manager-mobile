@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.content.ContentProviderOperation
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
@@ -24,7 +23,6 @@ data class BulkContactRegistrationProgress(
 
 internal object CallReportBulkContactRegistrar {
     private const val MAX_CONTACTS_PER_RUN = 2500
-    private const val CONTACTS_PER_BATCH = 75
 
     fun registerPhoneOnlyLinks(
         context: Context,
@@ -55,7 +53,6 @@ internal object CallReportBulkContactRegistrar {
             return BulkContactRegistrationResult(0, 0, 0, 0)
         }
 
-        CrmContactAccountStore.ensureAccount(context)
         val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
         val skippedExisting = total - contactsToCreate.size
 
@@ -73,31 +70,22 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report()
-        for (chunk in contactsToCreate.chunked(CONTACTS_PER_BATCH)) {
+        for (contact in contactsToCreate) {
             if (shouldCancel()) {
                 canceled = true
                 break
             }
-            val saved = createLinkedAppChunk(context, chunk)
-            if (saved) {
-                created += chunk.size
+
+            val title = contact.displayName.ifBlank { contact.phone }
+            if (CallReportContactIntegration.linkContact(context, contact.phone, title)) {
+                created += 1
             } else {
-                for (contact in chunk) {
-                    if (shouldCancel()) {
-                        canceled = true
-                        break
-                    }
-                    if (CallReportContactIntegration.linkContact(context, contact.phone, contact.displayName.ifBlank { contact.phone })) {
-                        created += 1
-                    } else {
-                        failed += 1
-                    }
-                }
+                failed += 1
             }
-            processed += chunk.size
+
+            processed += 1
             report()
-            if (canceled) break
-            Thread.sleep(35L)
+            Thread.sleep(25L)
         }
 
         return BulkContactRegistrationResult(
@@ -148,71 +136,9 @@ internal object CallReportBulkContactRegistrar {
             if (saved) created += 1 else failed += 1
             processed += 1
             report()
-            Thread.sleep(20L)
+            Thread.sleep(25L)
         }
-        return BulkContactRegistrationResult(total, created, skippedExisting, failed, canceled)
-    }
-
-    private fun createLinkedAppChunk(context: Context, contacts: List<BulkContactCandidate>): Boolean {
-        if (contacts.isEmpty()) return true
-        val operations = arrayListOf<ContentProviderOperation>()
-        contacts.forEach { contact ->
-            addCreateLinkedAppOperations(operations, contact)
-        }
-        return runCatching {
-            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
-            true
-        }.getOrDefault(false)
-    }
-
-    private fun addCreateLinkedAppOperations(
-        operations: ArrayList<ContentProviderOperation>,
-        contact: BulkContactCandidate,
-    ) {
-        val title = contact.displayName.ifBlank { contact.phone }
-        val rawContactBackReference = operations.size
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, CrmContactAccountStore.ACCOUNT_NAME)
-                .withValue(ContactsContract.RawContacts.SYNC1, contact.phone)
-                .withValue(ContactsContract.RawContacts.AGGREGATION_MODE, ContactsContract.RawContacts.AGGREGATION_MODE_DEFAULT)
-                .build()
-        )
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactBackReference)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, title)
-                .build()
-        )
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactBackReference)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, contact.phone)
-                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, CrmContactAccountStore.ACCOUNT_NAME)
-                .build()
-        )
-        operations.add(
-            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawContactBackReference)
-                .withValue(ContactsContract.Data.MIMETYPE, CallReportContactIntegration.HISTORY_MIME_TYPE)
-                .withValue(ContactsContract.Data.DATA1, contact.phone)
-                .withValue(ContactsContract.Data.DATA2, CrmContactAccountStore.ACCOUNT_NAME)
-                .withValue(ContactsContract.Data.DATA3, "История")
-                .build()
-        )
-        if (contact.sourceRawContactId > 0L) {
-            operations.add(
-                ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
-                    .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
-                    .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, contact.sourceRawContactId)
-                    .withValueBackReference(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, rawContactBackReference)
-                    .build()
-            )
-        }
+        return BulkContactRegistrationResult(processed, created, skippedExisting, failed, canceled)
     }
 
     private fun collectUniqueContacts(context: Context): List<BulkContactCandidate> {
@@ -243,7 +169,6 @@ internal object CallReportBulkContactRegistrar {
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
                     displayName = displayName,
-                    sourceRawContactId = rawContactId,
                 )
             }
         }
@@ -293,6 +218,5 @@ internal object CallReportBulkContactRegistrar {
     private data class BulkContactCandidate(
         val phone: String,
         val displayName: String,
-        val sourceRawContactId: Long,
     )
 }
