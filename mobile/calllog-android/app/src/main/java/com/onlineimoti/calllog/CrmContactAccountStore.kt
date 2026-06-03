@@ -19,10 +19,11 @@ object CrmContactAccountStore {
         runCatching {
             val accounts = manager.getAccountsByType(CallReportContactIntegration.ACCOUNT_TYPE)
             val hasNew = accounts.any { it.name == ACCOUNT_NAME }
-            if (!hasNew) manager.addAccountExplicitly(account, null, null)
-            accounts.firstOrNull { it.name == LEGACY_ACCOUNT_NAME }?.let { legacy ->
-                if (hasNew) return@let
-                manager.renameAccount(legacy, ACCOUNT_NAME, null, null)
+            val legacy = accounts.firstOrNull { it.name == LEGACY_ACCOUNT_NAME }
+            when {
+                hasNew -> Unit
+                legacy != null -> manager.renameAccount(legacy, ACCOUNT_NAME, null, null)
+                else -> manager.addAccountExplicitly(account, null, null)
             }
         }
         runCatching {
