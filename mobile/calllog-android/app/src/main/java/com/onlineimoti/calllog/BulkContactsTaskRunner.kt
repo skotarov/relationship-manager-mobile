@@ -12,6 +12,7 @@ internal enum class BulkContactsTaskAction {
     IDLE,
     REGISTER,
     REPAIR,
+    CLEANUP_ORPHANS,
     CLEANUP,
 }
 
@@ -59,6 +60,7 @@ internal object BulkContactsTaskRunner {
             status = when (snapshot.action) {
                 BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия запис…"
                 BulkContactsTaskAction.REPAIR -> "Спирам поправката след текущия запис…"
+                BulkContactsTaskAction.CLEANUP_ORPHANS -> "Спирам почистването на осиротели записи след текущия запис…"
                 BulkContactsTaskAction.CLEANUP -> "Спирам почистването след текущия запис…"
                 BulkContactsTaskAction.IDLE -> "Спирам…"
             },
@@ -116,6 +118,39 @@ internal object BulkContactsTaskRunner {
                 action = BulkContactsTaskAction.REPAIR,
                 progress = latestProgress,
                 status = repairFinishedStatus(result),
+                context = appContext,
+            )
+        }
+    }
+
+    fun cleanupOrphans(context: Context) {
+        val appContext = context.applicationContext
+        if (!tryStart(BulkContactsTaskAction.CLEANUP_ORPHANS, "Почиствам осиротели RM записи… 0%", appContext)) return
+        executor.execute {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            var latestProgress = BulkContactRegistrationProgress(0, 0)
+            val result = RmContactOrphanCleaner.cleanOrphans(
+                context = appContext,
+                onProgress = { progress ->
+                    latestProgress = progress
+                    updateProgress(
+                        action = BulkContactsTaskAction.CLEANUP_ORPHANS,
+                        progress = progress,
+                        status = if (cancelRequested.get()) {
+                            "Спирам почистването на осиротели записи след текущия запис…"
+                        } else {
+                            "Почиствам осиротели RM записи… ${progress.percent}%"
+                        },
+                        stopping = cancelRequested.get(),
+                        context = appContext,
+                    )
+                },
+                shouldCancel = { cancelRequested.get() },
+            )
+            finish(
+                action = BulkContactsTaskAction.CLEANUP_ORPHANS,
+                progress = latestProgress,
+                status = orphanCleanupFinishedStatus(result),
                 context = appContext,
             )
         }
@@ -200,6 +235,14 @@ internal object BulkContactsTaskRunner {
             "Поправката е спряна. Поправени: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         } else {
             "Поправени RM записи: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+        }
+    }
+
+    private fun orphanCleanupFinishedStatus(result: BulkContactRegistrationResult): String {
+        return if (result.canceled) {
+            "Почистването е спряно. Изтрити осиротели: ${result.created}, запазени: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+        } else {
+            "Изтрити осиротели RM записи: ${result.created}, запазени: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         }
     }
 
