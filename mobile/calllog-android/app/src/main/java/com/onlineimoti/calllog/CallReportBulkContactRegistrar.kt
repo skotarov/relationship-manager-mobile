@@ -302,7 +302,8 @@ internal object CallReportBulkContactRegistrar {
                 val originalPhone = cursor.getString(numberIndex).orEmpty()
                 val phone = PhoneNormalizer.normalize(originalPhone)
                 if (phone.isBlank() || contactsByPhone.containsKey(phone)) continue
-                val displayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
+                val fallbackDisplayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
+                val displayName = exactStructuredDisplayName(context, rawContactId, fallbackDisplayName)
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
                     displayPhone = originalPhone,
@@ -314,6 +315,38 @@ internal object CallReportBulkContactRegistrar {
             }
         }
         return contactsByPhone.values.toList()
+    }
+
+    private fun exactStructuredDisplayName(context: Context, rawContactId: Long, fallback: String): String {
+        if (rawContactId <= 0L) return fallback
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME,
+                    ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME,
+                    ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME,
+                ),
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE),
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use fallback
+                val firstSecondThird = listOf(
+                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME),
+                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME),
+                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME),
+                ).filter { it.isNotBlank() }.joinToString(" ")
+                if (firstSecondThird.isNotBlank()) return@use firstSecondThird
+                cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME).ifBlank { fallback }
+            }.orEmpty().ifBlank { fallback }
+        }.getOrDefault(fallback)
+    }
+
+    private fun android.database.Cursor.getStringOrEmpty(column: String): String {
+        val index = getColumnIndex(column)
+        return if (index >= 0) getString(index).orEmpty() else ""
     }
 
     private fun findCallReportRawContactIds(context: Context): Set<Long> {
