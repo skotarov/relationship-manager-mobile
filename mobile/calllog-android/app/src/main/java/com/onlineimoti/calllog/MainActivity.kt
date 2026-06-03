@@ -128,6 +128,12 @@ class MainActivity : AppCompatActivity() {
         refreshPermissionSummary()
     }
 
+    override fun onDestroy() {
+        contactsCleanupController.release()
+        executor.shutdown()
+        super.onDestroy()
+    }
+
     private fun hydrateFields() {
         MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
         MainCallLogOverlaySettings.hydrate(this, binding)
