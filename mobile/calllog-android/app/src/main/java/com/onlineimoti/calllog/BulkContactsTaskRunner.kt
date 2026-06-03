@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal enum class BulkContactsTaskAction {
     IDLE,
     REGISTER,
+    REPAIR,
     CLEANUP,
 }
 
@@ -57,6 +58,7 @@ internal object BulkContactsTaskRunner {
             progress = snapshot.progress,
             status = when (snapshot.action) {
                 BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия запис…"
+                BulkContactsTaskAction.REPAIR -> "Спирам поправката след текущия запис…"
                 BulkContactsTaskAction.CLEANUP -> "Спирам почистването след текущия запис…"
                 BulkContactsTaskAction.IDLE -> "Спирам…"
             },
@@ -66,7 +68,7 @@ internal object BulkContactsTaskRunner {
 
     fun registerAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към Call Report… 0%", appContext)) return
+        if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към RM… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             runRegisterAll(
@@ -86,9 +88,42 @@ internal object BulkContactsTaskRunner {
         )
     }
 
+    fun repairAll(context: Context) {
+        val appContext = context.applicationContext
+        if (!tryStart(BulkContactsTaskAction.REPAIR, "Поправям RM записите… 0%", appContext)) return
+        executor.execute {
+            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            var latestProgress = BulkContactRegistrationProgress(0, 0)
+            val result = RmContactBulkRepairer.repairAll(
+                context = appContext,
+                onProgress = { progress ->
+                    latestProgress = progress
+                    updateProgress(
+                        action = BulkContactsTaskAction.REPAIR,
+                        progress = progress,
+                        status = if (cancelRequested.get()) {
+                            "Спирам поправката след текущия запис…"
+                        } else {
+                            "Поправям RM записите… ${progress.percent}%"
+                        },
+                        stopping = cancelRequested.get(),
+                        context = appContext,
+                    )
+                },
+                shouldCancel = { cancelRequested.get() },
+            )
+            finish(
+                action = BulkContactsTaskAction.REPAIR,
+                progress = latestProgress,
+                status = repairFinishedStatus(result),
+                context = appContext,
+            )
+        }
+    }
+
     fun cleanupAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.CLEANUP, "Почиствам Call Report записите от контактите… 0%", appContext)) return
+        if (!tryStart(BulkContactsTaskAction.CLEANUP, "Почиствам RM записите от контактите… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             var latestProgress = BulkContactRegistrationProgress(0, 0)
@@ -102,7 +137,7 @@ internal object BulkContactsTaskRunner {
                         status = if (cancelRequested.get()) {
                             "Спирам почистването след текущия запис…"
                         } else {
-                            "Почиствам Call Report записите от контактите… ${progress.percent}%"
+                            "Почиствам RM записите от контактите… ${progress.percent}%"
                         },
                         stopping = cancelRequested.get(),
                         context = appContext,
@@ -114,9 +149,9 @@ internal object BulkContactsTaskRunner {
                 action = BulkContactsTaskAction.CLEANUP,
                 progress = latestProgress,
                 status = if (cancelRequested.get()) {
-                    "Почистването е спряно. Премахнати Call Report записи: $deleted"
+                    "Почистването е спряно. Премахнати RM записи: $deleted"
                 } else {
-                    "Премахнати Call Report записи от контактите: $deleted"
+                    "Премахнати RM записи от контактите: $deleted"
                 },
                 context = appContext,
             )
@@ -124,7 +159,7 @@ internal object BulkContactsTaskRunner {
     }
 
     private fun runRegisterAll(context: Context, automatic: Boolean): BulkContactRegistrationResult {
-        val prefix = if (automatic) "Автоматична синхронизация на контактите" else "Регистрирам всички контакти към Call Report"
+        val prefix = if (automatic) "Автоматична синхронизация на контактите" else "Регистрирам всички контакти към RM"
         val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
             context = context,
             onProgress = { progress ->
@@ -157,6 +192,14 @@ internal object BulkContactsTaskRunner {
             "$prefix е спряна. Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         } else {
             "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+        }
+    }
+
+    private fun repairFinishedStatus(result: BulkContactRegistrationResult): String {
+        return if (result.canceled) {
+            "Поправката е спряна. Поправени: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+        } else {
+            "Поправени RM записи: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         }
     }
 
