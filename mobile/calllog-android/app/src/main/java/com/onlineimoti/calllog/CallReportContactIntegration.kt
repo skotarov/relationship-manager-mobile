@@ -1,10 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.accounts.Account
-import android.accounts.AccountManager
 import android.content.ContentProviderOperation
-import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -110,7 +107,7 @@ object CallReportContactIntegration {
             if (cleanedPhone.isBlank()) return@runCatching false
             if (!canReadAndWriteContacts(context)) return@runCatching false
 
-            ensureAccount(context)
+            CrmContactAccountStore.ensureAccount(context)
             val title = displayName.ifBlank { cleanedPhone }
             val callReportRawContactId = findCallReportRawContactId(context, cleanedPhone)
             val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
@@ -144,7 +141,7 @@ object CallReportContactIntegration {
             if (cleanedPhone.isBlank()) return@runCatching false
             if (!canReadAndWriteContacts(context)) return@runCatching false
 
-            ensureAccount(context)
+            CrmContactAccountStore.ensureAccount(context)
             if (findCallReportRawContactId(context, cleanedPhone) > 0L) return@runCatching true
 
             val existingRawContactId = findExistingRawContactId(context, cleanedPhone)
@@ -297,7 +294,7 @@ object CallReportContactIntegration {
 
     private fun linkPhonebookContacts(context: Context) {
         if (!canReadAndWriteContacts(context)) return
-        ensureAccount(context)
+        CrmContactAccountStore.ensureAccount(context)
         val seen = linkedSetOf<String>()
         runCatching {
             val projection = arrayOf(
@@ -326,20 +323,6 @@ object CallReportContactIntegration {
     private fun canReadAndWriteContacts(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun ensureAccount(context: Context) {
-        val account = Account(ACCOUNT_NAME, ACCOUNT_TYPE)
-        val manager = AccountManager.get(context)
-        runCatching {
-            if (manager.getAccountsByType(ACCOUNT_TYPE).none { it.name == ACCOUNT_NAME }) {
-                manager.addAccountExplicitly(account, null, null)
-            }
-        }
-        runCatching {
-            ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
-            ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
-        }
     }
 
     private fun findCallReportRawContactId(context: Context, phone: String): Long {
