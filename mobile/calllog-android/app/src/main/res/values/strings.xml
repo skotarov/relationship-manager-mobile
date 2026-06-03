@@ -4,7 +4,7 @@
     <string name="notification_channel_description">Caller lookup and quick open</string>
 
     <string name="home_title">RM Col Log</string>
-    <string name="home_settings_button">⚙ Settings</string>
+    <string name="home_settings_button">Settings</string>
     <string name="open_default_call_log">Open original phone call log</string>
     <string name="open_default_call_log_short">☎</string>
     <string name="clear_filter_content_description">Clear filter</string>
@@ -17,18 +17,18 @@
     <string name="settings_title">Settings</string>
     <string name="settings_back_content_description">Back</string>
     <string name="settings_description">Android wrapper settings for call popups, local history and server WebView form.</string>
-    <string name="settings_basic_section">☰ Basic settings</string>
-    <string name="settings_archive_section">🗄 Archive</string>
-    <string name="settings_application_section">⚙ Application</string>
-    <string name="settings_language_section">🌐 Language</string>
-    <string name="settings_storage_section">💾 Notes storage</string>
-    <string name="settings_call_log_section">📞 Call Log</string>
-    <string name="settings_call_log_overlay_section">☎ Call Log overlay button</string>
-    <string name="settings_popup_section">💬 Popup behavior</string>
-    <string name="settings_crm_section">👤 Relationship Management contacts</string>
-    <string name="settings_permissions_section">🔐 Permissions</string>
-    <string name="settings_server_section">🌐 Server settings</string>
-    <string name="settings_debug_section">🧪 Debug / Tests</string>
+    <string name="settings_basic_section">Basic settings</string>
+    <string name="settings_archive_section">Archive</string>
+    <string name="settings_application_section">Application</string>
+    <string name="settings_language_section">Language</string>
+    <string name="settings_storage_section">Notes storage</string>
+    <string name="settings_call_log_section">Call Log</string>
+    <string name="settings_call_log_overlay_section">Call Log overlay button</string>
+    <string name="settings_popup_section">Popup behavior</string>
+    <string name="settings_crm_section">Relationship Management contacts</string>
+    <string name="settings_permissions_section">Permissions</string>
+    <string name="settings_server_section">Server settings</string>
+    <string name="settings_debug_section">Debug / Tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
 
     <string name="language_title">Language</string>
