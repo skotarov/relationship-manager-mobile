@@ -8,6 +8,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.widget.CompoundButton
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -21,6 +22,12 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var suppressAutoSave = false
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
+    private var selectedSettingsSection: SettingsSection? = null
+    private val settingsBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            showSettingsMenu()
+        }
+    }
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
             activity = this,
@@ -82,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
 
         CallReportRuntime.ensureNotificationChannel(this)
         CallReportRuntime.ensureContactsSync(this)
@@ -90,6 +98,8 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         wireSettingsAutoSave()
+        wireSettingsNavigation()
+        showSettingsMenu()
         permissionFlowController.start()
 
         val quickStartButton = findViewById<MaterialButton>(R.id.testStartPopupButton)
@@ -146,6 +156,44 @@ class MainActivity : AppCompatActivity() {
         MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
         MainCallLogOverlaySettings.hydrate(this, binding)
     }
+
+    private fun wireSettingsNavigation() {
+        binding.settingsDetailBackButton.setOnClickListener { showSettingsMenu() }
+        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSettingsSection(SettingsSection.APPLICATION) }
+        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSettingsSection(SettingsSection.POPUP) }
+        binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSettingsSection(SettingsSection.CALL_LOG) }
+        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSettingsSection(SettingsSection.RM_CONTACTS) }
+        binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSettingsSection(SettingsSection.SERVER) }
+        binding.settingsMenuGroup.settingsPermissionsButton.setOnClickListener { showSettingsSection(SettingsSection.PERMISSIONS) }
+        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSettingsSection(SettingsSection.DATA_ARCHIVE) }
+        binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSettingsSection(SettingsSection.DEBUG) }
+    }
+
+    private fun showSettingsMenu() {
+        selectedSettingsSection = null
+        settingsBackCallback.isEnabled = false
+        binding.settingsMenuGroup.root.visibility = View.VISIBLE
+        binding.settingsDescriptionText.visibility = View.VISIBLE
+        binding.settingsDetailHeader.visibility = View.GONE
+        binding.quickTestBar.visibility = View.GONE
+        allSettingsGroupViews().forEach { it.visibility = View.GONE }
+        binding.settingsScrollView.post { binding.settingsScrollView.scrollTo(0, 0) }
+    }
+
+    private fun showSettingsSection(section: SettingsSection) {
+        selectedSettingsSection = section
+        settingsBackCallback.isEnabled = true
+        binding.settingsMenuGroup.root.visibility = View.GONE
+        binding.settingsDescriptionText.visibility = View.GONE
+        binding.settingsDetailHeader.visibility = View.VISIBLE
+        binding.settingsDetailTitle.text = getString(section.titleRes)
+        allSettingsGroupViews().forEach { it.visibility = View.GONE }
+        section.view(binding).visibility = View.VISIBLE
+        binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG) View.VISIBLE else View.GONE
+        binding.settingsScrollView.post { binding.settingsScrollView.scrollTo(0, 0) }
+    }
+
+    private fun allSettingsGroupViews(): List<View> = SettingsSection.values().map { it.view(binding) }
 
     private fun wireSettingsAutoSave() {
         val remote = binding.remoteSettingsSection
@@ -287,4 +335,28 @@ class MainActivity : AppCompatActivity() {
     private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
     private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private enum class SettingsSection(val titleRes: Int) {
+        APPLICATION(R.string.settings_application_section),
+        POPUP(R.string.settings_popup_section),
+        CALL_LOG(R.string.settings_call_log_section),
+        RM_CONTACTS(R.string.settings_crm_section),
+        SERVER(R.string.settings_server_section),
+        PERMISSIONS(R.string.settings_permissions_section),
+        DATA_ARCHIVE(R.string.settings_storage_section),
+        DEBUG(R.string.settings_debug_section);
+
+        fun view(binding: ActivityMainBinding): View {
+            return when (this) {
+                APPLICATION -> binding.settingsApplicationGroup.root
+                POPUP -> binding.settingsPopupGroup.root
+                CALL_LOG -> binding.settingsCallLogGroup.root
+                RM_CONTACTS -> binding.settingsRmContactsGroup.root
+                SERVER -> binding.settingsServerGroup.root
+                PERMISSIONS -> binding.settingsPermissionsGroup.root
+                DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
+                DEBUG -> binding.settingsDebugGroup.root
+            }
+        }
+    }
 }
