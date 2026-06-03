@@ -6,13 +6,10 @@ internal object CrmContactLinkSaver {
     fun save(
         context: Context,
         fields: CallReportStableCrmContactWriter.Fields,
-        mode: String,
-        phone: String,
-        title: String,
+        @Suppress("UNUSED_PARAMETER") mode: String,
+        @Suppress("UNUSED_PARAMETER") phone: String,
+        @Suppress("UNUSED_PARAMETER") title: String,
     ): Boolean {
-        return when (mode) {
-            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportStableCrmContactWriter.save(context, fields)
-            else -> CallReportContactIntegration.linkContact(context, phone, title)
-        }
+        return CallReportStableCrmContactWriter.save(context, fields)
     }
 }
