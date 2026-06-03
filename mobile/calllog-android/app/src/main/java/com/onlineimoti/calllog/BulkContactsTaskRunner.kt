@@ -56,8 +56,8 @@ internal object BulkContactsTaskRunner {
             action = snapshot.action,
             progress = snapshot.progress,
             status = when (snapshot.action) {
-                BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия пакет…"
-                BulkContactsTaskAction.CLEANUP -> "Спирам след текущата операция…"
+                BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия запис…"
+                BulkContactsTaskAction.CLEANUP -> "Спирам почистването след текущия запис…"
                 BulkContactsTaskAction.IDLE -> "Спирам…"
             },
             stopping = true,
@@ -76,7 +76,7 @@ internal object BulkContactsTaskRunner {
                         action = BulkContactsTaskAction.REGISTER,
                         progress = progress,
                         status = if (cancelRequested.get()) {
-                            "Спирам регистрацията след текущия пакет…"
+                            "Спирам регистрацията след текущия запис…"
                         } else {
                             "Регистрирам всички контакти към Call Report… ${progress.percent}%"
                         },
@@ -103,18 +103,31 @@ internal object BulkContactsTaskRunner {
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             var latestProgress = BulkContactRegistrationProgress(0, 0)
-            val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext) { progress ->
-                latestProgress = progress
-                updateProgress(
-                    action = BulkContactsTaskAction.CLEANUP,
-                    progress = progress,
-                    status = "Почиствам Call Report записите от контактите… ${progress.percent}%",
-                )
-            }
+            val deleted = CallReportContactIntegration.removeAllCallReportContacts(
+                context = appContext,
+                onProgress = { progress ->
+                    latestProgress = progress
+                    updateProgress(
+                        action = BulkContactsTaskAction.CLEANUP,
+                        progress = progress,
+                        status = if (cancelRequested.get()) {
+                            "Спирам почистването след текущия запис…"
+                        } else {
+                            "Почиствам Call Report записите от контактите… ${progress.percent}%"
+                        },
+                        stopping = cancelRequested.get(),
+                    )
+                },
+                shouldCancel = { cancelRequested.get() },
+            )
             finish(
                 action = BulkContactsTaskAction.CLEANUP,
                 progress = latestProgress,
-                status = "Премахнати Call Report записи от контактите: $deleted",
+                status = if (cancelRequested.get()) {
+                    "Почистването е спряно. Премахнати Call Report записи: $deleted"
+                } else {
+                    "Премахнати Call Report записи от контактите: $deleted"
+                },
             )
         }
     }
@@ -153,13 +166,14 @@ internal object BulkContactsTaskRunner {
 
     @Synchronized
     private fun finish(action: BulkContactsTaskAction, progress: BulkContactRegistrationProgress, status: String) {
+        val wasCanceled = cancelRequested.get()
         cancelRequested.set(false)
         state = BulkContactsTaskState(
             running = false,
             action = action,
             progress = progress,
             status = status,
-            stopping = false,
+            stopping = wasCanceled,
         )
         notifyListeners()
     }
