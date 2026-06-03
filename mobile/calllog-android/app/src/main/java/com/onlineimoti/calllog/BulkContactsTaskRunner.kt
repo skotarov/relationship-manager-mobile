@@ -6,6 +6,7 @@ import android.os.Looper
 import android.os.Process
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal enum class BulkContactsTaskAction {
     IDLE,
@@ -18,6 +19,7 @@ internal data class BulkContactsTaskState(
     val action: BulkContactsTaskAction = BulkContactsTaskAction.IDLE,
     val progress: BulkContactRegistrationProgress = BulkContactRegistrationProgress(0, 0),
     val status: String = "",
+    val stopping: Boolean = false,
 )
 
 internal object BulkContactsTaskRunner {
@@ -29,9 +31,12 @@ internal object BulkContactsTaskRunner {
         }
     }
     private val listeners = CopyOnWriteArrayList<(BulkContactsTaskState) -> Unit>()
+    private val cancelRequested = AtomicBoolean(false)
 
     @Volatile
     private var state = BulkContactsTaskState()
+
+    fun currentState(): BulkContactsTaskState = state
 
     fun addListener(listener: (BulkContactsTaskState) -> Unit) {
         listeners.add(listener)
@@ -43,22 +48,51 @@ internal object BulkContactsTaskRunner {
         listeners.remove(listener)
     }
 
+    fun cancel() {
+        val snapshot = state
+        if (!snapshot.running || snapshot.stopping) return
+        cancelRequested.set(true)
+        updateProgress(
+            action = snapshot.action,
+            progress = snapshot.progress,
+            status = when (snapshot.action) {
+                BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия пакет…"
+                BulkContactsTaskAction.CLEANUP -> "Спирам след текущата операция…"
+                BulkContactsTaskAction.IDLE -> "Спирам…"
+            },
+            stopping = true,
+        )
+    }
+
     fun registerAll(context: Context) {
         val appContext = context.applicationContext
         if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към Call Report… 0%")) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(appContext) { progress ->
-                updateProgress(
-                    action = BulkContactsTaskAction.REGISTER,
-                    progress = progress,
-                    status = "Регистрирам всички контакти към Call Report… ${progress.percent}%",
-                )
-            }
+            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
+                context = appContext,
+                onProgress = { progress ->
+                    updateProgress(
+                        action = BulkContactsTaskAction.REGISTER,
+                        progress = progress,
+                        status = if (cancelRequested.get()) {
+                            "Спирам регистрацията след текущия пакет…"
+                        } else {
+                            "Регистрирам всички контакти към Call Report… ${progress.percent}%"
+                        },
+                        stopping = cancelRequested.get(),
+                    )
+                },
+                shouldCancel = { cancelRequested.get() },
+            )
             finish(
                 action = BulkContactsTaskAction.REGISTER,
                 progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
-                status = "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}",
+                status = if (result.canceled) {
+                    "Регистрацията е спряна. Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+                } else {
+                    "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+                },
             )
         }
     }
@@ -88,34 +122,44 @@ internal object BulkContactsTaskRunner {
     @Synchronized
     private fun tryStart(action: BulkContactsTaskAction, status: String): Boolean {
         if (state.running) return false
+        cancelRequested.set(false)
         state = BulkContactsTaskState(
             running = true,
             action = action,
             progress = BulkContactRegistrationProgress(0, 0),
             status = status,
+            stopping = false,
         )
         notifyListeners()
         return true
     }
 
     @Synchronized
-    private fun updateProgress(action: BulkContactsTaskAction, progress: BulkContactRegistrationProgress, status: String) {
+    private fun updateProgress(
+        action: BulkContactsTaskAction,
+        progress: BulkContactRegistrationProgress,
+        status: String,
+        stopping: Boolean = false,
+    ) {
         state = BulkContactsTaskState(
             running = true,
             action = action,
             progress = progress,
             status = status,
+            stopping = stopping,
         )
         notifyListeners()
     }
 
     @Synchronized
     private fun finish(action: BulkContactsTaskAction, progress: BulkContactRegistrationProgress, status: String) {
+        cancelRequested.set(false)
         state = BulkContactsTaskState(
             running = false,
             action = action,
             progress = progress,
             status = status,
+            stopping = false,
         )
         notifyListeners()
     }
