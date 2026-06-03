@@ -66,7 +66,7 @@ internal object BulkContactsTaskRunner {
 
     fun registerAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към Call Report… 0%")) return
+        if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към Call Report… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
@@ -81,6 +81,7 @@ internal object BulkContactsTaskRunner {
                             "Регистрирам всички контакти към Call Report… ${progress.percent}%"
                         },
                         stopping = cancelRequested.get(),
+                        context = appContext,
                     )
                 },
                 shouldCancel = { cancelRequested.get() },
@@ -93,13 +94,14 @@ internal object BulkContactsTaskRunner {
                 } else {
                     "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
                 },
+                context = appContext,
             )
         }
     }
 
     fun cleanupAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.CLEANUP, "Почиствам Call Report записите от контактите… 0%")) return
+        if (!tryStart(BulkContactsTaskAction.CLEANUP, "Почиствам Call Report записите от контактите… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             var latestProgress = BulkContactRegistrationProgress(0, 0)
@@ -116,6 +118,7 @@ internal object BulkContactsTaskRunner {
                             "Почиствам Call Report записите от контактите… ${progress.percent}%"
                         },
                         stopping = cancelRequested.get(),
+                        context = appContext,
                     )
                 },
                 shouldCancel = { cancelRequested.get() },
@@ -128,12 +131,13 @@ internal object BulkContactsTaskRunner {
                 } else {
                     "Премахнати Call Report записи от контактите: $deleted"
                 },
+                context = appContext,
             )
         }
     }
 
     @Synchronized
-    private fun tryStart(action: BulkContactsTaskAction, status: String): Boolean {
+    private fun tryStart(action: BulkContactsTaskAction, status: String, context: Context): Boolean {
         if (state.running) return false
         cancelRequested.set(false)
         state = BulkContactsTaskState(
@@ -143,6 +147,7 @@ internal object BulkContactsTaskRunner {
             status = status,
             stopping = false,
         )
+        BulkContactsProgressNotification.showRunning(context, action, state.progress, status)
         notifyListeners()
         return true
     }
@@ -153,6 +158,7 @@ internal object BulkContactsTaskRunner {
         progress: BulkContactRegistrationProgress,
         status: String,
         stopping: Boolean = false,
+        context: Context? = null,
     ) {
         state = BulkContactsTaskState(
             running = true,
@@ -161,11 +167,12 @@ internal object BulkContactsTaskRunner {
             status = status,
             stopping = stopping,
         )
+        context?.let { BulkContactsProgressNotification.showRunning(it, action, progress, status, stopping) }
         notifyListeners()
     }
 
     @Synchronized
-    private fun finish(action: BulkContactsTaskAction, progress: BulkContactRegistrationProgress, status: String) {
+    private fun finish(action: BulkContactsTaskAction, progress: BulkContactRegistrationProgress, status: String, context: Context) {
         val wasCanceled = cancelRequested.get()
         cancelRequested.set(false)
         state = BulkContactsTaskState(
@@ -175,6 +182,7 @@ internal object BulkContactsTaskRunner {
             status = status,
             stopping = wasCanceled,
         )
+        BulkContactsProgressNotification.showFinished(context, action, status)
         notifyListeners()
     }
 
