@@ -45,12 +45,12 @@ data class CrmBasicContactInputs(
             return CrmBasicContactInputs(
                 name = nameInput,
                 additionalPhone = ui.input(parent, "Допълнителен телефон", savedFields?.additionalPhone.orEmpty()),
-                organization = ui.input(parent, "Организация", savedFields?.organization ?: "Call Report"),
-                jobTitle = ui.input(parent, "Тип / длъжност", savedFields?.jobTitle ?: "CRM тест"),
+                organization = ui.input(parent, "Организация", savedFields?.organization ?: "Relation Management"),
+                jobTitle = ui.input(parent, "Тип / длъжност", savedFields?.jobTitle ?: "RM тест"),
                 website = ui.input(parent, "Сайт / линк", savedFields?.website.orEmpty()),
-                group = ui.input(parent, "Група", savedFields?.groupName ?: "Call Report CRM"),
+                group = ui.input(parent, "Група", savedFields?.groupName ?: "Relation Management"),
                 note = ui.input(parent, "Бележка", savedFields?.note ?: currentGeneralNote, lines = 3),
-                custom = ui.input(parent, "Custom MIME текст", savedFields?.customText ?: "CRM статус: тест\nПоследна уговорка: ", lines = 3),
+                custom = ui.input(parent, "Custom MIME текст", savedFields?.customText ?: "RM статус: тест\nПоследна уговорка: ", lines = 3),
             )
         }
     }
