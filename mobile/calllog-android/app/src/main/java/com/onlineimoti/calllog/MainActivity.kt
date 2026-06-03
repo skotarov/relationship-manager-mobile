@@ -127,6 +127,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         CallReportRuntime.ensureContactsSync(this)
+        contactsCleanupController.addProgressBar()
+        contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
     }
 
