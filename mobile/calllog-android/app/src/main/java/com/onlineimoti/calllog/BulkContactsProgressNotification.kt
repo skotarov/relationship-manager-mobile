@@ -28,6 +28,7 @@ internal object BulkContactsProgressNotification {
         val title = when (action) {
             BulkContactsTaskAction.REGISTER -> if (stopping) "Спиране на регистрирането…" else "Регистриране на контактите"
             BulkContactsTaskAction.REPAIR -> if (stopping) "Спиране на поправката…" else "Поправяне на RM записите"
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> if (stopping) "Спиране на осиротели записи…" else "Почистване на осиротели RM записи"
             BulkContactsTaskAction.CLEANUP -> if (stopping) "Спиране на почистването…" else "Почистване на контактите"
             BulkContactsTaskAction.IDLE -> "Обработка на контактите"
         }
@@ -62,6 +63,7 @@ internal object BulkContactsProgressNotification {
         val title = when (action) {
             BulkContactsTaskAction.REGISTER -> "Регистрирането приключи"
             BulkContactsTaskAction.REPAIR -> "Поправката приключи"
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> "Почистването на осиротели приключи"
             BulkContactsTaskAction.CLEANUP -> "Почистването приключи"
             BulkContactsTaskAction.IDLE -> "Обработката приключи"
         }
