@@ -69,6 +69,7 @@
     <string name="contact_link_description">The change applies on the next Add/Remove from CRM action.</string>
     <string name="contact_link_bulk_title">Bulk contacts integration</string>
     <string name="contact_link_register_all_button">Register all</string>
+    <string name="contact_link_debug_button">Check CRM record name</string>
     <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Call Report registrations are skipped and not changed.</string>
 
     <string name="popup_timeout_hint">Seconds for auto-close after call</string>
