@@ -75,6 +75,16 @@
             app:strokeWidth="1.5dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/debugCrmContactNameButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/contact_link_debug_button"
+            app:strokeColor="@color/calllog_accent"
+            app:strokeWidth="1.5dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/cleanupContactsButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
