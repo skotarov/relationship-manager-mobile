@@ -28,7 +28,7 @@ private class CallReportSyncAdapter(context: Context) : AbstractThreadedSyncAdap
         if (authority != android.provider.ContactsContract.AUTHORITY) return
         if (account?.type != CallReportContactIntegration.ACCOUNT_TYPE) return
 
-        val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(context)
+        val result = BulkContactsTaskRunner.registerAllFromSync(context) ?: return
         syncResult?.stats?.numEntries = result.scanned.toLong()
         syncResult?.stats?.numInserts = result.created.toLong()
         syncResult?.stats?.numUpdates = result.skippedExisting.toLong()
