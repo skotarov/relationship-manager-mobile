@@ -12,7 +12,7 @@ object CrmContactAccountStore {
     const val ACCOUNT_NAME = "Call Report"
     const val EXTRA_PHONE_LABEL = "Call Report доп."
 
-    fun ensureAccount(context: Context) {
+    fun ensureAccount(context: Context, syncAutomatically: Boolean = false) {
         val account = Account(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val manager = AccountManager.get(context)
         runCatching {
@@ -22,17 +22,17 @@ object CrmContactAccountStore {
         }
         runCatching {
             ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
-            ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
+            ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, syncAutomatically)
         }
-        ensureAccountVisibility(context)
+        ensureAccountVisibility(context, syncAutomatically)
     }
 
-    private fun ensureAccountVisibility(context: Context) {
+    private fun ensureAccountVisibility(context: Context, shouldSync: Boolean) {
         val values = ContentValues().apply {
             put(ContactsContract.Settings.ACCOUNT_NAME, ACCOUNT_NAME)
             put(ContactsContract.Settings.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
             put(ContactsContract.Settings.UNGROUPED_VISIBLE, 1)
-            put(ContactsContract.Settings.SHOULD_SYNC, 1)
+            put(ContactsContract.Settings.SHOULD_SYNC, if (shouldSync) 1 else 0)
         }
         val existing = runCatching {
             context.contentResolver.query(
@@ -80,7 +80,7 @@ object CrmContactAccountStore {
                     put(ContactsContract.Groups.ACCOUNT_NAME, ACCOUNT_NAME)
                     put(ContactsContract.Groups.TITLE, groupTitle)
                     put(ContactsContract.Groups.GROUP_VISIBLE, 1)
-                    put(ContactsContract.Groups.SHOULD_SYNC, 1)
+                    put(ContactsContract.Groups.SHOULD_SYNC, 0)
                 },
             )
             if (uri == null) 0L else ContentUris.parseId(uri)
