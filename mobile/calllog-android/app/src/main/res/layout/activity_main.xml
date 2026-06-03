@@ -23,17 +23,15 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
-                <TextView
+                <ImageButton
                     android:id="@+id/backToHomeButton"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/settings_back_content_description"
-                    android:gravity="center"
-                    android:text="←"
-                    android:textColor="@color/calllog_text"
-                    android:textSize="30sp"
-                    android:textStyle="bold" />
+                    android:contentDescription="@string/open_full_log"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_rm_call_log" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
