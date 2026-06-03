@@ -9,6 +9,10 @@ object CallReportRuntime {
         CallReportNotifications.ensureNotificationChannel(context)
     }
 
+    fun ensureContactsSync(context: Context, force: Boolean = false) {
+        CallReportContactsSyncBridge.ensureAccountAndRequestSync(context, force)
+    }
+
     fun fetchLookup(config: AppConfig, phone: String, direction: String): LookupResult {
         return CallReportLookupClient.fetchLookup(config, phone, direction)
     }
