@@ -35,7 +35,10 @@ internal class MainContactsCleanupController(
 
     fun addProgressBar() {
         val parent = contactLink.contactLinkBulkActionsGroup.parent as? ViewGroup ?: return
-        if (progressRow != null) return
+        if (progressRow != null) {
+            refreshFromCurrentTask()
+            return
+        }
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -64,13 +67,18 @@ internal class MainContactsCleanupController(
         progress = spinner
         progressText = label
         progressRow = row
+        refreshFromCurrentTask()
+    }
+
+    fun refreshFromCurrentTask() {
+        applyTaskState(BulkContactsTaskRunner.currentState())
     }
 
     fun registerAllCallReportContacts() {
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.REGISTER) {
             BulkContactsTaskRunner.cancel()
-        } else {
+        } else if (!state.running) {
             BulkContactsTaskRunner.registerAll(activity.applicationContext)
         }
     }
@@ -79,7 +87,7 @@ internal class MainContactsCleanupController(
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.CLEANUP) {
             BulkContactsTaskRunner.cancel()
-        } else {
+        } else if (!state.running) {
             BulkContactsTaskRunner.cleanupAll(activity.applicationContext)
         }
     }
