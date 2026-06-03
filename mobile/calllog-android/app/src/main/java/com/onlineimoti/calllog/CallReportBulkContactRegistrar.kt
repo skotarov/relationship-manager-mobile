@@ -31,8 +31,9 @@ internal object CallReportBulkContactRegistrar {
         var created = 0
         var skippedExisting = 0
         var failed = 0
-        val phones = collectUniquePhones(context)
-        val total = phones.size
+        val contacts = collectUniqueContacts(context)
+        val total = contacts.size
+        val mode = ConfigStore.load(context).contactLinkMode
         var lastPercent = -1
 
         fun report(processed: Int) {
@@ -43,10 +44,10 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report(0)
-        phones.forEachIndexed { index: Int, phone: String ->
-            if (CallReportContactIntegration.isContactLinked(context, phone)) {
+        contacts.forEachIndexed { index: Int, contact: BulkContactCandidate ->
+            if (CallReportContactIntegration.isContactLinked(context, contact.phone)) {
                 skippedExisting += 1
-            } else if (CallReportContactIntegration.linkContactAsAppIfMissing(context, phone)) {
+            } else if (saveCrmLink(context, mode, contact)) {
                 created += 1
             } else {
                 failed += 1
@@ -56,27 +57,56 @@ internal object CallReportBulkContactRegistrar {
         return BulkContactRegistrationResult(total, created, skippedExisting, failed)
     }
 
-    private fun collectUniquePhones(context: Context): List<String> {
-        val seen = linkedSetOf<String>()
-        val projection = arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER)
+    private fun saveCrmLink(context: Context, mode: String, contact: BulkContactCandidate): Boolean {
+        return when (mode) {
+            ConfigStore.CONTACT_LINK_MODE_CONTACT -> CallReportStableCrmContactWriter.save(
+                context,
+                CallReportStableCrmContactWriter.Fields(
+                    originalPhone = contact.phone,
+                    displayName = contact.displayName.ifBlank { contact.phone },
+                ),
+            )
+            else -> CallReportContactIntegration.linkContact(
+                context = context,
+                phone = contact.phone,
+                displayName = contact.displayName.ifBlank { contact.phone },
+            )
+        }
+    }
+
+    private fun collectUniqueContacts(context: Context): List<BulkContactCandidate> {
+        val contactsByPhone = linkedMapOf<String, BulkContactCandidate>()
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+        )
         context.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
             null,
             null,
-            ContactsContract.CommonDataKinds.Phone.NUMBER + " ASC",
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC",
         )?.use { cursor ->
             val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            while (cursor.moveToNext() && seen.size < MAX_CONTACTS_PER_RUN) {
+            val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            if (numberIndex < 0) return@use
+            while (cursor.moveToNext() && contactsByPhone.size < MAX_CONTACTS_PER_RUN) {
                 val phone = PhoneNormalizer.normalize(cursor.getString(numberIndex).orEmpty())
-                if (phone.isNotBlank()) seen.add(phone)
+                if (phone.isBlank() || contactsByPhone.containsKey(phone)) continue
+                val displayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
+                contactsByPhone[phone] = BulkContactCandidate(phone, displayName)
             }
         }
-        return seen.toList()
+        return contactsByPhone.values.toList()
     }
 
     private fun canReadAndWriteContacts(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
     }
+
+    private data class BulkContactCandidate(
+        val phone: String,
+        val displayName: String,
+    )
 }
