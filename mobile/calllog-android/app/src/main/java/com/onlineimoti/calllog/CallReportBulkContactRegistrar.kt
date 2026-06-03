@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.content.ContentProviderOperation
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
@@ -76,7 +77,9 @@ internal object CallReportBulkContactRegistrar {
 
             val alreadyLinked = existingPhones.contains(contact.phone)
             val title = contact.displayName.ifBlank { contact.phone }
-            if (CallReportContactIntegration.linkContact(context, contact.phone, title)) {
+            val linked = CallReportContactIntegration.linkContact(context, contact.phone, title)
+            val aggregated = forceKeepTogetherToSourceRaw(context, contact.phone, contact.sourceRawContactId)
+            if (linked && aggregated) {
                 if (alreadyLinked) relinkedExisting += 1 else created += 1
             } else {
                 failed += 1
@@ -140,6 +143,25 @@ internal object CallReportBulkContactRegistrar {
         return BulkContactRegistrationResult(processed, created, skippedExisting, failed, canceled)
     }
 
+    private fun forceKeepTogetherToSourceRaw(context: Context, phone: String, sourceRawContactId: Long): Boolean {
+        if (sourceRawContactId <= 0L) return true
+        val cleanedPhone = PhoneNormalizer.normalize(phone)
+        if (cleanedPhone.isBlank()) return false
+        val callReportRawContactId = CrmContactAccountStore.findCallReportRawContactId(context, cleanedPhone)
+        if (callReportRawContactId <= 0L) return false
+        if (callReportRawContactId == sourceRawContactId) return true
+
+        return runCatching {
+            val operation = ContentProviderOperation.newUpdate(ContactsContract.AggregationExceptions.CONTENT_URI)
+                .withValue(ContactsContract.AggregationExceptions.TYPE, ContactsContract.AggregationExceptions.TYPE_KEEP_TOGETHER)
+                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID1, sourceRawContactId)
+                .withValue(ContactsContract.AggregationExceptions.RAW_CONTACT_ID2, callReportRawContactId)
+                .build()
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, arrayListOf(operation))
+            true
+        }.getOrDefault(false)
+    }
+
     private fun collectUniqueContacts(context: Context): List<BulkContactCandidate> {
         val callReportRawContactIds = findCallReportRawContactIds(context)
         val contactsByPhone = linkedMapOf<String, BulkContactCandidate>()
@@ -168,6 +190,7 @@ internal object CallReportBulkContactRegistrar {
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
                     displayName = displayName,
+                    sourceRawContactId = rawContactId,
                 )
             }
         }
@@ -217,5 +240,6 @@ internal object CallReportBulkContactRegistrar {
     private data class BulkContactCandidate(
         val phone: String,
         val displayName: String,
+        val sourceRawContactId: Long,
     )
 }
