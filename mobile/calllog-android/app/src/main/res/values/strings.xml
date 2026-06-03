@@ -3,7 +3,7 @@
     <string name="notification_channel_name">Relation Management</string>
     <string name="notification_channel_description">Caller lookup and quick open</string>
 
-    <string name="home_title">RM Call Log</string>
+    <string name="home_title">RM Col Log</string>
     <string name="home_settings_button">⚙ Settings</string>
     <string name="open_default_call_log">Open original phone call log</string>
     <string name="open_default_call_log_short">☎</string>
