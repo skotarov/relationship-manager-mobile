@@ -24,6 +24,38 @@ object CrmContactAccountStore {
             ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
             ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
         }
+        ensureAccountVisibility(context)
+    }
+
+    private fun ensureAccountVisibility(context: Context) {
+        val values = ContentValues().apply {
+            put(ContactsContract.Settings.ACCOUNT_NAME, ACCOUNT_NAME)
+            put(ContactsContract.Settings.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
+            put(ContactsContract.Settings.UNGROUPED_VISIBLE, 1)
+            put(ContactsContract.Settings.SHOULD_SYNC, 1)
+        }
+        val existing = runCatching {
+            context.contentResolver.query(
+                ContactsContract.Settings.CONTENT_URI,
+                arrayOf(ContactsContract.Settings.ACCOUNT_NAME),
+                "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
+                arrayOf(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                null,
+            )?.use { it.moveToFirst() } ?: false
+        }.getOrDefault(false)
+
+        runCatching {
+            if (existing) {
+                context.contentResolver.update(
+                    ContactsContract.Settings.CONTENT_URI,
+                    values,
+                    "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
+                    arrayOf(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                )
+            } else {
+                context.contentResolver.insert(ContactsContract.Settings.CONTENT_URI, values)
+            }
+        }
     }
 
     fun ensureGroup(context: Context, title: String): Long {
