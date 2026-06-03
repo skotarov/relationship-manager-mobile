@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.SyncResult
 import android.os.Bundle
 import android.os.IBinder
+import android.os.Process
 
 class CallReportSyncService : Service() {
     private val syncAdapter by lazy { CallReportSyncAdapter(this) }
@@ -23,6 +24,14 @@ private class CallReportSyncAdapter(context: Context) : AbstractThreadedSyncAdap
         provider: ContentProviderClient?,
         syncResult: SyncResult?,
     ) {
-        // No-op. Call Report only exposes contact action metadata.
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+        if (authority != android.provider.ContactsContract.AUTHORITY) return
+        if (account?.type != CallReportContactIntegration.ACCOUNT_TYPE) return
+
+        val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(context)
+        syncResult?.stats?.numEntries = result.scanned.toLong()
+        syncResult?.stats?.numInserts = result.created.toLong()
+        syncResult?.stats?.numUpdates = result.skippedExisting.toLong()
+        syncResult?.stats?.numSkippedEntries = result.failed.toLong()
     }
 }
