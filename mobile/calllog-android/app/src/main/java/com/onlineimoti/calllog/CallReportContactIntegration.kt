@@ -45,22 +45,25 @@ object CallReportContactIntegration {
     fun removeAllCallReportContacts(
         context: Context,
         onProgress: (BulkContactRegistrationProgress) -> Unit = {},
+        shouldCancel: () -> Boolean = { false },
     ): Int {
         if (!canReadAndWriteContacts(context)) return 0
         val rawContactIds = findAllCallReportRawContactIds(context)
         val total = rawContactIds.size
         var deleted = 0
+        var processed = 0
         var lastPercent = -1
 
-        fun report(processed: Int) {
+        fun report() {
             val progress = BulkContactRegistrationProgress(processed, total)
             if (progress.percent == lastPercent && processed != total) return
             lastPercent = progress.percent
             onProgress(progress)
         }
 
-        report(0)
-        rawContactIds.forEachIndexed { index: Int, rawContactId: Long ->
+        report()
+        for (rawContactId in rawContactIds) {
+            if (shouldCancel()) break
             deleted += runCatching {
                 context.contentResolver.delete(
                     ContactsContract.RawContacts.CONTENT_URI,
@@ -68,9 +71,13 @@ object CallReportContactIntegration {
                     arrayOf(rawContactId.toString(), ACCOUNT_TYPE, ACCOUNT_NAME),
                 )
             }.getOrDefault(0)
-            report(index + 1)
+            processed += 1
+            report()
+            Thread.sleep(15L)
         }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST_SYNC_MS).apply()
+        if (deleted > 0) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_LAST_SYNC_MS).apply()
+        }
         return deleted
     }
 
