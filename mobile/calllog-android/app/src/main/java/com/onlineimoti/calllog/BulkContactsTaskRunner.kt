@@ -69,34 +69,21 @@ internal object BulkContactsTaskRunner {
         if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към Call Report… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
+            runRegisterAll(
                 context = appContext,
-                onProgress = { progress ->
-                    updateProgress(
-                        action = BulkContactsTaskAction.REGISTER,
-                        progress = progress,
-                        status = if (cancelRequested.get()) {
-                            "Спирам регистрацията след текущия запис…"
-                        } else {
-                            "Регистрирам всички контакти към Call Report… ${progress.percent}%"
-                        },
-                        stopping = cancelRequested.get(),
-                        context = appContext,
-                    )
-                },
-                shouldCancel = { cancelRequested.get() },
-            )
-            finish(
-                action = BulkContactsTaskAction.REGISTER,
-                progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
-                status = if (result.canceled) {
-                    "Регистрацията е спряна. Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-                } else {
-                    "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-                },
-                context = appContext,
+                automatic = false,
             )
         }
+    }
+
+    fun registerAllFromSync(context: Context): BulkContactRegistrationResult? {
+        val appContext = context.applicationContext
+        if (!tryStart(BulkContactsTaskAction.REGISTER, "Автоматична синхронизация на контактите… 0%", appContext)) return null
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+        return runRegisterAll(
+            context = appContext,
+            automatic = true,
+        )
     }
 
     fun cleanupAll(context: Context) {
@@ -133,6 +120,43 @@ internal object BulkContactsTaskRunner {
                 },
                 context = appContext,
             )
+        }
+    }
+
+    private fun runRegisterAll(context: Context, automatic: Boolean): BulkContactRegistrationResult {
+        val prefix = if (automatic) "Автоматична синхронизация на контактите" else "Регистрирам всички контакти към Call Report"
+        val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
+            context = context,
+            onProgress = { progress ->
+                updateProgress(
+                    action = BulkContactsTaskAction.REGISTER,
+                    progress = progress,
+                    status = if (cancelRequested.get()) {
+                        "Спирам регистрацията след текущия запис…"
+                    } else {
+                        "$prefix… ${progress.percent}%"
+                    },
+                    stopping = cancelRequested.get(),
+                    context = context,
+                )
+            },
+            shouldCancel = { cancelRequested.get() },
+        )
+        finish(
+            action = BulkContactsTaskAction.REGISTER,
+            progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
+            status = registerFinishedStatus(result, automatic),
+            context = context,
+        )
+        return result
+    }
+
+    private fun registerFinishedStatus(result: BulkContactRegistrationResult, automatic: Boolean): String {
+        val prefix = if (automatic) "Автоматичната регистрация" else "Регистрацията"
+        return if (result.canceled) {
+            "$prefix е спряна. Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+        } else {
+            "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         }
     }
 
