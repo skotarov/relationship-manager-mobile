@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentProviderOperation
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Process
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 
@@ -24,13 +25,16 @@ data class BulkContactRegistrationProgress(
 
 internal object CallReportBulkContactRegistrar {
     private const val MAX_CONTACTS_PER_RUN = 2500
-    private const val APP_LINK_BATCH_SIZE = 80
+    private const val APP_LINK_BATCH_SIZE = 25
+    private const val APP_LINK_BATCH_PAUSE_MS = 80L
+    private const val FALLBACK_CONTACT_PAUSE_MS = 15L
 
     fun registerPhoneOnlyLinks(
         context: Context,
         onProgress: (BulkContactRegistrationProgress) -> Unit = {},
         shouldCancel: () -> Boolean = { false },
     ): BulkContactRegistrationResult {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
         if (!canReadAndWriteContacts(context)) return BulkContactRegistrationResult(0, 0, 0, 0)
         val mode = ConfigStore.load(context).contactLinkMode
         val contacts = collectUniqueContacts(context)
@@ -93,7 +97,8 @@ internal object CallReportBulkContactRegistrar {
             created += result.created
             failed += result.failed
             processed += batch.size
-            report()
+            report(force = true)
+            sleepQuietly(APP_LINK_BATCH_PAUSE_MS)
         }
 
         report(force = true)
@@ -106,6 +111,7 @@ internal object CallReportBulkContactRegistrar {
                 skippedExisting += 1
                 processed += 1
                 report()
+                if (processed % APP_LINK_BATCH_SIZE == 0) sleepQuietly(APP_LINK_BATCH_PAUSE_MS)
                 continue
             }
 
@@ -145,6 +151,7 @@ internal object CallReportBulkContactRegistrar {
             } else {
                 failed += 1
             }
+            sleepQuietly(FALLBACK_CONTACT_PAUSE_MS)
         }
         return BatchCreateResult(created = created, failed = failed)
     }
@@ -256,7 +263,7 @@ internal object CallReportBulkContactRegistrar {
 
             processed += 1
             report()
-            Thread.sleep(25L)
+            sleepQuietly(25L)
         }
 
         return BulkContactRegistrationResult(
@@ -287,6 +294,7 @@ internal object CallReportBulkContactRegistrar {
             val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
             val rawContactIndex = cursor.getColumnIndex(ContactsContract.Data.RAW_CONTACT_ID)
             if (numberIndex < 0) return@use
+            var scanned = 0
             while (cursor.moveToNext() && contactsByPhone.size < MAX_CONTACTS_PER_RUN) {
                 val rawContactId = if (rawContactIndex >= 0) cursor.getLong(rawContactIndex) else 0L
                 if (rawContactId > 0L && callReportRawContactIds.contains(rawContactId)) continue
@@ -298,6 +306,8 @@ internal object CallReportBulkContactRegistrar {
                     displayName = displayName,
                     existingRawContactId = rawContactId,
                 )
+                scanned += 1
+                if (scanned % 250 == 0) Thread.yield()
             }
         }
         return contactsByPhone.values.toList()
@@ -341,6 +351,10 @@ internal object CallReportBulkContactRegistrar {
     private fun canReadAndWriteContacts(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun sleepQuietly(ms: Long) {
+        runCatching { Thread.sleep(ms) }
     }
 
     private data class BulkContactCandidate(
