@@ -13,18 +13,25 @@ import java.util.concurrent.Executor
 internal class MainContactsCleanupController(
     private val activity: MainActivity,
     private val binding: ActivityMainBinding,
-    private val executor: Executor,
+    @Suppress("UNUSED_PARAMETER") private val executor: Executor,
     private val setStatus: (String) -> Unit,
     private val dp: (Int) -> Int,
 ) {
     private var progress: ProgressBar? = null
     private var progressRow: LinearLayout? = null
     private var progressText: TextView? = null
-    private var running = false
 
     private val contactLink get() = binding.contactLinkSection
     private val cleanupButton get() = contactLink.cleanupContactsButton
     private val registerAllButton get() = contactLink.registerAllContactsButton
+
+    private val taskListener: (BulkContactsTaskState) -> Unit = { state ->
+        applyTaskState(state)
+    }
+
+    init {
+        BulkContactsTaskRunner.addListener(taskListener)
+    }
 
     fun addProgressBar() {
         val parent = contactLink.contactLinkBulkActionsGroup.parent as? ViewGroup ?: return
@@ -60,75 +67,49 @@ internal class MainContactsCleanupController(
     }
 
     fun registerAllCallReportContacts() {
-        if (running) return
-        setRunning(true, "Регистриране 0%")
-        updateRegisterButtonProgress(0)
-        setStatus("Регистрирам всички контакти към Call Report… 0%")
-        val appContext = activity.applicationContext
-        executor.execute {
-            val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(appContext) { progress ->
-                activity.runOnUiThread {
-                    updateRegisterProgress(progress)
-                }
-            }
-            activity.runOnUiThread {
-                setRunning(false, "")
-                setStatus("Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}")
-            }
-        }
+        BulkContactsTaskRunner.registerAll(activity.applicationContext)
     }
 
     fun cleanupCallReportContacts() {
-        if (running) return
-        setRunning(true, "Почистване 0%")
-        updateCleanupButtonProgress(0)
-        setStatus("Почиствам Call Report записите от контактите… 0%")
-        val appContext = activity.applicationContext
-        executor.execute {
-            val deleted = CallReportContactIntegration.removeAllCallReportContacts(appContext) { progress ->
-                activity.runOnUiThread {
-                    updateCleanupProgress(progress)
-                }
-            }
-            activity.runOnUiThread {
-                setRunning(false, "")
-                setStatus("Премахнати Call Report записи от контактите: $deleted")
-            }
+        BulkContactsTaskRunner.cleanupAll(activity.applicationContext)
+    }
+
+    fun release() {
+        BulkContactsTaskRunner.removeListener(taskListener)
+    }
+
+    private fun applyTaskState(state: BulkContactsTaskState) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        progressRow?.visibility = if (state.running) View.VISIBLE else View.GONE
+        progress?.visibility = if (state.running) View.VISIBLE else View.GONE
+        progressText?.text = when {
+            state.running && state.progress.total > 0 -> taskLabel(state)
+            state.running -> state.status.ifBlank { "Обработка на Call Report записите…" }
+            else -> state.status.ifBlank { "Обработка на Call Report записите…" }
         }
-    }
+        cleanupButton.isEnabled = !state.running
+        registerAllButton.isEnabled = !state.running
 
-    private fun updateRegisterProgress(progress: BulkContactRegistrationProgress) {
-        val label = "Регистриране ${progress.percent}%"
-        progressText?.text = "$label (${progress.processed}/${progress.total})"
-        registerAllButton.text = label
-        setStatus("Регистрирам всички контакти към Call Report… ${progress.percent}%")
-    }
-
-    private fun updateCleanupProgress(progress: BulkContactRegistrationProgress) {
-        val label = "Почистване ${progress.percent}%"
-        progressText?.text = "$label (${progress.processed}/${progress.total})"
-        cleanupButton.text = label
-        setStatus("Почиствам Call Report записите от контактите… ${progress.percent}%")
-    }
-
-    private fun updateRegisterButtonProgress(percent: Int) {
-        registerAllButton.text = "Регистриране $percent%"
-    }
-
-    private fun updateCleanupButtonProgress(percent: Int) {
-        cleanupButton.text = "Почистване $percent%"
-    }
-
-    private fun setRunning(value: Boolean, label: String) {
-        running = value
-        progressRow?.visibility = if (value) View.VISIBLE else View.GONE
-        progress?.visibility = if (value) View.VISIBLE else View.GONE
-        progressText?.text = label.ifBlank { "Обработка на Call Report записите…" }
-        cleanupButton.isEnabled = !value
-        registerAllButton.isEnabled = !value
-        if (!value) {
+        if (state.running) {
+            when (state.action) {
+                BulkContactsTaskAction.REGISTER -> registerAllButton.text = "Регистриране ${state.progress.percent}%"
+                BulkContactsTaskAction.CLEANUP -> cleanupButton.text = "Почистване ${state.progress.percent}%"
+                BulkContactsTaskAction.IDLE -> Unit
+            }
+            setStatus(state.status)
+        } else {
             cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
             registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
+            if (state.status.isNotBlank()) setStatus(state.status)
         }
+    }
+
+    private fun taskLabel(state: BulkContactsTaskState): String {
+        val label = when (state.action) {
+            BulkContactsTaskAction.REGISTER -> "Регистриране ${state.progress.percent}%"
+            BulkContactsTaskAction.CLEANUP -> "Почистване ${state.progress.percent}%"
+            BulkContactsTaskAction.IDLE -> "Обработка ${state.progress.percent}%"
+        }
+        return "$label (${state.progress.processed}/${state.progress.total})"
     }
 }
