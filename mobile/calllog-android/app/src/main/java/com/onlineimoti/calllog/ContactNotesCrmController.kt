@@ -26,7 +26,7 @@ class ContactNotesCrmController(
         val appContext = activity.applicationContext
         Thread {
             val deleted = removeCrmLink(appContext, phone)
-            val message = if (deleted > 0) "Премахнато от Call Report контактите" else "Няма намерен Call Report запис"
+            val message = if (deleted > 0) "Премахнато от Relation Management контактите" else "Няма намерен Relation Management запис"
             activity.runOnUiThread {
                 setBusy(false)
                 if (!activity.isFinishing && !activity.isDestroyed) {
@@ -60,7 +60,7 @@ class ContactNotesCrmController(
             activity.runOnUiThread {
                 setBusy(false)
                 if (!activity.isFinishing && !activity.isDestroyed) {
-                    Toast.makeText(activity, if (saved) "Регистрирано в Call Report контактите" else "Не успях да регистрирам контакта", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, if (saved) "Регистрирано в Relation Management контактите" else "Не успях да регистрирам контакта", Toast.LENGTH_SHORT).show()
                     rerender()
                 }
             }
