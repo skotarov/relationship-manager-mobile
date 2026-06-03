@@ -23,6 +23,7 @@ internal class MainContactsCleanupController(
 
     private val contactLink get() = binding.contactLinkSection
     private val cleanupButton get() = contactLink.cleanupContactsButton
+    private val cleanupOrphansButton get() = contactLink.cleanupOrphanContactsButton
     private val registerAllButton get() = contactLink.registerAllContactsButton
     private val repairButton get() = contactLink.debugCrmContactNameButton
 
@@ -93,6 +94,15 @@ internal class MainContactsCleanupController(
         }
     }
 
+    fun cleanupOrphanRmContacts() {
+        val state = BulkContactsTaskRunner.currentState()
+        if (state.running && state.action == BulkContactsTaskAction.CLEANUP_ORPHANS) {
+            BulkContactsTaskRunner.cancel()
+        } else if (!state.running) {
+            BulkContactsTaskRunner.cleanupOrphans(activity.applicationContext)
+        }
+    }
+
     fun cleanupCallReportContacts() {
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.CLEANUP) {
@@ -119,6 +129,7 @@ internal class MainContactsCleanupController(
         if (state.running) {
             registerAllButton.isEnabled = false
             repairButton.isEnabled = false
+            cleanupOrphansButton.isEnabled = false
             cleanupButton.isEnabled = false
             when (state.action) {
                 BulkContactsTaskAction.REGISTER -> {
@@ -129,6 +140,10 @@ internal class MainContactsCleanupController(
                     repairButton.isEnabled = !state.stopping
                     repairButton.text = if (state.stopping) "Спиране…" else "Стоп"
                 }
+                BulkContactsTaskAction.CLEANUP_ORPHANS -> {
+                    cleanupOrphansButton.isEnabled = !state.stopping
+                    cleanupOrphansButton.text = if (state.stopping) "Спиране…" else "Стоп"
+                }
                 BulkContactsTaskAction.CLEANUP -> {
                     cleanupButton.isEnabled = !state.stopping
                     cleanupButton.text = if (state.stopping) "Спиране…" else "Стоп"
@@ -138,9 +153,11 @@ internal class MainContactsCleanupController(
             setStatus(state.status)
         } else {
             cleanupButton.isEnabled = true
+            cleanupOrphansButton.isEnabled = true
             registerAllButton.isEnabled = true
             repairButton.isEnabled = true
             cleanupButton.text = activity.getString(R.string.permissions_cleanup_contacts_button)
+            cleanupOrphansButton.text = activity.getString(R.string.contact_link_clean_orphans_button)
             registerAllButton.text = activity.getString(R.string.contact_link_register_all_button)
             repairButton.text = activity.getString(R.string.contact_link_debug_button)
             if (state.status.isNotBlank()) setStatus(state.status)
@@ -151,6 +168,7 @@ internal class MainContactsCleanupController(
         val label = when (state.action) {
             BulkContactsTaskAction.REGISTER -> "Регистриране ${state.progress.percent}%"
             BulkContactsTaskAction.REPAIR -> "Поправяне ${state.progress.percent}%"
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> "Осиротели ${state.progress.percent}%"
             BulkContactsTaskAction.CLEANUP -> "Почистване ${state.progress.percent}%"
             BulkContactsTaskAction.IDLE -> "Обработка ${state.progress.percent}%"
         }
