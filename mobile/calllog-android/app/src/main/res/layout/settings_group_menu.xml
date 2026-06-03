@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="18dp"
+    android:orientation="vertical">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsApplicationButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_application_section"
+        app:icon="@drawable/ic_settings_application"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsPopupButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_popup_section"
+        app:icon="@drawable/ic_settings_popup"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsCallLogButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_call_log_section"
+        app:icon="@drawable/ic_settings_call_log"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsRmContactsButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_crm_section"
+        app:icon="@drawable/ic_settings_rm_contacts"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsServerButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_server_section"
+        app:icon="@drawable/ic_settings_server"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsPermissionsButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_permissions_section"
+        app:icon="@drawable/ic_settings_permissions"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsDataArchiveButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_storage_section"
+        app:icon="@drawable/ic_settings_data_archive"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsDebugButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_debug_section"
+        app:icon="@drawable/ic_settings_debug"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+</LinearLayout>
