@@ -69,7 +69,8 @@
     <string name="contact_link_description">The change applies on the next Add/Remove from RM action.</string>
     <string name="contact_link_bulk_title">Bulk contacts integration</string>
     <string name="contact_link_register_all_button">Register all</string>
-    <string name="contact_link_debug_button">Check RM record name</string>
+    <string name="contact_link_debug_button">Repair RM records</string>
+    <string name="contact_link_clean_orphans_button">Clean orphan RM records</string>
     <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relation Management registrations are skipped and not changed.</string>
 
     <string name="popup_timeout_hint">Seconds for auto-close after call</string>
@@ -90,7 +91,7 @@
     <string name="permissions_overlay_button">Allow Display over other apps</string>
     <string name="permissions_call_screening_button">Activate Call screening</string>
     <string name="permissions_fullscreen_button">Allow Full-screen popup</string>
-    <string name="permissions_cleanup_contacts_button">Clean Relation Management from contacts</string>
+    <string name="permissions_cleanup_contacts_button">Clean all Relation Management records</string>
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
     <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as Default caller ID / spam app.</string>
 
