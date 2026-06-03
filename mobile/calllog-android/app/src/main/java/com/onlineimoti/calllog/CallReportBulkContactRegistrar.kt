@@ -12,6 +12,7 @@ internal data class BulkContactRegistrationResult(
     val created: Int,
     val skippedExisting: Int,
     val failed: Int,
+    val canceled: Boolean = false,
 )
 
 data class BulkContactRegistrationProgress(
@@ -28,15 +29,16 @@ internal object CallReportBulkContactRegistrar {
     fun registerPhoneOnlyLinks(
         context: Context,
         onProgress: (BulkContactRegistrationProgress) -> Unit = {},
+        shouldCancel: () -> Boolean = { false },
     ): BulkContactRegistrationResult {
         if (!canReadAndWriteContacts(context)) return BulkContactRegistrationResult(0, 0, 0, 0)
         val mode = ConfigStore.load(context).contactLinkMode
         val contacts = collectUniqueContacts(context)
         val existingPhones = findCallReportPhones(context)
         return if (mode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
-            registerContactMode(context, contacts, existingPhones, onProgress)
+            registerContactMode(context, contacts, existingPhones, onProgress, shouldCancel)
         } else {
-            registerLinkedAppMode(context, contacts, existingPhones, onProgress)
+            registerLinkedAppMode(context, contacts, existingPhones, onProgress, shouldCancel)
         }
     }
 
@@ -45,6 +47,7 @@ internal object CallReportBulkContactRegistrar {
         contacts: List<BulkContactCandidate>,
         existingPhones: Set<String>,
         onProgress: (BulkContactRegistrationProgress) -> Unit,
+        shouldCancel: () -> Boolean,
     ): BulkContactRegistrationResult {
         val total = contacts.size
         if (contacts.isEmpty()) {
@@ -59,6 +62,7 @@ internal object CallReportBulkContactRegistrar {
         var created = 0
         var failed = 0
         var processed = skippedExisting
+        var canceled = false
         var lastPercent = -1
 
         fun report() {
@@ -69,12 +73,20 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report()
-        contactsToCreate.chunked(CONTACTS_PER_BATCH).forEach { chunk ->
+        for (chunk in contactsToCreate.chunked(CONTACTS_PER_BATCH)) {
+            if (shouldCancel()) {
+                canceled = true
+                break
+            }
             val saved = createLinkedAppChunk(context, chunk)
             if (saved) {
                 created += chunk.size
             } else {
-                chunk.forEach { contact ->
+                for (contact in chunk) {
+                    if (shouldCancel()) {
+                        canceled = true
+                        break
+                    }
                     if (CallReportContactIntegration.linkContact(context, contact.phone, contact.displayName.ifBlank { contact.phone })) {
                         created += 1
                     } else {
@@ -84,13 +96,16 @@ internal object CallReportBulkContactRegistrar {
             }
             processed += chunk.size
             report()
+            if (canceled) break
+            Thread.sleep(35L)
         }
 
         return BulkContactRegistrationResult(
-            scanned = total,
+            scanned = processed,
             created = created,
             skippedExisting = skippedExisting,
             failed = failed,
+            canceled = canceled,
         )
     }
 
@@ -99,6 +114,7 @@ internal object CallReportBulkContactRegistrar {
         contacts: List<BulkContactCandidate>,
         existingPhones: Set<String>,
         onProgress: (BulkContactRegistrationProgress) -> Unit,
+        shouldCancel: () -> Boolean,
     ): BulkContactRegistrationResult {
         val contactsToCreate = contacts.filterNot { existingPhones.contains(it.phone) }
         val total = contacts.size
@@ -106,6 +122,7 @@ internal object CallReportBulkContactRegistrar {
         val skippedExisting = total - contactsToCreate.size
         var failed = 0
         var processed = skippedExisting
+        var canceled = false
         var lastPercent = -1
 
         fun report() {
@@ -116,7 +133,11 @@ internal object CallReportBulkContactRegistrar {
         }
 
         report()
-        contactsToCreate.forEach { contact ->
+        for (contact in contactsToCreate) {
+            if (shouldCancel()) {
+                canceled = true
+                break
+            }
             val saved = CallReportStableCrmContactWriter.save(
                 context,
                 CallReportStableCrmContactWriter.Fields(
@@ -127,8 +148,9 @@ internal object CallReportBulkContactRegistrar {
             if (saved) created += 1 else failed += 1
             processed += 1
             report()
+            Thread.sleep(20L)
         }
-        return BulkContactRegistrationResult(total, created, skippedExisting, failed)
+        return BulkContactRegistrationResult(total, created, skippedExisting, failed, canceled)
     }
 
     private fun createLinkedAppChunk(context: Context, contacts: List<BulkContactCandidate>): Boolean {
