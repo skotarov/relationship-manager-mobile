@@ -25,7 +25,7 @@
     <string name="settings_call_log_section">📞 Call Log</string>
     <string name="settings_call_log_overlay_section">☎ Call Log overlay button</string>
     <string name="settings_popup_section">💬 Popup behavior</string>
-    <string name="settings_crm_section">👤 Contacts integration</string>
+    <string name="settings_crm_section">👤 Relationship Management contacts</string>
     <string name="settings_permissions_section">🔐 Permissions</string>
     <string name="settings_server_section">🌐 Server settings</string>
     <string name="settings_debug_section">🧪 Debug / Tests</string>
@@ -62,15 +62,15 @@
     <string name="contact_groups_hint">Groups for known contacts</string>
     <string name="contact_groups_description">If Known contacts is enabled: empty field = all known contacts; filled field = only contacts from these groups.</string>
 
-    <string name="contact_link_title">CRM linking in Android contacts</string>
-    <string name="contact_link_show_crm_buttons">Show Add to CRM / Edit buttons</string>
+    <string name="contact_link_title">Relationship Management linking in Android contacts</string>
+    <string name="contact_link_show_crm_buttons">Show Add to RM / Edit buttons</string>
     <string name="contact_link_mode_app">As app — show Relation Management in linked apps</string>
     <string name="contact_link_mode_contact">As contact — add Relation Management as linked contact</string>
-    <string name="contact_link_description">The change applies on the next Add/Remove from CRM action.</string>
+    <string name="contact_link_description">The change applies on the next Add/Remove from RM action.</string>
     <string name="contact_link_bulk_title">Bulk contacts integration</string>
     <string name="contact_link_register_all_button">Register all</string>
-    <string name="contact_link_debug_button">Check CRM record name</string>
-    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Call Report registrations are skipped and not changed.</string>
+    <string name="contact_link_debug_button">Check RM record name</string>
+    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relation Management registrations are skipped and not changed.</string>
 
     <string name="popup_timeout_hint">Seconds for auto-close after call</string>
     <string name="popup_after_call_title">After the call ends</string>
@@ -119,8 +119,8 @@
     <string name="save_settings">Save settings</string>
     <string name="open_form_direct">Open form</string>
     <string name="test_notification">Test notification</string>
-    <string name="crm_add_contact">Add to CRM</string>
-    <string name="crm_remove_contact">Remove from CRM</string>
+    <string name="crm_add_contact">Add to RM</string>
+    <string name="crm_remove_contact">Remove from RM</string>
     <string name="crm_contact_processing">Processing…</string>
     <string name="open_default_contact">Open contact</string>
     <string name="contact_not_found">Contact not found</string>
