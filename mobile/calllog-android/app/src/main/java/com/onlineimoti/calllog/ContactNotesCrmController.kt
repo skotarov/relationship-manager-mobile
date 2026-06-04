@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.content.Context
 import android.widget.Toast
 
 class ContactNotesCrmController(
@@ -13,26 +12,16 @@ class ContactNotesCrmController(
 ) {
     fun isLinked(): Boolean = CallReportContactIntegration.isContactLinked(activity, getPhone())
 
-    fun openContactLink(currentlyLinked: Boolean) {
+    fun reconcileCurrentPhone() {
         val phone = getPhone()
         if (phone.isBlank()) return
-        showDialog()
-    }
-
-    fun toggle(currentlyLinked: Boolean) {
-        val phone = getPhone()
-        if (phone.isBlank()) return
-        if (!currentlyLinked) {
-            showDialog()
-            return
-        }
-
         setBusy(true)
         rerender()
         val appContext = activity.applicationContext
+        val displayName = getTitle().takeIf { it != phone }.orEmpty()
         Thread {
-            val deleted = removeCrmLink(appContext, phone)
-            val message = if (deleted > 0) "Премахнато от Relation Management контактите" else "Няма намерен Relation Management запис"
+            val result = RmContactReconciler.reconcileOne(appContext, phone, displayName)
+            val message = resultMessage(result)
             activity.runOnUiThread {
                 setBusy(false)
                 if (!activity.isFinishing && !activity.isDestroyed) {
@@ -43,53 +32,14 @@ class ContactNotesCrmController(
         }.start()
     }
 
-    fun showDialog() {
-        val phone = getPhone()
-        CrmContactFieldsDialog.show(
-            activity = activity,
-            phone = phone,
-            titleText = getTitle(),
-            currentGeneralNote = ContactNoteReader.generalNoteForPhone(activity, phone),
-            onSave = ::saveFields,
-        )
-    }
-
-    private fun saveFields(fields: CallReportStableCrmContactWriter.Fields) {
-        setBusy(true)
-        rerender()
-        val appContext = activity.applicationContext
-        val mode = ConfigStore.load(activity).contactLinkMode
-        val phone = getPhone()
-        val title = getTitle()
-        Thread {
-            val saved = saveCrmLink(appContext, fields, mode, phone, title)
-            activity.runOnUiThread {
-                setBusy(false)
-                if (!activity.isFinishing && !activity.isDestroyed) {
-                    Toast.makeText(activity, if (saved) "Регистрирано в Relation Management контактите" else "Не успях да регистрирам контакта", Toast.LENGTH_SHORT).show()
-                    rerender()
-                }
-            }
-        }.start()
-    }
-
-    private fun saveCrmLink(
-        context: Context,
-        fields: CallReportStableCrmContactWriter.Fields,
-        mode: String,
-        phone: String,
-        title: String,
-    ): Boolean {
-        return CrmContactLinkSaver.save(
-            context = context,
-            fields = fields,
-            mode = mode,
-            phone = phone,
-            title = title,
-        )
-    }
-
-    private fun removeCrmLink(context: Context, phone: String): Int {
-        return CallReportContactIntegration.removeContact(context, phone)
+    private fun resultMessage(result: RmContactReconcileResult): String {
+        return when (result.action) {
+            RmContactReconcileAction.ADDED -> "Добавена е RM връзка към контакта"
+            RmContactReconcileAction.UPDATED -> "RM връзката е обновена"
+            RmContactReconcileAction.DELETED -> "Премахнат е осиротял RM запис"
+            RmContactReconcileAction.UNCHANGED -> "RM връзката вече е наред"
+            RmContactReconcileAction.SKIPPED -> "Няма намерен Android контакт за този номер"
+            RmContactReconcileAction.FAILED -> "Не успях да обновя RM връзката"
+        }
     }
 }
