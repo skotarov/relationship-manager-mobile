@@ -28,7 +28,6 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSection(SettingsSection.CALL_LOG) }
         binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.RM_CONTACTS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
-        binding.settingsMenuGroup.settingsPermissionsButton.setOnClickListener { showSection(SettingsSection.PERMISSIONS) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
         binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
     }
@@ -69,7 +68,6 @@ internal class MainSettingsNavigationController(
         CALL_LOG(R.string.settings_call_log_section),
         RM_CONTACTS(R.string.settings_crm_section),
         SERVER(R.string.settings_server_section),
-        PERMISSIONS(R.string.settings_permissions_section),
         DATA_ARCHIVE(R.string.settings_storage_section),
         DEBUG(R.string.settings_debug_section);
 
@@ -80,7 +78,6 @@ internal class MainSettingsNavigationController(
                 CALL_LOG -> binding.settingsCallLogGroup.root
                 RM_CONTACTS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
-                PERMISSIONS -> binding.settingsPermissionsGroup.root
                 DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
             }
