@@ -103,7 +103,7 @@ class ContactNotesActivity : Activity() {
 
         root.addView(headerRow())
         if (shouldShowContactUpdateStatus()) root.addView(contactUpdateStatusRow())
-        root.addView(rmDebugBlock())
+        if (ConfigStore.load(this).showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
             root = root,
