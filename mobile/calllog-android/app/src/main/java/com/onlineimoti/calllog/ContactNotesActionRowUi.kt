@@ -17,14 +17,12 @@ internal class ContactNotesActionRowUi(
     fun contactActionRow(
         linked: Boolean,
         busy: Boolean,
-        onToggle: () -> Unit,
-        onEditCrm: () -> Unit,
+        onOpenContactLink: () -> Unit,
     ): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(contactRegistrationToggle(linked, busy, onToggle))
-            if (linked) addView(editCrmContactButton(onEditCrm))
+            addView(contactLinkButton(linked, busy, onOpenContactLink))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -32,18 +30,13 @@ internal class ContactNotesActionRowUi(
         }
     }
 
-    private fun contactRegistrationToggle(linked: Boolean, busy: Boolean, onToggle: () -> Unit): LinearLayout {
+    private fun contactLinkButton(linked: Boolean, busy: Boolean, onOpenContactLink: () -> Unit): LinearLayout {
         val actionColor = when {
             busy -> Color.rgb(100, 116, 139)
-            linked -> Color.rgb(220, 38, 38)
+            linked -> Color.rgb(37, 99, 235)
             else -> Color.rgb(22, 163, 74)
         }
-        val iconRes = if (linked) R.drawable.ic_crm_person_remove else R.drawable.ic_crm_person_add
-        val labelRes = when {
-            busy -> R.string.crm_contact_processing
-            linked -> R.string.crm_remove_contact
-            else -> R.string.crm_add_contact
-        }
+        val labelRes = if (busy) R.string.crm_contact_processing else R.string.crm_add_contact
 
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -54,10 +47,10 @@ internal class ContactNotesActionRowUi(
             isClickable = true
             isFocusable = true
             contentDescription = activity.getString(labelRes)
-            setOnClickListener { if (!busy) onToggle() }
+            setOnClickListener { if (!busy) onOpenContactLink() }
 
             addView(ImageView(activity).apply {
-                setImageResource(iconRes)
+                setImageResource(R.drawable.ic_crm_person_add)
                 setColorFilter(actionColor)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(10) }
@@ -69,26 +62,6 @@ internal class ContactNotesActionRowUi(
                 setTextColor(actionColor)
                 includeFontPadding = false
             })
-        }
-    }
-
-    private fun editCrmContactButton(onEdit: () -> Unit): TextView {
-        return TextView(activity).apply {
-            text = "Едит"
-            textSize = 14.5f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(37, 99, 235))
-            background = roundedRect(Color.WHITE, dp(14), Color.rgb(37, 99, 235), dp(1))
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Редактирай CRM полета"
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            setOnClickListener { onEdit() }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.MATCH_PARENT,
-            ).apply { marginStart = dp(8) }
         }
     }
 }
