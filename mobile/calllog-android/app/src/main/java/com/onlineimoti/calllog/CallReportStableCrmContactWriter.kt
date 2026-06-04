@@ -81,6 +81,7 @@ object CallReportStableCrmContactWriter {
             }
 
             if (ops.isNotEmpty()) context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            RmContactAggregator.keepTogetherByPhone(context, originalPhone)
             CrmContactAccountStore.findCallReportRawContactId(context, originalPhone) > 0L
         }.getOrDefault(false)
     }
