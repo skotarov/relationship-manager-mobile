@@ -5,6 +5,20 @@ internal object RmContactNameResolver {
         return real.displayName.ifBlank { real.displayPhone.ifBlank { real.phone } }
     }
 
+    fun structuredParts(displayName: String): RmContactNameParts {
+        val parts = displayName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        return when (parts.size) {
+            0 -> RmContactNameParts()
+            1 -> RmContactNameParts(givenName = parts[0])
+            2 -> RmContactNameParts(givenName = parts[0], familyName = parts[1])
+            else -> RmContactNameParts(
+                givenName = parts.first(),
+                middleName = parts.drop(1).dropLast(1).joinToString(" "),
+                familyName = parts.last(),
+            )
+        }
+    }
+
     fun cleanFallbackDisplayName(candidate: String, phone: String): String {
         var value = candidate.trim()
         if (value.isBlank()) return ""
@@ -17,3 +31,9 @@ internal object RmContactNameResolver {
         return value
     }
 }
+
+internal data class RmContactNameParts(
+    val givenName: String = "",
+    val middleName: String = "",
+    val familyName: String = "",
+)
