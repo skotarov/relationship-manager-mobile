@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.content.Context
+import java.util.concurrent.ConcurrentHashMap
 
 class ContactNotesCrmController(
     private val activity: Activity,
@@ -17,11 +18,13 @@ class ContactNotesCrmController(
         rerender()
         val appContext = activity.applicationContext
         val displayName = cleanDisplayName(getTitle(), phone)
+        rememberStatus(phone, "START", "title=${getTitle()}")
         Thread {
             if (displayName.isBlank()) {
-                removeOrphanRmRecordIfRealContactIsMissing(appContext, phone)
+                handleUnknownNumber(appContext, phone)
             } else {
-                saveWithStablePath(appContext, phone, displayName)
+                val saved = saveWithStablePath(appContext, phone, displayName)
+                rememberStatus(phone, if (saved) "SAVE_DONE" else "SAVE_FAILED", "name=$displayName")
             }
             activity.runOnUiThread {
                 setBusy(false)
@@ -49,13 +52,24 @@ class ContactNotesCrmController(
         )
     }
 
-    private fun removeOrphanRmRecordIfRealContactIsMissing(context: Context, phone: String) {
+    private fun handleUnknownNumber(context: Context, phone: String) {
         val normalizedPhone = PhoneNormalizer.normalize(phone)
-        if (normalizedPhone.isBlank()) return
+        if (normalizedPhone.isBlank()) {
+            rememberStatus(phone, "SKIP_UNKNOWN", "empty phone")
+            return
+        }
         val realRawId = RmRealContactLookup.findRawContactId(context, normalizedPhone)
-        if (realRawId > 0L) return
-        val rm = RmContactReader.findRmRecord(context, normalizedPhone) ?: return
-        RmContactWriter.delete(context, rm.rawContactId)
+        if (realRawId > 0L) {
+            rememberStatus(phone, "SKIP_UNKNOWN", "realRaw=$realRawId")
+            return
+        }
+        val rm = RmContactReader.findRmRecord(context, normalizedPhone)
+        if (rm == null) {
+            rememberStatus(phone, "SKIP_UNKNOWN", "no rm")
+            return
+        }
+        val affected = RmContactWriter.delete(context, rm.rawContactId)
+        rememberStatus(phone, "CLEAN_RM_DONE", "rmRaw=${rm.rawContactId}, affected=$affected")
     }
 
     private fun cleanDisplayName(title: String, phone: String): String {
@@ -68,5 +82,21 @@ class ContactNotesCrmController(
             value = value.removePrefix(leadingPhone).trim()
         }
         return value
+    }
+
+    companion object {
+        private val lastStatusByPhone = ConcurrentHashMap<String, String>()
+
+        fun lastStatusFor(phone: String): String {
+            val key = PhoneNormalizer.normalize(phone)
+            return if (key.isBlank()) "" else lastStatusByPhone[key].orEmpty()
+        }
+
+        private fun rememberStatus(phone: String, action: String, detail: String) {
+            val key = PhoneNormalizer.normalize(phone)
+            if (key.isBlank()) return
+            val tick = (System.currentTimeMillis() / 1000L) % 86400L
+            lastStatusByPhone[key] = "$tick | $action | $detail"
+        }
     }
 }
