@@ -98,7 +98,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         CallReportRuntime.ensureNotificationChannel(this)
-        CallReportRuntime.ensureContactsSync(this)
         hydrateFields()
         refreshPermissionSummary()
         renderBuildVersion()
@@ -112,7 +111,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        CallReportRuntime.ensureContactsSync(this)
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
