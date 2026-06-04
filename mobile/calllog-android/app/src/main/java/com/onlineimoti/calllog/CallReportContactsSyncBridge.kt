@@ -13,10 +13,13 @@ internal object CallReportContactsSyncBridge {
     private const val PREFS = "callreport_contacts_sync_bridge"
     private const val KEY_LAST_SYNC_REQUEST_MS = "last_sync_request_ms"
     private const val SYNC_REQUEST_INTERVAL_MS = 24L * 60L * 60L * 1000L
+    private const val PERIODIC_SYNC_SECONDS = 6L * 60L * 60L
 
     fun ensureAccountAndRequestSync(context: Context, force: Boolean = false) {
         val appContext = context.applicationContext
         CrmContactAccountStore.ensureAccount(appContext, syncAutomatically = true)
+        val account = Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
+        ensurePeriodicSync(account)
         if (!force) return
         if (!canReadAndWriteContacts(appContext)) return
 
@@ -25,7 +28,6 @@ internal object CallReportContactsSyncBridge {
         val lastRequest = prefs.getLong(KEY_LAST_SYNC_REQUEST_MS, 0L)
         if (now - lastRequest < SYNC_REQUEST_INTERVAL_MS) return
 
-        val account = Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val extras = Bundle().apply {
             putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true)
             putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
@@ -34,6 +36,18 @@ internal object CallReportContactsSyncBridge {
         runCatching {
             ContentResolver.requestSync(account, ContactsContract.AUTHORITY, extras)
             prefs.edit().putLong(KEY_LAST_SYNC_REQUEST_MS, now).apply()
+        }
+    }
+
+    private fun ensurePeriodicSync(account: Account) {
+        runCatching {
+            val extras = Bundle.EMPTY
+            val alreadyAdded = ContentResolver.getPeriodicSyncs(account, ContactsContract.AUTHORITY).any { sync ->
+                sync.period == PERIODIC_SYNC_SECONDS
+            }
+            if (!alreadyAdded) {
+                ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, extras, PERIODIC_SYNC_SECONDS)
+            }
         }
     }
 
