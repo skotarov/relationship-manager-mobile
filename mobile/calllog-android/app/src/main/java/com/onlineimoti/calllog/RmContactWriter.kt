@@ -39,9 +39,9 @@ internal object RmContactWriter {
             ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawBackRef)
                 .withValue(ContactsContract.Data.MIMETYPE, CallReportContactIntegration.HISTORY_MIME_TYPE)
-                .withValue(ContactsContract.Data.DATA1, real.phone)
-                .withValue(ContactsContract.Data.DATA2, CrmContactAccountStore.ACCOUNT_NAME)
-                .withValue(ContactsContract.Data.DATA3, "История")
+                .withValue(ContactsContract.Data.DATA1, visiblePhone)
+                .withValue(ContactsContract.Data.DATA2, title)
+                .withValue(ContactsContract.Data.DATA3, CrmContactAccountStore.ACCOUNT_NAME)
                 .build()
         )
         if (real.existingRawContactId > 0L) {
@@ -91,9 +91,9 @@ internal object RmContactWriter {
             rowId = rm.historyRowId,
             mimeType = CallReportContactIntegration.HISTORY_MIME_TYPE,
             values = mapOf(
-                ContactsContract.Data.DATA1 to real.phone,
-                ContactsContract.Data.DATA2 to CrmContactAccountStore.ACCOUNT_NAME,
-                ContactsContract.Data.DATA3 to "История",
+                ContactsContract.Data.DATA1 to visiblePhone,
+                ContactsContract.Data.DATA2 to title,
+                ContactsContract.Data.DATA3 to CrmContactAccountStore.ACCOUNT_NAME,
             ),
         )
         if (real.existingRawContactId > 0L && real.existingRawContactId != rm.rawContactId) {
