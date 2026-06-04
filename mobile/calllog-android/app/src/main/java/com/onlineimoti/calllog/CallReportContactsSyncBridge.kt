@@ -16,7 +16,7 @@ internal object CallReportContactsSyncBridge {
 
     fun ensureAccountAndRequestSync(context: Context, force: Boolean = false) {
         val appContext = context.applicationContext
-        CrmContactAccountStore.ensureAccount(appContext, syncAutomatically = false)
+        CrmContactAccountStore.ensureAccount(appContext, syncAutomatically = true)
         if (!force) return
         if (!canReadAndWriteContacts(appContext)) return
 
