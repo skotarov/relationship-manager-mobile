@@ -13,7 +13,7 @@ internal class MainSettingsAutoSaveController(
     private val applyLanguageIfChanged: (String) -> Unit,
     private val requestOverlayPermissionIfNeeded: () -> Unit,
     private val requestCallScreeningRoleIfNeeded: () -> Unit,
-    private val startPermissionFlow: () -> Unit,
+    private val requestPublicNotesStoragePermission: () -> Unit,
 ) {
     fun wire() {
         val remote = binding.remoteSettingsSection
@@ -59,7 +59,7 @@ internal class MainSettingsAutoSaveController(
         }
         storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
             autoSaveSettings()
-            if (isChecked) startPermissionFlow()
+            if (isChecked) requestPublicNotesStoragePermission()
         }
 
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
