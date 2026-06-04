@@ -23,7 +23,7 @@ internal object RmContactWriter {
             ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, rawBackRef)
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, title)
+                .withStructuredNameValues(title)
                 .build()
         )
         ops.add(
@@ -72,7 +72,7 @@ internal object RmContactWriter {
             rawId = rm.rawContactId,
             rowId = rm.nameRowId,
             mimeType = ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
-            values = mapOf(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME to title),
+            values = structuredNameValues(title),
         )
         upsertDataRow(
             ops = ops,
@@ -140,5 +140,20 @@ internal object RmContactWriter {
         }
         values.forEach { (key, value) -> builder.withValue(key, value) }
         ops.add(builder.build())
+    }
+
+    private fun ContentProviderOperation.Builder.withStructuredNameValues(title: String): ContentProviderOperation.Builder {
+        structuredNameValues(title).forEach { (key, value) -> withValue(key, value) }
+        return this
+    }
+
+    private fun structuredNameValues(title: String): Map<String, Any> {
+        val parts = RmContactNameResolver.structuredParts(title)
+        return buildMap {
+            put(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, title)
+            if (parts.givenName.isNotBlank()) put(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, parts.givenName)
+            if (parts.middleName.isNotBlank()) put(ContactsContract.CommonDataKinds.StructuredName.MIDDLE_NAME, parts.middleName)
+            if (parts.familyName.isNotBlank()) put(ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME, parts.familyName)
+        }
     }
 }
