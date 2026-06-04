@@ -149,14 +149,14 @@ internal object RmContactReconciler {
         return runCatching {
             when {
                 real != null && rm == null -> {
-                    val created = RmContactWriter.create(context, real)
+                    val created = saveWithStablePath(context, real)
                     RmContactReconcileResult(if (created) RmContactReconcileAction.ADDED else RmContactReconcileAction.FAILED, phone)
                 }
                 real != null && rm != null -> {
                     if (isRmRecordCurrent(rm, real)) {
                         RmContactReconcileResult(RmContactReconcileAction.UNCHANGED, phone)
                     } else {
-                        val updated = RmContactWriter.update(context, real, rm)
+                        val updated = saveWithStablePath(context, real)
                         RmContactReconcileResult(if (updated) RmContactReconcileAction.UPDATED else RmContactReconcileAction.FAILED, phone)
                     }
                 }
@@ -167,6 +167,24 @@ internal object RmContactReconciler {
                 else -> RmContactReconcileResult(RmContactReconcileAction.SKIPPED, phone)
             }
         }.getOrDefault(RmContactReconcileResult(RmContactReconcileAction.FAILED, phone))
+    }
+
+    private fun saveWithStablePath(context: Context, real: BulkContactCandidate): Boolean {
+        val title = RmContactNameResolver.titleFor(real)
+        return CrmContactLinkSaver.save(
+            context = context,
+            fields = CallReportStableCrmContactWriter.Fields(
+                originalPhone = real.phone,
+                displayName = title,
+                organization = "Relation Management",
+                jobTitle = "RM auto",
+                groupName = "Relation Management",
+                customText = "RM auto link",
+            ),
+            mode = ConfigStore.load(context).contactLinkMode,
+            phone = real.phone,
+            title = title,
+        )
     }
 
     private fun isRmRecordCurrent(rm: RmRecord, real: BulkContactCandidate): Boolean {
