@@ -2,7 +2,6 @@ package com.onlineimoti.calllog
 
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import com.onlineimoti.calllog.databinding.SectionArchiveSettingsBinding
-import com.onlineimoti.calllog.databinding.SectionCallLogOverlaySettingsBinding
 import com.onlineimoti.calllog.databinding.SectionCallLogSettingsBinding
 import com.onlineimoti.calllog.databinding.SectionContactLinkBinding
 import com.onlineimoti.calllog.databinding.SectionLanguageSettingsBinding
@@ -24,9 +23,6 @@ internal val ActivityMainBinding.popupContactFilterSection: SectionPopupContactF
 
 internal val ActivityMainBinding.callLogSettingsSection: SectionCallLogSettingsBinding
     get() = settingsCallLogGroup.callLogSettingsSection
-
-internal val ActivityMainBinding.callLogOverlaySettingsSection: SectionCallLogOverlaySettingsBinding
-    get() = settingsCallLogGroup.callLogOverlaySettingsSection
 
 internal val ActivityMainBinding.contactLinkSection: SectionContactLinkBinding
     get() = settingsRmContactsGroup.contactLinkSection
