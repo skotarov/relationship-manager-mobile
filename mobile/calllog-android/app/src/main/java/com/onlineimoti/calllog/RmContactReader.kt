@@ -62,6 +62,9 @@ internal object RmContactReader {
                             syncPhone = mutable.syncPhone,
                             normalizedPhones = mutable.normalizedPhones.toSet(),
                             displayName = mutable.displayName.ifBlank { primaryPhone },
+                            givenName = mutable.givenName,
+                            middleName = mutable.middleName,
+                            familyName = mutable.familyName,
                             nameRowId = mutable.nameRowId,
                             phoneRowId = mutable.phoneRowId,
                             historyRowId = mutable.historyRowId,
@@ -82,6 +85,9 @@ internal object RmContactReader {
                     ContactsContract.Data.RAW_CONTACT_ID,
                     ContactsContract.Data.MIMETYPE,
                     ContactsContract.Data.DATA1,
+                    ContactsContract.Data.DATA2,
+                    ContactsContract.Data.DATA3,
+                    ContactsContract.Data.DATA5,
                 ),
                 "${ContactsContract.Data.RAW_CONTACT_ID} IN (${rawIds.joinToString(",") { "?" }}) AND ${ContactsContract.Data.MIMETYPE} IN (?, ?, ?)",
                 (rawIds.map { it.toString() } + listOf(
@@ -105,6 +111,9 @@ internal object RmContactReader {
                         ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
                             record.nameRowId = dataId
                             record.displayName = cursor.getStringOrEmpty(ContactsContract.Data.DATA1)
+                            record.givenName = cursor.getStringOrEmpty(ContactsContract.Data.DATA2)
+                            record.familyName = cursor.getStringOrEmpty(ContactsContract.Data.DATA3)
+                            record.middleName = cursor.getStringOrEmpty(ContactsContract.Data.DATA5)
                         }
                         CallReportContactIntegration.HISTORY_MIME_TYPE -> {
                             record.historyRowId = dataId
