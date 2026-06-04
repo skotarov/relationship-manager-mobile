@@ -1,9 +1,12 @@
 package com.onlineimoti.calllog
 
+import android.accounts.Account
+import android.content.ContentResolver
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import android.provider.ContactsContract
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -46,12 +49,13 @@ internal object BulkContactsTaskRunner {
         mainHandler.post { listener(snapshot) }
     }
 
-    fun removeListener(listener: (BulkContactsTaskState) -> Unit) {
+    fun removeListener(listener: (BulkContactsTaskState) {
         listeners.remove(listener)
     }
 
     fun cancel(context: Context? = null) {
         val snapshot = state
+        context?.applicationContext?.let { cancelAndroidContactsSync(it) }
         if (!snapshot.running || snapshot.stopping) return
         cancelRequested.set(true)
         updateProgress(
@@ -221,6 +225,15 @@ internal object BulkContactsTaskRunner {
         )
         BulkContactsProgressNotification.showFinished(context, action, status)
         notifyListeners()
+    }
+
+    private fun cancelAndroidContactsSync(context: Context) {
+        runCatching {
+            ContentResolver.cancelSync(
+                Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                ContactsContract.AUTHORITY,
+            )
+        }
     }
 
     private fun notifyListeners() {
