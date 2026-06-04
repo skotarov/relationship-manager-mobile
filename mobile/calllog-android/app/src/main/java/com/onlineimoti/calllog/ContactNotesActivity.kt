@@ -103,6 +103,7 @@ class ContactNotesActivity : Activity() {
 
         root.addView(headerRow())
         if (shouldShowContactUpdateStatus()) root.addView(contactUpdateStatusRow())
+        root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
             root = root,
@@ -141,6 +142,21 @@ class ContactNotesActivity : Activity() {
                 setTextColor(Color.rgb(71, 85, 105))
                 includeFontPadding = false
             })
+        }
+    }
+
+    private fun rmDebugBlock(): TextView {
+        return TextView(this).apply {
+            text = RmContactDebugReader.debugText(this@ContactNotesActivity, phone, titleText)
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = roundedRect(Color.rgb(248, 250, 252), dp(10), Color.rgb(203, 213, 225), dp(1))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(10) }
         }
     }
 
