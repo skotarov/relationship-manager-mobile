@@ -26,7 +26,7 @@ internal object BulkContactsProgressNotification {
         if (!canShowNotifications(context)) return
         ensureChannel(context)
         val title = when (action) {
-            BulkContactsTaskAction.REGISTER -> if (stopping) "Спиране на регистрирането…" else "Регистриране на контактите"
+            BulkContactsTaskAction.REGISTER -> if (stopping) "Спиране на синхронизацията…" else "Синхронизация на RM контакти"
             BulkContactsTaskAction.REPAIR -> if (stopping) "Спиране на поправката…" else "Поправяне на RM записите"
             BulkContactsTaskAction.CLEANUP_ORPHANS -> if (stopping) "Спиране на осиротели записи…" else "Почистване на осиротели RM записи"
             BulkContactsTaskAction.CLEANUP -> if (stopping) "Спиране на почистването…" else "Почистване на контактите"
@@ -41,12 +41,14 @@ internal object BulkContactsProgressNotification {
             .setContentTitle(title)
             .setContentText(content)
             .setStyle(NotificationCompat.BigTextStyle().bigText(status.ifBlank { content }))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(settingsPendingIntent(context))
+            .addAction(0, if (stopping) "Спиране…" else "Стоп", cancelPendingIntent(context))
 
         if (progress.total > 0) {
             builder.setProgress(progress.total, progress.processed.coerceAtMost(progress.total), false)
@@ -61,7 +63,7 @@ internal object BulkContactsProgressNotification {
         if (!canShowNotifications(context)) return
         ensureChannel(context)
         val title = when (action) {
-            BulkContactsTaskAction.REGISTER -> "Регистрирането приключи"
+            BulkContactsTaskAction.REGISTER -> "Синхронизацията приключи"
             BulkContactsTaskAction.REPAIR -> "Поправката приключи"
             BulkContactsTaskAction.CLEANUP_ORPHANS -> "Почистването на осиротели приключи"
             BulkContactsTaskAction.CLEANUP -> "Почистването приключи"
@@ -72,7 +74,7 @@ internal object BulkContactsProgressNotification {
             .setContentTitle(title)
             .setContentText(status)
             .setStyle(NotificationCompat.BigTextStyle().bigText(status))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setOngoing(false)
             .setOnlyAlertOnce(true)
@@ -93,10 +95,10 @@ internal object BulkContactsProgressNotification {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "Call Report масови операции",
-                NotificationManager.IMPORTANCE_LOW,
+                "RM контакти - прогрес",
+                NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Прогрес при масово регистриране, поправяне и почистване на контакти."
+                description = "Прогрес при синхронизация и почистване на RM контакти."
             }
         )
     }
@@ -106,6 +108,18 @@ internal object BulkContactsProgressNotification {
         return PendingIntent.getActivity(
             context,
             2105,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun cancelPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, BulkContactsCancelReceiver::class.java).apply {
+            action = BulkContactsCancelReceiver.ACTION_CANCEL_BULK_CONTACTS
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            2106,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
