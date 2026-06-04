@@ -67,6 +67,7 @@ class PostCallOverlayService : Service() {
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showNoteEditor = ::showNoteEditor,
+            showBubbleAfterLookup = ::showBubbleUntilCallEnds,
             timeoutMs = LOOKUP_POPUP_TIMEOUT_MS,
         )
     }
@@ -141,6 +142,7 @@ class PostCallOverlayService : Service() {
             MODE_LOOKUP -> lookupPopup.show()
             MODE_NOTE -> noteEditor.show()
             MODE_GENERAL_NOTE -> generalNoteEditor.show()
+            MODE_CALL_ENDED -> showBubbleWithTimeout()
             else -> showBubbleWithTimeout()
         }
         return START_NOT_STICKY
@@ -156,14 +158,24 @@ class PostCallOverlayService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun showBubbleUntilCallEnds() {
+        if (!shouldShowBubble()) return
+        bubble.show()
+    }
+
     private fun showBubbleWithTimeout() {
-        if (ConfigStore.load(this).postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
-            stopSelf()
-            return
-        }
+        if (!shouldShowBubble()) return
         bubble.show()
         val timeout = ConfigStore.load(this).postCallPromptTimeoutSeconds.coerceIn(3, 120)
         handler.postDelayed({ stopSelf() }, timeout * 1000L)
+    }
+
+    private fun shouldShowBubble(): Boolean {
+        if (ConfigStore.load(this).postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
+            stopSelf()
+            return false
+        }
+        return true
     }
 
     private fun openConfiguredPostCallAction() {
@@ -188,6 +200,16 @@ class PostCallOverlayService : Service() {
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs)
+    }
+
+    private fun addDraggableOverlay(
+        view: View,
+        focusable: Boolean,
+        defaultY: Int,
+        timeoutMs: Long,
+        onTimeout: () -> Unit,
+    ) {
+        windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs, onTimeout)
     }
 
     private fun callDirectionColor(directionValue: String): Int {
@@ -249,6 +271,7 @@ class PostCallOverlayService : Service() {
         const val MODE_LOOKUP = "lookup"
         const val MODE_NOTE = "note"
         const val MODE_GENERAL_NOTE = "general_note"
+        const val MODE_CALL_ENDED = "call_ended"
         const val EXTRA_FORM_URL = "form_url"
         const val EXTRA_PHONE = "phone"
         const val EXTRA_DIRECTION = "direction"
