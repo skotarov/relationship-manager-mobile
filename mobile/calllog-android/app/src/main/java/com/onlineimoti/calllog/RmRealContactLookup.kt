@@ -20,7 +20,7 @@ internal object RmRealContactLookup {
                     ContactsContract.Data.RAW_CONTACT_ID,
                     ContactsContract.CommonDataKinds.Phone.NUMBER,
                 ),
-                "${ContactsContract.Data.MIMETYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                "${ContactsContract.Data.MIMETYPE}=? AND (${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR ${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?) AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE, CallReportContactIntegration.ACCOUNT_TYPE),
                 null,
             )?.use { cursor ->
