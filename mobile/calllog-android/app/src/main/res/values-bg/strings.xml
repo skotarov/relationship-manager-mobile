@@ -64,11 +64,13 @@
     <string name="contact_link_mode_app">Като приложение — Relation Management да се показва в свързани приложения</string>
     <string name="contact_link_mode_contact">Като контакт — Relation Management да се добавя като свързан контакт</string>
     <string name="contact_link_description">Смяната важи при следващо записване през Свръзка с контакти.</string>
-    <string name="contact_link_bulk_title">Масово внедряване</string>
+    <string name="contact_link_bulk_title">Синхронизация на контактите</string>
     <string name="contact_link_register_all_button">Регистрирай всички</string>
+    <string name="contact_link_sync_all_button">Синхронизирай RM контактите</string>
     <string name="contact_link_debug_button">Поправи RM записите</string>
     <string name="contact_link_clean_orphans_button">Почисти осиротели RM записи</string>
     <string name="contact_link_bulk_description">Регистрира само телефонна връзка за съществуващите контакти. Ако вече има Relation Management регистрация, тя се пропуска и не се променя.</string>
+    <string name="contact_link_sync_description">Единна синхронизация: добавя липсващи RM връзки, обновява съществуващи записи и почиства осиротели RM контакти.</string>
 
     <string name="popup_timeout_hint">Секунди за auto-close на popup след край</string>
     <string name="popup_after_call_title">След приключване на разговора</string>
