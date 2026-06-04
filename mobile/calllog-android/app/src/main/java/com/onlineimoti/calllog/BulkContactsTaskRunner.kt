@@ -49,7 +49,7 @@ internal object BulkContactsTaskRunner {
         mainHandler.post { listener(snapshot) }
     }
 
-    fun removeListener(listener: (BulkContactsTaskState) {
+    fun removeListener(listener: (BulkContactsTaskState) -> Unit) {
         listeners.remove(listener)
     }
 
