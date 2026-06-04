@@ -72,56 +72,8 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:minHeight="46dp"
-            android:text="@string/contact_link_register_all_button"
+            android:text="@string/contact_link_sync_all_button"
             app:icon="@drawable/ic_rm_bulk_register"
-            app:iconGravity="textStart"
-            app:iconPadding="12dp"
-            app:iconTint="@color/calllog_text"
-            app:strokeColor="@color/calllog_accent"
-            app:strokeWidth="1.5dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/debugCrmContactNameButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:minHeight="46dp"
-            android:text="@string/contact_link_debug_button"
-            app:icon="@drawable/ic_rm_bulk_repair"
-            app:iconGravity="textStart"
-            app:iconPadding="12dp"
-            app:iconTint="@color/calllog_text"
-            app:strokeColor="@color/calllog_accent"
-            app:strokeWidth="1.5dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/cleanupOrphanContactsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:minHeight="46dp"
-            android:text="@string/contact_link_clean_orphans_button"
-            app:icon="@drawable/ic_rm_bulk_clean_orphans"
-            app:iconGravity="textStart"
-            app:iconPadding="12dp"
-            app:iconTint="@color/calllog_text"
-            app:strokeColor="@color/calllog_accent"
-            app:strokeWidth="1.5dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/cleanupContactsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:minHeight="46dp"
-            android:text="@string/permissions_cleanup_contacts_button"
-            app:icon="@drawable/ic_rm_bulk_clean_all"
             app:iconGravity="textStart"
             app:iconPadding="12dp"
             app:iconTint="@color/calllog_text"
@@ -133,7 +85,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="@string/contact_link_bulk_description"
+        android:text="@string/contact_link_sync_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 </LinearLayout>
