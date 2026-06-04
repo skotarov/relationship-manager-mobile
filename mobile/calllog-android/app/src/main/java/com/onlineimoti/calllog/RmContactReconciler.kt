@@ -189,16 +189,24 @@ internal object RmContactReconciler {
 
     private fun isRmRecordCurrent(rm: RmRecord, real: BulkContactCandidate): Boolean {
         val title = RmContactNameResolver.titleFor(real)
-        val parts = RmContactNameResolver.structuredParts(title)
+        val sameName = namesEqual(rm.displayName, title)
+        val sameParts = if (sameName) true else {
+            val parts = RmContactNameResolver.structuredParts(title)
+            rm.givenName == parts.givenName &&
+                rm.middleName == parts.middleName &&
+                rm.familyName == parts.familyName
+        }
         return rm.syncPhone == real.phone &&
             rm.normalizedPhones.contains(real.phone) &&
-            rm.displayName == title &&
-            rm.givenName == parts.givenName &&
-            rm.middleName == parts.middleName &&
-            rm.familyName == parts.familyName &&
+            sameName &&
+            sameParts &&
             rm.nameRowId > 0L &&
             rm.phoneRowId > 0L &&
             rm.historyRowId > 0L
+    }
+
+    private fun namesEqual(left: String, right: String): Boolean {
+        return left.trim().replace(Regex("\\s+"), " ") == right.trim().replace(Regex("\\s+"), " ")
     }
 
     private fun sleepQuietly(ms: Long) {
