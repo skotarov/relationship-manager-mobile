@@ -99,6 +99,7 @@ internal object CallReportNotifications {
     private fun startPostCallOverlay(context: Context, formUrl: String, phone: String, direction: String, title: String) {
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_CALL_ENDED)
                 .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
