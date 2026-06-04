@@ -124,7 +124,7 @@ object CallReportStableCrmContactWriter {
                 .withValue(ContactsContract.RawContacts.SYNC1, fields.originalPhone)
                 .build()
         )
-        CrmContactDataRows.upsertStructuredName(context, ops, rawId, fields, existingRawContactId <= 0L)
+        CrmContactDataRows.upsertStructuredName(context, ops, rawId, fields, allowDisplayName = true)
         CrmContactDataRows.upsertPhone(
             context = context,
             ops = ops,
