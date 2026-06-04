@@ -31,6 +31,17 @@ internal class MainPermissionFlowController(
         requestNextStep()
     }
 
+    fun requestPublicNotesStoragePermission() {
+        isRunning = false
+        if (!publicNotesFolderSelected()) return
+        if (canUsePublicNotesFolder()) {
+            migratePublicNotesIfPossible()
+            return
+        }
+        setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
+        requestStorageManagerPermissionIfNeeded()
+    }
+
     fun onPermissionResult() {
         refreshPermissionSummary()
         requestNextStep()
@@ -53,7 +64,7 @@ internal class MainPermissionFlowController(
 
     fun onStorageSettingsResult() {
         if (canUsePublicNotesFolder()) {
-            setStatus("Публичната папка за бележки е достъпна: ${LocalNotesFileStore.publicRootPath()}")
+            migratePublicNotesIfPossible()
             refreshPermissionSummary()
             requestNextStep()
             return
@@ -172,6 +183,17 @@ internal class MainPermissionFlowController(
         }
     }
 
+    private fun migratePublicNotesIfPossible() {
+        if (!publicNotesFolderSelected()) return
+        if (!canUsePublicNotesFolder()) return
+        val migrated = LocalNotesFileStore.migratePrivateToPublic(activity)
+        if (migrated) {
+            setStatus("Публичната папка за бележки е активна: ${LocalNotesFileStore.publicRootPath()}")
+        } else {
+            setStatus("Публичната папка е разрешена, но прехвърлянето на бележките не успя.")
+        }
+    }
+
     private fun disableUnavailableCallScreeningIfSelected() {
         if (callScreeningSelected()) {
             disableCallScreening()
@@ -189,6 +211,7 @@ internal class MainPermissionFlowController(
 
     private fun finishFlowWithSuccess() {
         isRunning = false
+        if (publicNotesFolderSelected() && canUsePublicNotesFolder()) migratePublicNotesIfPossible()
         setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.activeRootPath(activity)}.")
         refreshPermissionSummary()
     }
