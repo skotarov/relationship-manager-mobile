@@ -40,7 +40,7 @@
             android:layout_marginEnd="4dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/open_default_call_log"
-            android:padding="10dp"
+            android:padding="9dp"
             android:scaleType="center"
             android:src="@drawable/ic_system_call_log" />
 
@@ -50,7 +50,7 @@
             android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/home_settings_button"
-            android:padding="12dp"
+            android:padding="13dp"
             android:scaleType="center"
             android:src="@drawable/ic_settings_gear" />
     </LinearLayout>
