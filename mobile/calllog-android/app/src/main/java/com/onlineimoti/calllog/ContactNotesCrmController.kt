@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.Context
 
 class ContactNotesCrmController(
     private val activity: Activity,
@@ -15,9 +16,9 @@ class ContactNotesCrmController(
         setBusy(true)
         rerender()
         val appContext = activity.applicationContext
-        val displayName = cleanDisplayName(getTitle(), phone)
+        val displayName = cleanDisplayName(getTitle(), phone).ifBlank { phone }
         Thread {
-            RmContactReconciler.reconcileOne(appContext, phone, displayName)
+            saveWithStablePath(appContext, phone, displayName)
             activity.runOnUiThread {
                 setBusy(false)
                 if (!activity.isFinishing && !activity.isDestroyed) {
@@ -25,6 +26,23 @@ class ContactNotesCrmController(
                 }
             }
         }.start()
+    }
+
+    private fun saveWithStablePath(context: Context, phone: String, displayName: String): Boolean {
+        return CrmContactLinkSaver.save(
+            context = context,
+            fields = CallReportStableCrmContactWriter.Fields(
+                originalPhone = phone,
+                displayName = displayName,
+                organization = "Relation Management",
+                jobTitle = "RM auto",
+                groupName = "Relation Management",
+                customText = "RM auto link",
+            ),
+            mode = ConfigStore.load(context).contactLinkMode,
+            phone = phone,
+            title = displayName,
+        )
     }
 
     private fun cleanDisplayName(title: String, phone: String): String {
