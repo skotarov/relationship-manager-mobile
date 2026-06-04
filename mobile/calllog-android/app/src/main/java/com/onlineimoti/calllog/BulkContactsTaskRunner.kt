@@ -58,7 +58,7 @@ internal object BulkContactsTaskRunner {
             action = snapshot.action,
             progress = snapshot.progress,
             status = when (snapshot.action) {
-                BulkContactsTaskAction.REGISTER -> "Спирам регистрацията след текущия запис…"
+                BulkContactsTaskAction.REGISTER -> "Спирам синхронизацията след текущия запис…"
                 BulkContactsTaskAction.REPAIR -> "Спирам поправката след текущия запис…"
                 BulkContactsTaskAction.CLEANUP_ORPHANS -> "Спирам почистването на осиротели записи след текущия запис…"
                 BulkContactsTaskAction.CLEANUP -> "Спирам почистването след текущия запис…"
@@ -70,10 +70,10 @@ internal object BulkContactsTaskRunner {
 
     fun registerAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Регистрирам всички контакти към RM… 0%", appContext)) return
+        if (!tryStart(BulkContactsTaskAction.REGISTER, "Синхронизирам RM контактите… 0%", appContext)) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-            runRegisterAll(
+            runReconcileAll(
                 context = appContext,
                 automatic = false,
             )
@@ -82,78 +82,20 @@ internal object BulkContactsTaskRunner {
 
     fun registerAllFromSync(context: Context): BulkContactRegistrationResult? {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Автоматична синхронизация на контактите… 0%", appContext)) return null
+        if (!tryStart(BulkContactsTaskAction.REGISTER, "Автоматична синхронизация на RM контактите… 0%", appContext)) return null
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-        return runRegisterAll(
+        return runReconcileAll(
             context = appContext,
             automatic = true,
         )
     }
 
     fun repairAll(context: Context) {
-        val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REPAIR, "Поправям RM записите… 0%", appContext)) return
-        executor.execute {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-            var latestProgress = BulkContactRegistrationProgress(0, 0)
-            val result = RmContactBulkRepairer.repairAll(
-                context = appContext,
-                onProgress = { progress ->
-                    latestProgress = progress
-                    updateProgress(
-                        action = BulkContactsTaskAction.REPAIR,
-                        progress = progress,
-                        status = if (cancelRequested.get()) {
-                            "Спирам поправката след текущия запис…"
-                        } else {
-                            "Поправям RM записите… ${progress.percent}%"
-                        },
-                        stopping = cancelRequested.get(),
-                        context = appContext,
-                    )
-                },
-                shouldCancel = { cancelRequested.get() },
-            )
-            finish(
-                action = BulkContactsTaskAction.REPAIR,
-                progress = latestProgress,
-                status = repairFinishedStatus(result),
-                context = appContext,
-            )
-        }
+        registerAll(context)
     }
 
     fun cleanupOrphans(context: Context) {
-        val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.CLEANUP_ORPHANS, "Почиствам осиротели RM записи… 0%", appContext)) return
-        executor.execute {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
-            var latestProgress = BulkContactRegistrationProgress(0, 0)
-            val result = RmContactOrphanCleaner.cleanOrphans(
-                context = appContext,
-                onProgress = { progress ->
-                    latestProgress = progress
-                    updateProgress(
-                        action = BulkContactsTaskAction.CLEANUP_ORPHANS,
-                        progress = progress,
-                        status = if (cancelRequested.get()) {
-                            "Спирам почистването на осиротели записи след текущия запис…"
-                        } else {
-                            "Почиствам осиротели RM записи… ${progress.percent}%"
-                        },
-                        stopping = cancelRequested.get(),
-                        context = appContext,
-                    )
-                },
-                shouldCancel = { cancelRequested.get() },
-            )
-            finish(
-                action = BulkContactsTaskAction.CLEANUP_ORPHANS,
-                progress = latestProgress,
-                status = orphanCleanupFinishedStatus(result),
-                context = appContext,
-            )
-        }
+        registerAll(context)
     }
 
     fun cleanupAll(context: Context) {
@@ -193,16 +135,16 @@ internal object BulkContactsTaskRunner {
         }
     }
 
-    private fun runRegisterAll(context: Context, automatic: Boolean): BulkContactRegistrationResult {
-        val prefix = if (automatic) "Автоматична синхронизация на контактите" else "Регистрирам всички контакти към RM"
-        val result = CallReportBulkContactRegistrar.registerPhoneOnlyLinks(
+    private fun runReconcileAll(context: Context, automatic: Boolean): BulkContactRegistrationResult {
+        val prefix = if (automatic) "Автоматична синхронизация на RM контактите" else "Синхронизирам RM контактите"
+        val result = RmContactReconciler.reconcileAll(
             context = context,
             onProgress = { progress ->
                 updateProgress(
                     action = BulkContactsTaskAction.REGISTER,
                     progress = progress,
                     status = if (cancelRequested.get()) {
-                        "Спирам регистрацията след текущия запис…"
+                        "Спирам синхронизацията след текущия запис…"
                     } else {
                         "$prefix… ${progress.percent}%"
                     },
@@ -215,34 +157,18 @@ internal object BulkContactsTaskRunner {
         finish(
             action = BulkContactsTaskAction.REGISTER,
             progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
-            status = registerFinishedStatus(result, automatic),
+            status = reconcileFinishedStatus(result, automatic),
             context = context,
         )
         return result
     }
 
-    private fun registerFinishedStatus(result: BulkContactRegistrationResult, automatic: Boolean): String {
-        val prefix = if (automatic) "Автоматичната регистрация" else "Регистрацията"
+    private fun reconcileFinishedStatus(result: BulkContactRegistrationResult, automatic: Boolean): String {
+        val prefix = if (automatic) "Автоматичната синхронизация" else "Синхронизацията"
         return if (result.canceled) {
-            "$prefix е спряна. Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+            "$prefix е спряна. Променени: ${result.created}, без промяна: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         } else {
-            "Регистрирани: ${result.created}, вече имащи: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-        }
-    }
-
-    private fun repairFinishedStatus(result: BulkContactRegistrationResult): String {
-        return if (result.canceled) {
-            "Поправката е спряна. Поправени: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-        } else {
-            "Поправени RM записи: ${result.created}, без RM запис: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-        }
-    }
-
-    private fun orphanCleanupFinishedStatus(result: BulkContactRegistrationResult): String {
-        return if (result.canceled) {
-            "Почистването е спряно. Изтрити осиротели: ${result.created}, запазени: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
-        } else {
-            "Изтрити осиротели RM записи: ${result.created}, запазени: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+            "Променени: ${result.created}, без промяна: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
         }
     }
 
