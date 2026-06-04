@@ -128,8 +128,7 @@ class ContactNotesActivity : Activity() {
         return actionRowUi.contactActionRow(
             linked = linked,
             busy = contactRegistrationBusy,
-            onToggle = { crmController.toggle(linked) },
-            onEditCrm = crmController::showDialog,
+            onOpenContactLink = { crmController.openContactLink(linked) },
         )
     }
 
