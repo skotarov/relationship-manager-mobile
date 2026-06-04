@@ -171,7 +171,12 @@ class PostCallOverlayService : Service() {
     }
 
     private fun shouldShowBubble(): Boolean {
-        if (ConfigStore.load(this).postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
+        val config = ConfigStore.load(this)
+        if (!config.useOverlayPopups || !config.useCustomEndPopup) {
+            stopSelf()
+            return false
+        }
+        if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
             stopSelf()
             return false
         }
