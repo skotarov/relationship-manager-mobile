@@ -67,7 +67,7 @@ object CallReportStableCrmContactWriter {
             if (!canReadAndWriteContacts(context)) return@runCatching false
 
             CrmContactAccountStore.ensureAccount(context)
-            val existingRawContactId = CrmContactAccountStore.findExistingRawContactId(context, originalPhone)
+            val existingRawContactId = RmRealContactLookup.findRawContactId(context, originalPhone)
             val normalized = CrmContactNormalizedFields.from(fields, originalPhone, existingRawContactId)
             val groupId = CrmContactAccountStore.ensureGroup(context, normalized.groupName)
             val callReportRawContactId = CrmContactAccountStore.findCallReportRawContactId(context, originalPhone)
@@ -105,7 +105,7 @@ object CallReportStableCrmContactWriter {
             CrmContactDataRows.insertPhone(ops, fields.additionalPhone, CrmContactAccountStore.EXTRA_PHONE_LABEL)
         }
         CrmContactDataRows.insertOptionalRows(ops, fields, groupId)
-        CrmContactDataRows.insertHistoryRow(ops, fields.originalPhone)
+        CrmContactDataRows.insertHistoryRow(ops, fields.originalPhone, fields.displayName)
         keepTogetherWithBackReference(ops, existingRawContactId)
     }
 
@@ -145,8 +145,8 @@ object CallReportStableCrmContactWriter {
             CallReportContactIntegration.HISTORY_MIME_TYPE,
             mapOf(
                 ContactsContract.Data.DATA1 to fields.originalPhone,
-                ContactsContract.Data.DATA2 to CrmContactAccountStore.ACCOUNT_NAME,
-                ContactsContract.Data.DATA3 to "История",
+                ContactsContract.Data.DATA2 to fields.displayName,
+                ContactsContract.Data.DATA3 to CrmContactAccountStore.ACCOUNT_NAME,
             ),
         )
     }
