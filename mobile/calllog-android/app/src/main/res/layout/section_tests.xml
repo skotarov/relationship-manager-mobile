@@ -10,7 +10,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="Показвай RM debug box в История" />
+        android:text="Показвай debug прозореца в История" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Когато е изключено, RM debug блокът няма да се показва над бележките."
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
