@@ -1,11 +1,7 @@
 package com.onlineimoti.calllog
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.drawable.GradientDrawable
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,8 +18,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
     private val searchExecutor = Executors.newSingleThreadExecutor()
-    private val contactsSyncExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
+    private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
+    private val noteSavedReceiver by lazy { HomeNoteSavedReceiverController(this, ::renderCalls) }
     private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
     private val searchController by lazy {
         HomeSearchController(
@@ -55,17 +52,10 @@ class HomeActivity : AppCompatActivity() {
     }
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
-    private var noteSavedReceiverRegistered = false
-    private var contactsSyncPrepared = false
     private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
-    private val noteSavedReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            HomeCallPageLoader.clearSearchCache()
-            renderCalls()
-        }
-    }
+
     private val noteRefreshRunnable = object : Runnable {
         override fun run() {
             if (System.currentTimeMillis() > noteRefreshUntilMs) return
@@ -115,13 +105,13 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        registerNoteSavedReceiver()
-        prepareContactsSyncInBackground()
+        noteSavedReceiver.register()
+        contactsSyncPreparer.prepareOnce()
         renderCalls()
     }
 
     override fun onPause() {
-        unregisterNoteSavedReceiver()
+        noteSavedReceiver.unregister()
         handler.removeCallbacks(noteRefreshRunnable)
         handler.removeCallbacks(searchRunnable)
         super.onPause()
@@ -130,34 +120,8 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
         searchExecutor.shutdownNow()
-        contactsSyncExecutor.shutdownNow()
+        contactsSyncPreparer.release()
         super.onDestroy()
-    }
-
-    private fun prepareContactsSyncInBackground() {
-        if (contactsSyncPrepared) return
-        contactsSyncPrepared = true
-        contactsSyncExecutor.execute {
-            CallReportRuntime.ensureContactsSync(this@HomeActivity)
-        }
-    }
-
-    private fun registerNoteSavedReceiver() {
-        if (noteSavedReceiverRegistered) return
-        val filter = IntentFilter(ACTION_CONTACT_NOTE_SAVED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(noteSavedReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(noteSavedReceiver, filter)
-        }
-        noteSavedReceiverRegistered = true
-    }
-
-    private fun unregisterNoteSavedReceiver() {
-        if (!noteSavedReceiverRegistered) return
-        runCatching { unregisterReceiver(noteSavedReceiver) }
-        noteSavedReceiverRegistered = false
     }
 
     private fun renderCalls() {
