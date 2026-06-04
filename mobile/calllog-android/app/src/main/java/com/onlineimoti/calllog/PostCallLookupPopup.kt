@@ -17,8 +17,9 @@ internal class PostCallLookupPopup(
     private val title: () -> String,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
-    private val addDraggableOverlay: (View, Boolean, Int, Long) -> Unit,
+    private val addDraggableOverlay: (View, Boolean, Int, Long, () -> Unit) -> Unit,
     private val showNoteEditor: () -> Unit,
+    private val showBubbleAfterLookup: () -> Unit,
     private val timeoutMs: Long,
 ) {
     fun show() {
@@ -76,7 +77,7 @@ internal class PostCallLookupPopup(
         contentRow.addView(contentColumn)
         contentRow.addView(ui.noteRightAction { showNoteEditor() })
         card.addView(contentRow)
-        addDraggableOverlay(ui.shadowScroll(card), false, ui.dp(74), timeoutMs)
+        addDraggableOverlay(ui.shadowScroll(card), false, ui.dp(74), timeoutMs) { showBubbleAfterLookup() }
     }
 
     private fun buildDataColumn(infoRows: List<String>): LinearLayout {
