@@ -17,12 +17,13 @@ internal class ContactNotesActionRowUi(
     fun contactActionRow(
         linked: Boolean,
         busy: Boolean,
+        status: RmContactReconcileAction?,
         onOpenContactLink: () -> Unit,
     ): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(contactLinkButton(linked, busy, onOpenContactLink))
+            addView(contactLinkButton(linked, busy, status, onOpenContactLink))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -30,13 +31,29 @@ internal class ContactNotesActionRowUi(
         }
     }
 
-    private fun contactLinkButton(linked: Boolean, busy: Boolean, onOpenContactLink: () -> Unit): LinearLayout {
+    private fun contactLinkButton(
+        linked: Boolean,
+        busy: Boolean,
+        status: RmContactReconcileAction?,
+        onOpenContactLink: () -> Unit,
+    ): LinearLayout {
         val actionColor = when {
             busy -> Color.rgb(100, 116, 139)
-            linked -> Color.rgb(37, 99, 235)
+            status == RmContactReconcileAction.UNCHANGED -> Color.rgb(37, 99, 235)
+            status == RmContactReconcileAction.FAILED -> Color.rgb(220, 38, 38)
+            status == RmContactReconcileAction.DELETED -> Color.rgb(245, 158, 11)
+            linked || status == RmContactReconcileAction.ADDED || status == RmContactReconcileAction.UPDATED -> Color.rgb(37, 99, 235)
             else -> Color.rgb(22, 163, 74)
         }
-        val labelRes = if (busy) R.string.crm_contact_processing else R.string.crm_add_contact
+        val label = when {
+            busy -> activity.getString(R.string.crm_contact_processing)
+            status == RmContactReconcileAction.UNCHANGED -> "RM връзката е наред"
+            status == RmContactReconcileAction.ADDED -> "RM връзката е добавена"
+            status == RmContactReconcileAction.UPDATED -> "RM връзката е обновена"
+            status == RmContactReconcileAction.DELETED -> "Осиротял RM запис е премахнат"
+            status == RmContactReconcileAction.FAILED -> "Провери RM връзката"
+            else -> activity.getString(R.string.crm_add_contact)
+        }
 
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -46,7 +63,7 @@ internal class ContactNotesActionRowUi(
             isEnabled = !busy
             isClickable = true
             isFocusable = true
-            contentDescription = activity.getString(labelRes)
+            contentDescription = label
             setOnClickListener { if (!busy) onOpenContactLink() }
 
             addView(ImageView(activity).apply {
@@ -56,7 +73,7 @@ internal class ContactNotesActionRowUi(
                 layoutParams = LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(10) }
             })
             addView(TextView(activity).apply {
-                text = activity.getString(labelRes)
+                text = label
                 textSize = 15.5f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(actionColor)
