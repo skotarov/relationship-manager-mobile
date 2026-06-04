@@ -40,18 +40,5 @@
         <include
             android:id="@+id/callLogSettingsSection"
             layout="@layout/section_call_log_settings" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="@string/settings_call_log_overlay_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <include
-            android:id="@+id/callLogOverlaySettingsSection"
-            layout="@layout/section_call_log_overlay_settings" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
