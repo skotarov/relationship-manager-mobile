@@ -65,18 +65,6 @@
         <service
             android:name=".PostCallOverlayService"
             android:exported="false" />
-        <service
-            android:name=".CallLogOverlayAccessibilityService"
-            android:exported="true"
-            android:label="@string/call_log_overlay_accessibility_label"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/call_log_overlay_accessibility_service" />
-        </service>
         <receiver
             android:name=".NotificationDismissReceiver"
             android:enabled="true"
