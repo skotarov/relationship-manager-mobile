@@ -16,9 +16,13 @@ class ContactNotesCrmController(
         setBusy(true)
         rerender()
         val appContext = activity.applicationContext
-        val displayName = cleanDisplayName(getTitle(), phone).ifBlank { phone }
+        val displayName = cleanDisplayName(getTitle(), phone)
         Thread {
-            saveWithStablePath(appContext, phone, displayName)
+            if (displayName.isBlank()) {
+                removeOrphanRmRecordIfRealContactIsMissing(appContext, phone)
+            } else {
+                saveWithStablePath(appContext, phone, displayName)
+            }
             activity.runOnUiThread {
                 setBusy(false)
                 if (!activity.isFinishing && !activity.isDestroyed) {
@@ -43,6 +47,15 @@ class ContactNotesCrmController(
             phone = phone,
             title = displayName,
         )
+    }
+
+    private fun removeOrphanRmRecordIfRealContactIsMissing(context: Context, phone: String) {
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return
+        val realRawId = RmRealContactLookup.findRawContactId(context, normalizedPhone)
+        if (realRawId > 0L) return
+        val rm = RmContactReader.findRmRecord(context, normalizedPhone) ?: return
+        RmContactWriter.delete(context, rm.rawContactId)
     }
 
     private fun cleanDisplayName(title: String, phone: String): String {
