@@ -13,6 +13,7 @@ object MainSettingsConfigUi {
         val storage = binding.storageSettingsSection
         val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
+        val tests = binding.testsSection
 
         remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
         remote.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
@@ -48,6 +49,7 @@ object MainSettingsConfigUi {
         }
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
         permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
+        tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
     }
 
     fun read(binding: ActivityMainBinding): AppConfig {
@@ -59,6 +61,7 @@ object MainSettingsConfigUi {
         val storage = binding.storageSettingsSection
         val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
+        val tests = binding.testsSection
 
         return AppConfig(
             remoteEnabled = remote.remoteEnabledCheckBox.isChecked,
@@ -95,6 +98,7 @@ object MainSettingsConfigUi {
             },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
             useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
+            showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
         )
     }
 }
