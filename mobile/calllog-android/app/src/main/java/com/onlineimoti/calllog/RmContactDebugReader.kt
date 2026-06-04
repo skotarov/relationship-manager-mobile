@@ -16,6 +16,7 @@ internal object RmContactDebugReader {
         val rmContactId = rm?.rawContactId?.let { contactIdForRaw(context, it) } ?: 0L
         val aggregation = if (real != null && rm != null) aggregationInfo(context, real.existingRawContactId, rm.rawContactId) else "none"
         return buildString {
+            appendLine("RM lastHistoryAuto: ${ContactNotesCrmController.lastStatusFor(normalizedPhone).ifBlank { "none" }}")
             appendLine("RM decision: ${decisionText(real, rm, current)}")
             appendLine("expectedName: $expectedTitle")
             appendLine("RM debug")
