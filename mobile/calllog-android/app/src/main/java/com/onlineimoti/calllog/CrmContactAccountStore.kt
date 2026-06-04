@@ -13,7 +13,7 @@ object CrmContactAccountStore {
     const val LEGACY_ACCOUNT_NAME = "Call Report"
     const val EXTRA_PHONE_LABEL = "RM доп."
 
-    fun ensureAccount(context: Context, syncAutomatically: Boolean = false) {
+    fun ensureAccount(context: Context, syncAutomatically: Boolean = true) {
         val account = Account(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val manager = AccountManager.get(context)
         runCatching {
