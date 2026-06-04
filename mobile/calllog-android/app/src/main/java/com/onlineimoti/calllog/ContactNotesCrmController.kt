@@ -15,7 +15,7 @@ class ContactNotesCrmController(
         setBusy(true)
         rerender()
         val appContext = activity.applicationContext
-        val displayName = getTitle().takeIf { it != phone }.orEmpty()
+        val displayName = cleanDisplayName(getTitle(), phone)
         Thread {
             RmContactReconciler.reconcileOne(appContext, phone, displayName)
             activity.runOnUiThread {
@@ -25,5 +25,17 @@ class ContactNotesCrmController(
                 }
             }
         }.start()
+    }
+
+    private fun cleanDisplayName(title: String, phone: String): String {
+        var value = title.trim()
+        if (value.isBlank() || value == phone) return ""
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (PhoneNormalizer.normalize(value) == normalizedPhone) return ""
+        val leadingPhone = Regex("^[+\\d][\\d\\s().-]{5,}").find(value)?.value.orEmpty()
+        if (leadingPhone.isNotBlank() && PhoneNormalizer.normalize(leadingPhone) == normalizedPhone) {
+            value = value.removePrefix(leadingPhone).trim()
+        }
+        return value
     }
 }
