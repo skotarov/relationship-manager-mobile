@@ -128,7 +128,7 @@ class ContactNotesActivity : Activity() {
         return actionRowUi.contactActionRow(
             linked = linked,
             busy = contactRegistrationBusy,
-            onOpenContactLink = { crmController.openContactLink(linked) },
+            onOpenContactLink = { crmController.reconcileCurrentPhone() },
         )
     }
 
