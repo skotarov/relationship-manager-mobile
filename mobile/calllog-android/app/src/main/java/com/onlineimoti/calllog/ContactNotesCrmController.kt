@@ -13,6 +13,12 @@ class ContactNotesCrmController(
 ) {
     fun isLinked(): Boolean = CallReportContactIntegration.isContactLinked(activity, getPhone())
 
+    fun openContactLink(currentlyLinked: Boolean) {
+        val phone = getPhone()
+        if (phone.isBlank()) return
+        showDialog()
+    }
+
     fun toggle(currentlyLinked: Boolean) {
         val phone = getPhone()
         if (phone.isBlank()) return
