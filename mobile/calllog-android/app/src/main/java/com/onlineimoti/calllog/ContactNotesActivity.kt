@@ -5,17 +5,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
-    private var contactRegistrationBusy = false
-    private var contactLinkStatus: RmContactReconcileAction? = null
+    private var contactUpdateBusy = false
     private var contactAutoCheckStarted = false
     private var notesChangedReceiverRegistered = false
 
@@ -27,7 +31,6 @@ class ContactNotesActivity : Activity() {
 
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
-    private val actionRowUi by lazy { ContactNotesActionRowUi(this, ::dp, ::roundedRect) }
     private val sectionsUi by lazy {
         ContactNotesSectionsUi(
             activity = this,
@@ -42,8 +45,7 @@ class ContactNotesActivity : Activity() {
             activity = this,
             getPhone = { phone },
             getTitle = { titleText },
-            setBusy = { contactRegistrationBusy = it },
-            setStatus = { contactLinkStatus = it },
+            setBusy = { contactUpdateBusy = it },
             rerender = ::render,
         )
     }
@@ -53,7 +55,7 @@ class ContactNotesActivity : Activity() {
         phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
         render()
-        autoCheckContactLinkOnce()
+        autoUpdateContactLinkOnce()
     }
 
     override fun onStart() {
@@ -100,7 +102,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        if (shouldShowContactActionRow()) root.addView(contactActionRow())
+        if (shouldShowContactUpdateStatus()) root.addView(contactUpdateStatusRow())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
             root = root,
@@ -115,9 +117,33 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun shouldShowContactActionRow(): Boolean {
-        if (!ConfigStore.load(this).showCrmActionButtons) return false
-        return contactLinkStatus != RmContactReconcileAction.SKIPPED
+    private fun shouldShowContactUpdateStatus(): Boolean {
+        return ConfigStore.load(this).showCrmActionButtons && contactUpdateBusy
+    }
+
+    private fun contactUpdateStatusRow(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            background = roundedRect(Color.WHITE, dp(14), Color.rgb(203, 213, 225), dp(1))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+
+            addView(ProgressBar(this@ContactNotesActivity, null, android.R.attr.progressBarStyleSmall).apply {
+                isIndeterminate = true
+                layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(8) }
+            })
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = "Updating…"
+                textSize = 14.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(71, 85, 105))
+                includeFontPadding = false
+            })
+        }
     }
 
     private fun headerRow(): LinearLayout {
@@ -132,20 +158,11 @@ class ContactNotesActivity : Activity() {
         )
     }
 
-    private fun contactActionRow(): LinearLayout {
-        val linked = crmController.isLinked()
-        return actionRowUi.contactActionRow(
-            linked = linked,
-            busy = contactRegistrationBusy,
-            status = contactLinkStatus,
-            onOpenContactLink = { crmController.reconcileCurrentPhone(showToast = true) },
-        )
-    }
-
-    private fun autoCheckContactLinkOnce() {
+    private fun autoUpdateContactLinkOnce() {
         if (contactAutoCheckStarted || phone.isBlank()) return
+        if (!ConfigStore.load(this).showCrmActionButtons) return
         contactAutoCheckStarted = true
-        crmController.reconcileCurrentPhone(showToast = false)
+        crmController.reconcileCurrentPhone()
     }
 
     private fun openCallNoteEditor(note: ContactCallNote) {
