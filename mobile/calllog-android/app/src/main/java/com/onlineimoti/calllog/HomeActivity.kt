@@ -282,7 +282,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateSearchButtonIcon() {
-        binding.searchButton.text = if (binding.searchRow.visibility == View.VISIBLE) "×" else "⌕"
+        binding.searchButton.setImageResource(
+            if (binding.searchRow.visibility == View.VISIBLE) R.drawable.ic_popup_close else R.drawable.ic_search
+        )
     }
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
