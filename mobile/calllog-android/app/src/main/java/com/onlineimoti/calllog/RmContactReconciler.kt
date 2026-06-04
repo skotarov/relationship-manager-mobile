@@ -25,6 +25,25 @@ internal data class RmContactReconcileResult(
 internal object RmContactReconciler {
     private const val CONTACT_PAUSE_MS = 8L
 
+    fun previewOne(
+        context: Context,
+        phone: String,
+        displayName: String = "",
+    ): RmContactReconcileResult {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return RmContactReconcileResult(RmContactReconcileAction.SKIPPED, normalizedPhone)
+        if (!canReadContacts(appContext)) return RmContactReconcileResult(RmContactReconcileAction.FAILED, normalizedPhone)
+
+        return runCatching {
+            previewPreparedOne(
+                phone = normalizedPhone,
+                real = findRealContact(appContext, normalizedPhone, displayName),
+                rm = findRmRecord(appContext, normalizedPhone),
+            )
+        }.getOrDefault(RmContactReconcileResult(RmContactReconcileAction.FAILED, normalizedPhone))
+    }
+
     fun reconcileOne(
         context: Context,
         phone: String,
@@ -45,6 +64,8 @@ internal object RmContactReconciler {
             )
         }.getOrDefault(RmContactReconcileResult(RmContactReconcileAction.FAILED, normalizedPhone))
     }
+
+    fun canModifyContacts(context: Context): Boolean = canReadAndWriteContacts(context.applicationContext)
 
     fun reconcileAll(
         context: Context,
@@ -108,6 +129,25 @@ internal object RmContactReconciler {
             failed = failed,
             canceled = canceled,
         )
+    }
+
+    private fun previewPreparedOne(
+        phone: String,
+        real: BulkContactCandidate?,
+        rm: RmRecord?,
+    ): RmContactReconcileResult {
+        return when {
+            real != null && rm == null -> RmContactReconcileResult(RmContactReconcileAction.ADDED, phone)
+            real != null && rm != null -> {
+                if (isRmRecordCurrent(rm, real)) {
+                    RmContactReconcileResult(RmContactReconcileAction.UNCHANGED, phone)
+                } else {
+                    RmContactReconcileResult(RmContactReconcileAction.UPDATED, phone)
+                }
+            }
+            real == null && rm != null -> RmContactReconcileResult(RmContactReconcileAction.DELETED, phone)
+            else -> RmContactReconcileResult(RmContactReconcileAction.SKIPPED, phone)
+        }
     }
 
     private fun reconcilePreparedOne(
@@ -400,8 +440,12 @@ internal object RmContactReconciler {
         return real.displayName.ifBlank { real.displayPhone.ifBlank { real.phone } }
     }
 
+    private fun canReadContacts(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun canReadAndWriteContacts(context: Context): Boolean {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
+        return canReadContacts(context) &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
     }
 
