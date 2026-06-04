@@ -26,6 +26,7 @@ data class AppConfig(
     val appLanguage: String,
     val usePublicNotesFolder: Boolean,
     val useCallScreening: Boolean,
+    val showRmDebugBox: Boolean,
 )
 
 object ConfigStore {
@@ -50,6 +51,7 @@ object ConfigStore {
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_USE_PUBLIC_NOTES_FOLDER = "use_public_notes_folder"
     private const val KEY_USE_CALL_SCREENING = "use_call_screening"
+    private const val KEY_SHOW_RM_DEBUG_BOX = "show_rm_debug_box"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
@@ -71,6 +73,7 @@ object ConfigStore {
     const val LANGUAGE_EN = "en"
     const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM
     const val DEFAULT_USE_CALL_SCREENING = false
+    const val DEFAULT_SHOW_RM_DEBUG_BOX = false
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -99,6 +102,7 @@ object ConfigStore {
                 canUsePublicNotesFolderByDefault()
             },
             useCallScreening = prefs.getBoolean(KEY_USE_CALL_SCREENING, DEFAULT_USE_CALL_SCREENING),
+            showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
         )
     }
 
@@ -125,6 +129,7 @@ object ConfigStore {
             .putString(KEY_APP_LANGUAGE, normalizeAppLanguage(config.appLanguage))
             .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, config.usePublicNotesFolder)
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
+            .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
             .apply()
     }
 
