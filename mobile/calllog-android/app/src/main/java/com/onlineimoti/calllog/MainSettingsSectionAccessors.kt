@@ -31,7 +31,7 @@ internal val ActivityMainBinding.remoteSettingsSection: SectionRemoteSettingsBin
     get() = settingsServerGroup.remoteSettingsSection
 
 internal val ActivityMainBinding.permissionsSection: SectionPermissionsBinding
-    get() = settingsPermissionsGroup.permissionsSection
+    get() = settingsApplicationGroup.permissionsSection
 
 internal val ActivityMainBinding.storageSettingsSection: SectionStorageSettingsBinding
     get() = settingsDataArchiveGroup.storageSettingsSection
