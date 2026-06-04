@@ -24,6 +24,7 @@ internal class MainSettingsAutoSaveController(
         val storage = binding.storageSettingsSection
         val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
+        val tests = binding.testsSection
 
         remote.remoteEnabledCheckBox.setOnCheckedChangeListener { _, isChecked ->
             remote.remoteSettingsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
@@ -69,6 +70,8 @@ internal class MainSettingsAutoSaveController(
             autoSaveSettings()
             if (isChecked) requestCallScreeningRoleIfNeeded()
         }
+
+        tests.showRmDebugBoxCheckBox.autoSaveCheckedChanges()
     }
 
     private fun TextInputEditText.autoSaveTextChanges() {
