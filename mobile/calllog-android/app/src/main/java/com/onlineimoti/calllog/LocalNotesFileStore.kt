@@ -16,9 +16,20 @@ object LocalNotesFileStore {
     fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
     fun shouldUsePublicFolder(context: Context): Boolean = ConfigStore.load(context).usePublicNotesFolder
     fun canUseConfiguredFolder(context: Context): Boolean = !shouldUsePublicFolder(context) || canUsePublicFolder()
-    fun publicRootPath(): String = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR).absolutePath
-    fun privateRootPath(context: Context): String = File(context.filesDir, ROOT_DIR).absolutePath
+    fun publicRootPath(): String = publicRoot().absolutePath
+    fun privateRootPath(context: Context): String = privateRoot(context).absolutePath
     fun activeRootPath(context: Context): String = if (shouldUsePublicFolder(context)) publicRootPath() else privateRootPath(context)
+
+    fun migratePrivateToPublic(context: Context): Boolean {
+        if (!canUsePublicFolder()) return false
+        val source = privateRoot(context)
+        if (!source.exists()) return true
+        val target = publicRoot()
+        return runCatching {
+            copyDirectory(source, target)
+            true
+        }.getOrDefault(false)
+    }
 
     fun latestNoteForPhone(context: Context, phoneNumber: String): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
@@ -136,6 +147,21 @@ object LocalNotesFileStore {
         }.getOrDefault(false)
     }
 
+    private fun copyDirectory(source: File, target: File) {
+        if (source.isDirectory) {
+            target.mkdirs()
+            source.listFiles().orEmpty().forEach { child ->
+                copyDirectory(child, File(target, child.name))
+            }
+        } else if (!target.exists() || source.lastModified() > target.lastModified()) {
+            target.parentFile?.mkdirs()
+            source.copyTo(target, overwrite = true)
+        }
+    }
+
+    private fun privateRoot(context: Context): File = File(context.filesDir, ROOT_DIR)
+    private fun publicRoot(): File = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR)
+
     private fun sameCall(json: JSONObject, callAt: Long, direction: String): Boolean {
         val sameCallAt = json.optLong("call_at", 0L) == callAt
         val rowDirection = json.optString("direction")
@@ -161,11 +187,7 @@ object LocalNotesFileStore {
 
     private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = phoneKey.filter { it.isDigit() }
-        val root = if (shouldUsePublicFolder(context)) {
-            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR)
-        } else {
-            File(context.filesDir, ROOT_DIR)
-        }
+        val root = if (shouldUsePublicFolder(context)) publicRoot() else privateRoot(context)
         val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
