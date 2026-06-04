@@ -36,11 +36,6 @@ object MainSettingsConfigUi {
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         popup.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
-        if (config.contactLinkMode == ConfigStore.CONTACT_LINK_MODE_CONTACT) {
-            contactLink.contactLinkModeContact.isChecked = true
-        } else {
-            contactLink.contactLinkModeApp.isChecked = true
-        }
         contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
         when (config.appLanguage) {
             ConfigStore.LANGUAGE_BG -> language.appLanguageBg.isChecked = true
@@ -85,11 +80,7 @@ object MainSettingsConfigUi {
                 popup.postCallEndActionNothing.isChecked -> ConfigStore.POST_CALL_END_ACTION_NOTHING
                 else -> ConfigStore.POST_CALL_END_ACTION_EDIT
             },
-            contactLinkMode = if (contactLink.contactLinkModeContact.isChecked) {
-                ConfigStore.CONTACT_LINK_MODE_CONTACT
-            } else {
-                ConfigStore.CONTACT_LINK_MODE_APP
-            },
+            contactLinkMode = ConfigStore.DEFAULT_CONTACT_LINK_MODE,
             showCrmActionButtons = contactLink.showCrmActionButtonsCheckBox.isChecked,
             appLanguage = when {
                 language.appLanguageBg.isChecked -> ConfigStore.LANGUAGE_BG
