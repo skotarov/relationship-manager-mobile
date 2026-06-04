@@ -170,9 +170,14 @@ internal object RmContactReconciler {
     }
 
     private fun isRmRecordCurrent(rm: RmRecord, real: BulkContactCandidate): Boolean {
+        val title = RmContactNameResolver.titleFor(real)
+        val parts = RmContactNameResolver.structuredParts(title)
         return rm.syncPhone == real.phone &&
             rm.normalizedPhones.contains(real.phone) &&
-            rm.displayName == RmContactNameResolver.titleFor(real) &&
+            rm.displayName == title &&
+            rm.givenName == parts.givenName &&
+            rm.middleName == parts.middleName &&
+            rm.familyName == parts.familyName &&
             rm.nameRowId > 0L &&
             rm.phoneRowId > 0L &&
             rm.historyRowId > 0L
