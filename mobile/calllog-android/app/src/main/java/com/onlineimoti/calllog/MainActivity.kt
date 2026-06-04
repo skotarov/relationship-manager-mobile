@@ -138,10 +138,7 @@ class MainActivity : AppCompatActivity() {
             permissionFlowController.requestCallScreeningRoleIfNeeded()
         }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
-        binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.registerAllCallReportContacts() }
-        binding.contactLinkSection.debugCrmContactNameButton.setOnClickListener { contactsCleanupController.repairAllRmContacts() }
-        binding.contactLinkSection.cleanupOrphanContactsButton.setOnClickListener { contactsCleanupController.cleanupOrphanRmContacts() }
-        binding.contactLinkSection.cleanupContactsButton.setOnClickListener { contactsCleanupController.cleanupCallReportContacts() }
+        binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.syncAllRmContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
             setStatus("Server настройките са записани.")
