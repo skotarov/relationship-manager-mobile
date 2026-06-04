@@ -22,6 +22,8 @@ class ContactNotesCrmController(
         Thread {
             if (displayName.isBlank()) {
                 handleUnknownNumber(appContext, phone)
+            } else if (isCurrentRmRecord(appContext, phone, displayName)) {
+                rememberStatus(phone, "SKIP_OK", "already current")
             } else {
                 val saved = saveWithStablePath(appContext, phone, displayName)
                 rememberStatus(phone, if (saved) "SAVE_DONE" else "SAVE_FAILED", "name=$displayName")
@@ -50,6 +52,17 @@ class ContactNotesCrmController(
             phone = phone,
             title = displayName,
         )
+    }
+
+    private fun isCurrentRmRecord(context: Context, phone: String, displayName: String): Boolean {
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return false
+        val rm = RmContactReader.findRmRecord(context, normalizedPhone) ?: return false
+        return namesEqual(rm.displayName, displayName) &&
+            rm.normalizedPhones.contains(normalizedPhone) &&
+            rm.nameRowId > 0L &&
+            rm.phoneRowId > 0L &&
+            rm.historyRowId > 0L
     }
 
     private fun handleUnknownNumber(context: Context, phone: String) {
@@ -82,6 +95,10 @@ class ContactNotesCrmController(
             value = value.removePrefix(leadingPhone).trim()
         }
         return value
+    }
+
+    private fun namesEqual(left: String, right: String): Boolean {
+        return left.trim().replace(Regex("\\s+"), " ") == right.trim().replace(Regex("\\s+"), " ")
     }
 
     companion object {
