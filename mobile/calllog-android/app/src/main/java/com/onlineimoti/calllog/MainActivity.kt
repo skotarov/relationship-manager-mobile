@@ -126,7 +126,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun hydrateFields() {
         MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
-        MainCallLogOverlaySettings.hydrate(this, binding)
     }
 
     private fun wireSettingsActions() {
@@ -164,18 +163,6 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             testEndPopup()
         }
-
-        MainCallLogOverlaySettings.wire(
-            activity = this,
-            binding = binding,
-            saveOverlaySettings = ::saveCallLogOverlayButtonSettings,
-            requestOverlayPermissionIfNeeded = { permissionFlowController.requestOverlayPermissionIfNeeded() },
-            setStatus = ::setStatus,
-        )
-    }
-
-    private fun saveCallLogOverlayButtonSettings() {
-        MainCallLogOverlaySettings.save(this, binding, suppressAutoSave)
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -188,7 +175,6 @@ class MainActivity : AppCompatActivity() {
     private fun saveConfig(): AppConfig {
         val config = MainSettingsConfigUi.read(binding)
         ConfigStore.save(this, config)
-        saveCallLogOverlayButtonSettings()
         return ConfigStore.load(this)
     }
 
