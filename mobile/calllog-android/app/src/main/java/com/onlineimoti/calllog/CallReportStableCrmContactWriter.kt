@@ -105,7 +105,7 @@ object CallReportStableCrmContactWriter {
             CrmContactDataRows.insertPhone(ops, fields.additionalPhone, CrmContactAccountStore.EXTRA_PHONE_LABEL)
         }
         CrmContactDataRows.insertOptionalRows(ops, fields, groupId)
-        CrmContactDataRows.insertHistoryRow(ops, fields.originalPhone, fields.displayName)
+        CrmContactDataRows.insertHistoryRow(ops, fields.originalPhone)
         keepTogetherWithBackReference(ops, existingRawContactId)
     }
 
