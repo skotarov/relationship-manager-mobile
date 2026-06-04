@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
             applyLanguageIfChanged = ::applyLanguageIfChanged,
             requestOverlayPermissionIfNeeded = { permissionFlowController.requestOverlayPermissionIfNeeded() },
             requestCallScreeningRoleIfNeeded = { permissionFlowController.requestCallScreeningRoleIfNeeded() },
-            startPermissionFlow = { permissionFlowController.start() },
+            requestPublicNotesStoragePermission = { permissionFlowController.requestPublicNotesStoragePermission() },
         )
     }
 
@@ -198,7 +198,7 @@ class MainActivity : AppCompatActivity() {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun canUsePublicNotesFolder(): Boolean = MainStorageSettings.canUsePublicNotesFolder(this)
+    private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
     private fun disablePublicNotesFolder() = MainStorageSettings.disablePublicNotesFolder(this)
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
     private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
