@@ -78,6 +78,10 @@
             android:enabled="true"
             android:exported="false" />
         <receiver
+            android:name=".BulkContactsCancelReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
             android:name=".CallStateReceiver"
             android:enabled="true"
             android:exported="false">
@@ -186,5 +190,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>
