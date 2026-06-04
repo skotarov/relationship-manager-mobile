@@ -117,9 +117,7 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun shouldShowContactUpdateStatus(): Boolean {
-        return ConfigStore.load(this).showCrmActionButtons && contactUpdateBusy
-    }
+    private fun shouldShowContactUpdateStatus(): Boolean = contactUpdateBusy
 
     private fun contactUpdateStatusRow(): LinearLayout {
         return LinearLayout(this).apply {
@@ -160,7 +158,6 @@ class ContactNotesActivity : Activity() {
 
     private fun autoUpdateContactLinkOnce() {
         if (contactAutoCheckStarted || phone.isBlank()) return
-        if (!ConfigStore.load(this).showCrmActionButtons) return
         contactAutoCheckStarted = true
         crmController.reconcileCurrentPhone()
     }
