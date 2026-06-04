@@ -5,7 +5,7 @@ import android.provider.ContactsContract
 
 internal object RmContactReader {
     fun findRealContact(context: Context, phone: String, displayName: String): BulkContactCandidate? {
-        val existingRawId = CrmContactAccountStore.findExistingRawContactId(context, phone)
+        val existingRawId = RmRealContactLookup.findRawContactId(context, phone)
         if (existingRawId <= 0L) return null
         return BulkContactCandidate(
             phone = phone,
