@@ -2,9 +2,11 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 import android.os.Process
+import android.os.SystemClock
 
 internal object RmContactReconciler {
-    private const val CONTACT_PAUSE_MS = 8L
+    private const val CONTACT_PAUSE_MS = 4L
+    private const val PROGRESS_UPDATE_INTERVAL_MS = 350L
 
     fun previewOne(
         context: Context,
@@ -75,11 +77,16 @@ internal object RmContactReconciler {
         var processed = 0
         var canceled = false
         var lastPercent = -1
+        var lastProgressAt = 0L
 
         fun report(force: Boolean = false) {
             val progress = BulkContactRegistrationProgress(processed, total)
-            if (!force && progress.percent == lastPercent && processed != total) return
+            val now = SystemClock.elapsedRealtime()
+            val percentChanged = progress.percent != lastPercent
+            val intervalPassed = now - lastProgressAt >= PROGRESS_UPDATE_INTERVAL_MS
+            if (!force && !percentChanged && !intervalPassed && processed != total) return
             lastPercent = progress.percent
+            lastProgressAt = now
             onProgress(progress)
         }
 
@@ -100,7 +107,7 @@ internal object RmContactReconciler {
             }
 
             processed += 1
-            report(force = true)
+            report()
             sleepQuietly(CONTACT_PAUSE_MS)
         }
 
