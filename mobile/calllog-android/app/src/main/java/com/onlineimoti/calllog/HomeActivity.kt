@@ -22,6 +22,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
     private val searchExecutor = Executors.newSingleThreadExecutor()
+    private val contactsSyncExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
     private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
     private val searchController by lazy {
@@ -55,6 +56,7 @@ class HomeActivity : AppCompatActivity() {
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
     private var noteSavedReceiverRegistered = false
+    private var contactsSyncPrepared = false
     private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
@@ -114,6 +116,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         registerNoteSavedReceiver()
+        prepareContactsSyncInBackground()
         renderCalls()
     }
 
@@ -127,7 +130,16 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
         searchExecutor.shutdownNow()
+        contactsSyncExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    private fun prepareContactsSyncInBackground() {
+        if (contactsSyncPrepared) return
+        contactsSyncPrepared = true
+        contactsSyncExecutor.execute {
+            CallReportRuntime.ensureContactsSync(this@HomeActivity)
+        }
     }
 
     private fun registerNoteSavedReceiver() {
@@ -260,22 +272,20 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateSearchButtonIcon() {
-        val searchOpen = binding.searchRow.visibility == View.VISIBLE
-        binding.searchButton.setImageResource(if (searchOpen) R.drawable.ic_search_close else R.drawable.ic_search)
-        binding.searchButton.contentDescription = getString(
-            if (searchOpen) R.string.search_clear_content_description else R.string.search_content_description
-        )
-    }
-
     private fun clearSearch() {
         handler.removeCallbacks(searchRunnable)
-        searchGeneration.incrementAndGet()
-        if (binding.searchInput.text?.isNotEmpty() == true) binding.searchInput.setText("")
+        binding.searchInput.setText("")
         activeSearchQuery = ""
         pageIndex = 0
         renderCalls()
+        updateSearchButtonIcon()
     }
+
+    private fun updateSearchButtonIcon() {
+        binding.searchButton.text = if (binding.searchRow.visibility == View.VISIBLE) "×" else "⌕"
+    }
+
+    private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     private fun startTemporaryNoteRefresh() {
         noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
@@ -283,7 +293,6 @@ class HomeActivity : AppCompatActivity() {
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
     }
 
-    private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -292,13 +301,13 @@ class HomeActivity : AppCompatActivity() {
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
     }
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
-        const val EXTRA_NOTE_PHONE = "phone"
-        private const val NOTE_REFRESH_INTERVAL_MS = 1000L
-        private const val NOTE_REFRESH_WINDOW_MS = 120_000L
-        private const val SEARCH_DEBOUNCE_MS = 450L
+        private const val NOTE_REFRESH_WINDOW_MS = 2_000L
+        private const val NOTE_REFRESH_INTERVAL_MS = 400L
+        private const val SEARCH_DEBOUNCE_MS = 250L
     }
 }
