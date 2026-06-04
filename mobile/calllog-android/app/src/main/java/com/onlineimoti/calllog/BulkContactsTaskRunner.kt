@@ -50,7 +50,7 @@ internal object BulkContactsTaskRunner {
         listeners.remove(listener)
     }
 
-    fun cancel() {
+    fun cancel(context: Context? = null) {
         val snapshot = state
         if (!snapshot.running || snapshot.stopping) return
         cancelRequested.set(true)
@@ -65,6 +65,7 @@ internal object BulkContactsTaskRunner {
                 BulkContactsTaskAction.IDLE -> "Спирам…"
             },
             stopping = true,
+            context = context?.applicationContext,
         )
     }
 
