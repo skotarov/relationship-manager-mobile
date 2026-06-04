@@ -22,33 +22,6 @@
         android:checked="true"
         android:text="@string/contact_link_show_crm_buttons" />
 
-    <RadioGroup
-        android:id="@+id/contactLinkModeGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="vertical">
-        <RadioButton
-            android:id="@+id/contactLinkModeApp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="@string/contact_link_mode_app" />
-        <RadioButton
-            android:id="@+id/contactLinkModeContact"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/contact_link_mode_contact" />
-    </RadioGroup>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/contact_link_description"
-        android:textColor="@color/calllog_muted_text"
-        android:textSize="13sp" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
