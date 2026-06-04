@@ -3,6 +3,6 @@
     android:contentAuthority="com.android.contacts"
     android:accountType="com.onlineimoti.calllog.account"
     android:userVisible="true"
-    android:supportsUploading="false"
+    android:supportsUploading="true"
     android:isAlwaysSyncable="true"
     android:allowParallelSyncs="false" />
