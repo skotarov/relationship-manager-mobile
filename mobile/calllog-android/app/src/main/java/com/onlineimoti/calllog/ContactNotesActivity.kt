@@ -15,6 +15,8 @@ class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
     private var contactRegistrationBusy = false
+    private var contactLinkStatus: RmContactReconcileAction? = null
+    private var contactAutoCheckStarted = false
     private var notesChangedReceiverRegistered = false
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
@@ -41,6 +43,7 @@ class ContactNotesActivity : Activity() {
             getPhone = { phone },
             getTitle = { titleText },
             setBusy = { contactRegistrationBusy = it },
+            setStatus = { contactLinkStatus = it },
             rerender = ::render,
         )
     }
@@ -50,6 +53,7 @@ class ContactNotesActivity : Activity() {
         phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
         render()
+        autoCheckContactLinkOnce()
     }
 
     override fun onStart() {
@@ -96,7 +100,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        if (ConfigStore.load(this).showCrmActionButtons) root.addView(contactActionRow())
+        if (shouldShowContactActionRow()) root.addView(contactActionRow())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
             root = root,
@@ -109,6 +113,11 @@ class ContactNotesActivity : Activity() {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
             addView(root)
         }
+    }
+
+    private fun shouldShowContactActionRow(): Boolean {
+        if (!ConfigStore.load(this).showCrmActionButtons) return false
+        return contactLinkStatus != RmContactReconcileAction.SKIPPED
     }
 
     private fun headerRow(): LinearLayout {
@@ -128,8 +137,15 @@ class ContactNotesActivity : Activity() {
         return actionRowUi.contactActionRow(
             linked = linked,
             busy = contactRegistrationBusy,
-            onOpenContactLink = { crmController.reconcileCurrentPhone() },
+            status = contactLinkStatus,
+            onOpenContactLink = { crmController.reconcileCurrentPhone(showToast = true) },
         )
+    }
+
+    private fun autoCheckContactLinkOnce() {
+        if (contactAutoCheckStarted || phone.isBlank()) return
+        contactAutoCheckStarted = true
+        crmController.reconcileCurrentPhone(showToast = false)
     }
 
     private fun openCallNoteEditor(note: ContactCallNote) {
