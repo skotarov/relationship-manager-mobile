@@ -21,8 +21,16 @@ internal class PostCallOverlayWindowController(
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var dragAllowedForGesture = false
+    private var timeoutRunnable: Runnable? = null
 
-    fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
+    fun addDraggableOverlay(
+        view: View,
+        focusable: Boolean,
+        defaultY: Int,
+        timeoutMs: Long,
+        onTimeout: () -> Unit = stopOverlay,
+    ) {
+        cancelTimeout()
         val prefs = service.getSharedPreferences(LOOKUP_POPUP_POSITION_PREFS, Service.MODE_PRIVATE)
         val flags = if (focusable) {
             0
@@ -90,7 +98,17 @@ internal class PostCallOverlayWindowController(
         }
         setOverlayView(view)
         windowManager()?.addView(view, params)
-        if (timeoutMs > 0) handler.postDelayed({ stopOverlay() }, timeoutMs)
+        if (timeoutMs > 0) {
+            timeoutRunnable = Runnable {
+                timeoutRunnable = null
+                onTimeout()
+            }.also { handler.postDelayed(it, timeoutMs) }
+        }
+    }
+
+    fun cancelTimeout() {
+        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable = null
     }
 
     private fun isTouchInsideEditableText(root: View, rawX: Float, rawY: Float): Boolean {
