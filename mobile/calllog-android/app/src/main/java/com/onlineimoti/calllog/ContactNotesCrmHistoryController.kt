@@ -91,8 +91,11 @@ internal class ContactNotesCrmHistoryController(
 
     private fun buildTimeline(localNotes: List<ContactCallNote>): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
+        val localClientIds = localNotes.map { it.clientNoteId }.filter { it.isNotBlank() }.toSet()
         localNotes.forEach { note -> items.add(TimelineItem.LocalNote(note)) }
-        serverNotes.forEach { note -> items.add(TimelineItem.ServerNote(note, serverTime(note))) }
+        serverNotes
+            .filterNot { note -> note.clientNoteId.isNotBlank() && localClientIds.contains(note.clientNoteId) }
+            .forEach { note -> items.add(TimelineItem.ServerNote(note, serverTime(note))) }
         return items.sortedByDescending { it.timeMs }
     }
 
@@ -146,6 +149,7 @@ internal class ContactNotesCrmHistoryController(
 
     private fun localNoteCard(note: ContactCallNote, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
         val colors = NoteUiStyle.Call
+        val crmEnabled = CrmContactSyncStore.isEnabled(activity, "")
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -246,6 +250,7 @@ internal class ContactNotesCrmHistoryController(
             savedAt = startedAt,
             direction = direction,
             durationSeconds = durationSeconds,
+            clientNoteId = LocalNotesFileStore.clientNoteIdForCall(number, startedAt, direction),
         )
     }
 
