@@ -57,6 +57,7 @@ class ContactNoteEditActivity : Activity() {
 
         card.addView(titleRow(input))
         if (!isGeneralNote && callAt > 0L) card.addView(callInfoRow())
+        card.addView(crmModeRow())
         card.addView(input)
         card.addView(actionRow(input))
         root.addView(card)
@@ -115,6 +116,16 @@ class ContactNoteEditActivity : Activity() {
             textSize = 13f
             setTextColor(Color.rgb(107, 114, 128))
             setPadding(0, dp(12), 0, 0)
+        }
+    }
+
+    private fun crmModeRow(): TextView {
+        val enabled = CrmContactSyncStore.isEnabled(this, phone)
+        return TextView(this).apply {
+            text = if (enabled) "Към CRM: тази бележка ще се изпрати към сървъра" else "Само локално: тази бележка остава в телефона"
+            textSize = 12.5f
+            setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(107, 114, 128))
+            setPadding(0, dp(10), 0, 0)
         }
     }
 
@@ -187,8 +198,27 @@ class ContactNoteEditActivity : Activity() {
                 durationSeconds = durationSeconds,
             )
         }
-        if (saved) sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+        if (saved) {
+            syncToCrmIfNeeded(noteText)
+            sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+        }
         return saved
+    }
+
+    private fun syncToCrmIfNeeded(noteText: String) {
+        if (noteText.trim().isBlank()) return
+        if (isGeneralNote) {
+            CrmNoteSyncer.syncGeneralIfEnabled(this, phone, noteText)
+        } else {
+            CrmNoteSyncer.syncCallIfEnabled(
+                context = this,
+                phone = phone,
+                note = noteText,
+                direction = direction,
+                callAt = callAt,
+                durationSeconds = durationSeconds,
+            )
+        }
     }
 
     private fun openCalendarEvent(noteText: String) {
