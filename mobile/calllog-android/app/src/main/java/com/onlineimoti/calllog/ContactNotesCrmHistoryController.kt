@@ -104,14 +104,6 @@ internal class ContactNotesCrmHistoryController(
         return items.sortedByDescending { it.timeMs }
     }
 
-    private fun addTimelineCard(item: TimelineItem, onEditCallNote: (ContactCallNote) -> Unit) {
-        when (item) {
-            is TimelineItem.LocalCall -> addViewSafe(localCallCard(item.call, item.note, onEditCallNote))
-            is TimelineItem.LocalNote -> addViewSafe(localNoteCard(item.note, onEditCallNote))
-            is TimelineItem.ServerNote -> addViewSafe(serverNoteCard(item.note))
-        }
-    }
-
     private fun LinearLayout.addTimelineCard(item: TimelineItem, onEditCallNote: (ContactCallNote) -> Unit) {
         when (item) {
             is TimelineItem.LocalCall -> addView(localCallCard(item.call, item.note, onEditCallNote))
@@ -138,7 +130,7 @@ internal class ContactNotesCrmHistoryController(
             background = roundedRect(Color.rgb(255, 255, 255), dp(12), Color.rgb(226, 232, 240), dp(1))
             isClickable = true
             isFocusable = true
-            setOnClickListener { onEditCallNote((note ?: call.toContactCallNote())) }
+            setOnClickListener { onEditCallNote(note ?: call.toContactCallNote()) }
             layoutParams = cardLayoutParams()
             addView(TextView(activity).apply {
                 text = listOf(
@@ -152,7 +144,7 @@ internal class ContactNotesCrmHistoryController(
                 setTypeface(typeface, Typeface.BOLD)
             })
             addView(TextView(activity).apply {
-                text = if (note?.note.isNullOrBlank()) "Разговор от телефона" else note!!.note
+                text = note?.note?.takeIf { it.isNotBlank() } ?: "Разговор от телефона"
                 textSize = 14.5f
                 setTextColor(if (note?.note.isNullOrBlank()) Color.rgb(100, 116, 139) else colors.text)
                 setPadding(0, dp(5), 0, 0)
