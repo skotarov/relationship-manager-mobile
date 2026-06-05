@@ -210,6 +210,7 @@ class ContactNoteEditActivity : Activity() {
         if (isGeneralNote) {
             CrmNoteSyncer.syncGeneralIfEnabled(this, phone, noteText)
         } else {
+            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction)
             CrmNoteSyncer.syncCallIfEnabled(
                 context = this,
                 phone = phone,
@@ -217,6 +218,7 @@ class ContactNoteEditActivity : Activity() {
                 direction = direction,
                 callAt = callAt,
                 durationSeconds = durationSeconds,
+                clientNoteId = clientNoteId,
             )
         }
     }
