@@ -69,8 +69,9 @@ internal class ContactNotesCrmHistoryController(
     fun addSection(root: LinearLayout, phone: String, onEditCallNote: (ContactCallNote) -> Unit) {
         val localCalls = PhoneCallReader.callsForPhone(activity, phone, limit = 100)
         val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
-        val localNotesByCall = localNotes.associateBy { noteKey(it.callAt, it.direction) }
-        val timeline = buildTimeline(localCalls, localNotes, localNotesByCall)
+        val latestCallWithoutNote = latestCallWithoutNote(localCalls, localNotes)
+        val hiddenCallsWithoutNotes = localCalls.count { call -> !hasNoteForCall(call, localNotes) } - if (latestCallWithoutNote != null) 1 else 0
+        val timeline = buildTimeline(localNotes)
 
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -82,71 +83,62 @@ internal class ContactNotesCrmHistoryController(
             ).apply { bottomMargin = dp(14) }
 
             addView(headerUi.sectionTitleWithDrawable("Хронология", R.drawable.ic_system_call_log))
+            latestCallWithoutNote?.let { call -> addView(latestCallActionCard(call, onEditCallNote)) }
             timeline.forEach { item -> addTimelineCard(item, onEditCallNote) }
-            addCrmStatusIfNeeded(this, timeline)
+            addStatusIfNeeded(this, timeline, hiddenCallsWithoutNotes.coerceAtLeast(0))
         })
     }
 
-    private fun buildTimeline(
-        localCalls: List<PhoneCallRecord>,
-        localNotes: List<ContactCallNote>,
-        localNotesByCall: Map<String, ContactCallNote>,
-    ): List<TimelineItem> {
+    private fun buildTimeline(localNotes: List<ContactCallNote>): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
-        localCalls.forEach { call ->
-            items.add(TimelineItem.LocalCall(call = call, note = localNotesByCall[noteKey(call.startedAt, call.direction)]))
-        }
-        val callKeys = localCalls.map { noteKey(it.startedAt, it.direction) }.toSet()
-        localNotes
-            .filterNot { callKeys.contains(noteKey(it.callAt, it.direction)) }
-            .forEach { note -> items.add(TimelineItem.LocalNote(note)) }
+        localNotes.forEach { note -> items.add(TimelineItem.LocalNote(note)) }
         serverNotes.forEach { note -> items.add(TimelineItem.ServerNote(note, serverTime(note))) }
         return items.sortedByDescending { it.timeMs }
     }
 
     private fun LinearLayout.addTimelineCard(item: TimelineItem, onEditCallNote: (ContactCallNote) -> Unit) {
         when (item) {
-            is TimelineItem.LocalCall -> addView(localCallCard(item.call, item.note, onEditCallNote))
             is TimelineItem.LocalNote -> addView(localNoteCard(item.note, onEditCallNote))
             is TimelineItem.ServerNote -> addView(serverNoteCard(item.note))
         }
     }
 
-    private fun addCrmStatusIfNeeded(container: LinearLayout, timeline: List<TimelineItem>) {
+    private fun addStatusIfNeeded(container: LinearLayout, timeline: List<TimelineItem>, hiddenCallsWithoutNotes: Int) {
         when {
             loading -> container.addView(statusText("Зареждам CRM история…"))
             error -> container.addView(statusText("CRM историята не е заредена"))
             skippedReason.isNotBlank() -> container.addView(statusText(skippedReason))
-            timeline.isEmpty() -> container.addView(statusText("Няма разговори или CRM записи за този номер"))
+            timeline.isEmpty() && hiddenCallsWithoutNotes <= 0 -> container.addView(statusText("Няма бележки или CRM записи за този номер"))
             serverNotes.isEmpty() -> container.addView(statusText("Няма CRM записи от сървъра за този номер"))
+        }
+        if (hiddenCallsWithoutNotes > 0) {
+            container.addView(statusText("Скрити са $hiddenCallsWithoutNotes разговора без бележка. Всички позвънявания се виждат на началния екран."))
         }
     }
 
-    private fun localCallCard(call: PhoneCallRecord, note: ContactCallNote?, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
-        val colors = NoteUiStyle.Call
+    private fun latestCallActionCard(call: PhoneCallRecord, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(Color.rgb(255, 255, 255), dp(12), Color.rgb(226, 232, 240), dp(1))
             isClickable = true
             isFocusable = true
-            setOnClickListener { onEditCallNote(note ?: call.toContactCallNote()) }
+            setOnClickListener { onEditCallNote(call.toContactCallNote()) }
             layoutParams = cardLayoutParams()
+            addView(TextView(activity).apply {
+                text = "+ Добави към последния разговор"
+                textSize = 14.5f
+                setTextColor(NoteUiStyle.Call.mutedText)
+                setTypeface(typeface, Typeface.BOLD)
+            })
             addView(TextView(activity).apply {
                 text = listOf(
                     PhoneCallReader.formatStartedAt(call.startedAt),
                     headerUi.directionArrowLabel(call.direction),
                     PhoneCallReader.formatDuration(call.durationSeconds),
-                    "телефон"
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
-                setTextColor(Color.rgb(71, 85, 105))
-                setTypeface(typeface, Typeface.BOLD)
-            })
-            addView(TextView(activity).apply {
-                text = note?.note?.takeIf { it.isNotBlank() } ?: "Разговор от телефона"
-                textSize = 14.5f
-                setTextColor(if (note?.note.isNullOrBlank()) Color.rgb(100, 116, 139) else colors.text)
+                setTextColor(Color.rgb(100, 116, 139))
                 setPadding(0, dp(5), 0, 0)
             })
         }
@@ -227,6 +219,16 @@ internal class ContactNotesCrmHistoryController(
         ).apply { bottomMargin = dp(8) }
     }
 
+    private fun latestCallWithoutNote(localCalls: List<PhoneCallRecord>, localNotes: List<ContactCallNote>): PhoneCallRecord? {
+        return localCalls.firstOrNull { call -> !hasNoteForCall(call, localNotes) }
+    }
+
+    private fun hasNoteForCall(call: PhoneCallRecord, localNotes: List<ContactCallNote>): Boolean {
+        return localNotes.any { note ->
+            note.callAt == call.startedAt && (note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction)
+        }
+    }
+
     private fun metaText(note: CrmServerNote): String {
         val author = note.authorName.ifBlank { note.authorLogin }.ifBlank { note.authorId }
         return listOf("CRM", author, note.createdAt).filter { it.isNotBlank() }.joinToString(" • ")
@@ -236,8 +238,6 @@ internal class ContactNotesCrmHistoryController(
         val value = note.createdAt.ifBlank { note.updatedAt }
         return runCatching { serverDateFormat.parse(value)?.time ?: 0L }.getOrDefault(0L)
     }
-
-    private fun noteKey(callAt: Long, direction: String): String = "$callAt:${direction.trim()}"
 
     private fun PhoneCallRecord.toContactCallNote(): ContactCallNote {
         return ContactCallNote(
@@ -250,7 +250,6 @@ internal class ContactNotesCrmHistoryController(
     }
 
     private sealed class TimelineItem(val timeMs: Long) {
-        class LocalCall(val call: PhoneCallRecord, val note: ContactCallNote?) : TimelineItem(call.startedAt)
         class LocalNote(val note: ContactCallNote) : TimelineItem(note.callAt.takeIf { it > 0L } ?: note.savedAt)
         class ServerNote(val note: CrmServerNote, timeMs: Long) : TimelineItem(timeMs)
     }
