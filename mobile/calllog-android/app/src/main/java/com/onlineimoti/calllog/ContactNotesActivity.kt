@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : Activity() {
@@ -115,6 +116,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
+        root.addView(crmSyncToggleRow())
         if (ConfigStore.load(this).showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         crmHistoryController.addSection(root, phone, ::openCallNoteEditor)
@@ -122,6 +124,36 @@ class ContactNotesActivity : Activity() {
         return ScrollView(this).apply {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
             addView(root)
+        }
+    }
+
+    private fun crmSyncToggleRow(): TextView {
+        val enabled = CrmContactSyncStore.isEnabled(this, phone)
+        return TextView(this).apply {
+            text = if (enabled) "Към CRM: включено" else "Само локално"
+            textSize = 14.5f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(71, 85, 105))
+            background = if (enabled) {
+                roundedRect(Color.rgb(220, 252, 231), dp(16), Color.rgb(134, 239, 172), dp(1))
+            } else {
+                roundedRect(Color.rgb(241, 245, 249), dp(16), Color.rgb(203, 213, 225), dp(1))
+            }
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(12) }
+            setOnClickListener {
+                val nowEnabled = CrmContactSyncStore.toggle(this@ContactNotesActivity, phone)
+                Toast.makeText(
+                    this@ContactNotesActivity,
+                    if (nowEnabled) "Новите бележки ще се изпращат към CRM" else "Новите бележки ще остават само локално",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                render()
+            }
         }
     }
 
