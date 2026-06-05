@@ -52,6 +52,13 @@ object LocalNotesFileStore {
         }.getOrDefault("")
     }
 
+    fun clientNoteIdForCall(phoneNumber: String, callAt: Long, direction: String = ""): String {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank()) return ""
+        val safeCallAt = if (callAt > 0L) callAt else 0L
+        return "$phoneKey-$safeCallAt-${direction.ifBlank { "call" }}"
+    }
+
     fun allCallNotes(context: Context, phoneNumber: String): List<ContactCallNote> {
         val phoneKey = phoneNumber.normalizePhoneKey()
         if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return emptyList()
@@ -66,6 +73,7 @@ object LocalNotesFileStore {
                 if (note.isBlank()) return@mapNotNull null
                 val callAt = json.optLong("call_at", 0L)
                 val direction = json.optString("direction")
+                val clientNoteId = json.optString("id").ifBlank { clientNoteIdForCall(phoneNumber, callAt, direction) }
                 val key = "$callAt-${direction.ifBlank { "call" }}"
                 if (!seen.add(key)) return@mapNotNull null
                 ContactCallNote(
@@ -74,6 +82,7 @@ object LocalNotesFileStore {
                     savedAt = json.optLong("at", 0L),
                     direction = direction,
                     durationSeconds = json.optLong("duration", 0L),
+                    clientNoteId = clientNoteId,
                 )
             }.sortedByDescending { note -> note.callAt.takeIf { it > 0L } ?: note.savedAt }
         }.getOrDefault(emptyList())
@@ -123,7 +132,7 @@ object LocalNotesFileStore {
             val record = JSONObject().apply {
                 put("v", 1)
                 put("type", "call_note")
-                put("id", "$phoneKey-${if (callAt > 0L) callAt else now}-${direction.ifBlank { "call" }}")
+                put("id", clientNoteIdForCall(phoneNumber, callAt.takeIf { it > 0L } ?: now, direction))
                 put("at", now)
                 put("phone", phoneNumber)
                 put("normalized_phone", phoneKey)
