@@ -149,7 +149,6 @@ internal class ContactNotesCrmHistoryController(
 
     private fun localNoteCard(note: ContactCallNote, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
         val colors = NoteUiStyle.Call
-        val crmEnabled = CrmContactSyncStore.isEnabled(activity, "")
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
