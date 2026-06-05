@@ -29,6 +29,15 @@ class ContactNotesActivity : Activity() {
 
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
+    private val crmHistoryController by lazy {
+        ContactNotesCrmHistoryController(
+            activity = this,
+            headerUi = headerUi,
+            dp = ::dp,
+            roundedRect = ::roundedRect,
+            rerender = ::render,
+        )
+    }
     private val sectionsUi by lazy {
         ContactNotesSectionsUi(
             activity = this,
@@ -54,6 +63,7 @@ class ContactNotesActivity : Activity() {
         titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
         render()
         autoUpdateContactLinkOnce()
+        crmHistoryController.loadOnce(phone)
     }
 
     override fun onStart() {
@@ -69,6 +79,11 @@ class ContactNotesActivity : Activity() {
     override fun onStop() {
         unregisterNotesChangedReceiver()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        crmHistoryController.release()
+        super.onDestroy()
     }
 
     private fun registerNotesChangedReceiver() {
@@ -108,6 +123,7 @@ class ContactNotesActivity : Activity() {
             onAddLatestCallNote = ::openCallNoteEditor,
             onEditCallNote = ::openCallNoteEditor,
         )
+        crmHistoryController.addSection(root)
 
         return ScrollView(this).apply {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
