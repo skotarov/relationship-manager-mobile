@@ -117,13 +117,7 @@ class ContactNotesActivity : Activity() {
         root.addView(headerRow())
         if (ConfigStore.load(this).showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
-        sectionsUi.addCallNotes(
-            root = root,
-            phone = phone,
-            onAddLatestCallNote = ::openCallNoteEditor,
-            onEditCallNote = ::openCallNoteEditor,
-        )
-        crmHistoryController.addSection(root)
+        crmHistoryController.addSection(root, phone, ::openCallNoteEditor)
 
         return ScrollView(this).apply {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
