@@ -10,8 +10,9 @@ internal object CrmNoteSyncer {
         if (!CrmContactSyncStore.isEnabled(context, phone) || note.trim().isBlank()) return
         val appContext = context.applicationContext
         val config = ConfigStore.load(appContext)
+        val clientNoteId = "general-${phone.normalizePhoneKey()}"
         executor.execute {
-            runCatching { CrmNoteSaveClient.saveGeneralNote(config, phone, note) }
+            runCatching { CrmNoteSaveWithClientIdClient.saveGeneral(config, phone, note, clientNoteId) }
         }
     }
 
@@ -22,21 +23,26 @@ internal object CrmNoteSyncer {
         direction: String,
         callAt: Long,
         durationSeconds: Long,
+        clientNoteId: String = "",
     ) {
         if (!CrmContactSyncStore.isEnabled(context, phone) || note.trim().isBlank()) return
         val appContext = context.applicationContext
         val config = ConfigStore.load(appContext)
+        val effectiveClientNoteId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
         executor.execute {
             runCatching {
-                CrmNoteSaveClient.saveCallNote(
+                CrmNoteSaveWithClientIdClient.saveCall(
                     config = config,
                     phone = phone,
                     note = note,
                     direction = direction,
                     callAt = callAt,
                     durationSeconds = durationSeconds,
+                    clientNoteId = effectiveClientNoteId,
                 )
             }
         }
     }
+
+    private fun String.normalizePhoneKey(): String = filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
 }
