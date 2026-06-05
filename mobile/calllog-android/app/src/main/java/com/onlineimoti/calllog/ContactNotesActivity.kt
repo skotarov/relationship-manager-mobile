@@ -9,9 +9,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.Gravity
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -102,7 +100,6 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        if (shouldShowContactUpdateStatus()) root.addView(contactUpdateStatusRow())
         if (ConfigStore.load(this).showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         sectionsUi.addCallNotes(
@@ -118,36 +115,9 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun shouldShowContactUpdateStatus(): Boolean = contactUpdateBusy
-
-    private fun contactUpdateStatusRow(): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            background = roundedRect(Color.WHITE, dp(14), Color.rgb(203, 213, 225), dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
-
-            addView(ProgressBar(this@ContactNotesActivity, null, android.R.attr.progressBarStyleSmall).apply {
-                isIndeterminate = true
-                layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(8) }
-            })
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = "Updating…"
-                textSize = 14.5f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(71, 85, 105))
-                includeFontPadding = false
-            })
-        }
-    }
-
     private fun rmDebugBlock(): TextView {
         return TextView(this).apply {
-            text = RmContactDebugReader.debugText(this@ContactNotesActivity, phone, titleText)
+            text = buildDebugText()
             textSize = 12f
             typeface = Typeface.MONOSPACE
             setTextColor(Color.rgb(71, 85, 105))
@@ -157,6 +127,15 @@ class ContactNotesActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(10) }
+        }
+    }
+
+    private fun buildDebugText(): String {
+        val debugText = RmContactDebugReader.debugText(this, phone, titleText)
+        return if (contactUpdateBusy) {
+            "RM progress: Updating…\n$debugText"
+        } else {
+            debugText
         }
     }
 
