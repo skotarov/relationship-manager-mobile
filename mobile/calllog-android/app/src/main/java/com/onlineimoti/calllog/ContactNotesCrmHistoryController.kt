@@ -71,7 +71,7 @@ internal class ContactNotesCrmHistoryController(
         val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
         val latestCallWithoutNote = latestCallWithoutNote(localCalls, localNotes)
         val hiddenCallsWithoutNotes = localCalls.count { call -> !hasNoteForCall(call, localNotes) } - if (latestCallWithoutNote != null) 1 else 0
-        val timeline = buildTimeline(localNotes)
+        val timeline = buildTimeline(localNotes, latestCallWithoutNote)
 
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -83,15 +83,15 @@ internal class ContactNotesCrmHistoryController(
             ).apply { bottomMargin = dp(14) }
 
             addView(headerUi.sectionTitleWithDrawable("Хронология", R.drawable.ic_system_call_log))
-            latestCallWithoutNote?.let { call -> addView(latestCallActionCard(call, onEditCallNote)) }
             timeline.forEach { item -> addTimelineCard(item, onEditCallNote) }
             addStatusIfNeeded(this, timeline, hiddenCallsWithoutNotes.coerceAtLeast(0))
         })
     }
 
-    private fun buildTimeline(localNotes: List<ContactCallNote>): List<TimelineItem> {
+    private fun buildTimeline(localNotes: List<ContactCallNote>, latestCallWithoutNote: PhoneCallRecord?): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
         val localClientIds = localNotes.map { it.clientNoteId }.filter { it.isNotBlank() }.toSet()
+        latestCallWithoutNote?.let { call -> items.add(TimelineItem.LatestCallAction(call)) }
         localNotes.forEach { note -> items.add(TimelineItem.LocalNote(note)) }
         serverNotes
             .filterNot { note -> note.clientNoteId.isNotBlank() && localClientIds.contains(note.clientNoteId) }
@@ -101,6 +101,7 @@ internal class ContactNotesCrmHistoryController(
 
     private fun LinearLayout.addTimelineCard(item: TimelineItem, onEditCallNote: (ContactCallNote) -> Unit) {
         when (item) {
+            is TimelineItem.LatestCallAction -> addView(latestCallActionCard(item.call, onEditCallNote))
             is TimelineItem.LocalNote -> addView(localNoteCard(item.note, onEditCallNote))
             is TimelineItem.ServerNote -> addView(serverNoteCard(item.note))
         }
@@ -195,7 +196,7 @@ internal class ContactNotesCrmHistoryController(
                 setTextColor(Color.rgb(51, 65, 85))
                 setPadding(0, dp(5), 0, 0)
             })
-            if (note.propertyTitle.isNotBlank()) {
+            if (note.propertyTitle.isRealValue()) {
                 addView(TextView(activity).apply {
                     text = "Обява: ${note.propertyTitle}"
                     textSize = 12.5f
@@ -253,7 +254,13 @@ internal class ContactNotesCrmHistoryController(
         )
     }
 
+    private fun String.isRealValue(): Boolean {
+        val value = trim()
+        return value.isNotBlank() && !value.equals("null", ignoreCase = true)
+    }
+
     private sealed class TimelineItem(val timeMs: Long) {
+        class LatestCallAction(val call: PhoneCallRecord) : TimelineItem(call.startedAt)
         class LocalNote(val note: ContactCallNote) : TimelineItem(note.callAt.takeIf { it > 0L } ?: note.savedAt)
         class ServerNote(val note: CrmServerNote, timeMs: Long) : TimelineItem(timeMs)
     }
