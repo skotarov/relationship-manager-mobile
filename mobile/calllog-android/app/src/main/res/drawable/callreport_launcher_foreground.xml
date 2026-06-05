@@ -5,24 +5,24 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Back bubble -->
+    <!-- White chat bubble, kept inside the adaptive icon safe zone. -->
     <path
-        android:fillColor="#1976F3"
-        android:pathData="M66,31 C83,31 96,43 96,59 C96,69 91,78 83,83 L88,96 L72,88 C70,88 68,89 66,89 C49,89 36,76 36,60 C36,43 49,31 66,31 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M25,25 C19,25 14,30 14,36 L14,66 C14,72 19,77 25,77 L34,77 L24,91 L47,77 L83,77 C89,77 94,72 94,66 L94,36 C94,30 89,25 83,25 Z" />
 
-    <!-- Front bubble -->
+    <!-- Smooth the tail connection. -->
     <path
-        android:fillColor="#111B27"
-        android:pathData="M43,20 C64,20 80,35 80,53 C80,71 64,86 43,86 C38,86 33,85 29,83 L15,90 L20,76 C13,70 8,62 8,53 C8,35 23,20 43,20 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,70 C35,73 40,75 47,77 L28,88 C28,80 29,75 31,70 Z" />
 
-    <!-- Text lines -->
+    <!-- Blue ellipsis dots. -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M28,42 L62,42 A3,3 0,0 1,62 48 L28,48 A3,3 0,0 1,28 42 Z" />
+        android:fillColor="#0069FF"
+        android:pathData="M38,51 m-5,0 a5,5 0,1 0,10 0 a5,5 0,1 0,-10 0" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M28,54 L62,54 A3,3 0,0 1,62 60 L28,60 A3,3 0,0 1,28 54 Z" />
+        android:fillColor="#0069FF"
+        android:pathData="M54,51 m-5,0 a5,5 0,1 0,10 0 a5,5 0,1 0,-10 0" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M28,66 L49,66 A3,3 0,0 1,49 72 L28,72 A3,3 0,0 1,28 66 Z" />
+        android:fillColor="#0069FF"
+        android:pathData="M70,51 m-5,0 a5,5 0,1 0,10 0 a5,5 0,1 0,-10 0" />
 </vector>
