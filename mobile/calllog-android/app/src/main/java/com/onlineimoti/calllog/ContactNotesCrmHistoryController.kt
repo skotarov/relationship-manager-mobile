@@ -20,15 +20,23 @@ internal class ContactNotesCrmHistoryController(
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
     private var started = false
+    private var skippedReason = ""
     private var loading = false
     private var error = false
     private var notes: List<CrmServerNote> = emptyList()
 
     fun loadOnce(phone: String) {
-        if (started || phone.isBlank()) return
-        val config = ConfigStore.load(activity)
-        if (!config.remoteEnabled || config.baseUrl.isBlank()) return
+        if (started) return
         started = true
+        if (phone.isBlank()) {
+            skippedReason = "Няма телефон за CRM проверка"
+            return
+        }
+        val config = ConfigStore.load(activity)
+        if (!config.remoteEnabled || config.baseUrl.isBlank()) {
+            skippedReason = "CRM връзката е изключена от Server настройките"
+            return
+        }
         loading = true
         error = false
         rerender()
@@ -39,9 +47,11 @@ internal class ContactNotesCrmHistoryController(
                 result.onSuccess {
                     notes = it.serverNotes
                     error = false
+                    skippedReason = ""
                 }.onFailure {
                     notes = emptyList()
                     error = true
+                    skippedReason = ""
                 }
                 rerender()
             }
@@ -54,7 +64,6 @@ internal class ContactNotesCrmHistoryController(
     }
 
     fun addSection(root: LinearLayout) {
-        if (!loading && !error && notes.isEmpty()) return
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(8), dp(14), dp(12))
@@ -68,6 +77,8 @@ internal class ContactNotesCrmHistoryController(
             when {
                 loading -> addView(statusText("Зареждам CRM история…"))
                 error -> addView(statusText("CRM историята не е заредена"))
+                skippedReason.isNotBlank() -> addView(statusText(skippedReason))
+                notes.isEmpty() -> addView(statusText("Няма CRM бележки за този номер"))
                 else -> notes.forEach { note -> addView(noteCard(note)) }
             }
         })
