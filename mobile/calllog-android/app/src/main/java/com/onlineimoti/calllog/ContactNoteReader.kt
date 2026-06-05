@@ -12,6 +12,7 @@ data class ContactCallNote(
     val savedAt: Long,
     val direction: String,
     val durationSeconds: Long,
+    val clientNoteId: String = "",
 )
 
 object ContactNoteReader {
