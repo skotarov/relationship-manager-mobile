@@ -3,16 +3,21 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.app.NotificationManager
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Build
 import android.provider.Settings
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
+import android.view.Gravity
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object MainPermissionSummary {
+    private const val STATUS_ROWS_TAG = "callreport_permission_status_rows"
+
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val permissions = binding.permissionsSection
         val popup = binding.popupSettingsSection
@@ -33,26 +38,29 @@ internal object MainPermissionSummary {
         val fullscreenGranted = canUseFullScreenIntent(activity)
 
         val rows = buildList {
-            add("Notifications" to notificationsGranted)
-            add("Phone" to phoneGranted)
-            add("Call report log" to callLogGranted)
-            add("Contacts read" to contactsGranted)
-            add("Contacts write" to contactsWriteGranted)
-            add((if (publicNotesSelected) "Public notes folder" else "Private notes storage") to publicNotesGranted)
-            add("Display over other apps" to (!overlayRequired || overlayGranted))
-            add("Call screening" to (!callScreeningSelected || callScreeningGranted))
-            add("Full-screen popup" to fullscreenGranted)
+            add(
+                PermissionRow("Notifications", notificationsGranted) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        activity.requestAppPermissionFromSummary(Manifest.permission.POST_NOTIFICATIONS, "Notifications")
+                    }
+                }
+            )
+            add(PermissionRow("Phone", phoneGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.READ_PHONE_STATE, "Phone") })
+            add(PermissionRow("Call report log", callLogGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CALL_LOG, "Call log") })
+            add(PermissionRow("Contacts read", contactsGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CONTACTS, "Contacts read") })
+            add(PermissionRow("Contacts write", contactsWriteGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.WRITE_CONTACTS, "Contacts write") })
+            add(
+                PermissionRow(if (publicNotesSelected) "Public notes folder" else "Private notes storage", publicNotesGranted) {
+                    activity.requestPublicNotesStoragePermissionFromSummary()
+                }
+            )
+            add(PermissionRow("Display over other apps", !overlayRequired || overlayGranted) { activity.requestOverlayPermissionFromSummary() })
+            add(PermissionRow("Call screening", !callScreeningSelected || callScreeningGranted) { activity.requestCallScreeningPermissionFromSummary() })
+            add(PermissionRow("Full-screen popup", fullscreenGranted) { activity.requestFullScreenIntentPermissionFromSummary() })
         }
 
-        val missingColor = ContextCompat.getColor(activity, R.color.calllog_error)
-        val builder = SpannableStringBuilder()
-        rows.forEachIndexed { index, row ->
-            val start = builder.length
-            builder.append("${row.first}: ${permissionStateLabel(row.second)}")
-            if (!row.second) builder.setSpan(ForegroundColorSpan(missingColor), start, builder.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            if (index < rows.lastIndex) builder.append('\n')
-        }
-        permissions.permissionsSummaryText.text = builder
+        permissions.permissionsSummaryText.visibility = View.GONE
+        renderStatusRows(activity, binding, rows)
 
         val overlayMissing = overlaySelected && !overlayGranted
         popup.overlayPermissionWarningText.visibility = if (overlayMissing) View.VISIBLE else View.GONE
@@ -60,11 +68,88 @@ internal object MainPermissionSummary {
         popup.useCustomEndPopupCheckBox.isEnabled = !overlayMissing
         popup.overlayPopupOptionsGroup.alpha = if (overlayMissing) 0.55f else 1f
 
-        val needsAppPermissions = !notificationsGranted || !phoneGranted || !callLogGranted || !contactsGranted || !contactsWriteGranted || !publicNotesGranted
-        permissions.openAppPermissionsButton.visibility = if (needsAppPermissions) View.VISIBLE else View.GONE
-        permissions.openOverlayPermissionButton.visibility = if (overlayRequired && !overlayGranted) View.VISIBLE else View.GONE
-        permissions.openCallScreeningButton.visibility = if (callScreeningSelected && !callScreeningGranted) View.VISIBLE else View.GONE
-        permissions.openFullscreenIntentButton.visibility = if (fullscreenGranted) View.GONE else View.VISIBLE
+        permissions.openAppPermissionsButton.visibility = View.GONE
+        permissions.openOverlayPermissionButton.visibility = View.GONE
+        permissions.openCallScreeningButton.visibility = View.GONE
+        permissions.openFullscreenIntentButton.visibility = View.GONE
+    }
+
+    private fun renderStatusRows(activity: MainActivity, binding: ActivityMainBinding, rows: List<PermissionRow>) {
+        val permissions = binding.permissionsSection
+        val parent = permissions.permissionsSummaryText.parent as? LinearLayout ?: return
+        parent.findViewWithTag<View>(STATUS_ROWS_TAG)?.let { parent.removeView(it) }
+
+        val container = LinearLayout(activity).apply {
+            tag = STATUS_ROWS_TAG
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(activity, 8) }
+        }
+
+        rows.forEach { row ->
+            container.addView(permissionRowView(activity, row))
+        }
+
+        val insertIndex = parent.indexOfChild(permissions.permissionsSummaryText).coerceAtLeast(0) + 1
+        parent.addView(container, insertIndex)
+    }
+
+    private fun permissionRowView(activity: MainActivity, row: PermissionRow): View {
+        val activeColor = Color.rgb(20, 83, 45)
+        val activeBg = Color.rgb(220, 252, 231)
+        val activeBorder = Color.rgb(134, 239, 172)
+        val missingColor = ContextCompat.getColor(activity, R.color.calllog_error)
+        val missingBg = Color.rgb(254, 242, 242)
+        val missingBorder = Color.rgb(252, 165, 165)
+
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 8))
+            background = roundedRect(
+                if (row.active) activeBg else missingBg,
+                dp(activity, 12),
+                if (row.active) activeBorder else missingBorder,
+                dp(activity, 1),
+            )
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(activity, 6) }
+
+            addView(
+                TextView(activity).apply {
+                    text = "${row.label}: ${permissionStateLabel(row.active)}"
+                    textSize = 13.5f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(if (row.active) activeColor else missingColor)
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f,
+                    )
+                }
+            )
+
+            if (!row.active) {
+                addView(
+                    MaterialButton(activity).apply {
+                        text = "Включи"
+                        textSize = 13f
+                        minHeight = dp(activity, 36)
+                        minimumHeight = dp(activity, 36)
+                        setPadding(dp(activity, 10), 0, dp(activity, 10), 0)
+                        setOnClickListener { row.onEnable() }
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ).apply { marginStart = dp(activity, 8) }
+                    }
+                )
+            }
+        }
     }
 
     private fun permissionStateLabel(active: Boolean): String = if (active) "активно" else "липсва"
@@ -76,4 +161,21 @@ internal object MainPermissionSummary {
         val notificationManager = activity.getSystemService(NotificationManager::class.java) ?: return false
         return notificationManager.canUseFullScreenIntent()
     }
+
+    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): android.graphics.drawable.GradientDrawable {
+        return android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = radius.toFloat()
+            setColor(color)
+            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
+        }
+    }
+
+    private fun dp(activity: MainActivity, value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
+
+    private data class PermissionRow(
+        val label: String,
+        val active: Boolean,
+        val onEnable: () -> Unit,
+    )
 }
