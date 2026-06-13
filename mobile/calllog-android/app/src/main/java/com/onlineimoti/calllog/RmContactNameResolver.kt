@@ -2,7 +2,9 @@ package com.onlineimoti.calllog
 
 internal object RmContactNameResolver {
     fun titleFor(real: BulkContactCandidate): String {
-        return real.displayName.ifBlank { real.displayPhone.ifBlank { real.phone } }
+        return cleanFallbackDisplayName(real.displayName, real.phone)
+            .ifBlank { cleanFallbackDisplayName(real.displayPhone, real.phone) }
+            .ifBlank { real.phone }
     }
 
     fun structuredParts(displayName: String): RmContactNameParts {
