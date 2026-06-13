@@ -171,6 +171,7 @@ internal object RmContactReconciler {
 
     private fun saveWithStablePath(context: Context, real: BulkContactCandidate): Boolean {
         val title = RmContactNameResolver.titleFor(real)
+        val parts = RmContactNameResolver.structuredParts(title)
         return CrmContactLinkSaver.save(
             context = context,
             fields = CallReportStableCrmContactWriter.Fields(
@@ -180,6 +181,9 @@ internal object RmContactReconciler {
                 jobTitle = "RM auto",
                 groupName = "Relation Management",
                 customText = "RM auto link",
+                givenName = parts.givenName,
+                middleName = parts.middleName,
+                familyName = parts.familyName,
             ),
             mode = ConfigStore.load(context).contactLinkMode,
             phone = real.phone,
