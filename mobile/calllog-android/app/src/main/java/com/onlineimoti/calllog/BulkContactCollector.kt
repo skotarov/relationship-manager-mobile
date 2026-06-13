@@ -33,10 +33,11 @@ internal object BulkContactCollector {
                 val phone = PhoneNormalizer.normalize(originalPhone)
                 if (phone.isBlank() || contactsByPhone.containsKey(phone)) continue
                 val fallbackDisplayName = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else ""
+                val exactDisplayName = exactStructuredDisplayName(context, rawContactId, fallbackDisplayName)
                 contactsByPhone[phone] = BulkContactCandidate(
                     phone = phone,
                     displayPhone = originalPhone,
-                    displayName = exactStructuredDisplayName(context, rawContactId, fallbackDisplayName),
+                    displayName = cleanDisplayName(exactDisplayName, fallbackDisplayName, phone),
                     existingRawContactId = rawContactId,
                 )
                 scanned += 1
@@ -67,6 +68,11 @@ internal object BulkContactCollector {
                 }
             }.orEmpty()
         }.getOrDefault(emptyMap())
+    }
+
+    private fun cleanDisplayName(exactDisplayName: String, fallbackDisplayName: String, phone: String): String {
+        return RmContactNameResolver.cleanFallbackDisplayName(exactDisplayName, phone)
+            .ifBlank { RmContactNameResolver.cleanFallbackDisplayName(fallbackDisplayName, phone) }
     }
 
     private fun exactStructuredDisplayName(context: Context, rawContactId: Long, fallback: String): String {
