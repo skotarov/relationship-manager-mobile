@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
+import androidx.core.app.ActivityCompat
 
 internal class MainPermissionFlowController(
     private val activity: MainActivity,
@@ -24,6 +25,8 @@ internal class MainPermissionFlowController(
     private val setStatus: (String) -> Unit,
 ) {
     private var isRunning = false
+    private var lastRequestedRuntimePermission: String = ""
+    private var lastRequestedRuntimePermissionLabel: String = ""
 
     fun start() {
         if (isRunning) return
@@ -42,8 +45,36 @@ internal class MainPermissionFlowController(
         requestStorageManagerPermissionIfNeeded()
     }
 
+    fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
+        isRunning = false
+        if (hasPermission(permission)) {
+            setStatus("$label вече е включено.")
+            refreshPermissionSummary()
+            return
+        }
+        if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+            requestRuntimePermission(permission, "Разреши $label от системния прозорец.", label)
+        } else {
+            setStatus("Включи $label от Android настройките на приложението.")
+            activity.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:${activity.packageName}")
+                }
+            )
+        }
+    }
+
     fun onPermissionResult() {
+        val deniedPermission = lastRequestedRuntimePermission.takeIf { it.isNotBlank() && !hasPermission(it) }
+        val deniedLabel = lastRequestedRuntimePermissionLabel
+        lastRequestedRuntimePermission = ""
+        lastRequestedRuntimePermissionLabel = ""
         refreshPermissionSummary()
+        if (deniedPermission != null) {
+            isRunning = false
+            setStatus("$deniedLabel не е включено. Можеш да го включиш от бутона в карето с разрешения.")
+            return
+        }
         requestNextStep()
     }
 
@@ -97,24 +128,39 @@ internal class MainPermissionFlowController(
     fun requestNextStep() {
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
-                setStatus("Разреши notifications, за да могат системните popup-и да се показват.")
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                requestRuntimePermission(
+                    Manifest.permission.POST_NOTIFICATIONS,
+                    "Разреши notifications, за да могат системните popup-и да се показват.",
+                    "Notifications",
+                )
             }
             !hasPermission(Manifest.permission.READ_PHONE_STATE) -> {
-                setStatus("Разреши Phone, за да засичаме начало и край на разговор.")
-                requestPermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+                requestRuntimePermission(
+                    Manifest.permission.READ_PHONE_STATE,
+                    "Разреши Phone, за да засичаме начало и край на разговор.",
+                    "Phone",
+                )
             }
             !hasPermission(Manifest.permission.READ_CALL_LOG) -> {
-                setStatus("Разреши Call log, за да виждаме последните разговори.")
-                requestPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                requestRuntimePermission(
+                    Manifest.permission.READ_CALL_LOG,
+                    "Разреши Call log, за да виждаме последните разговори.",
+                    "Call log",
+                )
             }
             !hasPermission(Manifest.permission.READ_CONTACTS) -> {
-                setStatus("Разреши Contacts, за да показваме имена вместо само номера.")
-                requestPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                requestRuntimePermission(
+                    Manifest.permission.READ_CONTACTS,
+                    "Разреши Contacts, за да показваме имена вместо само номера.",
+                    "Contacts read",
+                )
             }
             !hasPermission(Manifest.permission.WRITE_CONTACTS) -> {
-                setStatus("Разреши Contacts write за съвместимост със старите бележки към контакти.")
-                requestPermissionLauncher.launch(Manifest.permission.WRITE_CONTACTS)
+                requestRuntimePermission(
+                    Manifest.permission.WRITE_CONTACTS,
+                    "Разреши Contacts write за съвместимост със старите бележки към контакти.",
+                    "Contacts write",
+                )
             }
             publicNotesFolderSelected() && !canUsePublicNotesFolder() -> {
                 setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
@@ -167,6 +213,13 @@ internal class MainPermissionFlowController(
         overlaySettingsLauncher.launch(
             Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply { data = Uri.parse("package:${activity.packageName}") }
         )
+    }
+
+    private fun requestRuntimePermission(permission: String, status: String, label: String) {
+        lastRequestedRuntimePermission = permission
+        lastRequestedRuntimePermissionLabel = label
+        setStatus(status)
+        requestPermissionLauncher.launch(permission)
     }
 
     private fun requestStorageManagerPermissionIfNeeded() {
