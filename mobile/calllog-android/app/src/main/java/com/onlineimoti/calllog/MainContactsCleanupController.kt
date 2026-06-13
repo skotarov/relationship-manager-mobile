@@ -5,8 +5,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -21,13 +19,13 @@ internal class MainContactsCleanupController(
     private val setStatus: (String) -> Unit,
     private val dp: (Int) -> Int,
 ) {
-    private var overlay: View? = null
-    private var overlayTitle: TextView? = null
-    private var overlayStatus: TextView? = null
-    private var overlayPercent: TextView? = null
-    private var overlayProgress: ProgressBar? = null
-    private var overlaySpinner: ProgressBar? = null
-    private var overlayStopButton: MaterialButton? = null
+    private var progressPanel: View? = null
+    private var progressTitle: TextView? = null
+    private var progressStatus: TextView? = null
+    private var progressPercent: TextView? = null
+    private var progressBar: ProgressBar? = null
+    private var progressSpinner: ProgressBar? = null
+    private var progressStopButton: MaterialButton? = null
 
     private val contactLink get() = binding.contactLinkSection
     private val syncButton get() = contactLink.registerAllContactsButton
@@ -41,7 +39,7 @@ internal class MainContactsCleanupController(
     }
 
     fun addProgressBar() {
-        ensureOverlay()
+        ensureProgressPanel()
         refreshFromCurrentTask()
     }
 
@@ -62,134 +60,118 @@ internal class MainContactsCleanupController(
         BulkContactsTaskRunner.removeListener(taskListener)
     }
 
-    private fun ensureOverlay() {
-        if (overlay != null) return
-        val container = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+    private fun ensureProgressPanel() {
+        if (progressPanel != null) return
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
             visibility = View.GONE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(Color.TRANSPARENT)
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                gravity = Gravity.TOP
-            }
-        }
-
-        val card = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = roundedRect(Color.WHITE, dp(18), Color.rgb(203, 213, 225), dp(1))
-            elevation = dp(6).toFloat()
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = roundedRect(Color.rgb(248, 250, 252), dp(16), Color.rgb(203, 213, 225), dp(1))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
+            ).apply { topMargin = dp(10) }
         }
 
-        overlayTitle = TextView(activity).apply {
+        progressTitle = TextView(activity).apply {
             text = "Синхронизация на RM контакти"
-            textSize = 18f
+            textSize = 16f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(15, 23, 42))
         }
-        overlayStatus = TextView(activity).apply {
+        progressStatus = TextView(activity).apply {
             text = "Подготовка…"
-            textSize = 14f
+            textSize = 13.5f
             setTextColor(Color.rgb(71, 85, 105))
-            setPadding(0, dp(6), 0, 0)
+            setPadding(0, dp(5), 0, 0)
         }
-        overlayPercent = TextView(activity).apply {
+        progressPercent = TextView(activity).apply {
             text = "0%"
-            textSize = 24f
+            textSize = 20f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(37, 99, 235))
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(10), 0, dp(4))
+            setPadding(0, dp(8), 0, dp(2))
         }
-        overlayProgress = ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
+        progressBar = ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(8),
-            ).apply { topMargin = dp(6) }
+                dp(7),
+            ).apply { topMargin = dp(5) }
         }
-        overlaySpinner = ProgressBar(activity, null, android.R.attr.progressBarStyleSmall).apply {
+        progressSpinner = ProgressBar(activity, null, android.R.attr.progressBarStyleSmall).apply {
             isIndeterminate = true
             visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(32)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                topMargin = dp(10)
+                topMargin = dp(8)
             }
         }
-        overlayStopButton = MaterialButton(activity).apply {
+        progressStopButton = MaterialButton(activity).apply {
             text = "Стоп"
-            textSize = 15f
+            textSize = 14f
             setOnClickListener { BulkContactsTaskRunner.cancel() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(14) }
+            ).apply { topMargin = dp(10) }
         }
         val hint = TextView(activity).apply {
-            text = "Можеш да продължиш да работиш с настройките, докато синхронизацията тече."
-            textSize = 12.5f
+            text = "Настройките остават активни, докато синхронизацията тече."
+            textSize = 12f
             setTextColor(Color.rgb(100, 116, 139))
-            setPadding(0, dp(8), 0, 0)
+            setPadding(0, dp(6), 0, 0)
         }
 
-        card.addView(overlayTitle)
-        card.addView(overlayStatus)
-        card.addView(overlayPercent)
-        card.addView(overlayProgress)
-        card.addView(overlaySpinner)
-        card.addView(overlayStopButton)
-        card.addView(hint)
-        root.addView(card)
-        container.addView(root)
-        overlay = root
+        root.addView(progressTitle)
+        root.addView(progressStatus)
+        root.addView(progressPercent)
+        root.addView(progressBar)
+        root.addView(progressSpinner)
+        root.addView(progressStopButton)
+        root.addView(hint)
+        contactLink.contactLinkBulkActionsGroup.addView(root)
+        progressPanel = root
     }
 
     private fun applyTaskState(state: BulkContactsTaskState) {
         if (activity.isFinishing || activity.isDestroyed) return
-        ensureOverlay()
-        renderOverlay(state)
+        ensureProgressPanel()
+        renderProgressPanel(state)
         renderSettingsButton(state)
         if (state.status.isNotBlank()) setStatus(state.status)
     }
 
-    private fun renderOverlay(state: BulkContactsTaskState) {
-        overlay?.visibility = if (state.running) View.VISIBLE else View.GONE
+    private fun renderProgressPanel(state: BulkContactsTaskState) {
+        progressPanel?.visibility = if (state.running) View.VISIBLE else View.GONE
         if (!state.running) return
 
-        overlayTitle?.text = when (state.action) {
+        progressTitle?.text = when (state.action) {
             BulkContactsTaskAction.REGISTER -> "Синхронизация на RM контакти"
             BulkContactsTaskAction.REPAIR -> "Поправка на RM контакти"
             BulkContactsTaskAction.CLEANUP_ORPHANS -> "Почистване на осиротели RM записи"
             BulkContactsTaskAction.CLEANUP -> "Почистване на RM контакти"
             BulkContactsTaskAction.IDLE -> "Обработка на контакти"
         }
-        overlayStatus?.text = state.status.ifBlank { "Обработка на RM записите…" }
-        overlayStopButton?.apply {
+        progressStatus?.text = state.status.ifBlank { "Обработка на RM записите…" }
+        progressStopButton?.apply {
             isEnabled = !state.stopping
             text = if (state.stopping) "Спиране…" else "Стоп"
         }
 
         val progress = state.progress
         if (progress.total > 0) {
-            overlaySpinner?.visibility = View.GONE
-            overlayProgress?.visibility = View.VISIBLE
-            overlayProgress?.max = progress.total
-            overlayProgress?.progress = progress.processed.coerceAtMost(progress.total)
-            overlayPercent?.text = "${progress.percent}%"
+            progressSpinner?.visibility = View.GONE
+            progressBar?.visibility = View.VISIBLE
+            progressBar?.max = progress.total
+            progressBar?.progress = progress.processed.coerceAtMost(progress.total)
+            progressPercent?.text = "${progress.percent}%"
         } else {
-            overlayProgress?.visibility = View.GONE
-            overlaySpinner?.visibility = View.VISIBLE
-            overlayPercent?.text = "Подготовка…"
+            progressBar?.visibility = View.GONE
+            progressSpinner?.visibility = View.VISIBLE
+            progressPercent?.text = "Подготовка…"
         }
     }
 
