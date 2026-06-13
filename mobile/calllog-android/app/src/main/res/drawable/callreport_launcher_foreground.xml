@@ -5,12 +5,12 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- White chat bubble with 15% inner padding, centered for Android adaptive icon masks. -->
+    <!-- White chat bubble reduced by another 15%, centered for Android adaptive icon masks. -->
     <group
-        android:scaleX="0.85"
-        android:scaleY="0.85"
-        android:translateX="8.1"
-        android:translateY="8.1">
+        android:scaleX="0.7225"
+        android:scaleY="0.7225"
+        android:translateX="15"
+        android:translateY="15">
 
         <path
             android:fillColor="#FFFFFF"
