@@ -87,6 +87,7 @@ internal object BulkContactsTaskRunner {
 
     fun registerAllFromSync(context: Context): BulkContactRegistrationResult? {
         val appContext = context.applicationContext
+        if (!RmContactAutoSyncGate.shouldRunAutomaticSync(appContext)) return null
         if (!tryStart(BulkContactsTaskAction.REGISTER, "Автоматична синхронизация на RM контактите… 0%", appContext)) return null
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
         return runReconcileAll(
@@ -159,6 +160,9 @@ internal object BulkContactsTaskRunner {
             },
             shouldCancel = { cancelRequested.get() },
         )
+        if (!result.canceled) {
+            RmContactAutoSyncGate.markFullSyncFinished(context)
+        }
         finish(
             action = BulkContactsTaskAction.REGISTER,
             progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
