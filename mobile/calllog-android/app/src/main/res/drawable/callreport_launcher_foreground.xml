@@ -5,24 +5,31 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- White chat bubble, smaller and centered for Android adaptive icon masks. -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M31,31 C25,31 20,36 20,42 L20,64 C20,70 25,75 31,75 L39,75 L31,86 L50,75 L77,75 C83,75 88,70 88,64 L88,42 C88,36 83,31 77,31 Z" />
+    <!-- White chat bubble with 15% inner padding, centered for Android adaptive icon masks. -->
+    <group
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:translateX="8.1"
+        android:translateY="8.1">
 
-    <!-- Smooth the tail connection. -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M37,69 C40,72 45,74 50,75 L34,84 C34,78 35,73 37,69 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M31,31 C25,31 20,36 20,42 L20,64 C20,70 25,75 31,75 L39,75 L31,86 L50,75 L77,75 C83,75 88,70 88,64 L88,42 C88,36 83,31 77,31 Z" />
 
-    <!-- Blue ellipsis dots. -->
-    <path
-        android:fillColor="#0069FF"
-        android:pathData="M42,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
-    <path
-        android:fillColor="#0069FF"
-        android:pathData="M54,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
-    <path
-        android:fillColor="#0069FF"
-        android:pathData="M66,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
+        <!-- Smooth the tail connection. -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M37,69 C40,72 45,74 50,75 L34,84 C34,78 35,73 37,69 Z" />
+
+        <!-- Blue ellipsis dots. -->
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M42,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M54,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M66,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
+    </group>
 </vector>
