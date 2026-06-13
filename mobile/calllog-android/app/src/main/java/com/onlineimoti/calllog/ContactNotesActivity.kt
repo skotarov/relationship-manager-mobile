@@ -109,6 +109,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun buildContent(): ScrollView {
+        val config = ConfigStore.load(this)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
@@ -116,8 +117,8 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        root.addView(crmSyncToggleRow())
-        if (ConfigStore.load(this).showRmDebugBox) root.addView(rmDebugBlock())
+        if (config.remoteEnabled) root.addView(crmSyncToggleRow())
+        if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         crmHistoryController.addSection(root, phone, ::openCallNoteEditor)
 
