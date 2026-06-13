@@ -69,18 +69,20 @@ internal class MainContactsCleanupController(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             visibility = View.GONE
-            setPadding(dp(24), dp(24), dp(24), dp(24))
-            setBackgroundColor(Color.rgb(248, 250, 252))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(Color.TRANSPARENT)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                gravity = Gravity.TOP
+            }
         }
 
         val card = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(22), dp(22), dp(20))
-            background = roundedRect(Color.WHITE, dp(22), Color.rgb(203, 213, 225), dp(1))
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = roundedRect(Color.WHITE, dp(18), Color.rgb(203, 213, 225), dp(1))
             elevation = dp(6).toFloat()
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -90,54 +92,54 @@ internal class MainContactsCleanupController(
 
         overlayTitle = TextView(activity).apply {
             text = "Синхронизация на RM контакти"
-            textSize = 22f
+            textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(15, 23, 42))
         }
         overlayStatus = TextView(activity).apply {
             text = "Подготовка…"
-            textSize = 15f
+            textSize = 14f
             setTextColor(Color.rgb(71, 85, 105))
-            setPadding(0, dp(10), 0, 0)
+            setPadding(0, dp(6), 0, 0)
         }
         overlayPercent = TextView(activity).apply {
             text = "0%"
-            textSize = 34f
+            textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(37, 99, 235))
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(22), 0, dp(8))
+            setPadding(0, dp(10), 0, dp(4))
         }
         overlayProgress = ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(12),
-            ).apply { topMargin = dp(8) }
+                dp(8),
+            ).apply { topMargin = dp(6) }
         }
-        overlaySpinner = ProgressBar(activity, null, android.R.attr.progressBarStyleLarge).apply {
+        overlaySpinner = ProgressBar(activity, null, android.R.attr.progressBarStyleSmall).apply {
             isIndeterminate = true
             visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(dp(54), dp(54)).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply {
                 gravity = Gravity.CENTER_HORIZONTAL
-                topMargin = dp(18)
+                topMargin = dp(10)
             }
         }
         overlayStopButton = MaterialButton(activity).apply {
             text = "Стоп"
-            textSize = 16f
+            textSize = 15f
             setOnClickListener { BulkContactsTaskRunner.cancel() }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(26) }
+            ).apply { topMargin = dp(14) }
         }
         val hint = TextView(activity).apply {
-            text = "Можеш да спреш операцията, ако имаш спешна работа. Android ще може да я пусне отново по-късно."
-            textSize = 13f
+            text = "Можеш да продължиш да работиш с настройките, докато синхронизацията тече."
+            textSize = 12.5f
             setTextColor(Color.rgb(100, 116, 139))
-            setPadding(0, dp(14), 0, 0)
+            setPadding(0, dp(8), 0, 0)
         }
 
         card.addView(overlayTitle)
