@@ -160,6 +160,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    internal fun requestAppPermissionFromSummary(permission: String, label: String) {
+        permissionFlowController.requestAppPermissionOrOpenSettings(permission, label)
+    }
+
+    internal fun requestPublicNotesStoragePermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestPublicNotesStoragePermission()
+    }
+
+    internal fun requestOverlayPermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestOverlayPermissionIfNeeded()
+    }
+
+    internal fun requestCallScreeningPermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestCallScreeningRoleIfNeeded()
+    }
+
+    internal fun requestFullScreenIntentPermissionFromSummary() {
+        permissionFlowController.requestFullScreenIntentPermissionIfNeeded()
+    }
+
     private fun autoSaveSettings(): AppConfig {
         if (suppressAutoSave) return ConfigStore.load(this)
         val config = saveConfig()
