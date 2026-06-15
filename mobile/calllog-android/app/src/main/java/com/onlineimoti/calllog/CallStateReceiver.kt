@@ -227,17 +227,18 @@ class CallStateReceiver : BroadcastReceiver() {
     }
 
     private fun openFullscreenNoteEditor(context: Context, number: String, direction: String) {
-        val latestCall = PhoneCallReader.callsForPhone(context, number, limit = 1).firstOrNull()
+        val target = CallNoteTargetResolver.resolve(context, number, direction, 0L, 0L)
         val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
         context.startActivity(
             ExternalLaunchNavigation.apply(
                 Intent(context, ContactNoteEditActivity::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "Бележка от разговора" } })
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
+                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, System.currentTimeMillis())
             )
         )
     }
