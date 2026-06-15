@@ -152,7 +152,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) return@execute
 
                 if (!config.useOverlayPopups || !config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
-                    showSystemPostCallAction(context, number, direction, config)
+                    routeLocalPostCall(context, number, direction, config)
                     return@execute
                 }
 
@@ -199,7 +199,7 @@ class CallStateReceiver : BroadcastReceiver() {
             } catch (_: Throwable) {
                 val config = ConfigStore.load(context)
                 if (config.postCallEndAction != ConfigStore.POST_CALL_END_ACTION_NOTHING) {
-                    showSystemPostCallAction(context, number, direction, config)
+                    routeLocalPostCall(context, number, direction, config)
                 }
             } finally {
                 pendingResult.finish()
@@ -207,32 +207,13 @@ class CallStateReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun showSystemPostCallAction(context: Context, number: String, direction: String, config: AppConfig) {
-        when (config.postCallEndAction) {
-            ConfigStore.POST_CALL_END_ACTION_HISTORY -> openFullscreenHistory(context, number)
-            ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
-            else -> openFullscreenNoteEditor(context, number, direction)
+    private fun routeLocalPostCall(context: Context, number: String, direction: String, config: AppConfig) {
+        val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+        val title = when (config.postCallEndAction) {
+            ConfigStore.POST_CALL_END_ACTION_HISTORY -> displayName.ifBlank { number.ifBlank { "История" } }
+            else -> displayName.ifBlank { number.ifBlank { "Бележка след разговора" } }
         }
-    }
-
-    private fun openFullscreenHistory(context: Context, number: String) {
-        val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-        CallNoteEditorLauncher.startHistory(context, number, displayName.ifBlank { number.ifBlank { "История" } })
-    }
-
-    private fun openFullscreenNoteEditor(context: Context, number: String, direction: String) {
-        val target = CallNoteTargetResolver.resolve(context, number, direction, 0L, 0L)
-        val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-        CallNoteEditorLauncher.startEditor(
-            context = context,
-            mode = PostCallOverlayService.MODE_NOTE,
-            phone = number,
-            title = displayName.ifBlank { number.ifBlank { "Бележка от разговора" } },
-            direction = target.direction,
-            callAt = target.callAt,
-            durationSeconds = target.durationSeconds,
-            actionIssuedAt = System.currentTimeMillis(),
-        )
+        PostCallActionRouter.route(context, number, direction, title, config = config)
     }
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
