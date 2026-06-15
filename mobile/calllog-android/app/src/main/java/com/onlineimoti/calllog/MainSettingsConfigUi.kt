@@ -5,6 +5,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 object MainSettingsConfigUi {
     fun hydrate(binding: ActivityMainBinding, config: AppConfig) {
+        val application = binding.settingsApplicationGroup
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
@@ -33,6 +34,7 @@ object MainSettingsConfigUi {
             else -> popup.postCallEndActionEdit.isChecked = true
         }
         popup.useOverlayPopupsCheckBox.isChecked = config.useOverlayPopups
+        application.applicationUseOverlayPopupsCheckBox.isChecked = config.useOverlayPopups
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         popup.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
@@ -44,6 +46,7 @@ object MainSettingsConfigUi {
             else -> language.appLanguageSystem.isChecked = true
         }
         storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
+        application.applicationUsePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
         permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
         tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
     }
