@@ -17,6 +17,8 @@ class NoteEditorReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty()
         val callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         val duration = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
+        val actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
+        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, duration, actionIssuedAt)
         val config = ConfigStore.load(context)
 
         if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
@@ -24,10 +26,10 @@ class NoteEditorReceiver : BroadcastReceiver() {
                 Intent(context, PostCallOverlayService::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
             )
         } else {
             context.startActivity(
@@ -35,10 +37,10 @@ class NoteEditorReceiver : BroadcastReceiver() {
                     Intent(context, ContactNoteEditActivity::class.java)
                         .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
                         .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                        .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                        .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
                         .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                        .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
-                        .putExtra(PostCallOverlayService.EXTRA_DURATION, duration)
+                        .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
+                        .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
                 )
             )
         }
