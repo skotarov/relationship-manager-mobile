@@ -27,12 +27,10 @@ internal data class PostCallOverlayState(
     }
 
     fun hydrateLatestCallIfNeeded(context: Context) {
-        if (callAt > 0L || phone.isBlank()) return
-        PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()?.let { call ->
-            callAt = call.startedAt
-            durationSeconds = call.durationSeconds
-            if (direction.isBlank()) direction = call.direction
-        }
+        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, durationSeconds)
+        callAt = target.callAt
+        durationSeconds = target.durationSeconds
+        if (direction.isBlank()) direction = target.direction
     }
 
     fun clearPendingNotes() {
