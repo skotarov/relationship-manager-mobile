@@ -17,26 +17,15 @@ class InlineNoteReplyReceiver : BroadcastReceiver() {
         if (noteText.isBlank()) return
 
         val phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
-        val direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
-        val callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
-        val duration = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
-        val actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
-        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, duration, actionIssuedAt)
-
-        val saved = if (phone.isBlank()) {
-            false
-        } else if (target.hasCall) {
-            NotePersistence.saveOrDeleteCallNote(
-                context = context,
-                phoneNumber = phone,
-                note = noteText,
-                direction = target.direction,
-                callAt = target.callAt,
-                durationSeconds = target.durationSeconds,
-            )
-        } else {
-            NotePersistence.saveOrDeleteGeneralNote(context, phone, noteText)
-        }
+        val saved = phone.isNotBlank() && CallNoteWriter.writeCallOrGeneral(
+            context = context,
+            phone = phone,
+            text = noteText,
+            direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty(),
+            callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L),
+            durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L),
+            actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L),
+        ).saved
 
         if (saved) {
             context.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(context.packageName))
