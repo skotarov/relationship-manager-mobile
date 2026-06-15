@@ -37,6 +37,7 @@ object MainSettingsConfigUi {
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         popup.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
         contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
+        contactLink.showBulkContactSyncNotificationsCheckBox.isChecked = config.showBulkContactSyncNotifications
         when (config.appLanguage) {
             ConfigStore.LANGUAGE_BG -> language.appLanguageBg.isChecked = true
             ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
@@ -82,6 +83,7 @@ object MainSettingsConfigUi {
             },
             contactLinkMode = ConfigStore.DEFAULT_CONTACT_LINK_MODE,
             showCrmActionButtons = contactLink.showCrmActionButtonsCheckBox.isChecked,
+            showBulkContactSyncNotifications = contactLink.showBulkContactSyncNotificationsCheckBox.isChecked,
             appLanguage = when {
                 language.appLanguageBg.isChecked -> ConfigStore.LANGUAGE_BG
                 language.appLanguageEn.isChecked -> ConfigStore.LANGUAGE_EN
