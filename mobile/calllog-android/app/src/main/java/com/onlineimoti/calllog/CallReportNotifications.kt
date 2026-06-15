@@ -105,20 +105,20 @@ internal object CallReportNotifications {
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                 .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
+                .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, System.currentTimeMillis())
         )
     }
 
     private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
-        val target = CallNoteTargetResolver.resolve(context, phone, direction, 0L, 0L)
+        val actionIssuedAt = System.currentTimeMillis()
         context.startActivity(
             ExternalLaunchNavigation.apply(
                 Intent(context, ContactNoteEditActivity::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
+                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
             )
         )
     }
