@@ -174,13 +174,13 @@ internal class PostCallNoteEditor(
         durationValue: Long,
         noteText: String,
     ): Boolean {
-        return NotePersistence.saveOrDeleteCallNote(
+        return CallNoteWriter.writeCallOrGeneral(
             context = service,
-            phoneNumber = phoneNumber,
-            note = noteText,
+            phone = phoneNumber,
+            text = noteText,
             direction = directionValue,
             callAt = callAtValue,
             durationSeconds = durationValue,
-        )
+        ).saved
     }
 }
