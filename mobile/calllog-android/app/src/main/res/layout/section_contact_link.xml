@@ -31,6 +31,14 @@
         android:textSize="15sp"
         android:textStyle="bold" />
 
+    <CheckBox
+        android:id="@+id/showBulkContactSyncNotificationsCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:checked="false"
+        android:text="Показвай notification при регистрация/синхронизация на контактите" />
+
     <LinearLayout
         android:id="@+id/contactLinkBulkActionsGroup"
         android:layout_width="match_parent"
