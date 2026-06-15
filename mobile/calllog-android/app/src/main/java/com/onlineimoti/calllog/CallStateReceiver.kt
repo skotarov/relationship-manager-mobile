@@ -217,29 +217,21 @@ class CallStateReceiver : BroadcastReceiver() {
 
     private fun openFullscreenHistory(context: Context, number: String) {
         val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-        context.startActivity(
-            ExternalLaunchNavigation.apply(
-                Intent(context, ContactNotesActivity::class.java)
-                    .putExtra(ContactNotesActivity.EXTRA_PHONE, number)
-                    .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "История" } })
-            )
-        )
+        CallNoteEditorLauncher.startHistory(context, number, displayName.ifBlank { number.ifBlank { "История" } })
     }
 
     private fun openFullscreenNoteEditor(context: Context, number: String, direction: String) {
         val target = CallNoteTargetResolver.resolve(context, number, direction, 0L, 0L)
         val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-        context.startActivity(
-            ExternalLaunchNavigation.apply(
-                Intent(context, ContactNoteEditActivity::class.java)
-                    .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName.ifBlank { number.ifBlank { "Бележка от разговора" } })
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
-                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, System.currentTimeMillis())
-            )
+        CallNoteEditorLauncher.startEditor(
+            context = context,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = number,
+            title = displayName.ifBlank { number.ifBlank { "Бележка от разговора" } },
+            direction = target.direction,
+            callAt = target.callAt,
+            durationSeconds = target.durationSeconds,
+            actionIssuedAt = System.currentTimeMillis(),
         )
     }
 
