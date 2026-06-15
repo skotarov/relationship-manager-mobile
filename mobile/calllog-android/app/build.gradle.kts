@@ -77,7 +77,8 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = "relation-management-${buildType.name}.apk"
+            val optimizationLabel = if (buildType.name == "release") "release-optimized" else "debug-unoptimized"
+            output.outputFileName = "relation-management-$optimizationLabel.apk"
         }
     }
 
