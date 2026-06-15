@@ -124,7 +124,6 @@ internal class ContactNotesCrmHistoryController(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.rgb(255, 255, 255), dp(12), Color.rgb(226, 232, 240), dp(1))
             isClickable = true
             isFocusable = true
             setOnClickListener { onEditCallNote(call.toContactCallNote()) }
