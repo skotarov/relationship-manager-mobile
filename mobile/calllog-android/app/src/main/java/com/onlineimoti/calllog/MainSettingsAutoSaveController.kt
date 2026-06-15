@@ -15,7 +15,10 @@ internal class MainSettingsAutoSaveController(
     private val requestCallScreeningRoleIfNeeded: () -> Unit,
     private val requestPublicNotesStoragePermission: () -> Unit,
 ) {
+    private var syncingDuplicateSettings = false
+
     fun wire() {
+        val application = binding.settingsApplicationGroup
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
@@ -44,6 +47,15 @@ internal class MainSettingsAutoSaveController(
 
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
         popup.useOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            if (syncingDuplicateSettings) return@setOnCheckedChangeListener
+            syncDuplicateCheckBox(application.applicationUseOverlayPopupsCheckBox, isChecked)
+            popup.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
+            autoSaveSettings()
+            if (isChecked) requestOverlayPermissionIfNeeded()
+        }
+        application.applicationUseOverlayPopupsCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            if (syncingDuplicateSettings) return@setOnCheckedChangeListener
+            syncDuplicateCheckBox(popup.useOverlayPopupsCheckBox, isChecked)
             popup.overlayPopupOptionsGroup.visibility = if (isChecked) View.VISIBLE else View.GONE
             autoSaveSettings()
             if (isChecked) requestOverlayPermissionIfNeeded()
@@ -59,6 +71,14 @@ internal class MainSettingsAutoSaveController(
             applyLanguageIfChanged(config.appLanguage)
         }
         storage.usePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            if (syncingDuplicateSettings) return@setOnCheckedChangeListener
+            syncDuplicateCheckBox(application.applicationUsePublicNotesFolderCheckBox, isChecked)
+            autoSaveSettings()
+            if (isChecked) requestPublicNotesStoragePermission()
+        }
+        application.applicationUsePublicNotesFolderCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            if (syncingDuplicateSettings) return@setOnCheckedChangeListener
+            syncDuplicateCheckBox(storage.usePublicNotesFolderCheckBox, isChecked)
             autoSaveSettings()
             if (isChecked) requestPublicNotesStoragePermission()
         }
@@ -86,5 +106,12 @@ internal class MainSettingsAutoSaveController(
 
     private fun CompoundButton.autoSaveCheckedChanges() {
         setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
+    }
+
+    private fun syncDuplicateCheckBox(checkBox: CompoundButton, checked: Boolean) {
+        if (checkBox.isChecked == checked) return
+        syncingDuplicateSettings = true
+        checkBox.isChecked = checked
+        syncingDuplicateSettings = false
     }
 }
