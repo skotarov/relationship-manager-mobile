@@ -11,7 +11,9 @@ internal data class CallNoteWriteResult(
 internal object CallNoteWriter {
     fun writeGeneral(context: Context, phone: String, text: String): CallNoteWriteResult {
         val saved = NotePersistence.saveOrDeleteGeneralNote(context, phone, text)
-        return CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
+        val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
+        syncToCrmIfNeeded(context, phone, text, result)
+        return result
     }
 
     fun writeCallOrGeneral(
@@ -33,7 +35,27 @@ internal object CallNoteWriter {
             callAt = target.callAt,
             durationSeconds = target.durationSeconds,
         )
-        return CallNoteWriteResult(saved, false, target)
+        val result = CallNoteWriteResult(saved, false, target)
+        syncToCrmIfNeeded(context, phone, text, result)
+        return result
+    }
+
+    private fun syncToCrmIfNeeded(context: Context, phone: String, text: String, result: CallNoteWriteResult) {
+        if (!result.saved || text.trim().isBlank()) return
+        if (result.savedAsGeneralNote) {
+            CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
+        } else {
+            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
+            CrmNoteSyncer.syncCallIfEnabled(
+                context = context,
+                phone = phone,
+                note = text,
+                direction = result.target.direction,
+                callAt = result.target.callAt,
+                durationSeconds = result.target.durationSeconds,
+                clientNoteId = clientNoteId,
+            )
+        }
     }
 
     private fun targetFor(
