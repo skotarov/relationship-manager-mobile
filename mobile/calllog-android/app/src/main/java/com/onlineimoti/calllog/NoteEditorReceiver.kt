@@ -30,6 +30,7 @@ class NoteEditorReceiver : BroadcastReceiver() {
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                     .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
                     .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
+                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
             )
         } else {
             context.startActivity(
@@ -41,6 +42,7 @@ class NoteEditorReceiver : BroadcastReceiver() {
                         .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
                         .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
                         .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
+                        .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
                 )
             )
         }
