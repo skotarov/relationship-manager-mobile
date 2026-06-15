@@ -77,7 +77,8 @@ internal class PostCallOverlayWindowController(
                         val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
                         if (moved >= dp(8)) {
                             if (shouldDismissDraggedOverlay(params)) {
-                                stopOverlay()
+                                cancelTimeout()
+                                onTimeout()
                             } else {
                                 params.x = 0
                                 params.y = params.y.coerceAtLeast(0)
