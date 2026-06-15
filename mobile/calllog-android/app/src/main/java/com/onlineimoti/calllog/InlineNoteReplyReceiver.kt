@@ -20,17 +20,19 @@ class InlineNoteReplyReceiver : BroadcastReceiver() {
         val direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
         val callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         val duration = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
+        val actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
+        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, duration, actionIssuedAt)
 
         val saved = if (phone.isBlank()) {
             false
-        } else if (callAt > 0L) {
+        } else if (target.hasCall) {
             NotePersistence.saveOrDeleteCallNote(
                 context = context,
                 phoneNumber = phone,
                 note = noteText,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = duration,
+                direction = target.direction,
+                callAt = target.callAt,
+                durationSeconds = target.durationSeconds,
             )
         } else {
             NotePersistence.saveOrDeleteGeneralNote(context, phone, noteText)
