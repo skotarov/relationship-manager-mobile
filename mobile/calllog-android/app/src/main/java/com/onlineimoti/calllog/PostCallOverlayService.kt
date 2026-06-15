@@ -24,6 +24,7 @@ class PostCallOverlayService : Service() {
             direction = { state.direction },
             callAt = { state.callAt },
             durationSeconds = { state.durationSeconds },
+            actionIssuedAt = { state.actionIssuedAt },
             callDirectionColor = ::callDirectionColor,
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
@@ -233,18 +234,19 @@ class PostCallOverlayService : Service() {
         var saved = true
 
         state.pendingGeneralNote?.let { note ->
-            saved = NotePersistence.saveOrDeleteGeneralNote(this, state.phone, note) && saved
+            saved = CallNoteWriter.writeGeneral(this, state.phone, note).saved && saved
         }
 
         state.pendingCallNote?.let { note ->
-            saved = NotePersistence.saveOrDeleteCallNote(
+            saved = CallNoteWriter.writeCallOrGeneral(
                 context = this,
-                phoneNumber = state.phone,
-                note = note,
+                phone = state.phone,
+                text = note,
                 direction = state.direction,
                 callAt = state.callAt,
                 durationSeconds = state.durationSeconds,
-            ) && saved
+                actionIssuedAt = state.actionIssuedAt,
+            ).saved && saved
         }
 
         if (saved) {
