@@ -52,6 +52,7 @@ internal class MainSettingsAutoSaveController(
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
 
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
+        contactLink.showBulkContactSyncNotificationsCheckBox.autoSaveCheckedChanges()
 
         language.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
             val config = autoSaveSettings()
