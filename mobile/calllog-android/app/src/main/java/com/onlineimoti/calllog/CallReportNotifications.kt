@@ -109,16 +109,16 @@ internal object CallReportNotifications {
     }
 
     private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
-        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        val target = CallNoteTargetResolver.resolve(context, phone, direction, 0L, 0L)
         context.startActivity(
             ExternalLaunchNavigation.apply(
                 Intent(context, ContactNoteEditActivity::class.java)
                     .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction.ifBlank { latestCall?.direction.orEmpty() })
+                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, latestCall?.startedAt ?: 0L)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, latestCall?.durationSeconds ?: 0L)
+                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
+                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
             )
         )
     }
@@ -142,6 +142,7 @@ internal object CallReportNotifications {
         title: String,
         callAt: Long = 0L,
         durationSeconds: Long = 0L,
+        actionIssuedAt: Long = 0L,
     ): PendingIntent {
         val intent = Intent(context, NoteEditorReceiver::class.java)
             .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
@@ -150,6 +151,7 @@ internal object CallReportNotifications {
             .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
             .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
             .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
+            .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
         return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
@@ -160,12 +162,14 @@ internal object CallReportNotifications {
         direction: String,
         callAt: Long,
         durationSeconds: Long,
+        actionIssuedAt: Long,
     ): PendingIntent {
         val intent = Intent(context, InlineNoteReplyReceiver::class.java)
             .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
             .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
             .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
             .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
+            .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
         return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
     }
 
@@ -175,6 +179,7 @@ internal object CallReportNotifications {
         direction: String,
         callAt: Long,
         durationSeconds: Long,
+        actionIssuedAt: Long,
     ): NotificationCompat.Action {
         val remoteInput = RemoteInput.Builder(KEY_INLINE_NOTE_REPLY)
             .setLabel("Напиши бележка…")
@@ -182,7 +187,7 @@ internal object CallReportNotifications {
         return NotificationCompat.Action.Builder(
             R.drawable.ic_chat_note,
             "Бележка",
-            inlineNotePendingIntent(context, 1101, phone, direction, callAt, durationSeconds),
+            inlineNotePendingIntent(context, 1101, phone, direction, callAt, durationSeconds, actionIssuedAt),
         )
             .addRemoteInput(remoteInput)
             .setAllowGeneratedReplies(false)
@@ -218,10 +223,9 @@ internal object CallReportNotifications {
             if (alertAgain) cancel(notificationId)
         }
 
+        val actionIssuedAt = System.currentTimeMillis()
         val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         val resolvedDirection = direction.ifBlank { latestCall?.direction.orEmpty() }
-        val callAt = latestCall?.startedAt ?: 0L
-        val duration = latestCall?.durationSeconds ?: 0L
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val notificationTitle = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
@@ -231,9 +235,9 @@ internal object CallReportNotifications {
             else -> result.title.ifBlank { UNKNOWN_CONTACT_TITLE }
         }
 
-        val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, callAt, duration)
+        val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, actionIssuedAt = actionIssuedAt)
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationTitle)
-        val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, callAt, duration)
+        val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, 0L, 0L, actionIssuedAt)
         val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
         val firstCallInfoRow = notificationRows.firstOrNull().orEmpty()
         val displayTitle = firstCallInfoRow.ifBlank { notificationTitle }
