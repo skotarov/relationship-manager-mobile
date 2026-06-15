@@ -19,17 +19,45 @@ class NoteEditorLaunchActivity : Activity() {
     }
 
     private fun openEditorAndFinish() {
+        NotificationManagerCompat.from(this).cancel(CallReportNotifications.LOOKUP_NOTIFICATION_ID)
         NotificationManagerCompat.from(this).cancel(CallReportRuntime.POST_CALL_NOTIFICATION_ID)
 
-        if (Settings.canDrawOverlays(this)) {
+        val mode = intent?.getStringExtra(PostCallOverlayService.EXTRA_MODE) ?: PostCallOverlayService.MODE_NOTE
+        val phone = intent?.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
+        val direction = intent?.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
+        val title = intent?.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty()
+        val callAt = intent?.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L) ?: 0L
+        val duration = intent?.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L) ?: 0L
+        val actionIssuedAt = intent?.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L) ?: 0L
+        val target = CallNoteTargetResolver.resolve(this, phone, direction, callAt, duration, actionIssuedAt)
+        val config = ConfigStore.load(this)
+
+        if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(this)) {
             startService(
-                Intent(this, PostCallOverlayService::class.java)
-                    .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, intent?.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty())
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, intent?.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty())
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, intent?.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty())
+                CallNoteEditorLauncher.overlayIntent(
+                    context = this,
+                    mode = mode,
+                    phone = phone,
+                    title = title,
+                    direction = target.direction,
+                    callAt = target.callAt,
+                    durationSeconds = target.durationSeconds,
+                    actionIssuedAt = actionIssuedAt,
+                )
+            )
+        } else {
+            CallNoteEditorLauncher.startEditor(
+                context = this,
+                mode = mode,
+                phone = phone,
+                title = title,
+                direction = target.direction,
+                callAt = target.callAt,
+                durationSeconds = target.durationSeconds,
+                actionIssuedAt = actionIssuedAt,
             )
         }
+
         finishAndRemoveTask()
         overridePendingTransition(0, 0)
     }
