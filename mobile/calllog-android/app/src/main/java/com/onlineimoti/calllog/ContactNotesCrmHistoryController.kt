@@ -64,6 +64,10 @@ internal class ContactNotesCrmHistoryController(
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
+        serverNotes = emptyList()
+        skippedReason = ""
+        loading = false
+        error = false
     }
 
     fun addSection(root: LinearLayout, phone: String, onEditCallNote: (ContactCallNote) -> Unit) {
