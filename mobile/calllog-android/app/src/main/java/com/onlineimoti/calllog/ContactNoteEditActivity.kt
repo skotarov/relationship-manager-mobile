@@ -25,6 +25,7 @@ class ContactNoteEditActivity : Activity() {
     private var direction: String = ""
     private var callAt: Long = 0L
     private var durationSeconds: Long = 0L
+    private var actionIssuedAt: Long = 0L
     private var isGeneralNote = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +37,7 @@ class ContactNoteEditActivity : Activity() {
         direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
         callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
+        actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
 
         setContentView(buildContent())
@@ -186,38 +188,36 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun saveCurrentNote(noteText: String): Boolean {
-        val saved = if (isGeneralNote) {
-            NotePersistence.saveOrDeleteGeneralNote(this, phone, noteText)
+        val result = if (isGeneralNote) {
+            CallNoteWriter.writeGeneral(this, phone, noteText)
         } else {
-            NotePersistence.saveOrDeleteCallNote(
-                context = this,
-                phoneNumber = phone,
-                note = noteText,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = durationSeconds,
-            )
+            CallNoteWriter.writeCallOrGeneral(this, phone, noteText, direction, callAt, durationSeconds, actionIssuedAt)
         }
-        if (saved) {
-            syncToCrmIfNeeded(noteText)
+        if (result.saved) {
+            if (!result.savedAsGeneralNote) {
+                direction = result.target.direction
+                callAt = result.target.callAt
+                durationSeconds = result.target.durationSeconds
+            }
+            syncToCrmIfNeeded(noteText, result)
             sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
         }
-        return saved
+        return result.saved
     }
 
-    private fun syncToCrmIfNeeded(noteText: String) {
+    private fun syncToCrmIfNeeded(noteText: String, result: CallNoteWriteResult) {
         if (noteText.trim().isBlank()) return
-        if (isGeneralNote) {
+        if (isGeneralNote || result.savedAsGeneralNote) {
             CrmNoteSyncer.syncGeneralIfEnabled(this, phone, noteText)
         } else {
-            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction)
+            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
             CrmNoteSyncer.syncCallIfEnabled(
                 context = this,
                 phone = phone,
                 note = noteText,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = durationSeconds,
+                direction = result.target.direction,
+                callAt = result.target.callAt,
+                durationSeconds = result.target.durationSeconds,
                 clientNoteId = clientNoteId,
             )
         }
