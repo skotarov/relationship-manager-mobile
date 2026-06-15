@@ -74,7 +74,7 @@ object LocalNotesFileStore {
                 val callAt = json.optLong("call_at", 0L)
                 val direction = json.optString("direction")
                 val clientNoteId = json.optString("id").ifBlank { clientNoteIdForCall(phoneNumber, callAt, direction) }
-                val key = "$callAt-${direction.ifBlank { "call" }}"
+                val key = if (callAt > 0L) callAt.toString() else "$callAt-${direction.ifBlank { "call" }}"
                 if (!seen.add(key)) return@mapNotNull null
                 ContactCallNote(
                     note = note,
@@ -172,10 +172,15 @@ object LocalNotesFileStore {
     private fun publicRoot(): File = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), ROOT_DIR)
 
     private fun sameCall(json: JSONObject, callAt: Long, direction: String): Boolean {
+        if (callAt <= 0L) return false
         val sameCallAt = json.optLong("call_at", 0L) == callAt
+        if (!sameCallAt) return false
         val rowDirection = json.optString("direction")
-        val sameDirection = direction.isBlank() || rowDirection.isBlank() || rowDirection == direction
-        return sameCallAt && sameDirection
+        return direction.isBlank() || rowDirection.isBlank() || rowDirection == direction || exactTimestampWins(callAt)
+    }
+
+    private fun exactTimestampWins(callAt: Long): Boolean {
+        return callAt > 0L
     }
 
     private fun writeUnknownLatestProfile(context: Context, phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
