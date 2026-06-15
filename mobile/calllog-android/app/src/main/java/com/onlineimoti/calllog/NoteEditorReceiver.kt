@@ -23,27 +23,27 @@ class NoteEditorReceiver : BroadcastReceiver() {
 
         if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
             context.startService(
-                Intent(context, PostCallOverlayService::class.java)
-                    .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                    .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
-                    .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
-                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
+                CallNoteEditorLauncher.overlayIntent(
+                    context = context,
+                    mode = mode,
+                    phone = phone,
+                    title = title,
+                    direction = target.direction,
+                    callAt = target.callAt,
+                    durationSeconds = target.durationSeconds,
+                    actionIssuedAt = actionIssuedAt,
+                )
             )
         } else {
-            context.startActivity(
-                ExternalLaunchNavigation.apply(
-                    Intent(context, ContactNoteEditActivity::class.java)
-                        .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
-                        .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                        .putExtra(PostCallOverlayService.EXTRA_DIRECTION, target.direction)
-                        .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                        .putExtra(PostCallOverlayService.EXTRA_CALL_AT, target.callAt)
-                        .putExtra(PostCallOverlayService.EXTRA_DURATION, target.durationSeconds)
-                        .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
-                )
+            CallNoteEditorLauncher.startEditor(
+                context = context,
+                mode = mode,
+                phone = phone,
+                title = title,
+                direction = target.direction,
+                callAt = target.callAt,
+                durationSeconds = target.durationSeconds,
+                actionIssuedAt = actionIssuedAt,
             )
         }
     }
