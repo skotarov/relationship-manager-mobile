@@ -43,6 +43,7 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = "0.3.$appVersionCode"
+        resourceConfigurations += setOf("bg")
 
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
         buildConfigField("String", "DEFAULT_ACCESS_TOKEN", "\"$defaultAccessToken\"")
@@ -64,7 +65,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -96,8 +98,5 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.activity:activity-ktx:1.10.1")
-    implementation("androidx.webkit:webkit:1.12.1")
 }
