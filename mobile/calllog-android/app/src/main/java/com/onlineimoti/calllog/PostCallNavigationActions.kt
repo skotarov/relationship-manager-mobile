@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.app.Service
-import android.content.Intent
 import android.os.Handler
 
 internal class PostCallNavigationActions(
@@ -16,12 +15,10 @@ internal class PostCallNavigationActions(
         val phoneValue = phone()
         handler.removeCallbacksAndMessages(null)
         removeOverlay()
-        service.startActivity(
-            ExternalLaunchNavigation.apply(
-                Intent(service, ContactNotesActivity::class.java)
-                    .putExtra(ContactNotesActivity.EXTRA_PHONE, phoneValue)
-                    .putExtra(ContactNotesActivity.EXTRA_TITLE, ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty().ifBlank { title().ifBlank { phoneValue } })
-            )
+        CallNoteEditorLauncher.startHistory(
+            context = service,
+            phone = phoneValue,
+            title = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty().ifBlank { title().ifBlank { phoneValue } },
         )
         stopOverlay()
     }
