@@ -78,7 +78,7 @@ internal class PostCallGeneralNoteEditor(
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
             val noteText = generalNoteInput.text?.toString().orEmpty()
             setPendingGeneralNote(noteText)
-            val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, noteText)
+            val saved = saveGeneralNote(phoneValue, noteText)
             if (saved) {
                 notifyNotesChanged()
                 openCalendarEvent(titleText)
@@ -111,7 +111,7 @@ internal class PostCallGeneralNoteEditor(
         })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.textAction("Запази") {
-            val saved = NotePersistence.saveOrDeleteGeneralNote(service, phoneValue, generalNoteInput.text?.toString().orEmpty())
+            val saved = saveGeneralNote(phoneValue, generalNoteInput.text?.toString().orEmpty())
             if (saved) notifyNotesChanged()
             Toast.makeText(service, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
             stopOverlay()
@@ -123,5 +123,9 @@ internal class PostCallGeneralNoteEditor(
         handler.postDelayed({
             (service.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(generalNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
+    }
+
+    private fun saveGeneralNote(phoneNumber: String, noteText: String): Boolean {
+        return CallNoteWriter.writeGeneral(service, phoneNumber, noteText).saved
     }
 }
