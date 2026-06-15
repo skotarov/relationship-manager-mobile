@@ -199,28 +199,9 @@ class ContactNoteEditActivity : Activity() {
                 callAt = result.target.callAt
                 durationSeconds = result.target.durationSeconds
             }
-            syncToCrmIfNeeded(noteText, result)
             sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
         }
         return result.saved
-    }
-
-    private fun syncToCrmIfNeeded(noteText: String, result: CallNoteWriteResult) {
-        if (noteText.trim().isBlank()) return
-        if (isGeneralNote || result.savedAsGeneralNote) {
-            CrmNoteSyncer.syncGeneralIfEnabled(this, phone, noteText)
-        } else {
-            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
-            CrmNoteSyncer.syncCallIfEnabled(
-                context = this,
-                phone = phone,
-                note = noteText,
-                direction = result.target.direction,
-                callAt = result.target.callAt,
-                durationSeconds = result.target.durationSeconds,
-                clientNoteId = clientNoteId,
-            )
-        }
     }
 
     private fun openCalendarEvent(noteText: String) {
