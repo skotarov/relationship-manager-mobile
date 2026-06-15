@@ -110,27 +110,18 @@ internal object CallReportNotifications {
     }
 
     private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
-        val actionIssuedAt = System.currentTimeMillis()
-        context.startActivity(
-            ExternalLaunchNavigation.apply(
-                Intent(context, ContactNoteEditActivity::class.java)
-                    .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                    .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                    .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-                    .putExtra(PostCallOverlayService.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "Бележка от разговора" } })
-                    .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
-            )
+        CallNoteEditorLauncher.startEditor(
+            context = context,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = phone,
+            title = title.ifBlank { phone.ifBlank { "Бележка от разговора" } },
+            direction = direction,
+            actionIssuedAt = System.currentTimeMillis(),
         )
     }
 
     private fun openContactNotesScreen(context: Context, phone: String, title: String) {
-        context.startActivity(
-            ExternalLaunchNavigation.apply(
-                Intent(context, ContactNotesActivity::class.java)
-                    .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                    .putExtra(ContactNotesActivity.EXTRA_TITLE, title.ifBlank { phone.ifBlank { "История" } })
-            )
-        )
+        CallNoteEditorLauncher.startHistory(context, phone, title)
     }
 
     private fun editorPendingIntent(
@@ -196,12 +187,12 @@ internal object CallReportNotifications {
     }
 
     private fun contactNotesPendingIntent(context: Context, requestCode: Int, phone: String, title: String): PendingIntent {
-        val intent = ExternalLaunchNavigation.apply(
-            Intent(context, ContactNotesActivity::class.java)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
+        return PendingIntent.getActivity(
+            context,
+            requestCode,
+            CallNoteEditorLauncher.historyIntent(context, phone, title),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun showLookupNotificationInternal(
