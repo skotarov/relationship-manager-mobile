@@ -12,6 +12,7 @@ internal data class PostCallOverlayState(
     var lines: List<String> = emptyList(),
     var callAt: Long = 0L,
     var durationSeconds: Long = 0L,
+    var actionIssuedAt: Long = 0L,
     var pendingGeneralNote: String? = null,
     var pendingCallNote: String? = null,
 ) {
@@ -24,10 +25,11 @@ internal data class PostCallOverlayState(
         lines = intent?.getStringArrayListExtra(PostCallOverlayService.EXTRA_LINES).orEmpty()
         callAt = intent?.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L) ?: 0L
         durationSeconds = intent?.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L) ?: 0L
+        actionIssuedAt = intent?.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L) ?: 0L
     }
 
     fun hydrateLatestCallIfNeeded(context: Context) {
-        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, durationSeconds)
+        val target = CallNoteTargetResolver.resolve(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
         callAt = target.callAt
         durationSeconds = target.durationSeconds
         if (direction.isBlank()) direction = target.direction
