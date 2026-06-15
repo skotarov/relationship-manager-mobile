@@ -6,7 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
@@ -76,52 +75,7 @@ internal object CallReportNotifications {
 
     fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
         NotificationManagerCompat.from(context).cancel(POST_CALL_NOTIFICATION_ID)
-        val config = ConfigStore.load(context)
-        when (config.postCallEndAction) {
-            ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
-            ConfigStore.POST_CALL_END_ACTION_HISTORY -> {
-                if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
-                    startPostCallOverlay(context, formUrl, phone, direction, title)
-                } else {
-                    openContactNotesScreen(context, phone, title)
-                }
-            }
-            else -> {
-                if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
-                    startPostCallOverlay(context, formUrl, phone, direction, title)
-                } else {
-                    showFullScreenNoteEditorPrompt(context, phone, direction, title)
-                }
-            }
-        }
-    }
-
-    private fun startPostCallOverlay(context: Context, formUrl: String, phone: String, direction: String, title: String) {
-        context.startService(
-            Intent(context, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_CALL_ENDED)
-                .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
-                .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, System.currentTimeMillis())
-        )
-    }
-
-    private fun showFullScreenNoteEditorPrompt(context: Context, phone: String, direction: String, title: String) {
-        CallNoteEditorLauncher.startEditor(
-            context = context,
-            mode = PostCallOverlayService.MODE_NOTE,
-            phone = phone,
-            title = title.ifBlank { phone.ifBlank { "Бележка от разговора" } },
-            direction = direction,
-            actionIssuedAt = System.currentTimeMillis(),
-        )
-    }
-
-    private fun openContactNotesScreen(context: Context, phone: String, title: String) {
-        CallNoteEditorLauncher.startHistory(context, phone, title)
+        PostCallActionRouter.route(context, phone, direction, title, formUrl)
     }
 
     private fun editorPendingIntent(
