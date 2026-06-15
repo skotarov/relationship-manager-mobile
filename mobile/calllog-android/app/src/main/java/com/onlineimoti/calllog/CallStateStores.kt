@@ -48,6 +48,32 @@ object CallLifecycleStore {
 
         return ActiveCallRecord(number = number, direction = direction, startedAt = startedAt)
     }
+
+    fun isActive(context: Context, number: String): Boolean {
+        if (number.isBlank()) return false
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val active = prefs.getBoolean(KEY_ACTIVE, false)
+        val activeNumber = prefs.getString(KEY_NUMBER, "").orEmpty()
+        val startedAt = prefs.getLong(KEY_STARTED_AT, 0L)
+        if (!active || activeNumber.isBlank() || startedAt <= 0L) return false
+        if (System.currentTimeMillis() - startedAt > ACTIVE_TTL_MS) {
+            prefs.edit().clear().apply()
+            return false
+        }
+        return sameNumber(activeNumber, number)
+    }
+
+    private fun sameNumber(first: String, second: String): Boolean {
+        val normalizedFirst = normalizeNumber(first)
+        val normalizedSecond = normalizeNumber(second)
+        return normalizedFirst.isNotBlank() && normalizedSecond.isNotBlank() &&
+            (normalizedFirst == normalizedSecond || normalizedFirst.endsWith(normalizedSecond) || normalizedSecond.endsWith(normalizedFirst))
+    }
+
+    private fun normalizeNumber(number: String): String {
+        val digits = number.filter { it.isDigit() }
+        return if (digits.length > 9) digits.takeLast(9) else digits
+    }
 }
 
 object CallPopupTracker {
