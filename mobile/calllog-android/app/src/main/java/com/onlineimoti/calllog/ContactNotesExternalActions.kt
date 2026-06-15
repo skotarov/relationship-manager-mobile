@@ -93,23 +93,23 @@ class ContactNotesExternalActions(private val activity: Activity) {
     }
 
     fun openGeneralNotePopup(phone: String, titleText: String) {
-        activity.startActivity(
-            Intent(activity, ContactNoteEditActivity::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_GENERAL_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
+        CallNoteEditorLauncher.startEditor(
+            context = activity,
+            mode = PostCallOverlayService.MODE_GENERAL_NOTE,
+            phone = phone,
+            title = titleText,
         )
     }
 
     fun openEditPopup(phone: String, titleText: String, note: ContactCallNote) {
-        activity.startActivity(
-            Intent(activity, ContactNoteEditActivity::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, note.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, titleText)
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, note.callAt)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, note.durationSeconds)
+        CallNoteEditorLauncher.startEditor(
+            context = activity,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = phone,
+            title = titleText,
+            direction = note.direction,
+            callAt = note.callAt,
+            durationSeconds = note.durationSeconds,
         )
     }
 }
