@@ -68,7 +68,7 @@ class PostCallOverlayService : Service() {
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showNoteEditor = ::showNoteEditor,
-            showBubbleAfterLookup = ::showBubbleUntilCallEnds,
+            showBubbleAfterLookup = ::showBubbleIfCallIsStillActive,
             timeoutMs = LOOKUP_POPUP_TIMEOUT_MS,
         )
     }
@@ -158,6 +158,14 @@ class PostCallOverlayService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun showBubbleIfCallIsStillActive() {
+        if (CallLifecycleStore.isActive(this, state.phone)) {
+            showBubbleUntilCallEnds()
+        } else {
+            stopSelf()
+        }
+    }
 
     private fun showBubbleUntilCallEnds() {
         if (!shouldShowBubble()) return
