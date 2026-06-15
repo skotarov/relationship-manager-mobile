@@ -23,7 +23,10 @@ internal object BulkContactsProgressNotification {
         status: String,
         stopping: Boolean = false,
     ) {
-        if (!canShowNotifications(context)) return
+        if (!canShowBulkContactSyncNotifications(context)) {
+            cancel(context)
+            return
+        }
         ensureChannel(context)
         val title = when (action) {
             BulkContactsTaskAction.REGISTER -> if (stopping) "Спиране на синхронизацията…" else "Синхронизация на RM контакти"
@@ -60,7 +63,10 @@ internal object BulkContactsProgressNotification {
     }
 
     fun showFinished(context: Context, action: BulkContactsTaskAction, status: String) {
-        if (!canShowNotifications(context)) return
+        if (!canShowBulkContactSyncNotifications(context)) {
+            cancel(context)
+            return
+        }
         ensureChannel(context)
         val title = when (action) {
             BulkContactsTaskAction.REGISTER -> "Синхронизацията приключи"
@@ -123,6 +129,10 @@ internal object BulkContactsProgressNotification {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+    }
+
+    private fun canShowBulkContactSyncNotifications(context: Context): Boolean {
+        return ConfigStore.load(context).showBulkContactSyncNotifications && canShowNotifications(context)
     }
 
     private fun canShowNotifications(context: Context): Boolean {
