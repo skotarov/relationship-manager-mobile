@@ -22,6 +22,7 @@ internal class PostCallNoteEditor(
     private val direction: () -> String,
     private val callAt: () -> Long,
     private val durationSeconds: () -> Long,
+    private val actionIssuedAt: () -> Long,
     private val callDirectionColor: (String) -> Int,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
@@ -181,6 +182,7 @@ internal class PostCallNoteEditor(
             direction = directionValue,
             callAt = callAtValue,
             durationSeconds = durationValue,
+            actionIssuedAt = actionIssuedAt(),
         ).saved
     }
 }
