@@ -89,7 +89,7 @@ internal object CallReportNotifications {
         durationSeconds: Long = 0L,
         actionIssuedAt: Long = 0L,
     ): PendingIntent {
-        val intent = Intent(context, NoteEditorReceiver::class.java)
+        val intent = Intent(context, NoteEditorLaunchActivity::class.java)
             .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
             .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
             .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
@@ -97,7 +97,7 @@ internal object CallReportNotifications {
             .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
             .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
             .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
-        return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun inlineNotePendingIntent(
