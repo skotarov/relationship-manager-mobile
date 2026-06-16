@@ -12,7 +12,7 @@ internal data class CallNoteTarget(
 
 internal object CallNoteTargetResolver {
     const val EXTRA_ACTION_ISSUED_AT = "call_note_action_issued_at"
-    private const val SAFE_LOOKBACK_MS = 10 * 60 * 1000L
+    private const val MATCH_BEFORE_ACTION_MS = 30_000L
 
     fun resolve(
         context: Context,
@@ -24,7 +24,7 @@ internal object CallNoteTargetResolver {
     ): CallNoteTarget {
         if (phone.isBlank()) return CallNoteTarget(directionHint, callAtHint, durationHint)
 
-        val safeAfter = if (actionIssuedAt > 0L) actionIssuedAt - SAFE_LOOKBACK_MS else 0L
+        val safeAfter = if (actionIssuedAt > 0L) actionIssuedAt - MATCH_BEFORE_ACTION_MS else 0L
 
         if (callAtHint > 0L && (safeAfter <= 0L || callAtHint >= safeAfter)) {
             return CallNoteTarget(directionHint, callAtHint, durationHint)
