@@ -6,6 +6,7 @@ internal data class CallNoteWriteResult(
     val saved: Boolean,
     val savedAsGeneralNote: Boolean,
     val target: CallNoteTarget,
+    val savedAsPending: Boolean = false,
 )
 
 internal object CallNoteWriter {
@@ -34,7 +35,7 @@ internal object CallNoteWriter {
                 val pendingStartedAt = activeSession?.sessionStartedAt ?: actionIssuedAt
                 val saved = PendingCallNoteStore.saveOrDelete(context, phone, pendingDirection, pendingStartedAt, text)
                 if (saved && text.trim().isNotBlank() && activeSession == null) PendingCallNoteStore.reconcileSoon(context, phone)
-                return CallNoteWriteResult(saved, false, CallNoteTarget(pendingDirection, 0L, 0L))
+                return CallNoteWriteResult(saved, false, CallNoteTarget(pendingDirection, 0L, 0L), savedAsPending = true)
             }
             return writeGeneral(context, phone, text)
         }
