@@ -1,0 +1,146 @@
+package com.onlineimoti.calllog
+
+import android.content.Context
+import org.json.JSONObject
+import kotlin.concurrent.thread
+
+internal data class PendingCallNote(
+    val phone: String,
+    val direction: String,
+    val sessionStartedAt: Long,
+    val savedAt: Long,
+    val note: String,
+)
+
+internal object PendingCallNoteStore {
+    private const val PREFS = "callreport_pending_call_notes"
+    private const val CALL_LIFECYCLE_PREFS = "callreport_call_lifecycle"
+    private const val KEY_ACTIVE = "active"
+    private const val KEY_NUMBER = "number"
+    private const val KEY_DIRECTION = "direction"
+    private const val KEY_STARTED_AT = "started_at"
+    private const val MAX_PENDING_AGE_MS = 24 * 60 * 60 * 1000L
+    private const val MATCH_BEFORE_SESSION_MS = 30_000L
+    private val RETRY_DELAYS_MS = longArrayOf(0L, 1_000L, 3_000L, 7_000L, 15_000L)
+
+    fun saveOrDelete(
+        context: Context,
+        phone: String,
+        direction: String,
+        sessionStartedAt: Long,
+        text: String,
+    ): Boolean {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return false
+        val trimmed = text.trim()
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (trimmed.isBlank()) {
+            prefs.edit().remove(key).apply()
+            return true
+        }
+        val now = System.currentTimeMillis()
+        val record = JSONObject().apply {
+            put("phone", phone)
+            put("direction", direction)
+            put("session_started_at", sessionStartedAt.takeIf { it > 0L } ?: now)
+            put("saved_at", now)
+            put("note", trimmed)
+        }
+        prefs.edit().putString(key, record.toString()).apply()
+        return true
+    }
+
+    fun pendingForPhone(context: Context, phone: String): PendingCallNote? {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return null
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString(key, "").orEmpty()
+        if (raw.isBlank()) return null
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+        val savedAt = json.optLong("saved_at", 0L)
+        if (savedAt > 0L && System.currentTimeMillis() - savedAt > MAX_PENDING_AGE_MS) {
+            prefs.edit().remove(key).apply()
+            return null
+        }
+        val note = json.optString("note").trim()
+        if (note.isBlank()) return null
+        return PendingCallNote(
+            phone = json.optString("phone").ifBlank { phone },
+            direction = json.optString("direction"),
+            sessionStartedAt = json.optLong("session_started_at", 0L),
+            savedAt = savedAt,
+            note = note,
+        )
+    }
+
+    fun activeSessionForPhone(context: Context, phone: String): PendingCallNote? {
+        val prefs = context.applicationContext.getSharedPreferences(CALL_LIFECYCLE_PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(KEY_ACTIVE, false)) return null
+        val activeNumber = prefs.getString(KEY_NUMBER, "").orEmpty()
+        if (!samePhone(activeNumber, phone)) return null
+        val startedAt = prefs.getLong(KEY_STARTED_AT, 0L)
+        if (startedAt <= 0L) return null
+        return PendingCallNote(
+            phone = activeNumber.ifBlank { phone },
+            direction = prefs.getString(KEY_DIRECTION, "").orEmpty(),
+            sessionStartedAt = startedAt,
+            savedAt = System.currentTimeMillis(),
+            note = "",
+        )
+    }
+
+    fun reconcileSoon(context: Context, phone: String) {
+        val appContext = context.applicationContext
+        thread(name = "callreport-pending-note-reconcile", isDaemon = true) {
+            for (delay in RETRY_DELAYS_MS) {
+                if (delay > 0L) Thread.sleep(delay)
+                if (reconcilePendingForPhone(appContext, phone)) return@thread
+            }
+        }
+    }
+
+    fun reconcilePendingForPhone(context: Context, phone: String): Boolean {
+        val pending = pendingForPhone(context, phone) ?: return false
+        val call = findMatchingCall(context, pending) ?: return false
+        val result = CallNoteWriter.writeCallOrGeneral(
+            context = context,
+            phone = pending.phone,
+            text = pending.note,
+            direction = call.direction.ifBlank { pending.direction },
+            callAt = call.startedAt,
+            durationSeconds = call.durationSeconds,
+            actionIssuedAt = 0L,
+        )
+        if (result.saved && !result.savedAsPending) {
+            clear(context, pending.phone)
+            return true
+        }
+        return false
+    }
+
+    private fun findMatchingCall(context: Context, pending: PendingCallNote): PhoneCallRecord? {
+        val earliest = (pending.sessionStartedAt.takeIf { it > 0L } ?: pending.savedAt) - MATCH_BEFORE_SESSION_MS
+        return PhoneCallReader.callsForPhone(context, pending.phone, limit = 10).firstOrNull { call ->
+            call.startedAt > 0L &&
+                call.startedAt >= earliest &&
+                (pending.direction.isBlank() || call.direction.isBlank() || call.direction == pending.direction)
+        }
+    }
+
+    private fun clear(context: Context, phone: String) {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(key).apply()
+    }
+
+    private fun samePhone(left: String, right: String): Boolean {
+        val a = phoneKey(left)
+        val b = phoneKey(right)
+        return a.isNotBlank() && b.isNotBlank() && (a == b || a.endsWith(b) || b.endsWith(a))
+    }
+
+    private fun phoneKey(value: String): String {
+        val digits = value.filter { it.isDigit() }
+        return if (digits.length > 9) digits.takeLast(9) else digits
+    }
+}
