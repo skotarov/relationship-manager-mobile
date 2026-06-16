@@ -125,6 +125,7 @@ internal class ContactNotesCrmHistoryController(
     }
 
     private fun latestCallActionCard(call: PhoneCallRecord, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
+        val startedAtText = PhoneCallReader.formatStartedAt(call.startedAt)
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -133,16 +134,20 @@ internal class ContactNotesCrmHistoryController(
             setOnClickListener { onEditCallNote(call.toContactCallNote()) }
             layoutParams = cardLayoutParams()
             addView(TextView(activity).apply {
-                text = "+ Добави към последния разговор"
+                text = if (startedAtText.isNotBlank()) {
+                    "+ Добави бележка към $startedAtText"
+                } else {
+                    "+ Добави бележка към разговор без бележка"
+                }
                 textSize = 14.5f
                 setTextColor(NoteUiStyle.Call.mutedText)
                 setTypeface(typeface, Typeface.BOLD)
             })
             addView(TextView(activity).apply {
                 text = listOf(
-                    PhoneCallReader.formatStartedAt(call.startedAt),
                     headerUi.directionArrowLabel(call.direction),
                     PhoneCallReader.formatDuration(call.durationSeconds),
+                    "разговор без бележка",
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(Color.rgb(100, 116, 139))
@@ -231,9 +236,7 @@ internal class ContactNotesCrmHistoryController(
     }
 
     private fun hasNoteForCall(call: PhoneCallRecord, localNotes: List<ContactCallNote>): Boolean {
-        return localNotes.any { note ->
-            note.callAt == call.startedAt && (note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction)
-        }
+        return localNotes.any { note -> note.callAt > 0L && note.callAt == call.startedAt }
     }
 
     private fun metaText(note: CrmServerNote): String {
