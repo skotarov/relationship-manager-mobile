@@ -58,23 +58,39 @@ object CallReportRuntime {
         )
     }
 
-    fun showImmediatePostCallPrompt(context: Context, formUrl: String, phone: String, direction: String, title: String = "Бележка след разговора") {
+    fun showImmediatePostCallPrompt(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String = "Бележка след разговора",
+        actionIssuedAt: Long = 0L,
+    ) {
         CallReportNotifications.showImmediatePostCallPrompt(
             context = context,
             formUrl = formUrl,
             phone = phone,
             direction = direction,
             title = title,
+            actionIssuedAt = actionIssuedAt,
         )
     }
 
-    fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
+    fun showPostCallPromptNotification(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String,
+        actionIssuedAt: Long = 0L,
+    ) {
         CallReportNotifications.showPostCallPromptNotification(
             context = context,
             formUrl = formUrl,
             phone = phone,
             direction = direction,
             title = title,
+            actionIssuedAt = actionIssuedAt,
         )
     }
 }
