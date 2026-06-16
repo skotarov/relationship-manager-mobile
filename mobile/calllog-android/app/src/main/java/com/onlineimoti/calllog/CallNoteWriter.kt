@@ -26,7 +26,18 @@ internal object CallNoteWriter {
         actionIssuedAt: Long = 0L,
     ): CallNoteWriteResult {
         val target = targetFor(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
-        if (!target.hasCall) return writeGeneral(context, phone, text)
+        if (!target.hasCall) {
+            val activeSession = PendingCallNoteStore.activeSessionForPhone(context, phone)
+            val shouldSavePending = activeSession != null || actionIssuedAt > 0L
+            if (shouldSavePending) {
+                val pendingDirection = activeSession?.direction?.ifBlank { direction } ?: direction
+                val pendingStartedAt = activeSession?.sessionStartedAt ?: actionIssuedAt
+                val saved = PendingCallNoteStore.saveOrDelete(context, phone, pendingDirection, pendingStartedAt, text)
+                if (saved && text.trim().isNotBlank() && activeSession == null) PendingCallNoteStore.reconcileSoon(context, phone)
+                return CallNoteWriteResult(saved, false, CallNoteTarget(pendingDirection, 0L, 0L))
+            }
+            return writeGeneral(context, phone, text)
+        }
         val saved = NotePersistence.saveOrDeleteCallNote(
             context = context,
             phoneNumber = phone,
@@ -44,7 +55,7 @@ internal object CallNoteWriter {
         if (!result.saved || text.trim().isBlank()) return
         if (result.savedAsGeneralNote) {
             CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
-        } else {
+        } else if (result.target.hasCall) {
             val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
             CrmNoteSyncer.syncCallIfEnabled(
                 context = context,
