@@ -120,6 +120,7 @@ class ContactNotesActivity : Activity() {
         if (config.remoteEnabled) root.addView(crmSyncToggleRow())
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
+        PendingCallNoteStore.reconcilePendingForPhone(this, phone)
         crmHistoryController.addSection(root, phone, ::openCallNoteEditor)
 
         return ScrollView(this).apply {
