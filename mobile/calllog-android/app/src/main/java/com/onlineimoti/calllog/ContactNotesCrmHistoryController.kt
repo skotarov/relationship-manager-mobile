@@ -73,8 +73,9 @@ internal class ContactNotesCrmHistoryController(
     fun addSection(root: LinearLayout, phone: String, onEditCallNote: (ContactCallNote) -> Unit) {
         val localCalls = PhoneCallReader.callsForPhone(activity, phone, limit = 100)
         val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
-        val latestCallWithoutNote = latestCallWithoutNote(localCalls, localNotes)
-        val hiddenCallsWithoutNotes = localCalls.count { call -> !hasNoteForCall(call, localNotes) } - if (latestCallWithoutNote != null) 1 else 0
+        val latestCall = localCalls.firstOrNull()
+        val latestCallWithoutNote = latestCall?.takeUnless { call -> hasNoteForCall(call, localNotes) }
+        val hiddenCallsWithoutNotes = localCalls.drop(1).count { call -> !hasNoteForCall(call, localNotes) }
         val timeline = buildTimeline(localNotes, latestCallWithoutNote)
 
         root.addView(LinearLayout(activity).apply {
@@ -120,7 +121,7 @@ internal class ContactNotesCrmHistoryController(
             serverNotes.isEmpty() -> container.addView(statusText("Няма CRM записи от сървъра за този номер"))
         }
         if (hiddenCallsWithoutNotes > 0) {
-            container.addView(statusText("Скрити са $hiddenCallsWithoutNotes разговора без бележка. Всички позвънявания се виждат на началния екран."))
+            container.addView(statusText("Скрити са $hiddenCallsWithoutNotes по-стари разговора без бележка. Всички позвънявания се виждат на началния екран."))
         }
     }
 
@@ -137,7 +138,7 @@ internal class ContactNotesCrmHistoryController(
                 text = if (startedAtText.isNotBlank()) {
                     "+ Добави бележка към $startedAtText"
                 } else {
-                    "+ Добави бележка към разговор без бележка"
+                    "+ Добави бележка към последния разговор"
                 }
                 textSize = 14.5f
                 setTextColor(NoteUiStyle.Call.mutedText)
@@ -147,7 +148,7 @@ internal class ContactNotesCrmHistoryController(
                 text = listOf(
                     headerUi.directionArrowLabel(call.direction),
                     PhoneCallReader.formatDuration(call.durationSeconds),
-                    "разговор без бележка",
+                    "последен разговор без бележка",
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(Color.rgb(100, 116, 139))
@@ -229,10 +230,6 @@ internal class ContactNotesCrmHistoryController(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { bottomMargin = dp(8) }
-    }
-
-    private fun latestCallWithoutNote(localCalls: List<PhoneCallRecord>, localNotes: List<ContactCallNote>): PhoneCallRecord? {
-        return localCalls.firstOrNull { call -> !hasNoteForCall(call, localNotes) }
     }
 
     private fun hasNoteForCall(call: PhoneCallRecord, localNotes: List<ContactCallNote>): Boolean {
