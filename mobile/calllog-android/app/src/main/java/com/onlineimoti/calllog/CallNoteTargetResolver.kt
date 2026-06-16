@@ -24,19 +24,23 @@ internal object CallNoteTargetResolver {
     ): CallNoteTarget {
         if (phone.isBlank()) return CallNoteTarget(directionHint, callAtHint, durationHint)
 
-        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         val safeAfter = if (actionIssuedAt > 0L) actionIssuedAt - SAFE_LOOKBACK_MS else 0L
 
+        if (callAtHint > 0L && (safeAfter <= 0L || callAtHint >= safeAfter)) {
+            return CallNoteTarget(directionHint, callAtHint, durationHint)
+        }
+
+        if (CallLifecycleStore.isActive(context, phone)) {
+            return CallNoteTarget(directionHint, 0L, 0L)
+        }
+
+        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         if (latestCall != null && latestCall.startedAt > 0L && latestCall.startedAt >= safeAfter) {
             return CallNoteTarget(
                 direction = latestCall.direction.ifBlank { directionHint },
                 callAt = latestCall.startedAt,
                 durationSeconds = latestCall.durationSeconds,
             )
-        }
-
-        if (callAtHint > 0L && (safeAfter <= 0L || callAtHint >= safeAfter)) {
-            return CallNoteTarget(directionHint, callAtHint, durationHint)
         }
 
         return CallNoteTarget(directionHint, 0L, 0L)
