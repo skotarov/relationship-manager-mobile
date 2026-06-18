@@ -48,15 +48,17 @@ internal object BulkContactCollector {
     }
 
     fun findCallReportPhoneRawContactIds(context: Context): Map<String, Long> {
+        val accountNames = CrmContactAccountStore.accountNames()
         return runCatching {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts.SYNC1, ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.RawContacts.DELETED}=0",
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(
                     CallReportContactIntegration.ACCOUNT_TYPE,
-                    CrmContactAccountStore.ACCOUNT_NAME,
-                    CrmContactAccountStore.LEGACY_ACCOUNT_NAME,
+                    accountNames[0],
+                    accountNames[1],
+                    accountNames[2],
                 ),
                 null,
             )?.use { cursor ->
@@ -104,15 +106,17 @@ internal object BulkContactCollector {
     }
 
     private fun findCallReportRawContactIds(context: Context): Set<Long> {
+        val accountNames = CrmContactAccountStore.accountNames()
         return runCatching {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.RawContacts.DELETED}=0",
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND ${ContactsContract.RawContacts.DELETED}=0",
                 arrayOf(
                     CallReportContactIntegration.ACCOUNT_TYPE,
-                    CrmContactAccountStore.ACCOUNT_NAME,
-                    CrmContactAccountStore.LEGACY_ACCOUNT_NAME,
+                    accountNames[0],
+                    accountNames[1],
+                    accountNames[2],
                 ),
                 null,
             )?.use { cursor -> buildSet { while (cursor.moveToNext()) add(cursor.getLong(0)) } }.orEmpty()
