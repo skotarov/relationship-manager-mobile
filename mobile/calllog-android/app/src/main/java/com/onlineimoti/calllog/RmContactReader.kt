@@ -21,14 +21,14 @@ internal object RmContactReader {
 
     fun collectRmRecords(context: Context, onlyPhone: String = ""): Map<String, RmRecord> {
         val rawRecords = linkedMapOf<Long, MutableRmRecord>()
+        val accountNames = CrmContactAccountStore.accountNames()
         val rawSelection = buildString {
-            append("${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.RawContacts.DELETED}=0")
+            append("${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND ${ContactsContract.RawContacts.DELETED}=0")
             if (onlyPhone.isNotBlank()) append(" AND ${ContactsContract.RawContacts.SYNC1}=?")
         }
         val rawArgs = buildList {
             add(CallReportContactIntegration.ACCOUNT_TYPE)
-            add(CrmContactAccountStore.ACCOUNT_NAME)
-            add(CrmContactAccountStore.LEGACY_ACCOUNT_NAME)
+            addAll(accountNames.toList())
             if (onlyPhone.isNotBlank()) add(onlyPhone)
         }.toTypedArray()
         runCatching {
