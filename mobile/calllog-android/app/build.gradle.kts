@@ -78,9 +78,9 @@ android {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             output.outputFileName = if (buildType.name == "release") {
-                "relation-management-release-optimized.apk"
+                "relationship-management-release-optimized.apk"
             } else {
-                "relation-management-debug.apk"
+                "relationship-management-debug.apk"
             }
         }
     }
