@@ -177,9 +177,9 @@ internal object RmContactReconciler {
             fields = CallReportStableCrmContactWriter.Fields(
                 originalPhone = real.phone,
                 displayName = title,
-                organization = "Relation Management",
+                organization = "Relationship Management",
                 jobTitle = "RM auto",
-                groupName = "Relation Management",
+                groupName = "Relationship Management",
                 customText = "RM auto link",
                 givenName = parts.givenName,
                 middleName = parts.middleName,
