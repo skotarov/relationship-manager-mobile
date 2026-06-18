@@ -38,6 +38,9 @@ class PhoneNumberActionActivity : Activity() {
         if (sourceIntent == null) return ""
         val customDataPhone = CallReportContactIntegration.phoneFromDataUri(this, sourceIntent.data)
         if (customDataPhone.isNotBlank()) return PhoneNormalizer.normalize(customDataPhone)
+        searchQueryFromUri(sourceIntent.data)?.let { query ->
+            PhoneNormalizer.normalize(query).takeIf { it.isNotBlank() }?.let { return it }
+        }
         val candidates = listOfNotNull(
             sourceIntent.data?.schemeSpecificPart,
             sourceIntent.dataString,
@@ -50,5 +53,15 @@ class PhoneNumberActionActivity : Activity() {
         )
         val raw = candidates.firstOrNull { it.any(Char::isDigit) }.orEmpty()
         return PhoneNormalizer.normalize(raw)
+    }
+
+    private fun searchQueryFromUri(uri: Uri?): String? {
+        if (uri == null) return null
+        val host = uri.host.orEmpty().lowercase()
+        if (!host.endsWith("google.com") && !host.endsWith("google.bg")) return null
+        if (!uri.path.orEmpty().startsWith("/search")) return null
+        return uri.getQueryParameter("q")
+            ?: uri.getQueryParameter("query")
+            ?: uri.getQueryParameter("search_query")
     }
 }
