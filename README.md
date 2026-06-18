@@ -1,6 +1,6 @@
-# Relation Management Mobile
+# Relationship Management Mobile
 
-Mobile prototype and CI setup for the OnlineImoti relation management workflow.
+Mobile prototype and CI setup for the OnlineImoti relationship management workflow.
 
 ## Structure
 
@@ -12,7 +12,7 @@ Mobile prototype and CI setup for the OnlineImoti relation management workflow.
 
 The repository builds the Android app in GitHub Actions on `ubuntu-latest` with JDK 17, Android SDK 35 and Gradle 8.10.2.
 
-After a successful workflow run, download the `relation-management-debug-apk` artifact.
+After a successful workflow run, download the `relationship-management-debug-apk` artifact.
 
 ## Notes
 
