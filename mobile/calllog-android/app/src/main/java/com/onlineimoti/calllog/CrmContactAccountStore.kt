@@ -9,19 +9,24 @@ import android.content.Context
 import android.provider.ContactsContract
 
 object CrmContactAccountStore {
-    const val ACCOUNT_NAME = "Relation Management"
+    const val ACCOUNT_NAME = "Relationship Management"
+    const val PREVIOUS_ACCOUNT_NAME = "Relation Management"
     const val LEGACY_ACCOUNT_NAME = "Call Report"
     const val EXTRA_PHONE_LABEL = "RM доп."
+
+    fun accountNames(): Array<String> = arrayOf(ACCOUNT_NAME, PREVIOUS_ACCOUNT_NAME, LEGACY_ACCOUNT_NAME)
 
     fun ensureAccount(context: Context, syncAutomatically: Boolean = true) {
         val account = Account(ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE)
         val manager = AccountManager.get(context)
         runCatching {
             val accounts = manager.getAccountsByType(CallReportContactIntegration.ACCOUNT_TYPE)
-            val hasNew = accounts.any { it.name == ACCOUNT_NAME }
+            val hasCurrent = accounts.any { it.name == ACCOUNT_NAME }
+            val previous = accounts.firstOrNull { it.name == PREVIOUS_ACCOUNT_NAME }
             val legacy = accounts.firstOrNull { it.name == LEGACY_ACCOUNT_NAME }
             when {
-                hasNew -> Unit
+                hasCurrent -> Unit
+                previous != null -> manager.renameAccount(previous, ACCOUNT_NAME, null, null)
                 legacy != null -> manager.renameAccount(legacy, ACCOUNT_NAME, null, null)
                 else -> manager.addAccountExplicitly(account, null, null)
             }
@@ -35,11 +40,16 @@ object CrmContactAccountStore {
 
     private fun ensureAccountVisibility(context: Context, shouldSync: Boolean) {
         upsertAccountVisibility(context, ACCOUNT_NAME, shouldSync)
+        deleteAccountVisibility(context, PREVIOUS_ACCOUNT_NAME)
+        deleteAccountVisibility(context, LEGACY_ACCOUNT_NAME)
+    }
+
+    private fun deleteAccountVisibility(context: Context, accountName: String) {
         runCatching {
             context.contentResolver.delete(
                 ContactsContract.Settings.CONTENT_URI,
                 "${ContactsContract.Settings.ACCOUNT_NAME}=? AND ${ContactsContract.Settings.ACCOUNT_TYPE}=?",
-                arrayOf(LEGACY_ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
+                arrayOf(accountName, CallReportContactIntegration.ACCOUNT_TYPE),
             )
         }
     }
@@ -78,12 +88,13 @@ object CrmContactAccountStore {
     fun ensureGroup(context: Context, title: String): Long {
         val groupTitle = title.trim()
         if (groupTitle.isBlank()) return 0L
+        val names = accountNames()
         val existingId = runCatching {
             context.contentResolver.query(
                 ContactsContract.Groups.CONTENT_URI,
                 arrayOf(ContactsContract.Groups._ID),
-                "${ContactsContract.Groups.ACCOUNT_TYPE}=? AND ${ContactsContract.Groups.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.Groups.TITLE}=? AND ${ContactsContract.Groups.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, LEGACY_ACCOUNT_NAME, groupTitle),
+                "${ContactsContract.Groups.ACCOUNT_TYPE}=? AND ${ContactsContract.Groups.ACCOUNT_NAME} IN (?, ?, ?) AND ${ContactsContract.Groups.TITLE}=? AND ${ContactsContract.Groups.DELETED}=0",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, names[0], names[1], names[2], groupTitle),
                 null,
             )?.use { if (it.moveToFirst()) it.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
@@ -105,12 +116,13 @@ object CrmContactAccountStore {
     }
 
     fun findCallReportRawContactId(context: Context, phone: String): Long {
+        val names = accountNames()
         val bySync = runCatching {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?) AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, LEGACY_ACCOUNT_NAME, phone),
+                "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND ${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND ${ContactsContract.RawContacts.SYNC1}=? AND ${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, names[0], names[1], names[2], phone),
                 null,
             )?.use { if (it.moveToFirst()) it.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
