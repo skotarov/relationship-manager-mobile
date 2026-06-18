@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -130,6 +131,7 @@ class HomeActivity : AppCompatActivity() {
         binding.nextCallsButton.text = "Следващи $size"
         binding.homeCallsContainer.removeAllViews()
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
+        updatePhoneFilterStatusStyle()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
             binding.paginationContainer.visibility = View.GONE
@@ -176,10 +178,11 @@ class HomeActivity : AppCompatActivity() {
     private fun renderEmptyState() {
         binding.homeStatusText.text = when {
             activeSearchQuery.isNotBlank() -> "Няма резултати за „${activeSearchQuery.trim()}“."
-            activePhoneFilter.isNotBlank() && pageIndex == 0 -> "${activePhoneFilter} • няма разговори"
+            activePhoneFilter.isNotBlank() && pageIndex == 0 -> "Филтър: ${activePhoneFilter} • няма разговори"
             pageIndex == 0 -> "Няма намерени разговори."
             else -> "Няма повече разговори."
         }
+        updatePhoneFilterStatusStyle()
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = false
         binding.pageText.text = "Стр. ${pageIndex + 1}"
@@ -190,15 +193,33 @@ class HomeActivity : AppCompatActivity() {
         val startNumber = pageIndex * pageSize + 1
         val endNumber = pageIndex * pageSize + currentCalls.size
         binding.homeStatusText.text = when {
-            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> "Търсене „${activeSearchQuery.trim()}“ • ${activePhoneFilter} • $startNumber–$endNumber"
+            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> "Филтър: ${activePhoneFilter} • търсене „${activeSearchQuery.trim()}“ • $startNumber–$endNumber"
             activeSearchQuery.isNotBlank() -> "Търсене „${activeSearchQuery.trim()}“ • $startNumber–$endNumber"
-            activePhoneFilter.isNotBlank() -> "${activePhoneFilter} • $startNumber–$endNumber"
+            activePhoneFilter.isNotBlank() -> "Филтър: ${activePhoneFilter} • $startNumber–$endNumber"
             else -> "Разговори $startNumber–$endNumber"
         }
+        updatePhoneFilterStatusStyle()
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
         binding.pageText.text = "Стр. ${pageIndex + 1}"
         binding.paginationContainer.visibility = View.VISIBLE
+    }
+
+    private fun updatePhoneFilterStatusStyle() {
+        if (activePhoneFilter.isNotBlank()) {
+            binding.homeStatusText.background = roundedRect(
+                color = Color.rgb(255, 237, 213),
+                radius = dp(12),
+                strokeColor = Color.rgb(251, 146, 60),
+                strokeWidth = dp(1),
+            )
+            binding.homeStatusText.setTextColor(Color.rgb(154, 52, 18))
+            binding.homeStatusText.setPadding(dp(10), dp(6), dp(10), dp(6))
+        } else {
+            binding.homeStatusText.background = null
+            binding.homeStatusText.setTextColor(Color.rgb(71, 85, 105))
+            binding.homeStatusText.setPadding(0, 0, 0, 0)
+        }
     }
 
     private fun togglePhoneFilter(number: String) {
