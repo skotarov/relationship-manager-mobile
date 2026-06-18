@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Relation Management</string>
-    <string name="notification_channel_name">Relation Management</string>
+    <string name="app_name">Relationship Management</string>
+    <string name="notification_channel_name">Relationship Management</string>
     <string name="notification_channel_description">Caller lookup and quick open</string>
 
     <string name="home_title">RM Col Log</string>
@@ -64,15 +64,15 @@
 
     <string name="contact_link_title">Relationship Management linking in Android contacts</string>
     <string name="contact_link_show_crm_buttons">Show Contact link button</string>
-    <string name="contact_link_mode_app">As app — show Relation Management in linked apps</string>
-    <string name="contact_link_mode_contact">As contact — add Relation Management as linked contact</string>
+    <string name="contact_link_mode_app">As app — show Relationship Management in linked apps</string>
+    <string name="contact_link_mode_contact">As contact — add Relationship Management as linked contact</string>
     <string name="contact_link_description">The change applies on the next save through Contact link.</string>
     <string name="contact_link_bulk_title">Contacts sync</string>
     <string name="contact_link_register_all_button">Register all</string>
     <string name="contact_link_sync_all_button">Sync RM contacts</string>
     <string name="contact_link_debug_button">Repair RM records</string>
     <string name="contact_link_clean_orphans_button">Clean orphan RM records</string>
-    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relation Management registrations are skipped and not changed.</string>
+    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relationship Management registrations are skipped and not changed.</string>
     <string name="contact_link_sync_description">Unified sync: adds missing RM links, updates existing records and cleans orphan RM contacts.</string>
 
     <string name="popup_timeout_hint">Seconds for auto-close after call</string>
@@ -93,7 +93,7 @@
     <string name="permissions_overlay_button">Allow Display over other apps</string>
     <string name="permissions_call_screening_button">Activate Call screening</string>
     <string name="permissions_fullscreen_button">Allow Full-screen popup</string>
-    <string name="permissions_cleanup_contacts_button">Clean all Relation Management records</string>
+    <string name="permissions_cleanup_contacts_button">Clean all Relationship Management records</string>
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
     <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as Default caller ID / spam app.</string>
 
