@@ -162,6 +162,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.google.com" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="google.com" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="www.google.bg" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="google.bg" android:pathPrefix="/search" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.item/vnd.com.onlineimoti.calllog.history" />
             </intent-filter>
         </activity>
