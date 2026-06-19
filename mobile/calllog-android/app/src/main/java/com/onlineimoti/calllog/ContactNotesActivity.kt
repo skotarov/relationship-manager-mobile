@@ -121,7 +121,12 @@ class ContactNotesActivity : Activity() {
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
-        crmHistoryController.addSection(root, phone, ::openCallNoteEditor)
+        crmHistoryController.addSection(
+            root = root,
+            phone = phone,
+            openFilteredLog = { openRmCallLog(filtered = true) },
+            onEditCallNote = ::openCallNoteEditor,
+        )
 
         return ScrollView(this).apply {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
