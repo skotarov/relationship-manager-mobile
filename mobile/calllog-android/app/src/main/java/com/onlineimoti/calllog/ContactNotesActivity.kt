@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
     private var titleText: String = ""
+    private var backTargetsUnfilteredHome = false
     private var contactUpdateBusy = false
     private var contactAutoCheckStarted = false
     private var notesChangedReceiverRegistered = false
@@ -62,6 +63,7 @@ class ContactNotesActivity : Activity() {
         super.onCreate(savedInstanceState)
         phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
+        backTargetsUnfilteredHome = intent.getBooleanExtra(EXTRA_BACK_TARGETS_UNFILTERED_HOME, false)
         render()
         autoUpdateContactLinkOnce()
         crmHistoryController.loadOnce(phone)
@@ -193,6 +195,7 @@ class ContactNotesActivity : Activity() {
             title = titleText,
             phone = phone,
             contactExists = externalActions.hasDefaultContact(phone),
+            showRmCallLogButton = !backTargetsUnfilteredHome,
             goBack = ::finish,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
@@ -243,5 +246,6 @@ class ContactNotesActivity : Activity() {
     companion object {
         const val EXTRA_PHONE = "phone"
         const val EXTRA_TITLE = "title"
+        const val EXTRA_BACK_TARGETS_UNFILTERED_HOME = "back_targets_unfiltered_home"
     }
 }
