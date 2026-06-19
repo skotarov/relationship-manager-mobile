@@ -5,15 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
-import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -141,17 +142,6 @@ class ContactNotesActivity : Activity() {
 
     private fun crmSyncToggleRow(): LinearLayout {
         val enabled = CrmContactSyncStore.isEnabled(this, phone)
-        lateinit var checkBox: CheckBox
-        val toggle = {
-            val nowEnabled = CrmContactSyncStore.toggle(this@ContactNotesActivity, phone)
-            checkBox.isChecked = nowEnabled
-            Toast.makeText(
-                this@ContactNotesActivity,
-                if (nowEnabled) "Синхронизацията е включена" else "Синхронизацията е изключена",
-                Toast.LENGTH_SHORT,
-            ).show()
-            render()
-        }
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -159,22 +149,15 @@ class ContactNotesActivity : Activity() {
             isFocusable = true
             setPadding(0, dp(2), 0, dp(8))
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
-            checkBox = CheckBox(this@ContactNotesActivity).apply {
-                isChecked = enabled
-                contentDescription = "Синхронизирай"
-                setPadding(0, 0, 0, 0)
-                layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(2) }
-                setOnClickListener { toggle() }
-            }
-            addView(checkBox)
+
             addView(ImageView(this@ContactNotesActivity).apply {
                 setImageResource(R.drawable.ic_cloud_sync)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 alpha = if (enabled) 1f else 0.55f
-                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(6) }
+                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(7) }
             })
             addView(TextView(this@ContactNotesActivity).apply {
                 text = "Синхронизирай"
@@ -182,8 +165,44 @@ class ContactNotesActivity : Activity() {
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(if (enabled) Color.rgb(15, 23, 42) else Color.rgb(100, 116, 139))
             })
-            setOnClickListener { toggle() }
+            addView(android.view.View(this@ContactNotesActivity).apply {
+                layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+            })
+            addView(Switch(this@ContactNotesActivity).apply {
+                isChecked = enabled
+                showText = false
+                contentDescription = "Синхронизирай"
+                thumbTintList = syncSwitchThumbTint()
+                trackTintList = syncSwitchTrackTint()
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                setOnClickListener { setCrmSyncEnabled(isChecked) }
+            })
+            setOnClickListener { setCrmSyncEnabled(!enabled) }
         }
+    }
+
+    private fun setCrmSyncEnabled(enabled: Boolean) {
+        CrmContactSyncStore.setEnabled(this, phone, enabled)
+        Toast.makeText(
+            this,
+            if (enabled) "Синхронизацията е включена" else "Синхронизацията е изключена",
+            Toast.LENGTH_SHORT,
+        ).show()
+        render()
+    }
+
+    private fun syncSwitchThumbTint(): ColorStateList {
+        return ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(Color.WHITE, Color.WHITE),
+        )
+    }
+
+    private fun syncSwitchTrackTint(): ColorStateList {
+        return ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(Color.rgb(34, 197, 94), Color.rgb(203, 213, 225)),
+        )
     }
 
     private fun rmDebugBlock(): TextView {
