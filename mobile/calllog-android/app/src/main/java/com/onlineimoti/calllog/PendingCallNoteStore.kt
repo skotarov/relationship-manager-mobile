@@ -20,7 +20,8 @@ internal object PendingCallNoteStore {
     private const val KEY_DIRECTION = "direction"
     private const val KEY_STARTED_AT = "started_at"
     private const val MAX_PENDING_AGE_MS = 24 * 60 * 60 * 1000L
-    private const val MATCH_BEFORE_SESSION_MS = 30_000L
+    private const val MATCH_BEFORE_SESSION_MS = 6 * 60 * 60 * 1000L
+    private const val MATCH_AFTER_SAVE_MS = 5 * 60 * 1000L
     private val RETRY_DELAYS_MS = longArrayOf(0L, 1_000L, 3_000L, 7_000L, 15_000L)
 
     fun saveOrDelete(
@@ -119,10 +120,13 @@ internal object PendingCallNoteStore {
     }
 
     private fun findMatchingCall(context: Context, pending: PendingCallNote): PhoneCallRecord? {
-        val earliest = (pending.sessionStartedAt.takeIf { it > 0L } ?: pending.savedAt) - MATCH_BEFORE_SESSION_MS
-        return PhoneCallReader.callsForPhone(context, pending.phone, limit = 10).firstOrNull { call ->
+        val anchor = pending.sessionStartedAt.takeIf { it > 0L } ?: pending.savedAt
+        val earliest = anchor - MATCH_BEFORE_SESSION_MS
+        val latestAllowed = pending.savedAt.takeIf { it > 0L }?.plus(MATCH_AFTER_SAVE_MS) ?: Long.MAX_VALUE
+        return PhoneCallReader.callsForPhone(context, pending.phone, limit = 20).firstOrNull { call ->
             call.startedAt > 0L &&
                 call.startedAt >= earliest &&
+                call.startedAt <= latestAllowed &&
                 (pending.direction.isBlank() || call.direction.isBlank() || call.direction == pending.direction)
         }
     }
