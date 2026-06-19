@@ -42,7 +42,7 @@
             android:contentDescription="@string/open_default_call_log"
             android:padding="8dp"
             android:scaleType="center"
-            android:src="@drawable/ic_system_call_log" />
+            android:src="@drawable/ic_phone_call" />
 
         <ImageButton
             android:id="@+id/settingsButton"
