@@ -37,7 +37,7 @@ internal object RmContactSyncLayerStore {
             .ifBlank { ContactGroupFilter.resolveDisplayName(context, phone).orEmpty() }
             .ifBlank { RmContactReader.findRmRecord(context, phone)?.displayName.orEmpty() }
             .ifBlank { phone }
-        val note = cloudMarkedNote(ContactNoteReader.generalNoteForPhone(context, phone))
+        val note = cloudMarkedNote(ContactNoteReader.generalNoteForPhone(context, phone), phone)
         val fields = CallReportStableCrmContactWriter.Fields(
             originalPhone = phone,
             displayName = displayName,
@@ -53,9 +53,24 @@ internal object RmContactSyncLayerStore {
         )
     }
 
-    private fun cloudMarkedNote(note: String): String {
-        val cleaned = note.trim().removePrefix(CLOUD_NOTE_PREFIX).trim()
-        return listOf(CLOUD_NOTE_PREFIX, cleaned).filter { it.isNotBlank() }.joinToString(" ")
+    private fun cloudMarkedNote(note: String, phone: String): String {
+        val cleaned = removeExistingCloudMarker(note)
+        return if (cleaned.isBlank()) {
+            "$CLOUD_NOTE_PREFIX $phone |"
+        } else {
+            "$CLOUD_NOTE_PREFIX $phone | $cleaned"
+        }
+    }
+
+    private fun removeExistingCloudMarker(note: String): String {
+        val trimmed = note.trim()
+        if (!trimmed.startsWith(CLOUD_NOTE_PREFIX)) return trimmed
+        val withoutCloud = trimmed.removePrefix(CLOUD_NOTE_PREFIX).trim()
+        return if (withoutCloud.contains("|")) {
+            withoutCloud.substringAfter("|").trim()
+        } else {
+            withoutCloud
+        }
     }
 
     private fun clearCloudData(context: Context, phone: String): Boolean {
