@@ -10,6 +10,7 @@ class HomeActions(
     private val activity: Activity,
     private val binding: ActivityHomeBinding,
     private val startTemporaryNoteRefresh: () -> Unit,
+    private val isUnfilteredHome: () -> Boolean = { false },
 ) {
     fun openSettings() {
         activity.startActivity(Intent(activity, MainActivity::class.java))
@@ -25,6 +26,7 @@ class HomeActions(
             Intent(activity, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, call.number)
                 .putExtra(ContactNotesActivity.EXTRA_TITLE, displayName.ifBlank { call.number })
+                .putExtra(ContactNotesActivity.EXTRA_BACK_TARGETS_UNFILTERED_HOME, isUnfilteredHome())
         )
     }
 
