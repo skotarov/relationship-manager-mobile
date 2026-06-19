@@ -53,20 +53,14 @@ class ContactNotesHeaderUi(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(50), dp(8), 0, 0)
+                setPadding(0, dp(8), 0, 0)
                 if (phone.isNotBlank()) {
                     addView(phoneNumberButton(phone, openDialer))
+                    addView(textDivider())
                 }
-                addView(contactNameView(displayName, contactExists, openDefaultContact).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginStart = if (phone.isNotBlank()) dp(10) else 0
-                    }
+                addView(contactNameView(displayName, contactExists, contactDescription, openDefaultContact).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 })
-                if (!contactExists) {
-                    addView(iconButton(R.drawable.ic_contact_person_add, contactDescription, openDefaultContact).apply {
-                        layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
-                    })
-                }
             })
         }
     }
@@ -122,37 +116,57 @@ class ContactNotesHeaderUi(
             gravity = Gravity.CENTER_VERTICAL
             isClickable = true
             isFocusable = true
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(Color.rgb(239, 246, 255), dp(13), Color.rgb(147, 197, 253), dp(1))
+            setPadding(0, dp(4), dp(4), dp(4))
             setOnClickListener { action() }
             addView(ImageView(activity).apply {
                 setImageResource(R.drawable.ic_phone_call)
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(19), dp(19)).apply { marginEnd = dp(5) }
+                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(5) }
             })
             addView(TextView(activity).apply {
                 text = phone
-                textSize = 14f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(30, 64, 175))
+                textSize = 15f
+                typeface = Typeface.DEFAULT
+                setTextColor(Color.rgb(17, 24, 39))
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
     }
 
-    private fun contactNameView(displayName: String, contactExists: Boolean, action: () -> Unit): TextView {
+    private fun contactNameView(displayName: String, contactExists: Boolean, description: String, action: () -> Unit): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setPadding(0, dp(4), 0, dp(4))
+            setOnClickListener { action() }
+            addView(ImageView(activity).apply {
+                setImageResource(if (contactExists) R.drawable.ic_contact_person else R.drawable.ic_contact_person_add)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(6) }
+            })
+            addView(TextView(activity).apply {
+                text = if (contactExists) displayName.ifBlank { description } else "Нов"
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(30, 64, 175))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        }
+    }
+
+    private fun textDivider(): TextView {
         return TextView(activity).apply {
-            text = displayName.ifBlank { if (contactExists) "Отвори контакт" else "Няма контакт" }
-            textSize = 18f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(71, 85, 105))
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            if (contactExists) {
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { action() }
+            text = "|"
+            textSize = 17f
+            setTextColor(Color.rgb(148, 163, 184))
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = dp(6)
+                marginEnd = dp(9)
             }
         }
     }
