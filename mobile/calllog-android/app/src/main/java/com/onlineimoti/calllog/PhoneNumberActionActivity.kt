@@ -58,7 +58,7 @@ class PhoneNumberActionActivity : Activity() {
     private fun searchQueryFromUri(uri: Uri?): String? {
         if (uri == null) return null
         val host = uri.host.orEmpty().lowercase()
-        if (!host.endsWith("google.com") && !host.endsWith("google.bg")) return null
+        if (!host.endsWith("google.com") && !host.endsWith("google.bg") && !host.endsWith("google.de")) return null
         if (!uri.path.orEmpty().startsWith("/search")) return null
         return uri.getQueryParameter("q")
             ?: uri.getQueryParameter("query")
