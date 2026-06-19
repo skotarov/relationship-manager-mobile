@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import android.os.Process
 import android.os.SystemClock
+import android.provider.ContactsContract
 
 internal object RmContactReconciler {
     private const val CONTACT_PAUSE_MS = 4L
@@ -129,7 +130,7 @@ internal object RmContactReconciler {
         return when {
             real != null && rm == null -> RmContactReconcileResult(RmContactReconcileAction.ADDED, phone)
             real != null && rm != null -> {
-                if (isRmRecordCurrent(rm, real)) {
+                if (isRmRecordCurrentWithoutNote(rm, real)) {
                     RmContactReconcileResult(RmContactReconcileAction.UNCHANGED, phone)
                 } else {
                     RmContactReconcileResult(RmContactReconcileAction.UPDATED, phone)
@@ -153,8 +154,9 @@ internal object RmContactReconciler {
                     RmContactReconcileResult(if (created) RmContactReconcileAction.ADDED else RmContactReconcileAction.FAILED, phone)
                 }
                 real != null && rm != null -> {
-                    if (isRmRecordCurrent(rm, real)) {
-                        RmContactReconcileResult(RmContactReconcileAction.UNCHANGED, phone)
+                    if (isRmRecordCurrent(context, rm, real)) {
+                        val markersOk = RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
+                        RmContactReconcileResult(if (markersOk) RmContactReconcileAction.UNCHANGED else RmContactReconcileAction.FAILED, phone)
                     } else {
                         val updated = saveWithStablePath(context, real)
                         RmContactReconcileResult(if (updated) RmContactReconcileAction.UPDATED else RmContactReconcileAction.FAILED, phone)
@@ -172,15 +174,16 @@ internal object RmContactReconciler {
     private fun saveWithStablePath(context: Context, real: BulkContactCandidate): Boolean {
         val title = RmContactNameResolver.titleFor(real)
         val parts = RmContactNameResolver.structuredParts(title)
-        return CrmContactLinkSaver.save(
+        val saved = CrmContactLinkSaver.save(
             context = context,
             fields = CallReportStableCrmContactWriter.Fields(
                 originalPhone = real.phone,
                 displayName = title,
                 organization = "Relationship Management",
                 jobTitle = "RM auto",
-                groupName = "Relationship Management",
+                groupName = RmContactSyncLayerStore.groupNameForCurrentRules(context, real.phone),
                 customText = "RM auto link",
+                note = RmContactSyncLayerStore.noteForCurrentRules(context, real.phone),
                 givenName = parts.givenName,
                 middleName = parts.middleName,
                 familyName = parts.familyName,
@@ -189,9 +192,15 @@ internal object RmContactReconciler {
             phone = real.phone,
             title = title,
         )
+        if (!saved) return false
+        return RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
     }
 
-    private fun isRmRecordCurrent(rm: RmRecord, real: BulkContactCandidate): Boolean {
+    private fun isRmRecordCurrent(context: Context, rm: RmRecord, real: BulkContactCandidate): Boolean {
+        return isRmRecordCurrentWithoutNote(rm, real) && isRmNoteCurrent(context, rm.rawContactId, real.phone)
+    }
+
+    private fun isRmRecordCurrentWithoutNote(rm: RmRecord, real: BulkContactCandidate): Boolean {
         val title = RmContactNameResolver.titleFor(real)
         val sameName = namesEqual(rm.displayName, title)
         val sameParts = if (sameName) true else {
@@ -207,6 +216,20 @@ internal object RmContactReconciler {
             rm.nameRowId > 0L &&
             rm.phoneRowId > 0L &&
             rm.historyRowId > 0L
+    }
+
+    private fun isRmNoteCurrent(context: Context, rawId: Long, phone: String): Boolean {
+        val expected = RmContactSyncLayerStore.noteForCurrentRules(context, phone).trim()
+        val current = runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Note.NOTE),
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+                arrayOf(rawId.toString(), ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE),
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0).orEmpty() else "" } ?: ""
+        }.getOrDefault("").trim()
+        return current == expected
     }
 
     private fun namesEqual(left: String, right: String): Boolean {
