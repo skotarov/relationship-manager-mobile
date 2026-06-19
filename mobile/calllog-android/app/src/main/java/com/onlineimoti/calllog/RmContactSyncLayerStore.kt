@@ -16,9 +16,14 @@ internal object RmContactSyncLayerStore {
 
         if (!enabled) {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
-            val layerCleared = clearCloudData(appContext, normalizedPhone)
-            val labelCleared = clearVisibleCloudSyncLabels(appContext, normalizedPhone)
-            return layerCleared && labelCleared
+            val visibleTargets = findVisibleRawContacts(appContext, normalizedPhone)
+            return if (visibleTargets.isEmpty()) {
+                deleteRmLayer(appContext, normalizedPhone)
+            } else {
+                val layerCleared = clearCloudData(appContext, normalizedPhone)
+                val labelCleared = clearVisibleCloudSyncLabels(appContext, visibleTargets)
+                layerCleared && labelCleared
+            }
         }
 
         val updated = ensureLayerWithCurrentNote(appContext, normalizedPhone, title)
@@ -99,6 +104,20 @@ internal object RmContactSyncLayerStore {
         return runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops) }.isSuccess
     }
 
+    private fun deleteRmLayer(context: Context, phone: String): Boolean {
+        if (!RmContactPermissions.canReadAndWriteContacts(context)) return false
+        val rawId = CrmContactAccountStore.findCallReportRawContactId(context, phone)
+        if (rawId <= 0L) return true
+        val deleted = runCatching {
+            context.contentResolver.delete(
+                ContactsContract.RawContacts.CONTENT_URI,
+                "${ContactsContract.RawContacts._ID}=?",
+                arrayOf(rawId.toString()),
+            )
+        }.getOrDefault(0)
+        return deleted > 0 || CrmContactAccountStore.findCallReportRawContactId(context, phone) <= 0L
+    }
+
     private fun applyVisibleCloudSyncLabels(context: Context, phone: String): Boolean {
         val targets = findVisibleRawContacts(context, phone)
         if (targets.isEmpty()) return true
@@ -109,8 +128,7 @@ internal object RmContactSyncLayerStore {
         }
     }
 
-    private fun clearVisibleCloudSyncLabels(context: Context, phone: String): Boolean {
-        val targets = findVisibleRawContacts(context, phone)
+    private fun clearVisibleCloudSyncLabels(context: Context, targets: List<VisibleRawContact>): Boolean {
         if (targets.isEmpty()) return true
         return targets.all { target ->
             val groupId = findVisibleGroup(context, target.accountName, target.accountType, CLOUD_SYNC_GROUP_NAME)
