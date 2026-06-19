@@ -40,8 +40,6 @@ class ContactNotesHeaderUi(
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
                 addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
-                addView(verticalDivider())
-                addView(iconButton(R.drawable.ic_call_log_filter, "Разговори само с този номер", openRmCallLogFiltered))
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
                 })
@@ -167,16 +165,6 @@ class ContactNotesHeaderUi(
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 marginStart = dp(6)
                 marginEnd = dp(9)
-            }
-        }
-    }
-
-    private fun verticalDivider(): View {
-        return View(activity).apply {
-            setBackgroundColor(Color.rgb(203, 213, 225))
-            layoutParams = LinearLayout.LayoutParams(dp(1), dp(28)).apply {
-                marginStart = dp(4)
-                marginEnd = dp(12)
             }
         }
     }
