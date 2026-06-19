@@ -5,8 +5,12 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Launcher foreground: raised call-log bubble over a horizontal phone handset. -->
-    <group>
+    <!-- Launcher foreground: raised call-log bubble over a horizontal phone handset, reduced for adaptive icon safe area. -->
+    <group
+        android:scaleX="0.70"
+        android:scaleY="0.70"
+        android:translateX="16.2"
+        android:translateY="16.2">
         <!-- Speech bubble. -->
         <path
             android:fillColor="#FFFFFF"
