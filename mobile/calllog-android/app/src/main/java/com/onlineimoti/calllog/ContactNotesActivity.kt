@@ -192,6 +192,16 @@ class ContactNotesActivity : Activity() {
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
+            openRmCallLog = { openRmCallLog(filtered = false) },
+            openRmCallLogFiltered = { openRmCallLog(filtered = true) },
+        )
+    }
+
+    private fun openRmCallLog(filtered: Boolean) {
+        startActivity(
+            Intent(this, HomeActivity::class.java).apply {
+                if (filtered && phone.isNotBlank()) putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
+            }
         )
     }
 
