@@ -6,6 +6,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.text.SimpleDateFormat
@@ -70,7 +72,12 @@ internal class ContactNotesCrmHistoryController(
         error = false
     }
 
-    fun addSection(root: LinearLayout, phone: String, onEditCallNote: (ContactCallNote) -> Unit) {
+    fun addSection(
+        root: LinearLayout,
+        phone: String,
+        openFilteredLog: () -> Unit,
+        onEditCallNote: (ContactCallNote) -> Unit,
+    ) {
         val localCalls = PhoneCallReader.callsForPhone(activity, phone, limit = 100)
         val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
         val latestCall = localCalls.firstOrNull()
@@ -87,10 +94,55 @@ internal class ContactNotesCrmHistoryController(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(14) }
 
-            addView(headerUi.sectionTitleWithDrawable("Хронология", R.drawable.ic_system_call_log))
+            addView(historyTitleRow(openFilteredLog))
             timeline.forEach { item -> addTimelineCard(item, onEditCallNote) }
             addStatusIfNeeded(this, timeline, hiddenCallsWithoutNotes.coerceAtLeast(0))
         })
+    }
+
+    private fun historyTitleRow(openFilteredLog: () -> Unit): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(14), 0, dp(8))
+            addView(ImageView(activity).apply {
+                setImageResource(R.drawable.ic_system_call_log)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
+            })
+            addView(TextView(activity).apply {
+                text = "Хронология"
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(30, 41, 59))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            })
+            addView(filteredLogTitleAction(openFilteredLog))
+        }
+    }
+
+    private fun filteredLogTitleAction(openFilteredLog: () -> Unit): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setPadding(dp(10), 0, 0, 0)
+            setOnClickListener { openFilteredLog() }
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            addView(ImageView(activity).apply {
+                setImageResource(R.drawable.ic_call_log_filter)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(21), dp(21)).apply { marginEnd = dp(4) }
+            })
+            addView(TextView(activity).apply {
+                text = "пълен лог"
+                textSize = 13.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(30, 64, 175))
+                maxLines = 1
+            })
+        }
     }
 
     private fun buildTimeline(localNotes: List<ContactCallNote>, latestCallWithoutNote: PhoneCallRecord?): List<TimelineItem> {
