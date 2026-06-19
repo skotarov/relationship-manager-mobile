@@ -35,14 +35,18 @@ internal object RmContactSyncLayerStore {
             .ifBlank { RmContactReader.findRmRecord(context, phone)?.displayName.orEmpty() }
             .ifBlank { phone }
         val note = ContactNoteReader.generalNoteForPhone(context, phone)
-        return CallReportStableCrmContactWriter.save(
+        val fields = CallReportStableCrmContactWriter.Fields(
+            originalPhone = phone,
+            displayName = displayName,
+            note = note,
+            groupName = CrmContactAccountStore.ACCOUNT_NAME,
+        )
+        return CrmContactLinkSaver.save(
             context = context,
-            fields = CallReportStableCrmContactWriter.Fields(
-                originalPhone = phone,
-                displayName = displayName,
-                note = note,
-                groupName = CrmContactAccountStore.ACCOUNT_NAME,
-            ),
+            fields = fields,
+            mode = ConfigStore.load(context).contactLinkMode,
+            phone = phone,
+            title = displayName,
         )
     }
 
