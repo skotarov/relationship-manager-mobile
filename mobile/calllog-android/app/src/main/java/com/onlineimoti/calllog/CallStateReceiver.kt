@@ -17,13 +17,13 @@ class CallStateReceiver : BroadcastReceiver() {
 
         val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
         val hasCallLog = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
-        if (!hasPhoneState || !hasCallLog) return
+        if (!hasPhoneState) return
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
 
         if (state == TelephonyManager.EXTRA_STATE_IDLE) {
-            handleCallEnded(context)
+            handleCallEnded(context, hasCallLog)
             return
         }
         if (number.isBlank()) return
@@ -46,10 +46,21 @@ class CallStateReceiver : BroadcastReceiver() {
         showLookup(context, number, direction, fullscreen = direction == "in")
     }
 
-    private fun handleCallEnded(context: Context) {
-        val endedCall = CallLifecycleStore.takeEndedCall(context) ?: return
+    private fun handleCallEnded(context: Context, hasCallLog: Boolean) {
+        val endedCall = CallLifecycleStore.takeEndedCall(context) ?: latestEndedCallFromLog(context, hasCallLog) ?: return
         if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) return
         showPostCallPrompt(context, endedCall.number, endedCall.direction)
+    }
+
+    private fun latestEndedCallFromLog(context: Context, hasCallLog: Boolean): ActiveCallRecord? {
+        if (!hasCallLog) return null
+        val latest = PhoneCallReader.latestCall(context) ?: return null
+        val now = System.currentTimeMillis()
+        val endedAt = latest.startedAt + latest.durationSeconds.coerceAtLeast(0L) * 1000L
+        if (latest.number.isBlank() || latest.startedAt <= 0L) return null
+        if (endedAt > now + 60_000L) return null
+        if (now - endedAt > 2 * 60_000L) return null
+        return ActiveCallRecord(number = latest.number, direction = latest.direction, startedAt = latest.startedAt)
     }
 
     private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
