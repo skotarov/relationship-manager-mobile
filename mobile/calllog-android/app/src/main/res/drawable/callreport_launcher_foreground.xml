@@ -5,31 +5,38 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- White chat bubble reduced by another 15%, centered for Android adaptive icon masks. -->
-    <group
-        android:scaleX="0.7225"
-        android:scaleY="0.7225"
-        android:translateX="15"
-        android:translateY="15">
-
+    <!-- Launcher foreground: raised call-log bubble over a horizontal phone handset. -->
+    <group>
+        <!-- Speech bubble. -->
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M31,31 C25,31 20,36 20,42 L20,64 C20,70 25,75 31,75 L39,75 L31,86 L50,75 L77,75 C83,75 88,70 88,64 L88,42 C88,36 83,31 77,31 Z" />
+            android:pathData="M54,20 C36.8,20 25,31.5 25,46.2 C25,60.2 36.2,69.4 50.1,70.8 L54,81 L61.2,70.1 C73.6,67.6 83,58.4 83,46.2 C83,31.5 71.2,20 54,20 Z" />
 
-        <!-- Smooth the tail connection. -->
+        <!-- Call-log list cutouts inside the bubble. -->
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M42,37 L61,37 C63,37 64.4,38.4 64.4,40.1 C64.4,41.9 63,43.2 61,43.2 L42,43.2 C40,43.2 38.6,41.9 38.6,40.1 C38.6,38.4 40,37 42,37 Z" />
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M69.5,36.7 m-3.6,0 a3.6,3.6 0,1 0,7.2 0 a3.6,3.6 0,1 0,-7.2 0" />
+
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M42,47.2 L59,47.2 C61,47.2 62.4,48.6 62.4,50.3 C62.4,52.1 61,53.4 59,53.4 L42,53.4 C40,53.4 38.6,52.1 38.6,50.3 C38.6,48.6 40,47.2 42,47.2 Z" />
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M69.5,46.9 m-3.6,0 a3.6,3.6 0,1 0,7.2 0 a3.6,3.6 0,1 0,-7.2 0" />
+
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M42,57.4 L56,57.4 C58,57.4 59.4,58.8 59.4,60.5 C59.4,62.3 58,63.6 56,63.6 L42,63.6 C40,63.6 38.6,62.3 38.6,60.5 C38.6,58.8 40,57.4 42,57.4 Z" />
+        <path
+            android:fillColor="#0069FF"
+            android:pathData="M69.5,57.1 m-3.6,0 a3.6,3.6 0,1 0,7.2 0 a3.6,3.6 0,1 0,-7.2 0" />
+
+        <!-- Horizontal upward-facing phone handset. -->
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M37,69 C40,72 45,74 50,75 L34,84 C34,78 35,73 37,69 Z" />
-
-        <!-- Blue ellipsis dots. -->
-        <path
-            android:fillColor="#0069FF"
-            android:pathData="M42,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
-        <path
-            android:fillColor="#0069FF"
-            android:pathData="M54,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
-        <path
-            android:fillColor="#0069FF"
-            android:pathData="M66,53 m-4.2,0 a4.2,4.2 0,1 0,8.4 0 a4.2,4.2 0,1 0,-8.4 0" />
+            android:pathData="M23.8,73.5 C27.2,69.7 32.7,69 36.4,72.2 L43,78 C45.1,79.8 45.6,82.9 44.1,85.2 L42.4,87.8 C45.6,90.4 49.8,92.2 54,92.2 C58.2,92.2 62.4,90.4 65.6,87.8 L63.9,85.2 C62.4,82.9 62.9,79.8 65,78 L71.6,72.2 C75.3,69 80.8,69.7 84.2,73.5 L88.5,78.3 C90.6,80.7 90.2,84.4 87.8,86.4 C78.2,94.3 66.7,99 54,99 C41.3,99 29.8,94.3 20.2,86.4 C17.8,84.4 17.4,80.7 19.5,78.3 Z" />
     </group>
 </vector>
