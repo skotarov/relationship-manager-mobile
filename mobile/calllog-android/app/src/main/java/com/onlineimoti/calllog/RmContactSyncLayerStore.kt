@@ -20,9 +20,10 @@ internal object RmContactSyncLayerStore {
             return if (visibleTargets.isEmpty()) {
                 deleteRmLayer(appContext, normalizedPhone)
             } else {
-                val layerCleared = clearCloudData(appContext, normalizedPhone)
+                val cloudMarkerRemoved = removeCloudMarkerFromRmNote(appContext, normalizedPhone)
+                val rmCloudLabelRemoved = removeRmCloudSyncMembership(appContext, normalizedPhone)
                 val labelCleared = clearVisibleCloudSyncLabels(appContext, visibleTargets)
-                layerCleared && labelCleared
+                cloudMarkerRemoved && rmCloudLabelRemoved && labelCleared
             }
         }
 
@@ -83,25 +84,51 @@ internal object RmContactSyncLayerStore {
         }
     }
 
-    private fun clearCloudData(context: Context, phone: String): Boolean {
+    private fun removeCloudMarkerFromRmNote(context: Context, phone: String): Boolean {
         if (!RmContactPermissions.canReadAndWriteContacts(context)) return false
         val rawId = CrmContactAccountStore.findCallReportRawContactId(context, phone)
         if (rawId <= 0L) return true
-        val keepMimes = arrayOf(
-            ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
-            ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
-            CallReportContactIntegration.HISTORY_MIME_TYPE,
-        )
-        val placeholders = keepMimes.joinToString(",") { "?" }
-        val ops = arrayListOf(
+        val noteRow = findRmNoteRow(context, rawId) ?: return true
+        val cleanedNote = removeExistingCloudMarker(noteRow.note)
+        val op = if (cleanedNote.isBlank()) {
             ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
-                .withSelection(
-                    "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE} NOT IN ($placeholders)",
-                    arrayOf(rawId.toString(), *keepMimes),
-                )
+                .withSelection("${ContactsContract.Data._ID}=?", arrayOf(noteRow.id.toString()))
                 .build()
-        )
-        return runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops) }.isSuccess
+        } else {
+            ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+                .withSelection("${ContactsContract.Data._ID}=?", arrayOf(noteRow.id.toString()))
+                .withValue(ContactsContract.CommonDataKinds.Note.NOTE, cleanedNote)
+                .build()
+        }
+        return runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, arrayListOf(op)) }.isSuccess
+    }
+
+    private data class NoteRow(val id: Long, val note: String)
+
+    private fun findRmNoteRow(context: Context, rawId: Long): NoteRow? {
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.Data._ID, ContactsContract.CommonDataKinds.Note.NOTE),
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+                arrayOf(rawId.toString(), ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    NoteRow(cursor.getLong(0), cursor.getString(1).orEmpty())
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+    }
+
+    private fun removeRmCloudSyncMembership(context: Context, phone: String): Boolean {
+        val rawId = CrmContactAccountStore.findCallReportRawContactId(context, phone)
+        if (rawId <= 0L) return true
+        val groupId = findVisibleGroup(context, CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE, CLOUD_SYNC_GROUP_NAME)
+        if (groupId <= 0L) return true
+        return deleteGroupMembership(context, rawId, groupId)
     }
 
     private fun deleteRmLayer(context: Context, phone: String): Boolean {
