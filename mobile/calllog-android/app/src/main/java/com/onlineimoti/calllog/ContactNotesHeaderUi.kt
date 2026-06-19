@@ -139,8 +139,8 @@ class ContactNotesHeaderUi(
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(30, 64, 175))
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            maxLines = 2
+            ellipsize = null
             isClickable = true
             isFocusable = true
             setPadding(0, dp(4), 0, dp(4))
