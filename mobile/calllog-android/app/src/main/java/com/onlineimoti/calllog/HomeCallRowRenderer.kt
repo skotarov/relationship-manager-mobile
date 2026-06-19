@@ -6,11 +6,13 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
@@ -75,15 +77,7 @@ internal class HomeCallRowRenderer(
             textSize = 12.5f
             maxLines = 1
         })
-        textColumn.addView(TextView(activity).apply {
-            val mainTextColor = activity.getColor(R.color.calllog_text)
-            text = highlightedText(displayName, highlightQuery, mainTextColor)
-            setTextColor(mainTextColor)
-            textSize = 15f
-            setTypeface(typeface, Typeface.BOLD)
-            maxLines = 1
-            setPadding(0, dp(2), 0, 0)
-        })
+        textColumn.addView(mainNameRow(call, displayName, highlightQuery))
         if (!contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
             textColumn.addView(TextView(activity).apply {
@@ -126,6 +120,35 @@ internal class HomeCallRowRenderer(
 
         card.addView(row)
         return card
+    }
+
+    private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
+        val mainTextColor = activity.getColor(R.color.calllog_text)
+        val titleValue = displayName.ifBlank { call.number }
+        val showCloud = ConfigStore.load(activity).remoteEnabled && CrmContactSyncStore.isEnabled(activity, call.number)
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(2), 0, 0)
+            addView(TextView(activity).apply {
+                text = highlightedText(titleValue, highlightQuery, mainTextColor)
+                setTextColor(mainTextColor)
+                textSize = 15f
+                setTypeface(typeface, Typeface.BOLD)
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            if (showCloud) {
+                addView(ImageView(activity).apply {
+                    setImageResource(R.drawable.ic_cloud_sync)
+                    contentDescription = "Синхронизира се със сървъра"
+                    alpha = 0.82f
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(4) }
+                })
+            }
+        }
     }
 
     private fun highlightedText(value: String, query: String, textColor: Int): CharSequence {
