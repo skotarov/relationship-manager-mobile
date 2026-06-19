@@ -53,10 +53,11 @@ internal object CallNoteWriter {
     }
 
     private fun syncToCrmIfNeeded(context: Context, phone: String, text: String, result: CallNoteWriteResult) {
-        if (!result.saved || text.trim().isBlank()) return
+        if (!result.saved) return
         if (result.savedAsGeneralNote) {
-            CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
-        } else if (result.target.hasCall) {
+            RmContactSyncLayerStore.refreshNoteIfEnabled(context, phone)
+            if (text.trim().isNotBlank()) CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
+        } else if (result.target.hasCall && text.trim().isNotBlank()) {
             val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
             CrmNoteSyncer.syncCallIfEnabled(
                 context = context,
