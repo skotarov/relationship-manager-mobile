@@ -79,7 +79,7 @@ class ContactNotesHeaderUi(
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(50), dp(8), 0, 0)
-                addView(actionButton("RM Call Log", openRmCallLog).apply {
+                addView(actionButton("Всички разговори", openRmCallLog).apply {
                     layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(8) }
                 })
                 addView(actionButton("Само този номер", openRmCallLogFiltered).apply {
