@@ -22,6 +22,7 @@ class ContactNotesHeaderUi(
         title: String,
         phone: String,
         contactExists: Boolean,
+        showRmCallLogButton: Boolean,
         goBack: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
@@ -43,8 +44,10 @@ class ContactNotesHeaderUi(
                 addView(iconButton(R.drawable.ic_arrow_back, "Назад", goBack).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
-                addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
-                addView(verticalDivider())
+                if (showRmCallLogButton) {
+                    addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
+                    addView(verticalDivider())
+                }
                 addView(iconButton(contactIcon, contactDescription, openDefaultContact))
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
