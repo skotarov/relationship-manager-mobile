@@ -22,7 +22,14 @@ class HomeActivity : AppCompatActivity() {
     private val searchGeneration = AtomicInteger(0)
     private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
     private val noteSavedReceiver by lazy { HomeNoteSavedReceiverController(this, ::renderCalls) }
-    private val homeActions by lazy { HomeActions(this, binding, ::startTemporaryNoteRefresh) }
+    private val homeActions by lazy {
+        HomeActions(
+            activity = this,
+            binding = binding,
+            startTemporaryNoteRefresh = ::startTemporaryNoteRefresh,
+            isUnfilteredHome = { activePhoneFilter.isBlank() && activeSearchQuery.isBlank() },
+        )
+    }
     private val searchController by lazy {
         HomeSearchController(
             context = this,
