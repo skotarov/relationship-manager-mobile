@@ -4,21 +4,29 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
+    <!-- Quick Settings icon: call-log bubble over a phone handset. Monochrome for QS tinting. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3.2 C8.15,3.2 5.45,5.68 5.45,8.8 C5.45,11.66 7.86,13.63 10.8,13.98 L12,16.4 L13.78,13.88 C16.53,13.28 18.55,11.32 18.55,8.8 C18.55,5.68 15.85,3.2 12,3.2 Z" />
+
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.8"
+        android:strokeColor="#FF0069FF"
+        android:strokeWidth="1.05"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M6,6.5 H18 C19.38,6.5 20.5,7.62 20.5,9 V13.5 C20.5,14.88 19.38,16 18,16 H11.2 L7.2,19.2 V16 H6 C4.62,16 3.5,14.88 3.5,13.5 V9 C3.5,7.62 4.62,6.5 6,6.5 Z" />
+        android:pathData="M9.35,7.25 H12.7 M9.35,9.2 H12.4 M9.35,11.15 H11.85" />
+
+    <path
+        android:fillColor="#FF0069FF"
+        android:pathData="M15.1,6.8 m-0.62,0 a0.62,0.62 0,1 0,1.24 0 a0.62,0.62 0,1 0,-1.24 0" />
+    <path
+        android:fillColor="#FF0069FF"
+        android:pathData="M15.1,8.75 m-0.62,0 a0.62,0.62 0,1 0,1.24 0 a0.62,0.62 0,1 0,-1.24 0" />
+    <path
+        android:fillColor="#FF0069FF"
+        android:pathData="M15.1,10.7 m-0.62,0 a0.62,0.62 0,1 0,1.24 0 a0.62,0.62 0,1 0,-1.24 0" />
 
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M8.3,11.25 m-1.1,0 a1.1,1.1 0,1 0,2.2 0 a1.1,1.1 0,1 0,-2.2 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,11.25 m-1.1,0 a1.1,1.1 0,1 0,2.2 0 a1.1,1.1 0,1 0,-2.2 0" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M15.7,11.25 m-1.1,0 a1.1,1.1 0,1 0,2.2 0 a1.1,1.1 0,1 0,-2.2 0" />
+        android:pathData="M5.25,15.35 C6.18,14.3 7.72,14.12 8.77,15.02 L10.2,16.24 C10.66,16.63 10.77,17.31 10.44,17.81 L10.08,18.36 C10.76,18.88 11.35,19.18 12,19.18 C12.65,19.18 13.24,18.88 13.92,18.36 L13.56,17.81 C13.23,17.31 13.34,16.63 13.8,16.24 L15.23,15.02 C16.28,14.12 17.82,14.3 18.75,15.35 L19.7,16.42 C20.16,16.94 20.08,17.75 19.54,18.2 C17.39,19.98 14.73,21 12,21 C9.27,21 6.61,19.98 4.46,18.2 C3.92,17.75 3.84,16.94 4.3,16.42 Z" />
 </vector>
