@@ -5,8 +5,7 @@ import android.content.Context
 import android.provider.ContactsContract
 
 internal object RmContactSyncLayerStore {
-    private const val CLOUD_SYNC_LABEL = "Cloud Sync"
-    private const val RELATIONSHIP_MANAGER_PHONE_LABEL = "Relationship Manager"
+    private const val CLOUD_SYNC_GROUP_NAME = "Cloud Sync"
     private const val CLOUD_NOTE_PREFIX = "☁"
 
     fun setEnabled(context: Context, phone: String, title: String, enabled: Boolean): Boolean {
@@ -43,19 +42,15 @@ internal object RmContactSyncLayerStore {
             originalPhone = phone,
             displayName = displayName,
             note = note,
-            groupName = "",
+            groupName = CLOUD_SYNC_GROUP_NAME,
         )
-        val saved = CrmContactLinkSaver.save(
+        return CrmContactLinkSaver.save(
             context = context,
             fields = fields,
             mode = ConfigStore.load(context).contactLinkMode,
             phone = phone,
             title = displayName,
         )
-        if (!saved) return false
-        val cloudLabeled = setRmPhoneLabel(context, phone, CLOUD_SYNC_LABEL)
-        val relationshipPhoneAdded = upsertRmPhoneLabel(context, phone, RELATIONSHIP_MANAGER_PHONE_LABEL, fallbackToFirstPhone = false)
-        return cloudLabeled && relationshipPhoneAdded
     }
 
     private fun cloudMarkedNote(note: String): String {
@@ -80,28 +75,6 @@ internal object RmContactSyncLayerStore {
                     arrayOf(rawId.toString(), *keepMimes),
                 )
                 .build()
-        )
-        CrmContactDataRows.deletePhone(context, ops, rawId, RELATIONSHIP_MANAGER_PHONE_LABEL)
-        val cleared = runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops) }.isSuccess
-        val relabeled = setRmPhoneLabel(context, phone, CrmContactAccountStore.ACCOUNT_NAME)
-        return cleared && relabeled
-    }
-
-    private fun setRmPhoneLabel(context: Context, phone: String, label: String): Boolean {
-        return upsertRmPhoneLabel(context, phone, label, fallbackToFirstPhone = true)
-    }
-
-    private fun upsertRmPhoneLabel(context: Context, phone: String, label: String, fallbackToFirstPhone: Boolean): Boolean {
-        val rawId = CrmContactAccountStore.findCallReportRawContactId(context, phone)
-        if (rawId <= 0L) return false
-        val ops = arrayListOf<ContentProviderOperation>()
-        CrmContactDataRows.upsertPhone(
-            context = context,
-            ops = ops,
-            rawId = rawId,
-            number = phone,
-            label = label,
-            fallbackToFirstPhone = fallbackToFirstPhone,
         )
         return runCatching { context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops) }.isSuccess
     }
