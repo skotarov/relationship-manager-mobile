@@ -206,7 +206,7 @@ class ContactNotesActivity : Activity() {
     private fun syncSwitchTrackTint(): ColorStateList {
         return ColorStateList(
             arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-            intArrayOf(Color.rgb(34, 197, 94), Color.rgb(203, 213, 225)),
+            intArrayOf(Color.rgb(0, 200, 83), Color.rgb(203, 213, 225)),
         )
     }
 
