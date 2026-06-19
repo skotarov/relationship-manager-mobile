@@ -182,10 +182,15 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
-        CrmContactSyncStore.setEnabled(this, phone, enabled)
+        val updated = RmContactSyncLayerStore.setEnabled(this, phone, titleText, enabled)
         Toast.makeText(
             this,
-            if (enabled) "Синхронизацията е включена" else "Синхронизацията е изключена",
+            when {
+                updated && enabled -> "Синхронизацията е включена"
+                updated -> "Синхронизацията е изключена"
+                enabled -> "Не успях да създам RM layer. Провери Contacts permissions."
+                else -> "Sync е изключен, но RM данните не бяха изчистени. Провери Contacts permissions."
+            },
             Toast.LENGTH_SHORT,
         ).show()
         render()
