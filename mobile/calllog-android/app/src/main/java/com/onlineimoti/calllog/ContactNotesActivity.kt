@@ -9,6 +9,9 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
+import android.widget.CheckBox
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -136,33 +139,50 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun crmSyncToggleRow(): TextView {
+    private fun crmSyncToggleRow(): LinearLayout {
         val enabled = CrmContactSyncStore.isEnabled(this, phone)
-        return TextView(this).apply {
-            text = if (enabled) "Към CRM: включено" else "Само локално"
-            textSize = 14.5f
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = android.view.Gravity.CENTER
-            setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(71, 85, 105))
-            background = if (enabled) {
-                roundedRect(Color.rgb(220, 252, 231), dp(16), Color.rgb(134, 239, 172), dp(1))
-            } else {
-                roundedRect(Color.rgb(241, 245, 249), dp(16), Color.rgb(203, 213, 225), dp(1))
-            }
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+        lateinit var checkBox: CheckBox
+        val toggle = {
+            val nowEnabled = CrmContactSyncStore.toggle(this@ContactNotesActivity, phone)
+            checkBox.isChecked = nowEnabled
+            Toast.makeText(
+                this@ContactNotesActivity,
+                if (nowEnabled) "Синхронизацията е включена" else "Синхронизацията е изключена",
+                Toast.LENGTH_SHORT,
+            ).show()
+            render()
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setPadding(0, dp(2), 0, dp(8))
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(12) }
-            setOnClickListener {
-                val nowEnabled = CrmContactSyncStore.toggle(this@ContactNotesActivity, phone)
-                Toast.makeText(
-                    this@ContactNotesActivity,
-                    if (nowEnabled) "Новите бележки ще се изпращат към CRM" else "Новите бележки ще остават само локално",
-                    Toast.LENGTH_SHORT,
-                ).show()
-                render()
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+            checkBox = CheckBox(this@ContactNotesActivity).apply {
+                isChecked = enabled
+                contentDescription = "Синхронизирай"
+                setPadding(0, 0, 0, 0)
+                layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(2) }
+                setOnClickListener { toggle() }
             }
+            addView(checkBox)
+            addView(ImageView(this@ContactNotesActivity).apply {
+                setImageResource(R.drawable.ic_cloud_sync)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                alpha = if (enabled) 1f else 0.55f
+                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(6) }
+            })
+            addView(TextView(this@ContactNotesActivity).apply {
+                text = "Синхронизирай"
+                textSize = 14.5f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (enabled) Color.rgb(15, 23, 42) else Color.rgb(100, 116, 139))
+            })
+            setOnClickListener { toggle() }
         }
     }
 
