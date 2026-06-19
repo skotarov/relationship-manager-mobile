@@ -75,6 +75,7 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         updateSearchButtonIcon()
 
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
@@ -101,6 +102,18 @@ class HomeActivity : AppCompatActivity() {
                 pageIndex += 1
                 renderCalls()
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        activePhoneFilter = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
+        activeSearchQuery = ""
+        pageIndex = 0
+        if (::binding.isInitialized) {
+            binding.searchInput.setText("")
+            renderCalls()
         }
     }
 
@@ -293,6 +306,7 @@ class HomeActivity : AppCompatActivity() {
 
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
+        const val EXTRA_PHONE_FILTER = "phone_filter"
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
         private const val NOTE_REFRESH_INTERVAL_MS = 400L
         private const val SEARCH_DEBOUNCE_MS = 250L
