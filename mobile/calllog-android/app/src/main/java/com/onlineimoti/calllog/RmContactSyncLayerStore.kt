@@ -6,6 +6,7 @@ import android.provider.ContactsContract
 
 internal object RmContactSyncLayerStore {
     private const val CLOUD_SYNC_GROUP_NAME = "Cloud Sync"
+    private const val CLOUD_NOTE_PREFIX = "☁"
 
     fun setEnabled(context: Context, phone: String, title: String, enabled: Boolean): Boolean {
         val appContext = context.applicationContext
@@ -36,7 +37,7 @@ internal object RmContactSyncLayerStore {
             .ifBlank { ContactGroupFilter.resolveDisplayName(context, phone).orEmpty() }
             .ifBlank { RmContactReader.findRmRecord(context, phone)?.displayName.orEmpty() }
             .ifBlank { phone }
-        val note = ContactNoteReader.generalNoteForPhone(context, phone)
+        val note = cloudMarkedNote(ContactNoteReader.generalNoteForPhone(context, phone))
         val fields = CallReportStableCrmContactWriter.Fields(
             originalPhone = phone,
             displayName = displayName,
@@ -50,6 +51,11 @@ internal object RmContactSyncLayerStore {
             phone = phone,
             title = displayName,
         )
+    }
+
+    private fun cloudMarkedNote(note: String): String {
+        val cleaned = note.trim().removePrefix(CLOUD_NOTE_PREFIX).trim()
+        return listOf(CLOUD_NOTE_PREFIX, cleaned).filter { it.isNotBlank() }.joinToString(" ")
     }
 
     private fun clearCloudData(context: Context, phone: String): Boolean {
