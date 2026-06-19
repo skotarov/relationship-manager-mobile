@@ -176,12 +176,12 @@ internal class ContactNotesCrmHistoryController(
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(colors.metaText)
-                setTypeface(typeface, Typeface.BOLD)
             })
             addView(TextView(activity).apply {
                 text = note.note
                 textSize = 14.5f
                 setTextColor(colors.text)
+                setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, dp(5), 0, 0)
             })
         }
