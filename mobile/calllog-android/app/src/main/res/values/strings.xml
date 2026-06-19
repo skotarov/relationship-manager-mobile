@@ -128,4 +128,5 @@
     <string name="open_default_contact">Open contact</string>
     <string name="contact_not_found">Contact not found</string>
     <string name="contacts_app_not_found">No contacts app found</string>
+    <string name="dial_handler_label">Relationship Manager</string>
 </resources>
