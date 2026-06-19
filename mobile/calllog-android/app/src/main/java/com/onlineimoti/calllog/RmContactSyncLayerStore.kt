@@ -40,18 +40,41 @@ internal object RmContactSyncLayerStore {
         ensureLayerWithCurrentNote(appContext, normalizedPhone, title)
     }
 
+    fun noteForCurrentRules(context: Context, phone: String): String {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone).ifBlank { phone }
+        val note = ContactNoteReader.generalNoteForPhone(appContext, normalizedPhone)
+        return if (CrmContactSyncStore.isEnabled(appContext, normalizedPhone)) {
+            cloudMarkedNote(note, normalizedPhone)
+        } else {
+            removeExistingCloudMarker(note)
+        }
+    }
+
+    fun groupNameForCurrentRules(context: Context, phone: String, fallback: String = CrmContactAccountStore.ACCOUNT_NAME): String {
+        val normalizedPhone = PhoneNormalizer.normalize(phone).ifBlank { phone }
+        return if (CrmContactSyncStore.isEnabled(context.applicationContext, normalizedPhone)) CLOUD_SYNC_GROUP_NAME else fallback
+    }
+
+    fun applyCloudSyncLabelsIfEnabled(context: Context, phone: String): Boolean {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return true
+        if (!CrmContactSyncStore.isEnabled(appContext, normalizedPhone)) return true
+        return applyVisibleCloudSyncLabels(appContext, normalizedPhone)
+    }
+
     private fun ensureLayerWithCurrentNote(context: Context, phone: String, title: String): Boolean {
         if (!RmContactPermissions.canReadAndWriteContacts(context)) return false
         val displayName = title.trim()
             .ifBlank { ContactGroupFilter.resolveDisplayName(context, phone).orEmpty() }
             .ifBlank { RmContactReader.findRmRecord(context, phone)?.displayName.orEmpty() }
             .ifBlank { phone }
-        val note = cloudMarkedNote(ContactNoteReader.generalNoteForPhone(context, phone), phone)
         val fields = CallReportStableCrmContactWriter.Fields(
             originalPhone = phone,
             displayName = displayName,
-            note = note,
-            groupName = CLOUD_SYNC_GROUP_NAME,
+            note = noteForCurrentRules(context, phone),
+            groupName = groupNameForCurrentRules(context, phone),
         )
         val saved = CrmContactLinkSaver.save(
             context = context,
@@ -61,7 +84,7 @@ internal object RmContactSyncLayerStore {
             title = displayName,
         )
         if (!saved) return false
-        return applyVisibleCloudSyncLabels(context, phone)
+        return applyCloudSyncLabelsIfEnabled(context, phone)
     }
 
     private fun cloudMarkedNote(note: String, phone: String): String {
