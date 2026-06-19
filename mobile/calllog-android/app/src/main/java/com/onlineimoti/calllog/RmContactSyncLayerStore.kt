@@ -5,6 +5,8 @@ import android.content.Context
 import android.provider.ContactsContract
 
 internal object RmContactSyncLayerStore {
+    private const val CLOUD_SYNC_GROUP_NAME = "Cloud Sync"
+
     fun setEnabled(context: Context, phone: String, title: String, enabled: Boolean): Boolean {
         val appContext = context.applicationContext
         val normalizedPhone = PhoneNormalizer.normalize(phone)
@@ -39,7 +41,7 @@ internal object RmContactSyncLayerStore {
             originalPhone = phone,
             displayName = displayName,
             note = note,
-            groupName = CrmContactAccountStore.ACCOUNT_NAME,
+            groupName = CLOUD_SYNC_GROUP_NAME,
         )
         return CrmContactLinkSaver.save(
             context = context,
