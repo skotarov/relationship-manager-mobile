@@ -1,15 +1,18 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 
 class ContactNotesHeaderUi(
     private val activity: Activity,
@@ -27,6 +30,7 @@ class ContactNotesHeaderUi(
         openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
         val displayName = displayNameFromTitle(title, phone)
+        val contactIcon = if (contactExists) R.drawable.ic_contact_person else R.drawable.ic_contact_person_add
         val contactDescription = if (contactExists) "Отвори контакт" else "Създай контакт"
 
         return LinearLayout(activity).apply {
@@ -40,9 +44,14 @@ class ContactNotesHeaderUi(
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
                 addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
+                addView(verticalDivider())
+                addView(iconButton(contactIcon, contactDescription, openDefaultContact))
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
                 })
+                if (phone.isNotBlank()) {
+                    addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
+                }
                 addView(iconButton(R.drawable.ic_calendar_event, "Календар", openCalendarEvent).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
                 })
@@ -53,10 +62,10 @@ class ContactNotesHeaderUi(
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(0, dp(8), 0, 0)
                 if (phone.isNotBlank()) {
-                    addView(phoneNumberButton(phone, openDialer))
+                    addView(phoneNumberText(phone))
                     addView(textDivider())
                 }
-                addView(contactNameView(displayName, contactExists, contactDescription, openDefaultContact).apply {
+                addView(contactNameText(displayName, contactExists, contactDescription).apply {
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 })
             })
@@ -108,51 +117,34 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun phoneNumberButton(phone: String, action: () -> Unit): LinearLayout {
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+    private fun phoneNumberText(phone: String): TextView {
+        return TextView(activity).apply {
+            text = phone
+            textSize = 15f
+            typeface = Typeface.DEFAULT
+            setTextColor(Color.rgb(17, 24, 39))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
             isClickable = true
             isFocusable = true
             setPadding(0, dp(4), dp(4), dp(4))
-            setOnClickListener { action() }
-            addView(ImageView(activity).apply {
-                setImageResource(R.drawable.ic_phone_call)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(5) }
-            })
-            addView(TextView(activity).apply {
-                text = phone
-                textSize = 15f
-                typeface = Typeface.DEFAULT
-                setTextColor(Color.rgb(17, 24, 39))
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
+            setOnClickListener { copyToClipboard("Телефон", phone, "Номерът е копиран") }
         }
     }
 
-    private fun contactNameView(displayName: String, contactExists: Boolean, description: String, action: () -> Unit): LinearLayout {
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+    private fun contactNameText(displayName: String, contactExists: Boolean, description: String): TextView {
+        val value = displayName.ifBlank { if (contactExists) description else "Нов" }
+        return TextView(activity).apply {
+            text = value
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(30, 64, 175))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
             isClickable = true
             isFocusable = true
             setPadding(0, dp(4), 0, dp(4))
-            setOnClickListener { action() }
-            addView(ImageView(activity).apply {
-                setImageResource(if (contactExists) R.drawable.ic_contact_person else R.drawable.ic_contact_person_add)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(6) }
-            })
-            addView(TextView(activity).apply {
-                text = if (contactExists) displayName.ifBlank { description } else "Нов"
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(30, 64, 175))
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
+            setOnClickListener { copyToClipboard("Име", value, "Името е копирано") }
         }
     }
 
@@ -165,6 +157,16 @@ class ContactNotesHeaderUi(
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 marginStart = dp(6)
                 marginEnd = dp(9)
+            }
+        }
+    }
+
+    private fun verticalDivider(): View {
+        return View(activity).apply {
+            setBackgroundColor(Color.rgb(203, 213, 225))
+            layoutParams = LinearLayout.LayoutParams(dp(1), dp(28)).apply {
+                marginStart = dp(4)
+                marginEnd = dp(12)
             }
         }
     }
@@ -182,12 +184,9 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius.toFloat()
-            setColor(color)
-            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
-        }
+    private fun copyToClipboard(label: String, value: String, message: String) {
+        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
+        Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
     }
 }
