@@ -141,9 +141,9 @@ internal class HomeCallRowRenderer(
             })
             if (showCloud) {
                 addView(ImageView(activity).apply {
-                    setImageResource(R.drawable.ic_cloud_sync)
-                    contentDescription = "Синхронизира се със сървъра"
-                    alpha = 0.82f
+                    setImageResource(R.drawable.ic_cloud_note)
+                    contentDescription = "Има синхронизирани CRM бележки"
+                    alpha = 0.9f
                     scaleType = ImageView.ScaleType.FIT_CENTER
                     layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(4) }
                 })
