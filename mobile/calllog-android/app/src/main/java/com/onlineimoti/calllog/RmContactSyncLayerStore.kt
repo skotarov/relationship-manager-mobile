@@ -27,8 +27,9 @@ internal object RmContactSyncLayerStore {
             }
         }
 
+        CrmContactSyncStore.setEnabled(appContext, normalizedPhone, true)
         val updated = ensureLayerWithCurrentNote(appContext, normalizedPhone, title)
-        if (updated) CrmContactSyncStore.setEnabled(appContext, normalizedPhone, true)
+        if (!updated) CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
         return updated
     }
 
@@ -43,7 +44,8 @@ internal object RmContactSyncLayerStore {
     fun noteForCurrentRules(context: Context, phone: String): String {
         val appContext = context.applicationContext
         val normalizedPhone = PhoneNormalizer.normalize(phone).ifBlank { phone }
-        val note = ContactNoteReader.generalNoteForPhone(appContext, normalizedPhone)
+        val note = existingRmNote(appContext, normalizedPhone)
+            ?: ContactNoteReader.generalNoteForPhone(appContext, normalizedPhone)
         return if (CrmContactSyncStore.isEnabled(appContext, normalizedPhone)) {
             cloudMarkedNote(note, normalizedPhone)
         } else {
@@ -105,6 +107,12 @@ internal object RmContactSyncLayerStore {
         } else {
             withoutCloud
         }
+    }
+
+    private fun existingRmNote(context: Context, phone: String): String? {
+        val rawId = CrmContactAccountStore.findCallReportRawContactId(context, phone)
+        if (rawId <= 0L) return null
+        return findRmNoteRow(context, rawId)?.note
     }
 
     private fun removeCloudMarkerFromRmNote(context: Context, phone: String): Boolean {
