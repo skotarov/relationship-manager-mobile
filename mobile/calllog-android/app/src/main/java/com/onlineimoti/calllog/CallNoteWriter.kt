@@ -55,20 +55,27 @@ internal object CallNoteWriter {
     private fun syncToCrmIfNeeded(context: Context, phone: String, text: String, result: CallNoteWriteResult) {
         if (!result.saved) return
         if (result.savedAsGeneralNote) {
-            RmLayerNoteSyncer.syncIfLayerExists(context, phone, text)
+            RmLayerContactDataSyncer.sync(context, phone, noteOverride = text)
             if (text.trim().isNotBlank()) CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
-        } else if (result.target.hasCall && text.trim().isNotBlank()) {
-            RmLayerNoteSyncer.syncIfLayerExists(context, phone, text)
-            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
-            CrmNoteSyncer.syncCallIfEnabled(
+        } else if (result.target.hasCall) {
+            RmLayerContactDataSyncer.sync(
                 context = context,
                 phone = phone,
-                note = text,
-                direction = result.target.direction,
-                callAt = result.target.callAt,
-                durationSeconds = result.target.durationSeconds,
-                clientNoteId = clientNoteId,
+                noteOverride = text.takeIf { it.trim().isNotBlank() },
+                preserveExistingLayerNote = text.trim().isBlank(),
             )
+            if (text.trim().isNotBlank()) {
+                val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
+                CrmNoteSyncer.syncCallIfEnabled(
+                    context = context,
+                    phone = phone,
+                    note = text,
+                    direction = result.target.direction,
+                    callAt = result.target.callAt,
+                    durationSeconds = result.target.durationSeconds,
+                    clientNoteId = clientNoteId,
+                )
+            }
         }
     }
 
