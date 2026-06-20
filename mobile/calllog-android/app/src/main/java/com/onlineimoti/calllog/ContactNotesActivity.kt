@@ -9,12 +9,15 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 class ContactNotesActivity : Activity() {
     private var phone: String = ""
@@ -23,6 +26,10 @@ class ContactNotesActivity : Activity() {
     private var contactUpdateBusy = false
     private var contactAutoCheckStarted = false
     private var notesChangedReceiverRegistered = false
+    private var crmSyncBusy = false
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val crmSyncExecutor = Executors.newSingleThreadExecutor()
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -87,6 +94,8 @@ class ContactNotesActivity : Activity() {
 
     override fun onDestroy() {
         crmHistoryController.release()
+        crmSyncExecutor.shutdownNow()
+        mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -137,18 +146,34 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
-        val updated = RmContactSyncLayerStore.setEnabled(this, phone, titleText, enabled)
-        Toast.makeText(
-            this,
-            when {
-                updated && enabled -> "Синхронизацията е включена"
-                updated -> "Синхронизацията е изключена"
-                enabled -> "Не успях да създам RM layer. Провери Contacts permissions."
-                else -> "Sync е изключен, но RM данните не бяха изчистени. Провери Contacts permissions."
-            },
-            Toast.LENGTH_SHORT,
-        ).show()
+        if (crmSyncBusy || phone.isBlank()) return
+
+        val requestedPhone = phone
+        val requestedTitle = titleText
+        crmSyncBusy = true
         render()
+
+        crmSyncExecutor.execute {
+            val updated = runCatching {
+                RmContactSyncLayerStore.setEnabled(applicationContext, requestedPhone, requestedTitle, enabled)
+            }.getOrDefault(false)
+
+            mainHandler.post {
+                if (isFinishing || isDestroyed) return@post
+                crmSyncBusy = false
+                Toast.makeText(
+                    this,
+                    when {
+                        updated && enabled -> "Синхронизацията е включена"
+                        updated -> "Синхронизацията е изключена"
+                        enabled -> "Не успях да създам RM layer. Провери Contacts permissions."
+                        else -> "Sync е изключен, но RM данните не бяха изчистени. Провери Contacts permissions."
+                    },
+                    Toast.LENGTH_SHORT,
+                ).show()
+                render()
+            }
+        }
     }
 
     private fun rmDebugBlock(): TextView {
@@ -184,6 +209,7 @@ class ContactNotesActivity : Activity() {
             showRmCallLogButton = !backTargetsUnfilteredHome,
             showCrmSyncButton = config.remoteEnabled,
             crmSyncEnabled = CrmContactSyncStore.isEnabled(this, phone),
+            crmSyncBusy = crmSyncBusy,
             goBack = ::finish,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
