@@ -26,7 +26,7 @@ internal object RmContactSyncLayerStore {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
             return false
         }
-        return RmLayerContactDataSyncer.sync(appContext, normalizedPhone)
+        return true
     }
 
     fun refreshNoteIfEnabled(context: Context, phone: String, title: String = "") {
@@ -85,7 +85,11 @@ internal object RmContactSyncLayerStore {
             phone = phone,
             title = displayName,
         )
-        return saved && applyCloudSyncLabelsIfEnabled(context, phone)
+        if (!saved) return false
+
+        val dataSynced = RmLayerContactDataSyncer.sync(context, phone)
+        val labelsSynced = applyCloudSyncLabelsIfEnabled(context, phone)
+        return dataSynced && labelsSynced
     }
 
     private fun deleteRmLayer(context: Context, phone: String): Boolean {
