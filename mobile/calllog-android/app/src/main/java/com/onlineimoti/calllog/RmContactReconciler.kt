@@ -155,8 +155,12 @@ internal object RmContactReconciler {
                 }
                 real != null && rm != null -> {
                     if (isRmRecordCurrent(context, rm, real)) {
-                        val markersOk = RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
-                        RmContactReconcileResult(if (markersOk) RmContactReconcileAction.UNCHANGED else RmContactReconcileAction.FAILED, phone)
+                        val dataSynced = RmLayerContactDataSyncer.sync(context, real.phone)
+                        val labelsSynced = RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
+                        RmContactReconcileResult(
+                            if (dataSynced && labelsSynced) RmContactReconcileAction.UNCHANGED else RmContactReconcileAction.FAILED,
+                            phone,
+                        )
                     } else {
                         val updated = saveWithStablePath(context, real)
                         RmContactReconcileResult(if (updated) RmContactReconcileAction.UPDATED else RmContactReconcileAction.FAILED, phone)
@@ -197,9 +201,9 @@ internal object RmContactReconciler {
             title = title,
         )
         if (!saved) return false
-        val noteSynced = RmLayerNoteSyncer.syncCurrentGeneralNoteIfLayerExists(context, real.phone)
+        val dataSynced = RmLayerContactDataSyncer.sync(context, real.phone)
         val labelsSynced = RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
-        return noteSynced && labelsSynced
+        return dataSynced && labelsSynced
     }
 
     private fun isRmRecordCurrent(context: Context, rm: RmRecord, real: BulkContactCandidate): Boolean {
