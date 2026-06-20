@@ -245,6 +245,6 @@ internal object RmContactReconciler {
     }
 
     private fun sleepQuietly(ms: Long) {
-        runCatching { Thread.sleep(CONTACT_PAUSE_MS) }
+        runCatching { Thread.sleep(ms) }
     }
 }
