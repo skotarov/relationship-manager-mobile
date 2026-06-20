@@ -4,19 +4,27 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
 
+    <!-- Cloud outline: no check mark inside the cloud. -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FF475569"
         android:strokeWidth="1.8"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M7.2,18.2 H17.4 C19.6,18.2 21.2,16.7 21.2,14.8 C21.2,12.95 19.76,11.52 17.95,11.38 C17.38,8.58 14.98,6.55 12.05,6.55 C9.72,6.55 7.7,7.86 6.68,9.78 C4.5,10.08 2.8,11.82 2.8,14 C2.8,16.34 4.7,18.2 7.2,18.2 Z" />
+        android:pathData="M6.7,18.1 H15.4 C17.9,18.1 19.9,16.25 19.9,13.95 C19.9,11.75 18.25,9.95 16.1,9.7 C15.45,7.1 13.15,5.25 10.45,5.25 C8.15,5.25 6.15,6.55 5.2,8.45 C3.35,8.9 2.05,10.55 2.05,12.55 C2.05,15.65 4.1,18.1 6.7,18.1 Z" />
+
+    <!-- Verified status is shown separately, outside the cloud. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:strokeColor="#FF475569"
+        android:strokeWidth="1.8"
+        android:pathData="M18.05,15.05 a4.15,4.15 0,1 0,0.01,0" />
 
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FF475569"
-        android:strokeWidth="1.6"
+        android:strokeWidth="1.7"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M9.2,13.1 L11.25,15.15 L15.3,11.1" />
+        android:pathData="M16.05,17.05 L17.45,18.45 L20.05,15.85" />
 </vector>
