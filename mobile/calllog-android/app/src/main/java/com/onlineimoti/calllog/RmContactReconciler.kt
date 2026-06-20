@@ -183,7 +183,11 @@ internal object RmContactReconciler {
                 jobTitle = "RM auto",
                 groupName = RmContactSyncLayerStore.groupNameForCurrentRules(context, real.phone),
                 customText = "RM auto link",
-                note = RmContactSyncLayerStore.noteForCurrentRules(context, real.phone),
+                note = RmLayerNoteSyncer.formatForCurrentRules(
+                    context,
+                    real.phone,
+                    ContactNoteReader.generalNoteForPhone(context, real.phone),
+                ),
                 givenName = parts.givenName,
                 middleName = parts.middleName,
                 familyName = parts.familyName,
@@ -219,7 +223,11 @@ internal object RmContactReconciler {
     }
 
     private fun isRmNoteCurrent(context: Context, rawId: Long, phone: String): Boolean {
-        val expected = RmContactSyncLayerStore.noteForCurrentRules(context, phone).trim()
+        val expected = RmLayerNoteSyncer.formatForCurrentRules(
+            context,
+            phone,
+            ContactNoteReader.generalNoteForPhone(context, phone),
+        ).trim()
         val current = runCatching {
             context.contentResolver.query(
                 ContactsContract.Data.CONTENT_URI,
@@ -237,6 +245,6 @@ internal object RmContactReconciler {
     }
 
     private fun sleepQuietly(ms: Long) {
-        runCatching { Thread.sleep(ms) }
+        runCatching { Thread.sleep(CONTACT_PAUSE_MS) }
     }
 }
