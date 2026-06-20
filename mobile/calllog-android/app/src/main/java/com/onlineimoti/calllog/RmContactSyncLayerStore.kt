@@ -16,10 +16,11 @@ internal object RmContactSyncLayerStore {
 
         if (!enabled) {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
-            val visibleTargets = findVisibleRawContacts(appContext, normalizedPhone)
-            return if (visibleTargets.isEmpty()) {
+            val hasRealContact = RmRealContactLookup.findRawContactId(appContext, normalizedPhone) > 0L
+            return if (!hasRealContact) {
                 deleteRmLayer(appContext, normalizedPhone)
             } else {
+                val visibleTargets = findVisibleRawContacts(appContext, normalizedPhone)
                 val rmCloudLabelRemoved = removeRmCloudSyncMembership(appContext, normalizedPhone)
                 val visibleLabelRemoved = clearVisibleCloudSyncLabels(appContext, visibleTargets)
                 val fieldsUpdated = RmLayerContactDataSyncer.sync(
