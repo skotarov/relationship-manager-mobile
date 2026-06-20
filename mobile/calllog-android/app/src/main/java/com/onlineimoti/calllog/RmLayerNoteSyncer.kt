@@ -26,6 +26,17 @@ internal object RmLayerNoteSyncer {
         return upsertOrDeleteNote(appContext, rawId, formatForCurrentRules(appContext, normalizedPhone, note))
     }
 
+    fun syncCurrentGeneralNoteIfLayerExists(context: Context, phone: String): Boolean {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return false
+        return syncIfLayerExists(
+            context = appContext,
+            phone = normalizedPhone,
+            note = ContactNoteReader.generalNoteForPhone(appContext, normalizedPhone),
+        )
+    }
+
     fun reformatExistingLayerNote(context: Context, phone: String): Boolean {
         val appContext = context.applicationContext
         if (!RmContactPermissions.canReadAndWriteContacts(appContext)) return false
@@ -37,7 +48,7 @@ internal object RmLayerNoteSyncer {
         return if (existing == null) {
             true
         } else {
-            upsertOrDeleteNote(appContext, rawId, formatForCurrentRules(appContext, normalizedPhone, existing.note))
+            syncIfLayerExists(appContext, normalizedPhone, existing.note)
         }
     }
 
