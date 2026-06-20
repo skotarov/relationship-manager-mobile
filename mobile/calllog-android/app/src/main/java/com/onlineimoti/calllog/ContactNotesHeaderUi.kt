@@ -10,9 +10,11 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import android.view.animation.RotateAnimation
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -186,24 +188,35 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): ImageButton {
+    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): FrameLayout {
         val iconColor = if (enabled) Color.WHITE else Color.BLACK
-        return ImageButton(activity).apply {
+        val description = when {
+            busy -> "Синхронизацията се променя"
+            enabled -> "CRM синхронизацията е включена"
+            else -> "Включи CRM синхронизация"
+        }
+        val cloudIcon = ImageView(activity).apply {
             setImageResource(R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(iconColor)
-            contentDescription = when {
-                busy -> "Синхронизацията се променя"
-                enabled -> "CRM синхронизацията е включена"
-                else -> "Включи CRM синхронизация"
-            }
-            background = if (enabled) roundedIconBackground(Color.BLACK) else null
-            isEnabled = !busy
-            alpha = if (busy) 0.78f else 1f
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(7), dp(7), dp(7), dp(7))
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER,
+            )
+        }
+        return FrameLayout(activity).apply {
+            background = if (enabled) roundedIconBackground(Color.BLACK) else null
+            contentDescription = description
+            isClickable = !busy
+            isFocusable = !busy
+            isEnabled = !busy
+            alpha = if (busy) 0.78f else 1f
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+            addView(cloudIcon)
             setOnClickListener { action() }
-            if (busy) startAnimation(cloudSpinAnimation())
+            if (busy) cloudIcon.startAnimation(cloudSpinAnimation())
         }
     }
 
