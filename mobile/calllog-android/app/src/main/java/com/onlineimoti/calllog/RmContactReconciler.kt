@@ -197,7 +197,9 @@ internal object RmContactReconciler {
             title = title,
         )
         if (!saved) return false
-        return RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
+        val noteSynced = RmLayerNoteSyncer.syncCurrentGeneralNoteIfLayerExists(context, real.phone)
+        val labelsSynced = RmContactSyncLayerStore.applyCloudSyncLabelsIfEnabled(context, real.phone)
+        return noteSynced && labelsSynced
     }
 
     private fun isRmRecordCurrent(context: Context, rm: RmRecord, real: BulkContactCandidate): Boolean {
