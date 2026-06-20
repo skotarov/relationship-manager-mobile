@@ -4,8 +4,10 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageButton
@@ -23,10 +25,13 @@ class ContactNotesHeaderUi(
         phone: String,
         contactExists: Boolean,
         showRmCallLogButton: Boolean,
+        showCrmSyncButton: Boolean,
+        crmSyncEnabled: Boolean,
         goBack: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
         openDefaultContact: () -> Unit,
+        toggleCrmSync: () -> Unit,
         openRmCallLog: () -> Unit,
         openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
@@ -49,6 +54,9 @@ class ContactNotesHeaderUi(
                     addView(verticalDivider())
                 }
                 addView(iconButton(contactIcon, contactDescription, openDefaultContact))
+                if (showCrmSyncButton) {
+                    addView(crmSyncButton(crmSyncEnabled, toggleCrmSync))
+                }
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
                 })
@@ -171,6 +179,29 @@ class ContactNotesHeaderUi(
                 marginStart = dp(4)
                 marginEnd = dp(12)
             }
+        }
+    }
+
+    private fun crmSyncButton(enabled: Boolean, action: () -> Unit): ImageButton {
+        val iconColor = if (enabled) Color.WHITE else Color.rgb(56, 189, 248)
+        return ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_cloud_note)
+            imageTintList = ColorStateList.valueOf(iconColor)
+            contentDescription = if (enabled) "CRM синхронизацията е включена" else "Включи CRM синхронизация"
+            background = if (enabled) roundedIconBackground(Color.BLACK) else null
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun roundedIconBackground(color: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(10).toFloat()
+            setColor(color)
         }
     }
 
