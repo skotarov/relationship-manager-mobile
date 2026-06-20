@@ -20,17 +20,28 @@ internal object RmContactSyncLayerStore {
             return if (visibleTargets.isEmpty()) {
                 deleteRmLayer(appContext, normalizedPhone)
             } else {
-                val cloudMarkerRemoved = removeCloudMarkerFromRmNote(appContext, normalizedPhone)
                 val rmCloudLabelRemoved = removeRmCloudSyncMembership(appContext, normalizedPhone)
-                val labelCleared = clearVisibleCloudSyncLabels(appContext, visibleTargets)
-                cloudMarkerRemoved && rmCloudLabelRemoved && labelCleared
+                val visibleLabelRemoved = clearVisibleCloudSyncLabels(appContext, visibleTargets)
+                val fieldsUpdated = RmLayerContactDataSyncer.sync(
+                    context = appContext,
+                    phone = normalizedPhone,
+                    preserveExistingLayerNote = true,
+                )
+                rmCloudLabelRemoved && visibleLabelRemoved && fieldsUpdated
             }
         }
 
         CrmContactSyncStore.setEnabled(appContext, normalizedPhone, true)
-        val updated = ensureLayerWithCurrentNote(appContext, normalizedPhone, title)
-        if (!updated) CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
-        return updated
+        val layerSaved = ensureLayerWithCurrentNote(appContext, normalizedPhone, title)
+        if (!layerSaved) {
+            CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
+            return false
+        }
+        return RmLayerContactDataSyncer.sync(
+            context = appContext,
+            phone = normalizedPhone,
+            preserveExistingLayerNote = true,
+        )
     }
 
     fun refreshNoteIfEnabled(context: Context, phone: String, title: String = "") {
@@ -44,13 +55,9 @@ internal object RmContactSyncLayerStore {
     fun noteForCurrentRules(context: Context, phone: String): String {
         val appContext = context.applicationContext
         val normalizedPhone = PhoneNormalizer.normalize(phone).ifBlank { phone }
-        val note = existingRmNote(appContext, normalizedPhone)
+        val source = existingRmNote(appContext, normalizedPhone)
             ?: ContactNoteReader.generalNoteForPhone(appContext, normalizedPhone)
-        return if (CrmContactSyncStore.isEnabled(appContext, normalizedPhone)) {
-            cloudMarkedNote(note, normalizedPhone)
-        } else {
-            removeExistingCloudMarker(note)
-        }
+        return RmLayerNoteSyncer.formatForCurrentRules(appContext, normalizedPhone, source)
     }
 
     fun groupNameForCurrentRules(context: Context, phone: String, fallback: String = CrmContactAccountStore.ACCOUNT_NAME): String {
@@ -86,7 +93,13 @@ internal object RmContactSyncLayerStore {
             title = displayName,
         )
         if (!saved) return false
-        return applyCloudSyncLabelsIfEnabled(context, phone)
+        val dataSynced = RmLayerContactDataSyncer.sync(
+            context = context,
+            phone = phone,
+            preserveExistingLayerNote = true,
+        )
+        val labelsSynced = applyCloudSyncLabelsIfEnabled(context, phone)
+        return dataSynced && labelsSynced
     }
 
     private fun cloudMarkedNote(note: String, phone: String): String {
