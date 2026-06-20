@@ -189,7 +189,6 @@ class ContactNotesHeaderUi(
             imageTintList = ColorStateList.valueOf(iconColor)
             contentDescription = if (enabled) "CRM синхронизацията е включена" else "Включи CRM синхронизация"
             background = if (enabled) roundedIconBackground(Color.BLACK) else null
-            setBackgroundColor(Color.TRANSPARENT)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(7), dp(7), dp(7), dp(7))
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
