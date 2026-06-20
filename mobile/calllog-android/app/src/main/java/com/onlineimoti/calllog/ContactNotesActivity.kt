@@ -5,16 +5,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -123,7 +120,6 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        if (config.remoteEnabled) root.addView(crmSyncToggleRow())
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
@@ -140,47 +136,6 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    private fun crmSyncToggleRow(): LinearLayout {
-        val enabled = CrmContactSyncStore.isEnabled(this, phone)
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            isClickable = true
-            isFocusable = true
-            setPadding(0, dp(2), 0, dp(8))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
-
-            addView(ImageView(this@ContactNotesActivity).apply {
-                setImageResource(R.drawable.ic_cloud_sync)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                alpha = if (enabled) 1f else 0.55f
-                layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(7) }
-            })
-            addView(TextView(this@ContactNotesActivity).apply {
-                text = "Синхронизирай"
-                textSize = 14.5f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(if (enabled) Color.rgb(15, 23, 42) else Color.rgb(100, 116, 139))
-            })
-            addView(android.view.View(this@ContactNotesActivity).apply {
-                layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
-            })
-            addView(Switch(this@ContactNotesActivity).apply {
-                isChecked = enabled
-                showText = false
-                contentDescription = "Синхронизирай"
-                thumbTintList = syncSwitchThumbTint()
-                trackTintList = syncSwitchTrackTint()
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                setOnClickListener { setCrmSyncEnabled(isChecked) }
-            })
-            setOnClickListener { setCrmSyncEnabled(!enabled) }
-        }
-    }
-
     private fun setCrmSyncEnabled(enabled: Boolean) {
         val updated = RmContactSyncLayerStore.setEnabled(this, phone, titleText, enabled)
         Toast.makeText(
@@ -194,20 +149,6 @@ class ContactNotesActivity : Activity() {
             Toast.LENGTH_SHORT,
         ).show()
         render()
-    }
-
-    private fun syncSwitchThumbTint(): ColorStateList {
-        return ColorStateList(
-            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-            intArrayOf(Color.WHITE, Color.WHITE),
-        )
-    }
-
-    private fun syncSwitchTrackTint(): ColorStateList {
-        return ColorStateList(
-            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-            intArrayOf(Color.rgb(0, 200, 83), Color.rgb(203, 213, 225)),
-        )
     }
 
     private fun rmDebugBlock(): TextView {
@@ -235,15 +176,19 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun headerRow(): LinearLayout {
+        val config = ConfigStore.load(this)
         return headerUi.headerRow(
             title = titleText,
             phone = phone,
             contactExists = externalActions.hasDefaultContact(phone),
             showRmCallLogButton = !backTargetsUnfilteredHome,
+            showCrmSyncButton = config.remoteEnabled,
+            crmSyncEnabled = CrmContactSyncStore.isEnabled(this, phone),
             goBack = ::finish,
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
+            toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(this, phone)) },
             openRmCallLog = { openRmCallLog(filtered = false) },
             openRmCallLogFiltered = { openRmCallLog(filtered = true) },
         )
