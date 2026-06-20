@@ -58,12 +58,7 @@ internal object CallNoteWriter {
             RmLayerContactDataSyncer.sync(context, phone, noteOverride = text)
             if (text.trim().isNotBlank()) CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
         } else if (result.target.hasCall) {
-            RmLayerContactDataSyncer.sync(
-                context = context,
-                phone = phone,
-                noteOverride = text.takeIf { it.trim().isNotBlank() },
-                preserveExistingLayerNote = text.trim().isBlank(),
-            )
+            RmLayerContactDataSyncer.sync(context, phone)
             if (text.trim().isNotBlank()) {
                 val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
                 CrmNoteSyncer.syncCallIfEnabled(
