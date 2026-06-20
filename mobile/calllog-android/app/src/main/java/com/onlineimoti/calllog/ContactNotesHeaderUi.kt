@@ -10,6 +10,9 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.LinearInterpolator
+import android.view.animation.RotateAnimation
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -27,6 +30,7 @@ class ContactNotesHeaderUi(
         showRmCallLogButton: Boolean,
         showCrmSyncButton: Boolean,
         crmSyncEnabled: Boolean,
+        crmSyncBusy: Boolean,
         goBack: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
@@ -55,7 +59,7 @@ class ContactNotesHeaderUi(
                 }
                 addView(iconButton(contactIcon, contactDescription, openDefaultContact))
                 if (showCrmSyncButton) {
-                    addView(crmSyncButton(crmSyncEnabled, toggleCrmSync))
+                    addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
                 }
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
@@ -182,17 +186,39 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun crmSyncButton(enabled: Boolean, action: () -> Unit): ImageButton {
-        val iconColor = if (enabled) Color.WHITE else Color.rgb(56, 189, 248)
+    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): ImageButton {
+        val iconColor = if (enabled) Color.WHITE else Color.BLACK
         return ImageButton(activity).apply {
             setImageResource(R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(iconColor)
-            contentDescription = if (enabled) "CRM синхронизацията е включена" else "Включи CRM синхронизация"
+            contentDescription = when {
+                busy -> "Синхронизацията се променя"
+                enabled -> "CRM синхронизацията е включена"
+                else -> "Включи CRM синхронизация"
+            }
             background = if (enabled) roundedIconBackground(Color.BLACK) else null
+            isEnabled = !busy
+            alpha = if (busy) 0.78f else 1f
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(7), dp(7), dp(7), dp(7))
             layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
             setOnClickListener { action() }
+            if (busy) startAnimation(cloudSpinAnimation())
+        }
+    }
+
+    private fun cloudSpinAnimation(): RotateAnimation {
+        return RotateAnimation(
+            0f,
+            360f,
+            Animation.RELATIVE_TO_SELF,
+            0.5f,
+            Animation.RELATIVE_TO_SELF,
+            0.5f,
+        ).apply {
+            duration = 720L
+            repeatCount = Animation.INFINITE
+            interpolator = LinearInterpolator()
         }
     }
 
