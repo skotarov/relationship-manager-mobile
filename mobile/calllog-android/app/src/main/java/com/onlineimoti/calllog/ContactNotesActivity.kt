@@ -30,6 +30,11 @@ class ContactNotesActivity : Activity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
+    private val contactNameRefreshRunnable = Runnable {
+        if (!isFinishing && !isDestroyed && refreshTitleFromRealContact()) {
+            render()
+        }
+    }
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -84,7 +89,14 @@ class ContactNotesActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        refreshTitleFromRealContact()
         render()
+        scheduleContactNameRefresh()
+    }
+
+    override fun onPause() {
+        mainHandler.removeCallbacks(contactNameRefreshRunnable)
+        super.onPause()
     }
 
     override fun onStop() {
@@ -176,6 +188,19 @@ class ContactNotesActivity : Activity() {
         }
     }
 
+    private fun refreshTitleFromRealContact(): Boolean {
+        if (phone.isBlank()) return false
+        val contactName = RmRealContactLookup.resolveDisplayName(this, phone).orEmpty()
+        if (contactName.isBlank() || contactName == titleText) return false
+        titleText = contactName
+        return true
+    }
+
+    private fun scheduleContactNameRefresh() {
+        mainHandler.removeCallbacks(contactNameRefreshRunnable)
+        mainHandler.postDelayed(contactNameRefreshRunnable, CONTACT_NAME_REFRESH_DELAY_MS)
+    }
+
     private fun rmDebugBlock(): TextView {
         return TextView(this).apply {
             text = buildDebugText()
@@ -262,5 +287,6 @@ class ContactNotesActivity : Activity() {
         const val EXTRA_PHONE = "phone"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BACK_TARGETS_UNFILTERED_HOME = "back_targets_unfiltered_home"
+        private const val CONTACT_NAME_REFRESH_DELAY_MS = 450L
     }
 }
