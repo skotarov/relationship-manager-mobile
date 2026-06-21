@@ -6,11 +6,12 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import androidx.core.content.ContextCompat
 
 /**
  * Sends an SMS from Call Report while it is the default SMS app.
- * A failed history write must never turn a successfully handed-off SMS into an app crash.
+ * All expected device/SIM/provider failures are returned to the composer as an error message.
  */
 internal object SmsMessageSender {
     data class Outcome(
@@ -31,8 +32,9 @@ internal object SmsMessageSender {
             "Липсва разрешение за изпращане на SMS. Отвори Settings → Permissions и разреши SMS."
         }
 
-        val manager = SmsManager.getDefault()
+        val manager = smsManagerForDefaultSubscription()
         val parts = manager.divideMessage(body)
+        require(parts.isNotEmpty()) { "Не успях да подготвя текста за изпращане." }
         if (parts.size > 1) {
             manager.sendMultipartTextMessage(phone, null, parts, null, null)
         } else {
@@ -40,6 +42,19 @@ internal object SmsMessageSender {
         }
 
         Outcome(historySaved = saveToSystemSentMessages(context.applicationContext, phone, body))
+    }
+
+    private fun smsManagerForDefaultSubscription(): SmsManager {
+        return runCatching {
+            val subscriptionId = SubscriptionManager.getDefaultSmsSubscriptionId()
+            if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+            } else {
+                SmsManager.getDefault()
+            }
+        }.getOrElse {
+            SmsManager.getDefault()
+        }
     }
 
     private fun saveToSystemSentMessages(context: Context, phone: String, body: String): Boolean {
