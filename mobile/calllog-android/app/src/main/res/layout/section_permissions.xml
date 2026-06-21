@@ -54,6 +54,23 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/permissions_sms_theme_title"
+        android:textColor="@color/calllog_text"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/permissions_sms_theme_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -86,6 +103,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/permissions_sms_role_button" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/openSmsThemeButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:onClick="openSmsThemeInstaller"
+            android:text="@string/permissions_sms_theme_install_button" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openFullscreenIntentButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
