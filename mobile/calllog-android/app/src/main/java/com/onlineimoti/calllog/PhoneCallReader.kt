@@ -65,11 +65,58 @@ object PhoneCallReader {
             CallLog.Calls.DATE,
             CallLog.Calls.DURATION,
         )
-        val sortOrder = "${CallLog.Calls.DATE} DESC"
         val normalizedPhoneFilter = normalizePhone(phoneFilter)
+        val directCandidates = if (normalizedPhoneFilter.isBlank()) emptyList() else phoneCandidates(phoneFilter)
+        val directSelection = directCandidates.takeIf { it.isNotEmpty() }
+            ?.let { "${CallLog.Calls.NUMBER} IN (${it.joinToString(",") { "?" }})" }
 
+        val direct = queryCalls(
+            context = context,
+            projection = projection,
+            safeLimit = safeLimit,
+            safeOffset = safeOffset,
+            normalizedPhoneFilter = normalizedPhoneFilter,
+            selection = directSelection,
+            selectionArgs = directCandidates.toTypedArray(),
+        )
+        if (normalizedPhoneFilter.isBlank() || direct.isNotEmpty()) return direct
+
+        // Formatted numbers (spaces/dashes) are rare. Ask the provider for their final nine digits
+        // instead of reading every call record and filtering it in the application.
+        val suffix = normalizedPhoneFilter.takeLast(9)
+        return if (suffix.length < 7) {
+            emptyList()
+        } else {
+            queryCalls(
+                context = context,
+                projection = projection,
+                safeLimit = safeLimit,
+                safeOffset = safeOffset,
+                normalizedPhoneFilter = normalizedPhoneFilter,
+                selection = "${CallLog.Calls.NUMBER} LIKE ?",
+                selectionArgs = arrayOf("%$suffix"),
+            )
+        }
+    }
+
+    private fun queryCalls(
+        context: Context,
+        projection: Array<String>,
+        safeLimit: Int,
+        safeOffset: Int,
+        normalizedPhoneFilter: String,
+        selection: String?,
+        selectionArgs: Array<String>,
+    ): List<PhoneCallRecord> {
+        val sortOrder = "${CallLog.Calls.DATE} DESC"
         return buildList {
-            context.contentResolver.query(CallLog.Calls.CONTENT_URI, projection, null, null, sortOrder)?.use { cursor ->
+            context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs.takeIf { it.isNotEmpty() },
+                sortOrder,
+            )?.use { cursor ->
                 val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
                 val nameIndex = cursor.getColumnIndex(CallLog.Calls.CACHED_NAME)
                 val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
@@ -90,7 +137,6 @@ object PhoneCallReader {
                     val type = if (typeIndex >= 0) cursor.getInt(typeIndex) else 0
                     val startedAt = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L
                     val duration = if (durationIndex >= 0) cursor.getLong(durationIndex) else 0L
-
                     add(
                         PhoneCallRecord(
                             number = number,
@@ -98,7 +144,7 @@ object PhoneCallReader {
                             direction = directionFromType(type),
                             startedAt = startedAt,
                             durationSeconds = duration,
-                        )
+                        ),
                     )
                 }
             }
@@ -140,6 +186,21 @@ object PhoneCallReader {
         val normalizedCandidate = normalizePhone(candidate)
         if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) return false
         return normalizedPhone == normalizedCandidate || normalizedPhone.endsWith(normalizedCandidate) || normalizedCandidate.endsWith(normalizedPhone)
+    }
+
+    private fun phoneCandidates(value: String): List<String> {
+        val digits = value.filter { it.isDigit() }
+        val lastNine = digits.takeLast(9)
+        return linkedSetOf<String>().apply {
+            add(value.trim())
+            add(digits)
+            if (lastNine.length == 9) {
+                add(lastNine)
+                add("0$lastNine")
+                add("359$lastNine")
+                add("+359$lastNine")
+            }
+        }.filter { it.isNotBlank() }
     }
 
     private fun normalizePhone(phone: String): String {
