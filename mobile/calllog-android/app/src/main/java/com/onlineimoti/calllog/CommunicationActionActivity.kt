@@ -16,11 +16,9 @@ import android.widget.TextView
 import android.widget.Toast
 
 /**
- * A lightweight handler advertised to Android for SMS and mailto links.
- *
- * It deliberately does not claim the default SMS role: Call Report is a CRM/call-history
- * companion, not a full inbox replacement. The screen lets the user either open the CRM
- * history for an SMS recipient or pass the original draft to another installed composer.
+ * SMS compose bridge. When Relationship Manager is the default SMS app, this screen keeps the
+ * decision explicit: open CRM history here or continue the draft in the SMS app that was default
+ * before RM took over.
  */
 class CommunicationActionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +71,7 @@ class CommunicationActionActivity : Activity() {
         }
 
         if (model.kind == CommunicationKind.SMS && model.normalizedPhone.isNotBlank()) {
-            root.addView(primaryButton("Отвори историята на контакта") {
+            root.addView(primaryButton("Остани в Call Report") {
                 openContactHistory(model)
             }.apply { topMargin(dp(18)) })
         }
@@ -96,7 +94,7 @@ class CommunicationActionActivity : Activity() {
             Toast.makeText(this, "Не намерих телефонен номер", Toast.LENGTH_SHORT).show()
             return
         }
-        val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
+        val title = RmRealContactLookup.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
         startActivity(
             Intent(this, ContactNotesActivity::class.java)
                 .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
@@ -106,25 +104,25 @@ class CommunicationActionActivity : Activity() {
     }
 
     private fun forwardToExternalComposer(model: CommunicationModel) {
-        val target = when (model.kind) {
-            CommunicationKind.SMS -> Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("smsto:${Uri.encode(model.recipient)}")
-                if (model.body.isNotBlank()) putExtra("sms_body", model.body)
-                if (model.subject.isNotBlank()) putExtra("subject", model.subject)
+        if (model.kind == CommunicationKind.SMS) {
+            val opened = SmsExternalAppStore.openExternalSmsComposer(this, model.recipient, model.body)
+            if (opened) {
+                finish()
+            } else {
+                Toast.makeText(this, "Няма намерено друго SMS приложение", Toast.LENGTH_SHORT).show()
             }
-            CommunicationKind.EMAIL -> Intent(Intent.ACTION_SENDTO).apply {
-                data = Uri.parse("mailto:")
-                if (model.recipient.isNotBlank()) putExtra(Intent.EXTRA_EMAIL, arrayOf(model.recipient))
-                if (model.subject.isNotBlank()) putExtra(Intent.EXTRA_SUBJECT, model.subject)
-                if (model.body.isNotBlank()) putExtra(Intent.EXTRA_TEXT, model.body)
-            }
+            return
+        }
+
+        val target = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:")
+            if (model.recipient.isNotBlank()) putExtra(Intent.EXTRA_EMAIL, arrayOf(model.recipient))
+            if (model.subject.isNotBlank()) putExtra(Intent.EXTRA_SUBJECT, model.subject)
+            if (model.body.isNotBlank()) putExtra(Intent.EXTRA_TEXT, model.body)
         }
 
         val ownComponent = ComponentName(this, CommunicationActionActivity::class.java)
-        val chooser = Intent.createChooser(
-            target,
-            if (model.kind == CommunicationKind.SMS) "Избери SMS приложение" else "Избери e-mail приложение",
-        ).apply {
+        val chooser = Intent.createChooser(target, "Избери e-mail приложение").apply {
             putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(ownComponent))
         }
         runCatching {
