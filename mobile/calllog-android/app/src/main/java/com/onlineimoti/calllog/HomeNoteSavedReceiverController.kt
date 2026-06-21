@@ -21,7 +21,12 @@ internal class HomeNoteSavedReceiverController(
 
     fun register() {
         if (registered) return
-        val filter = IntentFilter(HomeActivity.ACTION_CONTACT_NOTE_SAVED)
+        val filter = IntentFilter().apply {
+            // Legacy editor result action.
+            addAction(HomeActivity.ACTION_CONTACT_NOTE_SAVED)
+            // Current popup and editor action, emitted after a note is actually saved.
+            addAction(PostCallOverlayService.ACTION_NOTES_CHANGED)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             activity.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
