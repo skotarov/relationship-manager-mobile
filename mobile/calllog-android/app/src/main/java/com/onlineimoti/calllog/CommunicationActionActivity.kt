@@ -9,7 +9,6 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -128,8 +127,12 @@ class CommunicationActionActivity : Activity() {
         ).apply {
             putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(ownComponent))
         }
-        runCatching { startActivity(chooser) }
-            .onFailure { Toast.makeText(this, "Няма намерено подходящо приложение", Toast.LENGTH_SHORT).show() }
+        runCatching {
+            startActivity(chooser)
+            finish()
+        }.onFailure {
+            Toast.makeText(this, "Няма намерено подходящо приложение", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun detailCard(label: String, value: String): TextView {
@@ -222,10 +225,10 @@ class CommunicationActionActivity : Activity() {
                     kind = CommunicationKind.SMS,
                     recipient = rawRecipient.ifBlank { normalizedPhone },
                     normalizedPhone = normalizedPhone,
-                    subject = intent.stringExtra("subject").ifBlank { uri.getQueryParameter("subject").orEmpty() },
+                    subject = intent.stringExtra("subject").ifBlank { uriQueryValue(uri, "subject") },
                     body = intent.stringExtra("sms_body")
                         .ifBlank { intent.stringExtra(Intent.EXTRA_TEXT) }
-                        .ifBlank { uri.getQueryParameter("body").orEmpty() },
+                        .ifBlank { uriQueryValue(uri, "body") },
                 )
             }
 
@@ -237,20 +240,25 @@ class CommunicationActionActivity : Activity() {
                 return CommunicationModel(
                     kind = CommunicationKind.EMAIL,
                     recipient = recipient,
-                    subject = intent.stringExtra(Intent.EXTRA_SUBJECT).ifBlank { uri.getQueryParameter("subject").orEmpty() },
-                    body = intent.stringExtra(Intent.EXTRA_TEXT).ifBlank { uri.getQueryParameter("body").orEmpty() },
+                    subject = intent.stringExtra(Intent.EXTRA_SUBJECT).ifBlank { uriQueryValue(uri, "subject") },
+                    body = intent.stringExtra(Intent.EXTRA_TEXT).ifBlank { uriQueryValue(uri, "body") },
                 )
+            }
+
+            private fun uriQueryValue(uri: Uri, key: String): String {
+                val query = uri.schemeSpecificPart.orEmpty().substringAfter('?', missingDelimiterValue = "")
+                if (query.isBlank()) return ""
+                return query.split('&')
+                    .firstOrNull { part -> part.substringBefore('=').equals(key, ignoreCase = true) }
+                    ?.substringAfter('=', missingDelimiterValue = "")
+                    ?.let(Uri::decode)
+                    .orEmpty()
+                    .trim()
             }
 
             private fun Intent.stringExtra(key: String): String = getStringExtra(key).orEmpty().trim()
 
-            private fun Intent.stringArrayExtra(key: String): Array<String> {
-                @Suppress("UNCHECKED_CAST")
-                return when {
-                    android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU -> getStringArrayExtra(key).orEmpty()
-                    else -> getStringArrayExtra(key).orEmpty()
-                }
-            }
+            private fun Intent.stringArrayExtra(key: String): Array<String> = getStringArrayExtra(key).orEmpty()
         }
     }
 }
