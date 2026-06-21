@@ -80,10 +80,11 @@ internal class ContactNotesCrmHistoryController(
     ) {
         val localCalls = PhoneCallReader.callsForPhone(activity, phone, limit = 100)
         val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
+        val smsMessages = SmsMessageReader.messagesForPhone(activity, phone)
         val latestCall = localCalls.firstOrNull()
         val latestCallWithoutNote = latestCall?.takeUnless { call -> hasNoteForCall(call, localNotes) }
         val hiddenCallsWithoutNotes = localCalls.drop(1).count { call -> !hasNoteForCall(call, localNotes) }
-        val timeline = buildTimeline(localNotes, latestCallWithoutNote)
+        val timeline = buildTimeline(localNotes, latestCallWithoutNote, smsMessages)
 
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -145,11 +146,16 @@ internal class ContactNotesCrmHistoryController(
         }
     }
 
-    private fun buildTimeline(localNotes: List<ContactCallNote>, latestCallWithoutNote: PhoneCallRecord?): List<TimelineItem> {
+    private fun buildTimeline(
+        localNotes: List<ContactCallNote>,
+        latestCallWithoutNote: PhoneCallRecord?,
+        smsMessages: List<SmsMessageRecord>,
+    ): List<TimelineItem> {
         val items = mutableListOf<TimelineItem>()
         val localClientIds = localNotes.map { it.clientNoteId }.filter { it.isNotBlank() }.toSet()
         latestCallWithoutNote?.let { call -> items.add(TimelineItem.LatestCallAction(call)) }
         localNotes.forEach { note -> items.add(TimelineItem.LocalNote(note)) }
+        smsMessages.forEach { sms -> items.add(TimelineItem.SmsMessage(sms)) }
         serverNotes
             .filterNot { note -> note.clientNoteId.isNotBlank() && localClientIds.contains(note.clientNoteId) }
             .forEach { note -> items.add(TimelineItem.ServerNote(note, serverTime(note))) }
@@ -160,6 +166,7 @@ internal class ContactNotesCrmHistoryController(
         when (item) {
             is TimelineItem.LatestCallAction -> addView(latestCallActionCard(item.call, onEditCallNote))
             is TimelineItem.LocalNote -> addView(localNoteCard(item.note, onEditCallNote))
+            is TimelineItem.SmsMessage -> addView(smsMessageCard(item.sms))
             is TimelineItem.ServerNote -> addView(serverNoteCard(item.note))
         }
     }
@@ -169,7 +176,7 @@ internal class ContactNotesCrmHistoryController(
             loading -> container.addView(statusText("Зареждам CRM история…"))
             error -> container.addView(statusText("CRM историята не е заредена"))
             skippedReason.isNotBlank() -> container.addView(statusText(skippedReason))
-            timeline.isEmpty() && hiddenCallsWithoutNotes <= 0 -> container.addView(statusText("Няма бележки или CRM записи за този номер"))
+            timeline.isEmpty() && hiddenCallsWithoutNotes <= 0 -> container.addView(statusText("Няма бележки, SMS или CRM записи за този номер"))
             serverNotes.isEmpty() -> container.addView(statusText("Няма CRM записи от сървъра за този номер"))
         }
         if (hiddenCallsWithoutNotes > 0) {
@@ -234,6 +241,31 @@ internal class ContactNotesCrmHistoryController(
                 textSize = 14.5f
                 setTextColor(colors.text)
                 setTypeface(typeface, Typeface.BOLD)
+                setPadding(0, dp(5), 0, 0)
+            })
+        }
+    }
+
+    private fun smsMessageCard(sms: SmsMessageRecord): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedRect(Color.WHITE, dp(12), Color.rgb(226, 232, 240), dp(1))
+            layoutParams = cardLayoutParams()
+            addView(TextView(activity).apply {
+                text = listOf(
+                    "SMS",
+                    PhoneCallReader.formatStartedAt(sms.timestampMs),
+                    sms.directionLabel,
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                textSize = 12.5f
+                setTextColor(Color.rgb(71, 85, 105))
+                setTypeface(typeface, Typeface.BOLD)
+            })
+            addView(TextView(activity).apply {
+                text = sms.body.ifBlank { "(SMS без текст)" }
+                textSize = 14.5f
+                setTextColor(Color.rgb(30, 41, 59))
                 setPadding(0, dp(5), 0, 0)
             })
         }
@@ -317,6 +349,7 @@ internal class ContactNotesCrmHistoryController(
     private sealed class TimelineItem(val timeMs: Long) {
         class LatestCallAction(val call: PhoneCallRecord) : TimelineItem(call.startedAt)
         class LocalNote(val note: ContactCallNote) : TimelineItem(note.callAt.takeIf { it > 0L } ?: note.savedAt)
+        class SmsMessage(val sms: SmsMessageRecord) : TimelineItem(sms.timestampMs)
         class ServerNote(val note: CrmServerNote, timeMs: Long) : TimelineItem(timeMs)
     }
 }
