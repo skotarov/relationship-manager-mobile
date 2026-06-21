@@ -80,6 +80,8 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+        if (openHistoryForExternalPhoneFilter(intent)) return
+
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
@@ -115,6 +117,8 @@ class HomeActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (openHistoryForExternalPhoneFilter(intent)) return
+
         activePhoneFilter = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         activeSearchQuery = ""
         pageIndex = 0
@@ -126,13 +130,16 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (!::binding.isInitialized) return
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
         renderCalls()
     }
 
     override fun onPause() {
-        noteSavedReceiver.unregister()
+        if (::binding.isInitialized) {
+            noteSavedReceiver.unregister()
+        }
         handler.removeCallbacks(noteRefreshRunnable)
         handler.removeCallbacks(searchRunnable)
         super.onPause()
@@ -143,6 +150,26 @@ class HomeActivity : AppCompatActivity() {
         searchExecutor.shutdownNow()
         contactsSyncPreparer.release()
         super.onDestroy()
+    }
+
+    /**
+     * SMS/default-app entry points used to launch HomeActivity with phone_filter. That is useful
+     * for a manual timeline filter, but a system SMS action must lead straight to the contact
+     * History screen instead.
+     */
+    private fun openHistoryForExternalPhoneFilter(sourceIntent: Intent?): Boolean {
+        val rawPhone = sourceIntent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
+        val phone = PhoneNormalizer.normalize(rawPhone).ifBlank { rawPhone.trim() }
+        if (phone.isBlank()) return false
+
+        val title = RmRealContactLookup.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
+        startActivity(
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, title),
+        )
+        finish()
+        return true
     }
 
     private fun renderCalls() {
