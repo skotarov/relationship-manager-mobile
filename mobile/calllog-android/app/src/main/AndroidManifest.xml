@@ -183,8 +183,7 @@
             android:excludeFromRecents="true"
             android:exported="true"
             android:label="@string/dial_handler_label"
-            android:noHistory="true"
-            android:processTextReadOnly="true">
+            android:noHistory="true">
             <!-- Different apps use different phone-number actions when a number is tapped. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
