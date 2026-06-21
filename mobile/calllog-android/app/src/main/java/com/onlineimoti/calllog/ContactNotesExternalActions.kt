@@ -24,15 +24,27 @@ class ContactNotesExternalActions(private val activity: Activity) {
         activity.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
     }
 
+    /**
+     * A Call Report/RM layer record is not treated as the user's real contact.
+     * The header therefore keeps the add-contact person icon until a non-RM
+     * raw contact exists for the same phone number.
+     */
     fun hasDefaultContact(phone: String): Boolean {
         if (phone.isBlank()) return false
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false
-        return lookupContactUri(phone) != null
+        return RmRealContactLookup.findContactId(activity, phone) > 0L
     }
 
     fun openDefaultContact(phone: String, titleText: String = "") {
         if (phone.isBlank()) return
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            openCreateContact(phone, titleText)
+            return
+        }
+
+        // Do not open the internal Call Report layer as if it were a normal contact.
+        // When it is the only matching record, keep the user on the create-contact flow.
+        if (!hasDefaultContact(phone)) {
             openCreateContact(phone, titleText)
             return
         }
