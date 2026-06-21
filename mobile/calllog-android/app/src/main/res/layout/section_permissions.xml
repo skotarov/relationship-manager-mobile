@@ -58,7 +58,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/permissions_sms_theme_title"
+        android:text="Икона „Съобщения“"
         android:textColor="@color/calllog_text"
         android:textSize="15sp"
         android:textStyle="bold" />
@@ -67,7 +67,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="@string/permissions_sms_theme_description"
+        android:text="Добавя наша SMS/CRM иконка на началния екран. Не отваря Xiaomi Themes и не изисква файл. Постави я на мястото на старата SMS иконка."
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -110,7 +110,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:onClick="openSmsThemeInstaller"
-            android:text="@string/permissions_sms_theme_install_button" />
+            android:text="Добави SMS икона на началния екран" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openFullscreenIntentButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
