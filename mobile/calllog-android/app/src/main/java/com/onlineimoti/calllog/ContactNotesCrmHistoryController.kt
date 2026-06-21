@@ -22,13 +22,19 @@ internal class ContactNotesCrmHistoryController(
     private val rerender: () -> Unit,
 ) {
     private val handler = Handler(Looper.getMainLooper())
-    private val executor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newFixedThreadPool(2)
     private val serverDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
     private var started = false
     private var skippedReason = ""
-    private var loading = false
+    private var serverLoading = false
+    private var localLoading = false
+    private var localLoaded = false
     private var error = false
     private var serverNotes: List<CrmServerNote> = emptyList()
+    private var localCalls: List<PhoneCallRecord> = emptyList()
+    private var localNotes: List<ContactCallNote> = emptyList()
+    private var localSmsMessages: List<SmsMessageRecord> = emptyList()
 
     fun loadOnce(phone: String) {
         if (started) return
@@ -37,18 +43,23 @@ internal class ContactNotesCrmHistoryController(
             skippedReason = "Няма телефон за CRM проверка"
             return
         }
+
+        startLocalLoad(phone, force = true)
+
         val config = ConfigStore.load(activity)
         if (!config.remoteEnabled || config.baseUrl.isBlank()) {
             skippedReason = "CRM връзката е изключена от Server настройките"
             return
         }
-        loading = true
+
+        serverLoading = true
         error = false
         rerender()
         executor.execute {
             val result = runCatching { CrmContactHistoryClient.fetch(config, phone) }
             handler.post {
-                loading = false
+                if (activity.isFinishing || activity.isDestroyed) return@post
+                serverLoading = false
                 result.onSuccess {
                     serverNotes = it.serverNotes
                     error = false
@@ -63,12 +74,23 @@ internal class ContactNotesCrmHistoryController(
         }
     }
 
+    /** Reloads device calls/SMS after a local note or SMS changes. */
+    fun refreshLocal(phone: String) {
+        if (phone.isBlank()) return
+        startLocalLoad(phone, force = true)
+    }
+
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
         serverNotes = emptyList()
+        localCalls = emptyList()
+        localNotes = emptyList()
+        localSmsMessages = emptyList()
         skippedReason = ""
-        loading = false
+        serverLoading = false
+        localLoading = false
+        localLoaded = false
         error = false
     }
 
@@ -78,13 +100,14 @@ internal class ContactNotesCrmHistoryController(
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
-        val localCalls = PhoneCallReader.callsForPhone(activity, phone, limit = 100)
-        val localNotes = ContactNoteReader.callNotesForPhone(activity, phone)
-        val smsMessages = SmsMessageReader.messagesForPhone(activity, phone)
         val latestCall = localCalls.firstOrNull()
         val latestCallWithoutNote = latestCall?.takeUnless { call -> hasNoteForCall(call, localNotes) }
-        val hiddenCallsWithoutNotes = localCalls.drop(1).count { call -> !hasNoteForCall(call, localNotes) }
-        val timeline = buildTimeline(localNotes, latestCallWithoutNote, smsMessages)
+        val hiddenCallsWithoutNotes = if (localLoaded) {
+            localCalls.drop(1).count { call -> !hasNoteForCall(call, localNotes) }
+        } else {
+            0
+        }
+        val timeline = buildTimeline(localNotes, latestCallWithoutNote, localSmsMessages)
 
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -99,6 +122,30 @@ internal class ContactNotesCrmHistoryController(
             timeline.forEach { item -> addTimelineCard(item, onEditCallNote) }
             addStatusIfNeeded(this, timeline, hiddenCallsWithoutNotes.coerceAtLeast(0))
         })
+    }
+
+    private fun startLocalLoad(phone: String, force: Boolean) {
+        if (phone.isBlank() || localLoading || (localLoaded && !force)) return
+        localLoading = true
+        executor.execute {
+            val snapshot = runCatching {
+                LocalHistorySnapshot(
+                    calls = PhoneCallReader.callsForPhone(activity, phone, limit = 100),
+                    notes = ContactNoteReader.callNotesForPhone(activity, phone),
+                    smsMessages = SmsMessageReader.messagesForPhone(activity, phone),
+                )
+            }.getOrDefault(LocalHistorySnapshot())
+
+            handler.post {
+                if (activity.isFinishing || activity.isDestroyed) return@post
+                localCalls = snapshot.calls
+                localNotes = snapshot.notes
+                localSmsMessages = snapshot.smsMessages
+                localLoading = false
+                localLoaded = true
+                rerender()
+            }
+        }
     }
 
     private fun historyTitleRow(openFilteredLog: () -> Unit): LinearLayout {
@@ -172,12 +219,18 @@ internal class ContactNotesCrmHistoryController(
     }
 
     private fun addStatusIfNeeded(container: LinearLayout, timeline: List<TimelineItem>, hiddenCallsWithoutNotes: Int) {
-        when {
-            loading -> container.addView(statusText("Зареждам CRM история…"))
-            error -> container.addView(statusText("CRM историята не е заредена"))
-            skippedReason.isNotBlank() -> container.addView(statusText(skippedReason))
-            timeline.isEmpty() && hiddenCallsWithoutNotes <= 0 -> container.addView(statusText("Няма бележки, SMS или CRM записи за този номер"))
-            serverNotes.isEmpty() -> container.addView(statusText("Няма CRM записи от сървъра за този номер"))
+        if (!localLoaded) {
+            container.addView(statusText("Зареждам разговори и SMS…"))
+        } else if (localLoading) {
+            container.addView(statusText("Обновявам разговори и SMS…"))
+        }
+        if (serverLoading) container.addView(statusText("Зареждам CRM история…"))
+        if (error) container.addView(statusText("CRM историята не е заредена"))
+        if (skippedReason.isNotBlank()) container.addView(statusText(skippedReason))
+        if (localLoaded && timeline.isEmpty() && hiddenCallsWithoutNotes <= 0 && !serverLoading && !error && skippedReason.isBlank()) {
+            container.addView(statusText("Няма бележки, SMS или CRM записи за този номер"))
+        } else if (localLoaded && serverNotes.isEmpty() && !serverLoading && !error && skippedReason.isBlank()) {
+            container.addView(statusText("Няма CRM записи от сървъра за този номер"))
         }
         if (hiddenCallsWithoutNotes > 0) {
             container.addView(statusText("Скрити са $hiddenCallsWithoutNotes по-стари разговора без бележка. Всички позвънявания се виждат на началния екран."))
@@ -194,11 +247,7 @@ internal class ContactNotesCrmHistoryController(
             setOnClickListener { onEditCallNote(call.toContactCallNote()) }
             layoutParams = cardLayoutParams()
             addView(TextView(activity).apply {
-                text = if (startedAtText.isNotBlank()) {
-                    "+ Добави бележка към $startedAtText"
-                } else {
-                    "+ Добави бележка към последния разговор"
-                }
+                text = if (startedAtText.isNotBlank()) "+ Добави бележка към $startedAtText" else "+ Добави бележка към последния разговор"
                 textSize = 14.5f
                 setTextColor(NoteUiStyle.Call.mutedText)
                 setTypeface(typeface, Typeface.BOLD)
@@ -231,7 +280,7 @@ internal class ContactNotesCrmHistoryController(
                     PhoneCallReader.formatStartedAt(note.callAt.takeIf { it > 0L } ?: note.savedAt),
                     headerUi.directionArrowLabel(note.direction),
                     PhoneCallReader.formatDuration(note.durationSeconds),
-                    "локална бележка"
+                    "локална бележка",
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(colors.metaText)
@@ -345,6 +394,12 @@ internal class ContactNotesCrmHistoryController(
         val value = trim()
         return value.isNotBlank() && !value.equals("null", ignoreCase = true)
     }
+
+    private data class LocalHistorySnapshot(
+        val calls: List<PhoneCallRecord> = emptyList(),
+        val notes: List<ContactCallNote> = emptyList(),
+        val smsMessages: List<SmsMessageRecord> = emptyList(),
+    )
 
     private sealed class TimelineItem(val timeMs: Long) {
         class LatestCallAction(val call: PhoneCallRecord) : TimelineItem(call.startedAt)
