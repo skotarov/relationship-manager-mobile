@@ -5,7 +5,6 @@ import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -39,11 +38,10 @@ internal class SmsComposeDialog(
         if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) return
 
         runCatching {
-            val dialog = object : Dialog(activity) {
-                override fun onCreate(savedInstanceState: Bundle?) {
-                    super.onCreate(savedInstanceState)
-                    requestWindowFeature(Window.FEATURE_NO_TITLE)
-                }
+            // The feature must be requested before setContentView. Doing it from onCreate after
+            // the content is attached crashes on some Xiaomi/HyperOS builds.
+            val dialog = Dialog(activity).apply {
+                requestWindowFeature(Window.FEATURE_NO_TITLE)
             }
             val views = content(dialog, phone, title)
             dialog.setContentView(views.root)
@@ -61,8 +59,12 @@ internal class SmsComposeDialog(
                 keyboard?.showSoftInput(views.messageInput, InputMethodManager.SHOW_IMPLICIT)
             }
             dialog.show()
-        }.onFailure {
-            Toast.makeText(activity, "Не успях да отворя SMS екрана.", Toast.LENGTH_SHORT).show()
+        }.onFailure { error ->
+            Toast.makeText(
+                activity,
+                error.message.orEmpty().ifBlank { "Не успях да отворя SMS екрана." },
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
