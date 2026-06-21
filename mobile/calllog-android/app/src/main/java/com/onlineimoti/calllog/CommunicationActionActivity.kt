@@ -234,7 +234,10 @@ class CommunicationActionActivity : Activity() {
 
             private fun emailModel(intent: Intent, uri: Uri): CommunicationModel? {
                 val uriRecipient = Uri.decode(uri.schemeSpecificPart.orEmpty().substringBefore('?')).trim()
-                val extraRecipient = intent.stringArrayExtra(Intent.EXTRA_EMAIL).firstOrNull().orEmpty().trim()
+                val extraRecipient = intent.getStringArrayExtra(Intent.EXTRA_EMAIL)
+                    ?.firstOrNull()
+                    .orEmpty()
+                    .trim()
                 val recipient = uriRecipient.ifBlank { extraRecipient }
                 if (recipient.isBlank()) return null
                 return CommunicationModel(
@@ -257,8 +260,6 @@ class CommunicationActionActivity : Activity() {
             }
 
             private fun Intent.stringExtra(key: String): String = getStringExtra(key).orEmpty().trim()
-
-            private fun Intent.stringArrayExtra(key: String): Array<String> = getStringArrayExtra(key).orEmpty()
         }
     }
 }
