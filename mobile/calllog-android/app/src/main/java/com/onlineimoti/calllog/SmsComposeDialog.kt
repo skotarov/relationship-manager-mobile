@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
@@ -24,6 +26,8 @@ internal class SmsComposeDialog(
     private val activity: Activity,
     private val dp: (Int) -> Int,
 ) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private data class DialogViews(
         val root: LinearLayout,
         val messageInput: EditText,
@@ -154,31 +158,44 @@ internal class SmsComposeDialog(
     ) {
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
-            val result = SmsMessageSender.send(activity.applicationContext, phone, message)
-            activity.runOnUiThread {
+            val result = runCatching {
+                SmsMessageSender.send(activity.applicationContext, phone, message)
+            }.getOrElse { error ->
+                Result.failure(error)
+            }
+            mainHandler.post {
                 executor.shutdown()
-                if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@runOnUiThread
-
-                result.onSuccess { outcome ->
-                    activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
-                    Toast.makeText(
-                        activity,
-                        if (outcome.historySaved) {
-                            "SMS е изпратен"
-                        } else {
-                            "SMS е подаден. Ако не се появи в историята, отвори я отново."
-                        },
-                        Toast.LENGTH_LONG,
-                    ).show()
-                    dialog.dismiss()
+                runCatching {
+                    if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@post
+                    result.onSuccess { outcome ->
+                        activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
+                        Toast.makeText(
+                            activity,
+                            if (outcome.historySaved) {
+                                "SMS е изпратен"
+                            } else {
+                                "SMS е изпратен. Отвори отново историята, ако редът още не се е появил."
+                            },
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        dialog.dismiss()
+                    }.onFailure { error ->
+                        restoreAfterFailure(sendButton, status, error)
+                    }
                 }.onFailure { error ->
-                    sendButton.isEnabled = true
-                    sendButton.text = "Изпрати"
-                    status.text = error.message.orEmpty().ifBlank { "Не успях да изпратя SMS." }
-                    status.visibility = TextView.VISIBLE
+                    if (!activity.isFinishing && !activity.isDestroyed && dialog.isShowing) {
+                        restoreAfterFailure(sendButton, status, error)
+                    }
                 }
             }
         }
+    }
+
+    private fun restoreAfterFailure(sendButton: Button, status: TextView, error: Throwable) {
+        sendButton.isEnabled = true
+        sendButton.text = "Изпрати"
+        status.text = error.message.orEmpty().ifBlank { "Не успях да изпратя SMS." }
+        status.visibility = TextView.VISIBLE
     }
 
     private fun primaryButton(label: String): Button {
