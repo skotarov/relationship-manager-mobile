@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -16,36 +17,52 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import java.util.concurrent.Executors
 
 /** Small in-place SMS composer used from the contact-history header. */
 internal class SmsComposeDialog(
     private val activity: Activity,
     private val dp: (Int) -> Int,
 ) {
+    private data class DialogViews(
+        val root: LinearLayout,
+        val messageInput: EditText,
+        val status: TextView,
+        val sendButton: Button,
+    )
+
     fun show(phone: String, title: String) {
-        if (phone.isBlank()) return
-        val dialog = object : Dialog(activity) {
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                requestWindowFeature(Window.FEATURE_NO_TITLE)
+        if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) return
+
+        runCatching {
+            val dialog = object : Dialog(activity) {
+                override fun onCreate(savedInstanceState: Bundle?) {
+                    super.onCreate(savedInstanceState)
+                    requestWindowFeature(Window.FEATURE_NO_TITLE)
+                }
             }
+            val views = content(dialog, phone, title)
+            dialog.setContentView(views.root)
+            dialog.setOnShowListener {
+                dialog.window?.apply {
+                    setBackgroundDrawable(roundedRect(Color.WHITE, dp(20), Color.TRANSPARENT, 0))
+                    setLayout(
+                        activity.resources.displayMetrics.widthPixels - dp(28),
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    )
+                    setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+                }
+                views.messageInput.requestFocus()
+                val keyboard = activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as? InputMethodManager
+                keyboard?.showSoftInput(views.messageInput, InputMethodManager.SHOW_IMPLICIT)
+            }
+            dialog.show()
+        }.onFailure {
+            Toast.makeText(activity, "Не успях да отворя SMS екрана.", Toast.LENGTH_SHORT).show()
         }
-        dialog.setContentView(content(dialog, phone, title))
-        dialog.window?.apply {
-            setBackgroundDrawable(roundedRect(Color.WHITE, dp(20), Color.TRANSPARENT, 0))
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-        }
-        dialog.setOnShowListener {
-            dialog.window?.setLayout(
-                activity.resources.displayMetrics.widthPixels - dp(28),
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        dialog.show()
     }
 
-    private fun content(dialog: Dialog, phone: String, title: String): LinearLayout {
+    private fun content(dialog: Dialog, phone: String, title: String): DialogViews {
         val displayTitle = title.trim().ifBlank { phone }
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -89,7 +106,9 @@ internal class SmsComposeDialog(
             minLines = 4
             maxLines = 8
             gravity = Gravity.TOP or Gravity.START
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            inputType = InputType.TYPE_CLASS_TEXT or
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = roundedRect(Color.rgb(248, 250, 252), dp(14), Color.rgb(203, 213, 225), dp(1))
             layoutParams = LinearLayout.LayoutParams(
@@ -107,31 +126,62 @@ internal class SmsComposeDialog(
         }
         root.addView(status)
 
-        root.addView(primaryButton("Изпрати") {
-            val result = SmsMessageSender.send(activity, phone, messageInput.text?.toString().orEmpty())
-            result.onSuccess {
-                Toast.makeText(activity, "SMS е изпратен", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }.onFailure { error ->
-                status.text = error.message.orEmpty().ifBlank { "Не успях да изпратя SMS." }
-                status.visibility = TextView.VISIBLE
-            }
-        }.apply {
+        val sendButton = primaryButton("Изпрати")
+        root.addView(sendButton.apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(48),
             ).apply { topMargin = dp(16) }
         })
 
-        dialog.setOnShowListener {
-            messageInput.requestFocus()
-            val keyboard = activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as? InputMethodManager
-            keyboard?.showSoftInput(messageInput, InputMethodManager.SHOW_IMPLICIT)
+        sendButton.setOnClickListener {
+            val message = messageInput.text?.toString().orEmpty()
+            sendButton.isEnabled = false
+            sendButton.text = "Изпращане…"
+            status.visibility = TextView.GONE
+            sendInBackground(dialog, phone, message, sendButton, status)
         }
-        return root
+
+        return DialogViews(root, messageInput, status, sendButton)
     }
 
-    private fun primaryButton(label: String, action: () -> Unit): Button {
+    private fun sendInBackground(
+        dialog: Dialog,
+        phone: String,
+        message: String,
+        sendButton: Button,
+        status: TextView,
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            val result = SmsMessageSender.send(activity.applicationContext, phone, message)
+            activity.runOnUiThread {
+                executor.shutdown()
+                if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@runOnUiThread
+
+                result.onSuccess { outcome ->
+                    activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
+                    Toast.makeText(
+                        activity,
+                        if (outcome.historySaved) {
+                            "SMS е изпратен"
+                        } else {
+                            "SMS е подаден. Ако не се появи в историята, отвори я отново."
+                        },
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    dialog.dismiss()
+                }.onFailure { error ->
+                    sendButton.isEnabled = true
+                    sendButton.text = "Изпрати"
+                    status.text = error.message.orEmpty().ifBlank { "Не успях да изпратя SMS." }
+                    status.visibility = TextView.VISIBLE
+                }
+            }
+        }
+    }
+
+    private fun primaryButton(label: String): Button {
         return Button(activity).apply {
             text = label
             isAllCaps = false
@@ -139,7 +189,6 @@ internal class SmsComposeDialog(
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             background = roundedRect(Color.rgb(15, 23, 42), dp(13), Color.TRANSPARENT, 0)
-            setOnClickListener { action() }
         }
     }
 
