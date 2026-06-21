@@ -14,6 +14,7 @@ class PhoneNumberActionActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handlePhoneAction(intent)
     }
 
@@ -45,6 +46,7 @@ class PhoneNumberActionActivity : Activity() {
             sourceIntent.data?.schemeSpecificPart,
             sourceIntent.dataString,
             sourceIntent.getStringExtra(Intent.EXTRA_PHONE_NUMBER),
+            sourceIntent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString(),
             sourceIntent.getStringExtra("query"),
             sourceIntent.getStringExtra("android.intent.extra.SEARCH_QUERY"),
             sourceIntent.getStringExtra("android.app.SearchManager.query"),
