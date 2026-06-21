@@ -136,6 +136,46 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".CommunicationActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:noHistory="true">
+            <!-- Android compose intents: make Call Report selectable for SMS/MMS drafts. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+            <!-- SMS/MMS links opened from a browser or another app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+            <!-- Standard e-mail compose intent. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="mailto" />
+            </intent-filter>
+            <!-- mailto links opened from a browser or another app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mailto" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".PhoneNumberActionActivity"
             android:excludeFromRecents="true"
             android:exported="true"
@@ -175,6 +215,8 @@
                 <data android:scheme="http" android:host="google.com" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="www.google.bg" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="google.bg" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="www.google.de" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="google.de" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="www.google.de" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="google.de" android:pathPrefix="/search" />
             </intent-filter>
