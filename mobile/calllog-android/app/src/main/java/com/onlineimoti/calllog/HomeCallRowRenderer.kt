@@ -54,7 +54,7 @@ internal class HomeCallRowRenderer(
 
         row.addView(TextView(activity).apply {
             text = callIcon(call)
-            textSize = 36f
+            textSize = if (call.isSms) 28f else 36f
             gravity = Gravity.CENTER
             setTextColor(callIconColor(call))
             layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
@@ -66,11 +66,19 @@ internal class HomeCallRowRenderer(
         }
         textColumn.addView(TextView(activity).apply {
             val hasContactName = displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
-            val metaText = listOf(
-                PhoneCallReader.formatStartedAt(call.startedAt),
-                PhoneCallReader.formatDuration(call.durationSeconds),
-                call.number.takeIf { hasContactName },
-            ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+            val metaText = if (call.isSms) {
+                listOf(
+                    PhoneCallReader.formatStartedAt(call.startedAt),
+                    call.smsDirectionLabel,
+                    call.number.takeIf { hasContactName },
+                ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+            } else {
+                listOf(
+                    PhoneCallReader.formatStartedAt(call.startedAt),
+                    PhoneCallReader.formatDuration(call.durationSeconds),
+                    call.number.takeIf { hasContactName },
+                ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+            }
             val mutedTextColor = activity.getColor(R.color.calllog_muted_text)
             text = highlightedText(metaText, highlightQuery, mutedTextColor)
             setTextColor(mutedTextColor)
@@ -78,6 +86,17 @@ internal class HomeCallRowRenderer(
             maxLines = 1
         })
         textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+        if (call.isSms) {
+            textColumn.addView(TextView(activity).apply {
+                val body = call.smsBody.ifBlank { "(SMS без текст)" }
+                text = highlightedText(body, highlightQuery, activity.getColor(R.color.calllog_text))
+                setTextColor(activity.getColor(R.color.calllog_text))
+                textSize = 13f
+                maxLines = 3
+                ellipsize = TextUtils.TruncateAt.END
+                setPadding(0, dp(4), 0, 0)
+            })
+        }
         if (!contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
             textColumn.addView(TextView(activity).apply {
@@ -115,7 +134,9 @@ internal class HomeCallRowRenderer(
         }
         actions.addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer(call.number) })
         actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
-        actions.addView(iconButton(R.drawable.ic_chat_note, "Бележка") { openContactNotePopupForCall(call, displayName) })
+        if (!call.isSms) {
+            actions.addView(iconButton(R.drawable.ic_chat_note, "Бележка") { openContactNotePopupForCall(call, displayName) })
+        }
         row.addView(actions)
 
         card.addView(row)
@@ -204,10 +225,15 @@ internal class HomeCallRowRenderer(
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
-        return if (call.direction == "out") "↗" else "↙"
+        return when {
+            call.isSms -> "✉"
+            call.direction == "out" -> "↗"
+            else -> "↙"
+        }
     }
 
     private fun callIconColor(call: PhoneCallRecord): Int {
+        if (call.isSms) return Color.rgb(124, 58, 237)
         if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
         return when (call.direction) {
             "out" -> Color.rgb(34, 197, 94)
