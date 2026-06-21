@@ -12,6 +12,14 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
+    <!-- Declared for the Android Default SMS role. The role holder receives SMS_DELIVER and writes messages to the system provider. -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_MMS" />
+    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.WRITE_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -65,6 +73,20 @@
         <service
             android:name=".PostCallOverlayService"
             android:exported="false" />
+        <!-- Required Default-SMS quick-reply contract. -->
+        <service
+            android:name=".SmsRespondViaMessageService"
+            android:exported="true"
+            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </service>
         <receiver
             android:name=".NotificationDismissReceiver"
             android:enabled="true"
@@ -89,6 +111,25 @@
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
+        <!-- Required Default-SMS delivery receiver. -->
+        <receiver
+            android:name=".SmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+        <!-- Required Default-MMS delivery receiver. -->
+        <receiver
+            android:name=".MmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
         <service
             android:name=".CallScreeningBridgeService"
             android:exported="true"
@@ -111,6 +152,11 @@
             android:noHistory="true" />
         <activity
             android:name=".PostCallPromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop" />
+        <activity
+            android:name=".SmsIncomingChoiceActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTop" />
@@ -151,6 +197,7 @@
                 <data android:mimeType="text/directory" />
             </intent-filter>
         </activity>
+        <!-- Required Default-SMS compose contract. -->
         <activity
             android:name=".CommunicationActionActivity"
             android:excludeFromRecents="true"
@@ -158,7 +205,6 @@
             android:label="@string/app_name"
             android:launchMode="singleTop"
             android:noHistory="true">
-            <!-- Android compose intents: make Call Report selectable for SMS/MMS drafts. -->
             <intent-filter>
                 <action android:name="android.intent.action.SENDTO" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -167,7 +213,6 @@
                 <data android:scheme="mms" />
                 <data android:scheme="mmsto" />
             </intent-filter>
-            <!-- SMS/MMS links opened from a browser or another app. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -184,7 +229,6 @@
             android:exported="true"
             android:label="@string/dial_handler_label"
             android:noHistory="true">
-            <!-- Different apps use different phone-number actions when a number is tapped. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.DIAL" />
@@ -194,7 +238,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tel" />
             </intent-filter>
-            <!-- Long-press a number in Gmail/SMS, select it, then choose Relationship Manager. -->
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -222,7 +265,7 @@
                 <data android:scheme="http" android:host="google.com" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="www.google.bg" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="google.bg" android:pathPrefix="/search" />
-                <data android:scheme="http" android:host="www.google.de" android:pathPrefix="/search" />
+                <data android:scheme="https" android:host="www.google.de" android:pathPrefix="/search" />
                 <data android:scheme="http" android:host="google.de" android:pathPrefix="/search" />
             </intent-filter>
             <intent-filter>
@@ -253,6 +296,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_MESSAGING" />
             </intent-filter>
         </activity>
     </application>
