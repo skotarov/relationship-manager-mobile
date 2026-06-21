@@ -1,32 +1,19 @@
 package com.onlineimoti.calllog
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.Drawable
-import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
-import androidx.core.content.ContextCompat
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.IOException
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
 
 /**
- * Builds a deliberately tiny MIUI/HyperOS .mtz package containing only one icon override:
- * Call Report's launcher package. The package is saved under Downloads/Call Report and Xiaomi
- * Themes is opened directly afterwards; Android never asks to open the archive with another app.
+ * Creates or updates a normal Android pinned shortcut for the SMS/CRM entry point.
+ * Xiaomi Themes is not involved: it has no public install/apply API for a third-party app.
  */
 internal object SmsThemeInstaller {
     private const val PREFS_NAME = "sms_theme_installer"
     private const val KEY_CRM_THEME_NEXT_RESTORE = "crm_theme_next_restore"
-    private const val ICON_SIZE = 512
-    private const val CALL_REPORT_PACKAGE = "com.onlineimoti.calllog"
-    private const val XIAOMI_THEMES_PACKAGE = "com.android.thememanager"
+    private const val SHORTCUT_ID = "callreport_sms_home"
 
     fun isRestoreActionNext(context: Context): Boolean {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -34,173 +21,66 @@ internal object SmsThemeInstaller {
     }
 
     fun openNext(context: Context, setStatus: (String) -> Unit) {
-        if (isRestoreActionNext(context)) {
-            openRestoreTheme(context, setStatus)
+        val enableSmsIdentity = !isRestoreActionNext(context)
+        val manager = context.getSystemService(ShortcutManager::class.java)
+        if (manager == null || !manager.isRequestPinShortcutSupported) {
+            setStatus("Началният екран не позволява добавяне на shortcut за SMS иконата.")
+            return
+        }
+
+        val shortcut = buildShortcut(context, enableSmsIdentity)
+        val alreadyPinned = manager.pinnedShortcuts.any { it.id == SHORTCUT_ID }
+        val accepted = if (alreadyPinned) {
+            manager.updateShortcuts(listOf(shortcut))
+            true
         } else {
-            openCrmSmsTheme(context, setStatus)
+            manager.requestPinShortcut(shortcut, null)
         }
-    }
-
-    private fun openCrmSmsTheme(context: Context, setStatus: (String) -> Unit) {
-        runCatching {
-            backupCurrentIconIfNeeded(context)
-            val iconBytes = renderPng(
-                requireNotNull(ContextCompat.getDrawable(context, R.drawable.ic_qs_callreport)),
-            )
-            writeTheme(
-                context = context,
-                displayName = "CallReport-SMS-icon.mtz",
-                title = "Call Report SMS",
-                iconBytes = iconBytes,
-            )
-            openXiaomiThemes(context)
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(KEY_CRM_THEME_NEXT_RESTORE, true)
-                .apply()
-            setStatus(
-                "SMS темата е записана в Downloads/Call Report и е отворено Themes. " +
-                    "В Themes намери Local/Offline themes или Import и приложи само Icons.",
-            )
-        }.onFailure {
-            setStatus("Не успях да подготвя SMS темата: ${it.message.orEmpty()}")
+        if (!accepted) {
+            setStatus("Xiaomi launcher не прие добавянето на SMS иконата.")
+            return
         }
-    }
 
-    private fun openRestoreTheme(context: Context, setStatus: (String) -> Unit) {
-        runCatching {
-            val iconBytes = readBackedUpIcon(context) ?: renderPng(
-                context.packageManager.getApplicationIcon(context.packageName),
-            )
-            writeTheme(
-                context = context,
-                displayName = "CallReport-original-icon.mtz",
-                title = "Call Report original icon",
-                iconBytes = iconBytes,
-            )
-            openXiaomiThemes(context)
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(KEY_CRM_THEME_NEXT_RESTORE, false)
-                .apply()
-            setStatus(
-                "Пакетът за връщане на иконката е записан в Downloads/Call Report и е отворено Themes.",
-            )
-        }.onFailure {
-            setStatus("Не успях да подготвя пакета за връщане: ${it.message.orEmpty()}")
-        }
-    }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_CRM_THEME_NEXT_RESTORE, enableSmsIdentity)
+            .apply()
 
-    private fun backupCurrentIconIfNeeded(context: Context) {
-        val backupFile = backupFile(context)
-        if (backupFile.isFile && backupFile.length() > 0L) return
-        backupFile.parentFile?.mkdirs()
-        backupFile.writeBytes(
-            renderPng(context.packageManager.getApplicationIcon(context.packageName)),
+        setStatus(
+            if (enableSmsIdentity) {
+                if (alreadyPinned) {
+                    "SMS иконата е обновена. На началния екран вече е „Съобщения“ с CRM балон."
+                } else {
+                    "Потвърди добавянето на „Съобщения“ към началния екран и я постави на мястото на старата SMS иконка."
+                }
+            } else {
+                "Shortcut-ът е върнат към стандартната иконка и име на Call Report."
+            },
         )
     }
 
-    private fun readBackedUpIcon(context: Context): ByteArray? {
-        val backupFile = backupFile(context)
-        return if (backupFile.isFile && backupFile.length() > 0L) backupFile.readBytes() else null
-    }
-
-    private fun backupFile(context: Context): File {
-        return File(context.filesDir, "theme-backup/callreport-original-icon.png")
-    }
-
-    private fun writeTheme(
-        context: Context,
-        displayName: String,
-        title: String,
-        iconBytes: ByteArray,
-    ): Uri {
-        val resolver = context.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "application/zip")
-            put(
-                MediaStore.MediaColumns.RELATIVE_PATH,
-                "${Environment.DIRECTORY_DOWNLOADS}/Call Report",
+    private fun buildShortcut(context: Context, smsIdentity: Boolean): ShortcutInfo {
+        val intent = Intent(context, HomeActivity::class.java).apply {
+            action = if (smsIdentity) ACTION_OPEN_SMS_HOME else ACTION_OPEN_CALL_REPORT_HOME
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        return ShortcutInfo.Builder(context, SHORTCUT_ID)
+            .setShortLabel(
+                if (smsIdentity) context.getString(R.string.sms_launcher_label) else context.getString(R.string.app_name),
             )
-            put(MediaStore.MediaColumns.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: throw IOException("Android не създаде файл за темата.")
-
-        try {
-            resolver.openOutputStream(uri, "w")?.use { output ->
-                ZipOutputStream(output).use { mtz ->
-                    writeTextEntry(mtz, "description.xml", descriptionXml(title))
-                    writeBinaryEntry(mtz, "icons", iconsArchive(iconBytes))
-                }
-            } ?: throw IOException("Не мога да запиша пакета за темата.")
-
-            resolver.update(
-                uri,
-                ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
-                null,
-                null,
+            .setLongLabel(
+                if (smsIdentity) "Съобщения CRM" else context.getString(R.string.app_name),
             )
-            return uri
-        } catch (error: Throwable) {
-            resolver.delete(uri, null, null)
-            throw error
-        }
+            .setIcon(
+                Icon.createWithResource(
+                    context,
+                    if (smsIdentity) R.mipmap.ic_sms_launcher else R.mipmap.ic_launcher,
+                ),
+            )
+            .setIntent(intent)
+            .build()
     }
 
-    private fun descriptionXml(title: String): String {
-        return """
-            <?xml version="1.0" encoding="utf-8"?>
-            <theme>
-                <title>$title</title>
-                <author>OnlineImoti</author>
-                <designer>OnlineImoti</designer>
-                <version>1.0</version>
-                <uiVersion>15</uiVersion>
-            </theme>
-        """.trimIndent()
-    }
-
-    private fun iconsArchive(iconBytes: ByteArray): ByteArray {
-        return ByteArrayOutputStream().use { output ->
-            ZipOutputStream(output).use { icons ->
-                writeBinaryEntry(icons, "$CALL_REPORT_PACKAGE.png", iconBytes)
-            }
-            output.toByteArray()
-        }
-    }
-
-    private fun writeTextEntry(zip: ZipOutputStream, name: String, text: String) {
-        writeBinaryEntry(zip, name, text.toByteArray(Charsets.UTF_8))
-    }
-
-    private fun writeBinaryEntry(zip: ZipOutputStream, name: String, bytes: ByteArray) {
-        zip.putNextEntry(ZipEntry(name))
-        zip.write(bytes)
-        zip.closeEntry()
-    }
-
-    private fun renderPng(drawable: Drawable): ByteArray {
-        val oldLeft = drawable.bounds.left
-        val oldTop = drawable.bounds.top
-        val oldRight = drawable.bounds.right
-        val oldBottom = drawable.bounds.bottom
-        val bitmap = Bitmap.createBitmap(ICON_SIZE, ICON_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, ICON_SIZE, ICON_SIZE)
-        drawable.draw(canvas)
-        drawable.setBounds(oldLeft, oldTop, oldRight, oldBottom)
-        return ByteArrayOutputStream().use { output ->
-            check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
-            bitmap.recycle()
-            output.toByteArray()
-        }
-    }
-
-    private fun openXiaomiThemes(context: Context) {
-        val launchIntent = context.packageManager.getLaunchIntentForPackage(XIAOMI_THEMES_PACKAGE)
-            ?: throw IOException("Xiaomi Themes не е намерено на телефона.")
-        context.startActivity(launchIntent)
-    }
+    private const val ACTION_OPEN_SMS_HOME = "com.onlineimoti.calllog.OPEN_SMS_HOME"
+    private const val ACTION_OPEN_CALL_REPORT_HOME = "com.onlineimoti.calllog.OPEN_CALL_REPORT_HOME"
 }
