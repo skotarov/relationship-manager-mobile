@@ -99,6 +99,10 @@
     <string name="permissions_sms_role_title">SMS приложение</string>
     <string name="permissions_sms_role_description">Когато Relationship Manager е Default SMS, новите SMS първо идват тук. От известието избираш дали да останеш в Call Report или да отвориш предишното SMS приложение.</string>
     <string name="permissions_sms_role_button">Избери като SMS приложение</string>
+    <string name="permissions_sms_theme_title">SMS икона</string>
+    <string name="permissions_sms_theme_description">Отваря малка Xiaomi/HyperOS тема, която съдържа само иконата на Call Report. След приложението ѝ премести Call Report на мястото на старата SMS иконка.</string>
+    <string name="permissions_sms_theme_install_button">Инсталирай CRM SMS тема</string>
+    <string name="permissions_sms_theme_restore_button">Върни запазената иконка</string>
 
     <string name="server_enabled">Server</string>
     <string name="server_base_url_hint">Base URL</string>
