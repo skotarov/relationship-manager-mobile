@@ -68,6 +68,9 @@ class ContactNotesHeaderUi(
                 })
                 if (phone.isNotBlank()) {
                     addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
+                    addView(iconButton(R.drawable.ic_sms_message, "Напиши SMS") {
+                        SmsComposeDialog(activity, dp).show(phone, displayName.ifBlank { title })
+                    })
                 }
                 addView(iconButton(R.drawable.ic_calendar_event, "Календар", openCalendarEvent).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
