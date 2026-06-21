@@ -4,6 +4,8 @@ import android.content.Context
 
 object HomeCallPageLoader {
     private const val SEARCH_SCAN_LIMIT = 500
+    private const val FILTERED_CALL_SCAN_LIMIT = 500
+    private const val FILTERED_SMS_SCAN_LIMIT = 150
 
     fun calls(context: Context, activePhoneFilter: String, searchQuery: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val normalizedSearch = searchQuery.trim()
@@ -12,7 +14,7 @@ object HomeCallPageLoader {
         return if (activePhoneFilter.isBlank()) {
             PhoneCallReader.recentCalls(context, limit = pageSize, offset = offset)
         } else {
-            PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = pageSize, offset = offset)
+            filteredTimelineForPhone(context, activePhoneFilter, pageIndex, pageSize)
         }
     }
 
@@ -23,6 +25,39 @@ object HomeCallPageLoader {
     }
 
     fun clearSearchCache() = Unit
+
+    private fun filteredTimelineForPhone(
+        context: Context,
+        phone: String,
+        pageIndex: Int,
+        pageSize: Int,
+    ): List<PhoneCallRecord> {
+        val calls = PhoneCallReader.callsForPhone(
+            context = context,
+            phone = phone,
+            limit = FILTERED_CALL_SCAN_LIMIT,
+            offset = 0,
+        )
+        val messages = SmsMessageReader.messagesForPhone(
+            context = context,
+            phone = phone,
+            limit = FILTERED_SMS_SCAN_LIMIT,
+        ).map { sms ->
+            PhoneCallRecord(
+                number = phone,
+                name = "",
+                direction = if (sms.isOutgoing) "sms_out" else "sms_in",
+                startedAt = sms.timestampMs,
+                durationSeconds = 0L,
+                smsBody = sms.body,
+            )
+        }
+        val offset = pageIndex * pageSize
+        return (calls + messages)
+            .sortedByDescending { item -> item.startedAt }
+            .drop(offset)
+            .take(pageSize)
+    }
 
     private fun searchCalls(context: Context, activePhoneFilter: String, query: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         if (isSearchTooShort(query)) return emptyList()
