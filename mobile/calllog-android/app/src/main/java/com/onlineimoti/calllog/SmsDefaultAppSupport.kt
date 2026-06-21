@@ -4,8 +4,8 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.RoleManager
 import android.app.Service
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
@@ -14,7 +14,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.IBinder
 import android.provider.Telephony
-import android.telephony.SmsMessage
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
