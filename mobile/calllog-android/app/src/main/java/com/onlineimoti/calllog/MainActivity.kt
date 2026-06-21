@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         if (active) {
             setStatus(
                 "Relationship Manager е избрано като SMS приложение. " +
-                    "Новите SMS ще идват първо тук. След това можеш да натиснеш „Инсталирай CRM SMS тема“.",
+                    "Новите SMS ще идват първо тук. След това можеш да натиснеш „Добави SMS икона“.",
             )
             smsPermissionsLauncher.launch(
                 arrayOf(
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Called by the XML SMS-theme button. */
+    /** Called by the XML SMS-icon button. */
     fun openSmsThemeInstaller(@Suppress("UNUSED_PARAMETER") view: android.view.View) {
         saveConfig()
         SmsThemeInstaller.openNext(this, ::setStatus)
@@ -271,13 +271,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSmsThemeButton() {
         if (!::binding.isInitialized) return
-        binding.permissionsSection.openSmsThemeButton.setText(
-            if (SmsThemeInstaller.isRestoreActionNext(this)) {
-                R.string.permissions_sms_theme_restore_button
-            } else {
-                R.string.permissions_sms_theme_install_button
-            },
-        )
+        binding.permissionsSection.openSmsThemeButton.text = if (SmsThemeInstaller.isRestoreActionNext(this)) {
+            "Върни иконата Call Report"
+        } else {
+            "Добави SMS икона на началния екран"
+        }
     }
 
     private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
