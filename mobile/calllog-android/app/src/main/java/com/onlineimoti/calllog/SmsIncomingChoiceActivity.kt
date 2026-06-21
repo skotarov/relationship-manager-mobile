@@ -6,26 +6,25 @@ import android.os.Bundle
 
 /**
  * Receives the tap from a new-SMS notification while Call Report is the default SMS app.
- * The old decision screen is intentionally skipped: the sender's CRM history opens at once.
+ * Opens Home with the sender filter, where calls and SMS are displayed in one chronological list.
  */
 class SmsIncomingChoiceActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openSenderHistory()
+        openSenderTimeline()
     }
 
-    private fun openSenderHistory() {
+    private fun openSenderTimeline() {
         val rawPhone = intent.getStringExtra(EXTRA_ADDRESS).orEmpty()
         val phone = PhoneNormalizer.normalize(rawPhone).ifBlank { rawPhone.trim() }
         if (phone.isBlank()) {
             finish()
             return
         }
-        val title = RmRealContactLookup.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
         startActivity(
-            Intent(this, ContactNotesActivity::class.java)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, title),
+            Intent(this, HomeActivity::class.java)
+                .putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
         )
         finish()
     }
