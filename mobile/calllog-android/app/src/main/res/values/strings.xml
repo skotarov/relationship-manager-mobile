@@ -96,6 +96,9 @@
     <string name="permissions_cleanup_contacts_button">Clean all Relationship Management records</string>
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
     <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as Default caller ID / spam app.</string>
+    <string name="permissions_sms_role_title">SMS приложение</string>
+    <string name="permissions_sms_role_description">Когато Relationship Manager е Default SMS, новите SMS първо идват тук. От известието избираш дали да останеш в Call Report или да отвориш предишното SMS приложение.</string>
+    <string name="permissions_sms_role_button">Избери като SMS приложение</string>
 
     <string name="server_enabled">Server</string>
     <string name="server_base_url_hint">Base URL</string>
