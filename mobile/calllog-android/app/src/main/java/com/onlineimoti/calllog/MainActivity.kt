@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -70,6 +71,27 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.onCallScreeningResult()
     }
 
+    private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val active = SmsRoleController.isDefaultSmsApp(this)
+        if (active) {
+            setStatus("Relationship Manager е избрано като SMS приложение. Новите SMS ще идват първо тук.")
+            smsPermissionsLauncher.launch(
+                arrayOf(
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.SEND_SMS,
+                )
+            )
+        } else {
+            setStatus("Default SMS не е променено.")
+        }
+        refreshPermissionSummary()
+    }
+
+    private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        refreshPermissionSummary()
+    }
+
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onStorageSettingsResult()
     }
@@ -137,6 +159,10 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             permissionFlowController.requestCallScreeningRoleIfNeeded()
         }
+        binding.permissionsSection.openSmsRoleButton.setOnClickListener {
+            saveConfig()
+            requestDefaultSmsRole()
+        }
         binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.syncAllRmContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
@@ -179,8 +205,17 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.requestCallScreeningRoleIfNeeded()
     }
 
+    internal fun requestDefaultSmsRoleFromSummary() {
+        saveConfig()
+        requestDefaultSmsRole()
+    }
+
     internal fun requestFullScreenIntentPermissionFromSummary() {
         permissionFlowController.requestFullScreenIntentPermissionIfNeeded()
+    }
+
+    private fun requestDefaultSmsRole() {
+        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
     }
 
     private fun autoSaveSettings(): AppConfig {
