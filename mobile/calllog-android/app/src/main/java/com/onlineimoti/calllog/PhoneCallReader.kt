@@ -15,9 +15,16 @@ data class PhoneCallRecord(
     val direction: String,
     val startedAt: Long,
     val durationSeconds: Long,
+    val smsBody: String = "",
 ) {
     val displayName: String
         get() = name.ifBlank { number }
+
+    val isSms: Boolean
+        get() = direction == "sms_in" || direction == "sms_out"
+
+    val smsDirectionLabel: String
+        get() = if (direction == "sms_out") "изпратено" else "получено"
 }
 
 object PhoneCallReader {
