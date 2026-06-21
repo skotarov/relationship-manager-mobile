@@ -20,6 +20,7 @@ class ContactShareActivity : Activity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleSharedContact(intent)
     }
 
@@ -28,20 +29,40 @@ class ContactShareActivity : Activity() {
         val phone = extractPhone(sharedText)
         val title = extractName(sharedText).ifBlank { phone }
 
-        if (phone.isBlank()) {
-            Toast.makeText(this, "Не намерих телефон в споделения контакт", Toast.LENGTH_SHORT).show()
+        // A phone number takes priority: Call Report is useful for its call history and notes.
+        if (phone.isNotBlank()) {
+            Toast.makeText(this, "Отварям историята в Call Report", Toast.LENGTH_SHORT).show()
+            startActivity(
+                Intent(this, ContactNotesActivity::class.java)
+                    .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                    .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
+            )
             finish()
             return
         }
 
-        Toast.makeText(this, "Отварям историята в Call Report", Toast.LENGTH_SHORT).show()
+        // A vCard/contact without a phone can still be useful as an e-mail draft.
+        val email = extractEmail(sharedText)
+        if (email.isNotBlank()) {
+            openEmailClient(email)
+            return
+        }
 
-        startActivity(
-            Intent(this, ContactNotesActivity::class.java)
-                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
-                .putExtra(ContactNotesActivity.EXTRA_TITLE, title)
-        )
+        Toast.makeText(this, "Не намерих телефон или e-mail в контакта", Toast.LENGTH_SHORT).show()
         finish()
+    }
+
+    private fun openEmailClient(email: String) {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = Uri.parse("mailto:${Uri.encode(email)}")
+        }
+        runCatching {
+            startActivity(Intent.createChooser(intent, "Избери e-mail приложение"))
+            finish()
+        }.onFailure {
+            Toast.makeText(this, "Няма намерено e-mail приложение", Toast.LENGTH_SHORT).show()
+            finish()
+        }
     }
 
     private fun readSharedText(sourceIntent: Intent?): String {
@@ -49,6 +70,7 @@ class ContactShareActivity : Activity() {
         val parts = mutableListOf<String>()
         sourceIntent.getStringExtra(Intent.EXTRA_TEXT)?.let { parts.add(it) }
         sourceIntent.getStringExtra(Intent.EXTRA_SUBJECT)?.let { parts.add(it) }
+        sourceIntent.data?.let { uri -> readUriText(uri).takeIf { it.isNotBlank() }?.let { parts.add(it) } }
 
         val singleStream = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             sourceIntent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
@@ -123,18 +145,32 @@ class ContactShareActivity : Activity() {
         return PhoneNormalizer.normalize(candidate)
     }
 
+    private fun extractEmail(text: String): String {
+        if (text.isBlank()) return ""
+        val vCardEmail = text.lineSequence()
+            .firstNotNullOfOrNull { line ->
+                if (!isVCardProperty(line, "EMAIL")) return@firstNotNullOfOrNull null
+                decodeVCardValue(line).takeIf { it.contains('@') }
+            }
+            .orEmpty()
+            .removePrefix("mailto:")
+            .trim()
+        if (vCardEmail.isNotBlank()) return emailRegex.find(vCardEmail)?.value.orEmpty()
+        return emailRegex.find(text)?.value.orEmpty()
+    }
+
     private fun extractName(text: String): String {
         if (text.isBlank()) return ""
         val fullName = text.lineSequence()
             .firstOrNull { isVCardProperty(it, "FN") }
-            ?.let { decodeVCardNameValue(it) }
+            ?.let { decodeVCardValue(it) }
             ?.trim()
             .orEmpty()
         if (fullName.isNotBlank()) return fullName
 
         return text.lineSequence()
             .firstOrNull { isVCardProperty(it, "N") }
-            ?.let { decodeVCardNameValue(it) }
+            ?.let { decodeVCardValue(it) }
             ?.split(';')
             ?.filter { it.isNotBlank() }
             ?.joinToString(" ") { it.trim() }
@@ -147,7 +183,7 @@ class ContactShareActivity : Activity() {
         return name.equals(propertyName, ignoreCase = true)
     }
 
-    private fun decodeVCardNameValue(line: String): String {
+    private fun decodeVCardValue(line: String): String {
         val header = line.substringBefore(':', missingDelimiterValue = "")
         val value = line.substringAfter(':', missingDelimiterValue = "").trim()
         if (value.isBlank()) return value
@@ -158,7 +194,7 @@ class ContactShareActivity : Activity() {
 
         val decoded = decodeQuotedPrintableUtf8(value)
         if (decoded != value && BuildConfig.DEBUG) {
-            Log.d(TAG, "Decoded quoted-printable vCard name")
+            Log.d(TAG, "Decoded quoted-printable vCard value")
         }
         return decoded
     }
@@ -203,5 +239,6 @@ class ContactShareActivity : Activity() {
     private companion object {
         private const val TAG = "ContactShareActivity"
         private val quotedPrintableHexRegex = Regex("=([0-9A-Fa-f]{2})")
+        private val emailRegex = Regex("[A-Z0-9._%+\\-]+@[A-Z0-9.\\-]+\\.[A-Z]{2,}", RegexOption.IGNORE_CASE)
     }
 }
