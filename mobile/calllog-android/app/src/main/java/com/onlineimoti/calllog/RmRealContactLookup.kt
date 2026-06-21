@@ -19,6 +19,58 @@ internal object RmRealContactLookup {
         return if (rawId > 0L) contactIdForRaw(context, rawId) else 0L
     }
 
+    /**
+     * Returns the name stored on a real device/account contact, never from the internal
+     * Call Report account layer. This is used after returning from Android Contacts so the
+     * History header immediately shows the newly entered name.
+     */
+    fun resolveDisplayName(context: Context, phone: String): String? {
+        val rawContactId = findRawContactId(context, phone)
+        if (rawContactId <= 0L) return null
+
+        val rawName = runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME),
+                "${ContactsContract.Data.RAW_CONTACT_ID}=? AND ${ContactsContract.Data.MIMETYPE}=?",
+                arrayOf(
+                    rawContactId.toString(),
+                    ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE,
+                ),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)
+                        .trim()
+                        .takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+        if (!rawName.isNullOrBlank()) return rawName
+
+        val contactId = contactIdForRaw(context, rawContactId)
+        if (contactId <= 0L) return null
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Contacts.CONTENT_URI,
+                arrayOf(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY),
+                "${ContactsContract.Contacts._ID}=?",
+                arrayOf(contactId.toString()),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cursor.getStringOrEmpty(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                        .trim()
+                        .takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+    }
+
     private fun findByPhoneLookup(context: Context, phone: String): Long {
         if (phone.isBlank()) return 0L
         val contactId = runCatching {
