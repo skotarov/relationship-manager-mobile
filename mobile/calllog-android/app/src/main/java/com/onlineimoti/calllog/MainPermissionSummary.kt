@@ -28,6 +28,10 @@ internal object MainPermissionSummary {
         val callLogGranted = hasPermission(activity, Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(activity, Manifest.permission.READ_CONTACTS)
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
+        val smsDefault = SmsRoleController.isDefaultSmsApp(activity)
+        val smsReceiveGranted = hasPermission(activity, Manifest.permission.RECEIVE_SMS)
+        val smsReadGranted = hasPermission(activity, Manifest.permission.READ_SMS)
+        val smsSendGranted = hasPermission(activity, Manifest.permission.SEND_SMS)
         val publicNotesSelected = storage.usePublicNotesFolderCheckBox.isChecked
         val publicNotesGranted = !publicNotesSelected || LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
@@ -56,6 +60,12 @@ internal object MainPermissionSummary {
             )
             add(PermissionRow("Display over other apps", !overlayRequired || overlayGranted) { activity.requestOverlayPermissionFromSummary() })
             add(PermissionRow("Call screening", !callScreeningSelected || callScreeningGranted) { activity.requestCallScreeningPermissionFromSummary() })
+            add(PermissionRow("Default SMS", smsDefault) { activity.requestDefaultSmsRoleFromSummary() })
+            if (smsDefault) {
+                add(PermissionRow("SMS receive", smsReceiveGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.RECEIVE_SMS, "SMS receive") })
+                add(PermissionRow("SMS read", smsReadGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.READ_SMS, "SMS read") })
+                add(PermissionRow("SMS send", smsSendGranted) { activity.requestAppPermissionFromSummary(Manifest.permission.SEND_SMS, "SMS send") })
+            }
             add(PermissionRow("Full-screen popup", fullscreenGranted) { activity.requestFullScreenIntentPermissionFromSummary() })
         }
 
@@ -71,6 +81,7 @@ internal object MainPermissionSummary {
         permissions.openAppPermissionsButton.visibility = View.GONE
         permissions.openOverlayPermissionButton.visibility = View.GONE
         permissions.openCallScreeningButton.visibility = View.GONE
+        permissions.openSmsRoleButton.visibility = View.GONE
         permissions.openFullscreenIntentButton.visibility = View.GONE
     }
 
