@@ -1,6 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -19,8 +18,8 @@ import java.util.zip.ZipOutputStream
 
 /**
  * Builds a deliberately tiny MIUI/HyperOS .mtz package containing only one icon override:
- * Call Report's launcher package. The package is written to Downloads/Call Report and then
- * handed to Xiaomi Themes when that app accepts the file, otherwise Android shows a chooser.
+ * Call Report's launcher package. The package is saved under Downloads/Call Report and Xiaomi
+ * Themes is opened directly afterwards; Android never asks to open the archive with another app.
  */
 internal object SmsThemeInstaller {
     private const val PREFS_NAME = "sms_theme_installer"
@@ -48,20 +47,20 @@ internal object SmsThemeInstaller {
             val iconBytes = renderPng(
                 requireNotNull(ContextCompat.getDrawable(context, R.drawable.ic_qs_callreport)),
             )
-            val uri = writeTheme(
+            writeTheme(
                 context = context,
                 displayName = "CallReport-SMS-icon.mtz",
                 title = "Call Report SMS",
                 iconBytes = iconBytes,
             )
-            openWithThemesOrChooser(context, uri, "Инсталирай SMS темата")
+            openXiaomiThemes(context)
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_CRM_THEME_NEXT_RESTORE, true)
                 .apply()
             setStatus(
-                "Подготвена е SMS темата. В Themes избери пакета и приложи само Icons. " +
-                    "След това постави Call Report на мястото на старата SMS иконка.",
+                "SMS темата е записана в Downloads/Call Report и е отворено Themes. " +
+                    "В Themes намери Local/Offline themes или Import и приложи само Icons.",
             )
         }.onFailure {
             setStatus("Не успях да подготвя SMS темата: ${it.message.orEmpty()}")
@@ -73,18 +72,20 @@ internal object SmsThemeInstaller {
             val iconBytes = readBackedUpIcon(context) ?: renderPng(
                 context.packageManager.getApplicationIcon(context.packageName),
             )
-            val uri = writeTheme(
+            writeTheme(
                 context = context,
                 displayName = "CallReport-original-icon.mtz",
                 title = "Call Report original icon",
                 iconBytes = iconBytes,
             )
-            openWithThemesOrChooser(context, uri, "Върни иконата")
+            openXiaomiThemes(context)
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_CRM_THEME_NEXT_RESTORE, false)
                 .apply()
-            setStatus("Подготвен е пакет за връщане на запазената иконка на Call Report.")
+            setStatus(
+                "Пакетът за връщане на иконката е записан в Downloads/Call Report и е отворено Themes.",
+            )
         }.onFailure {
             setStatus("Не успях да подготвя пакета за връщане: ${it.message.orEmpty()}")
         }
@@ -197,20 +198,9 @@ internal object SmsThemeInstaller {
         }
     }
 
-    private fun openWithThemesOrChooser(context: Context, uri: Uri, chooserTitle: String) {
-        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/zip")
-            clipData = ClipData.newRawUri("Call Report SMS theme", uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        val themeIntent = Intent(viewIntent).setPackage(XIAOMI_THEMES_PACKAGE)
-        val packageManager = context.packageManager
-        when {
-            themeIntent.resolveActivity(packageManager) != null -> context.startActivity(themeIntent)
-            viewIntent.resolveActivity(packageManager) != null -> {
-                context.startActivity(Intent.createChooser(viewIntent, chooserTitle))
-            }
-            else -> throw IOException("Няма приложение, което да отвори .mtz пакет.")
-        }
+    private fun openXiaomiThemes(context: Context) {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(XIAOMI_THEMES_PACKAGE)
+            ?: throw IOException("Xiaomi Themes не е намерено на телефона.")
+        context.startActivity(launchIntent)
     }
 }
