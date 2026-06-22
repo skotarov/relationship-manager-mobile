@@ -15,10 +15,10 @@ internal class ContactNotesSectionsUi(
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
         root.addView(sectionContainer().apply {
-            addView(headerUi.sectionTitleWithDrawable("Основна бележка", R.drawable.ic_note_lines))
+            addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
             addView(
                 cards.generalNoteCard(
-                    generalNote.ifBlank { "+ Добави" },
+                    generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                     generalNote.isBlank(),
                     onEdit,
                 )
@@ -34,7 +34,7 @@ internal class ContactNotesSectionsUi(
     ) {
         val callNotes = ContactNoteReader.callNotesForPhone(activity, phone)
         root.addView(sectionContainer().apply {
-            addView(headerUi.sectionTitleWithDrawable("Бележки от разговори", R.drawable.ic_chat_note))
+            addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_notes_call_section), R.drawable.ic_chat_note))
 
             latestCallWithoutNote(phone, callNotes)?.let { latestCall ->
                 addView(
