@@ -1,0 +1,10 @@
+<resources>
+    <string name="recent_calls_title_filtered">История за номера</string>
+    <string name="recent_calls_title">Последни разговори</string>
+    <string name="recent_calls_permission_missing">Липсва достъп до дневника на разговорите. Отвори Настройки и разреши Дневник на разговорите.</string>
+    <string name="recent_calls_empty_filtered">Няма намерени разговори за %1$s.</string>
+    <string name="recent_calls_empty">Няма намерени разговори.</string>
+    <string name="recent_calls_showing_filtered">Показвам %1$d разговора за %2$s.</string>
+    <string name="recent_calls_showing">Показвам последните %1$d разговора.</string>
+    <string name="recent_calls_write_note">Запиши бележка</string>
+</resources>
