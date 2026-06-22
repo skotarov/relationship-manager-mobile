@@ -41,21 +41,26 @@ internal class MainPermissionFlowController(
             migratePublicNotesIfPossible()
             return
         }
-        setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
+        setStatus(activity.getString(R.string.permission_flow_public_storage_request, LocalNotesFileStore.publicRootPath()))
         requestStorageManagerPermissionIfNeeded()
     }
 
     fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
         isRunning = false
+        val localizedLabel = permissionLabel(permission, label)
         if (hasPermission(permission)) {
-            setStatus("$label вече е включено.")
+            setStatus(activity.getString(R.string.permission_flow_already_enabled, localizedLabel))
             refreshPermissionSummary()
             return
         }
         if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
-            requestRuntimePermission(permission, "Разреши $label от системния прозорец.", label)
+            requestRuntimePermission(
+                permission,
+                activity.getString(R.string.permission_flow_request_from_dialog, localizedLabel),
+                localizedLabel,
+            )
         } else {
-            setStatus("Включи $label от Android настройките на приложението.")
+            setStatus(activity.getString(R.string.permission_flow_enable_in_settings, localizedLabel))
             activity.startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.parse("package:${activity.packageName}")
@@ -72,7 +77,7 @@ internal class MainPermissionFlowController(
         refreshPermissionSummary()
         if (deniedPermission != null) {
             isRunning = false
-            setStatus("$deniedLabel не е включено. Можеш да го включиш от бутона в карето с разрешения.")
+            setStatus(activity.getString(R.string.permission_flow_permission_not_enabled, deniedLabel))
             return
         }
         requestNextStep()
@@ -80,9 +85,9 @@ internal class MainPermissionFlowController(
 
     fun onCallScreeningResult() {
         if (hasCallScreeningRole()) {
-            setStatus("Call screening role е активирана.")
+            setStatus(activity.getString(R.string.permission_flow_screening_active))
         } else {
-            setStatus("Call screening ролята не е активирана. Настройката няма да се променя при следващо отваряне.")
+            setStatus(activity.getString(R.string.permission_flow_screening_not_active))
         }
         isRunning = false
         refreshPermissionSummary()
@@ -97,7 +102,7 @@ internal class MainPermissionFlowController(
         }
         if (publicNotesFolderSelected()) {
             disablePublicNotesFolder()
-            setStatus("Достъпът до общата файлова система не е разрешен. Настройката е изключена и бележките ще се пазят във вътрешната памет на приложението.")
+            setStatus(activity.getString(R.string.permission_flow_storage_denied))
         }
         refreshPermissionSummary()
         isRunning = false
@@ -105,17 +110,17 @@ internal class MainPermissionFlowController(
 
     fun onOverlaySettingsResult() {
         if (Settings.canDrawOverlays(activity)) {
-            setStatus("Разрешението Display over other apps е дадено.")
+            setStatus(activity.getString(R.string.permission_flow_overlay_allowed))
         } else if (overlayPopupsSelected()) {
             disableOverlayPopups()
-            setStatus("Overlay разрешението не е дадено. Настройката е изключена и приложението ще използва системен popup.")
+            setStatus(activity.getString(R.string.permission_flow_overlay_denied))
         }
         refreshPermissionSummary()
         isRunning = false
     }
 
     fun onFullscreenIntentSettingsResult() {
-        if (canUseFullScreenIntent()) setStatus("Разрешението за full-screen call report popup е дадено.")
+        if (canUseFullScreenIntent()) setStatus(activity.getString(R.string.permission_flow_fullscreen_allowed))
         refreshPermissionSummary()
         isRunning = false
     }
@@ -125,44 +130,44 @@ internal class MainPermissionFlowController(
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
                 requestRuntimePermission(
                     Manifest.permission.POST_NOTIFICATIONS,
-                    "Разреши notifications, за да могат системните popup-и да се показват.",
-                    "Notifications",
+                    activity.getString(R.string.permission_flow_request_notifications),
+                    activity.getString(R.string.permission_label_notifications),
                 )
             }
             !hasPermission(Manifest.permission.READ_PHONE_STATE) -> {
                 requestRuntimePermission(
                     Manifest.permission.READ_PHONE_STATE,
-                    "Разреши Phone, за да засичаме начало и край на разговор.",
-                    "Phone",
+                    activity.getString(R.string.permission_flow_request_phone),
+                    activity.getString(R.string.permission_label_phone),
                 )
             }
             !hasPermission(Manifest.permission.READ_CALL_LOG) -> {
                 requestRuntimePermission(
                     Manifest.permission.READ_CALL_LOG,
-                    "Разреши Call log, за да виждаме последните разговори.",
-                    "Call log",
+                    activity.getString(R.string.permission_flow_request_call_log),
+                    activity.getString(R.string.permission_label_call_log),
                 )
             }
             !hasPermission(Manifest.permission.READ_CONTACTS) -> {
                 requestRuntimePermission(
                     Manifest.permission.READ_CONTACTS,
-                    "Разреши Contacts, за да показваме имена вместо само номера.",
-                    "Contacts read",
+                    activity.getString(R.string.permission_flow_request_contacts_read),
+                    activity.getString(R.string.permission_label_contacts_read),
                 )
             }
             !hasPermission(Manifest.permission.WRITE_CONTACTS) -> {
                 requestRuntimePermission(
                     Manifest.permission.WRITE_CONTACTS,
-                    "Разреши Contacts write за съвместимост със старите бележки към контакти.",
-                    "Contacts write",
+                    activity.getString(R.string.permission_flow_request_contacts_write),
+                    activity.getString(R.string.permission_label_contacts_write),
                 )
             }
             publicNotesFolderSelected() && !canUsePublicNotesFolder() -> {
-                setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
+                setStatus(activity.getString(R.string.permission_flow_public_storage_request, LocalNotesFileStore.publicRootPath()))
                 requestStorageManagerPermissionIfNeeded()
             }
             fullScreenPopupSelected() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
-                setStatus("Разреши Full-screen popup от системния екран.")
+                setStatus(activity.getString(R.string.permission_flow_request_fullscreen))
                 requestFullScreenIntentPermissionIfNeeded()
             }
             else -> finishFlowWithSuccess()
@@ -199,7 +204,7 @@ internal class MainPermissionFlowController(
 
     fun requestOverlayPermissionIfNeeded() {
         if (Settings.canDrawOverlays(activity)) {
-            setStatus("Display over other apps вече е разрешено.")
+            setStatus(activity.getString(R.string.permission_flow_overlay_already_allowed))
             refreshPermissionSummary()
             return
         }
@@ -238,16 +243,28 @@ internal class MainPermissionFlowController(
         if (!canUsePublicNotesFolder()) return
         val migrated = LocalNotesFileStore.migratePrivateToPublic(activity)
         if (migrated) {
-            setStatus("Публичната папка за бележки е активна: ${LocalNotesFileStore.publicRootPath()}")
+            setStatus(activity.getString(R.string.permission_flow_public_folder_active, LocalNotesFileStore.publicRootPath()))
         } else {
-            setStatus("Публичната папка е разрешена, но прехвърлянето на бележките не успя.")
+            setStatus(activity.getString(R.string.permission_flow_public_folder_migration_failed))
         }
     }
 
     private fun reportUnavailableCallScreening() {
-        setStatus("Call screening / Caller ID ролята не е налична на този телефон. Настройката остава непроменена.")
+        setStatus(activity.getString(R.string.permission_flow_screening_unavailable))
         isRunning = false
         refreshPermissionSummary()
+    }
+
+    private fun permissionLabel(permission: String, fallback: String): String = when (permission) {
+        Manifest.permission.POST_NOTIFICATIONS -> activity.getString(R.string.permission_label_notifications)
+        Manifest.permission.READ_PHONE_STATE -> activity.getString(R.string.permission_label_phone)
+        Manifest.permission.READ_CALL_LOG -> activity.getString(R.string.permission_label_call_log)
+        Manifest.permission.READ_CONTACTS -> activity.getString(R.string.permission_label_contacts_read)
+        Manifest.permission.WRITE_CONTACTS -> activity.getString(R.string.permission_label_contacts_write)
+        Manifest.permission.RECEIVE_SMS -> activity.getString(R.string.permission_label_sms_receive)
+        Manifest.permission.READ_SMS -> activity.getString(R.string.permission_label_sms_read)
+        Manifest.permission.SEND_SMS -> activity.getString(R.string.permission_label_sms_send)
+        else -> fallback
     }
 
     private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
@@ -259,7 +276,7 @@ internal class MainPermissionFlowController(
     private fun finishFlowWithSuccess() {
         isRunning = false
         if (publicNotesFolderSelected() && canUsePublicNotesFolder()) migratePublicNotesIfPossible()
-        setStatus("Основните разрешения са проверени. Бележките са в ${LocalNotesFileStore.activeRootPath(activity)}.")
+        setStatus(activity.getString(R.string.permission_flow_success, LocalNotesFileStore.activeRootPath(activity)))
         refreshPermissionSummary()
     }
 
