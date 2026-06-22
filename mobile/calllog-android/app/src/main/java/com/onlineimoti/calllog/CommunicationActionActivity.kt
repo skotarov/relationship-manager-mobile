@@ -6,22 +6,22 @@ import android.net.Uri
 import android.os.Bundle
 
 /**
- * Default-SMS compose handler. Opening an SMS target goes straight to Home filtered by that
- * number, where calls and SMS are shown together in chronological order.
+ * Default-SMS conversation handler. Opening an SMS target goes straight to the
+ * contact history screen for that number instead of the filtered Call Log home screen.
  */
 class CommunicationActionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openSmsTimeline(intent)
+        openSmsContactHistory(intent)
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        openSmsTimeline(intent)
+        openSmsContactHistory(intent)
     }
 
-    private fun openSmsTimeline(sourceIntent: Intent?) {
+    private fun openSmsContactHistory(sourceIntent: Intent?) {
         val uri = sourceIntent?.data
         val rawPhone = Uri.decode(uri?.schemeSpecificPart.orEmpty().substringBefore('?')).trim()
         val phone = PhoneNormalizer.normalize(rawPhone).ifBlank { rawPhone }
@@ -29,10 +29,12 @@ class CommunicationActionActivity : Activity() {
             finish()
             return
         }
+
+        val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty().ifBlank { phone }
         startActivity(
-            Intent(this, HomeActivity::class.java)
-                .putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, title),
         )
         finish()
     }
