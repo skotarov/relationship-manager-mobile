@@ -30,6 +30,7 @@ data class AppConfig(
     val showRmDebugBox: Boolean,
     val useLocalNotesStorage: Boolean = true,
     val useFullScreenPopup: Boolean = true,
+    val useInternalSmsComposer: Boolean = false,
 )
 
 object ConfigStore {
@@ -58,6 +59,7 @@ object ConfigStore {
     private const val KEY_SHOW_RM_DEBUG_BOX = "show_rm_debug_box"
     private const val KEY_USE_LOCAL_NOTES_STORAGE = "use_local_notes_storage"
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
+    private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
@@ -83,6 +85,7 @@ object ConfigStore {
     const val DEFAULT_SHOW_RM_DEBUG_BOX = false
     const val DEFAULT_USE_LOCAL_NOTES_STORAGE = true
     const val DEFAULT_USE_FULL_SCREEN_POPUP = true
+    const val DEFAULT_USE_INTERNAL_SMS_COMPOSER = false
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -118,6 +121,7 @@ object ConfigStore {
             showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
             useLocalNotesStorage = prefs.getBoolean(KEY_USE_LOCAL_NOTES_STORAGE, DEFAULT_USE_LOCAL_NOTES_STORAGE),
             useFullScreenPopup = prefs.getBoolean(KEY_USE_FULL_SCREEN_POPUP, DEFAULT_USE_FULL_SCREEN_POPUP),
+            useInternalSmsComposer = prefs.getBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, DEFAULT_USE_INTERNAL_SMS_COMPOSER),
         )
     }
 
@@ -148,6 +152,7 @@ object ConfigStore {
             .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
             .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, config.useLocalNotesStorage)
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, config.useFullScreenPopup)
+            .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, config.useInternalSmsComposer)
             .apply()
     }
 
