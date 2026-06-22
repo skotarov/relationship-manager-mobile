@@ -1,0 +1,17 @@
+<resources>
+    <string name="archive_write_open_failed">Не може да се отвори файлът за запис.</string>
+    <string name="archive_created_status">Архивът е създаден успешно.</string>
+    <string name="archive_created_toast">Архивът е създаден</string>
+    <string name="archive_create_failed">Не успях да създам архив: %1$s</string>
+    <string name="archive_restore_title">Връщане на архив</string>
+    <string name="archive_restore_question">Как да се върне архивът?</string>
+    <string name="archive_restore_replace">Изчисти и върни</string>
+    <string name="archive_restore_merge">Добави</string>
+    <string name="archive_cancel">Отказ</string>
+    <string name="archive_read_failed">Не може да се прочете избраният файл.</string>
+    <string name="archive_mode_replaced">изчистен и върнат</string>
+    <string name="archive_mode_merged">добавен към наличните данни</string>
+    <string name="archive_restore_summary">Архивът е %1$s. Основни бележки: %2$d, файлове: %3$d.</string>
+    <string name="archive_restored_toast">Архивът е върнат</string>
+    <string name="archive_restore_failed">Не успях да върна архив: %1$s</string>
+</resources>
