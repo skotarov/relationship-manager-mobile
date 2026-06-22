@@ -39,6 +39,7 @@ internal class MainSettingsAutoSaveController(
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
         popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
+        callLog.useInternalSmsComposerCheckBox.autoSaveCheckedChanges()
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.showBulkContactSyncNotificationsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
