@@ -268,7 +268,7 @@ class MainActivity : AppCompatActivity() {
     private fun disablePublicNotesFolder() = MainStorageSettings.disablePublicNotesFolder(this)
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
     private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
-    private fun refreshPermissionSummary() = MainPermissionSummary.refresh(this, binding)
+    private fun refreshPermissionSummary() = PermissionStatusRenderer.refresh(this, binding)
     private fun renderBuildVersion() = MainBuildVersion.render(this, binding)
     private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
     private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
