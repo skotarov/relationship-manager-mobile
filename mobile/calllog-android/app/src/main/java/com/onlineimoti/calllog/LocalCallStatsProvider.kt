@@ -54,7 +54,7 @@ object LocalCallStatsProvider {
 
         val stats = runCatching { getStats(context, phone) }.getOrNull() ?: return null
         val lastCallAgo = stats.lastCallAtMillis?.let { timestamp ->
-            formatAgo(System.currentTimeMillis() - timestamp)
+            formatAgo(context, System.currentTimeMillis() - timestamp)
         }.orEmpty()
 
         return LocalCallSummary(
@@ -156,7 +156,7 @@ object LocalCallStatsProvider {
         }
     }
 
-    private fun formatAgo(diffMs: Long): String {
+    private fun formatAgo(context: Context, diffMs: Long): String {
         val safeDiffMs = diffMs.coerceAtLeast(0L)
         val minuteMs = 60_000L
         val hourMs = 60L * minuteMs
@@ -166,18 +166,17 @@ object LocalCallStatsProvider {
         val yearMs = 365L * dayMs
 
         return when {
-            safeDiffMs < hourMs -> formatAgoUnit((safeDiffMs / minuteMs).coerceAtLeast(1L), "минута", "минути")
-            safeDiffMs < dayMs -> formatAgoUnit((safeDiffMs / hourMs).coerceAtLeast(1L), "час", "часа")
-            safeDiffMs < 14L * dayMs -> formatAgoUnit((safeDiffMs / dayMs).coerceAtLeast(1L), "ден", "дни")
-            safeDiffMs < 8L * weekMs -> formatAgoUnit((safeDiffMs / weekMs).coerceAtLeast(1L), "седмица", "седмици")
-            safeDiffMs < 24L * monthMs -> formatAgoUnit((safeDiffMs / monthMs).coerceAtLeast(1L), "месец", "месеца")
-            else -> formatAgoUnit((safeDiffMs / yearMs).coerceAtLeast(1L), "година", "години")
+            safeDiffMs < hourMs -> formatAgoUnit(context, (safeDiffMs / minuteMs).coerceAtLeast(1L), R.plurals.time_ago_minutes)
+            safeDiffMs < dayMs -> formatAgoUnit(context, (safeDiffMs / hourMs).coerceAtLeast(1L), R.plurals.time_ago_hours)
+            safeDiffMs < 14L * dayMs -> formatAgoUnit(context, (safeDiffMs / dayMs).coerceAtLeast(1L), R.plurals.time_ago_days)
+            safeDiffMs < 8L * weekMs -> formatAgoUnit(context, (safeDiffMs / weekMs).coerceAtLeast(1L), R.plurals.time_ago_weeks)
+            safeDiffMs < 24L * monthMs -> formatAgoUnit(context, (safeDiffMs / monthMs).coerceAtLeast(1L), R.plurals.time_ago_months)
+            else -> formatAgoUnit(context, (safeDiffMs / yearMs).coerceAtLeast(1L), R.plurals.time_ago_years)
         }
     }
 
-    private fun formatAgoUnit(value: Long, singular: String, plural: String): String {
-        val unit = if (value == 1L) singular else plural
-        return "преди $value $unit"
+    private fun formatAgoUnit(context: Context, value: Long, pluralRes: Int): String {
+        return context.resources.getQuantityString(pluralRes, value.toInt(), value)
     }
 
     private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
