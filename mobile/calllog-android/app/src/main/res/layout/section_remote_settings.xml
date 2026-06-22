@@ -104,5 +104,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="@string/save_server_settings" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/restoreServerSettingsButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/restore_server_settings" />
     </LinearLayout>
 </LinearLayout>
