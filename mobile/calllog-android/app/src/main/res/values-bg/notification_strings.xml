@@ -1,0 +1,22 @@
+<resources>
+    <string name="post_call_prompt_title">Да запиша ли бележка?</string>
+    <string name="post_call_prompt_write_note">Запиши бележка</string>
+    <string name="post_call_prompt_skip">Пропусни</string>
+    <string name="post_call_direction_incoming">входящ разговор</string>
+    <string name="post_call_direction_outgoing">изходящ разговор</string>
+    <string name="post_call_direction_generic">разговор</string>
+    <string name="post_call_auto_close">затваря се след %1$d сек</string>
+
+    <string name="notification_unknown_contact">Непознат</string>
+    <string name="notification_passive_channel_name">Call Report в панела с известия</string>
+    <string name="notification_passive_channel_description">Тиха информация в панела с известия, когато персонализираният popup е активен.</string>
+    <string name="notification_loading_title">Зарежда се информация…</string>
+    <string name="notification_loading_line">Зарежда се информация от Call Report…</string>
+    <string name="notification_post_call_note_title">Бележка след разговора</string>
+    <string name="notification_inline_note_hint">Напиши бележка…</string>
+    <string name="notification_note_action">Бележка</string>
+    <string name="notification_history_action">История</string>
+    <string name="notification_outgoing_call">Изходящ разговор</string>
+    <string name="notification_incoming_call">Входящ разговор</string>
+    <string name="notification_call">Разговор</string>
+</resources>
