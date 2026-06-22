@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="server_backup_code_hint">Код за архив: 4 цифри</string>
+    <string name="server_backup_code_description">Кодът не се пази в приложението. Той е нужен при възстановяване на криптирания файл със сървърни настройки от Documents/.callreport.</string>
+</resources>
