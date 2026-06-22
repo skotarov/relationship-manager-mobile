@@ -28,16 +28,10 @@ internal object BulkContactsProgressNotification {
             return
         }
         ensureChannel(context)
-        val title = when (action) {
-            BulkContactsTaskAction.REGISTER -> if (stopping) "Спиране на синхронизацията…" else "Синхронизация на RM контакти"
-            BulkContactsTaskAction.REPAIR -> if (stopping) "Спиране на поправката…" else "Поправяне на RM записите"
-            BulkContactsTaskAction.CLEANUP_ORPHANS -> if (stopping) "Спиране на осиротели записи…" else "Почистване на осиротели RM записи"
-            BulkContactsTaskAction.CLEANUP -> if (stopping) "Спиране на почистването…" else "Почистване на контактите"
-            BulkContactsTaskAction.IDLE -> "Обработка на контактите"
-        }
+        val title = runningTitle(context, action, stopping)
         val content = when {
             progress.total > 0 -> "${progress.percent}% • ${progress.processed}/${progress.total}"
-            else -> status.ifBlank { "Подготовка…" }
+            else -> status.ifBlank { context.getString(R.string.contacts_sync_panel_prepare) }
         }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_transparent)
@@ -51,7 +45,11 @@ internal object BulkContactsProgressNotification {
             .setAutoCancel(false)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(settingsPendingIntent(context))
-            .addAction(0, if (stopping) "Спиране…" else "Стоп", cancelPendingIntent(context))
+            .addAction(
+                0,
+                context.getString(if (stopping) R.string.contacts_sync_stopping else R.string.contacts_sync_stop),
+                cancelPendingIntent(context),
+            )
 
         if (progress.total > 0) {
             builder.setProgress(progress.total, progress.processed.coerceAtMost(progress.total), false)
@@ -68,16 +66,9 @@ internal object BulkContactsProgressNotification {
             return
         }
         ensureChannel(context)
-        val title = when (action) {
-            BulkContactsTaskAction.REGISTER -> "Синхронизацията приключи"
-            BulkContactsTaskAction.REPAIR -> "Поправката приключи"
-            BulkContactsTaskAction.CLEANUP_ORPHANS -> "Почистването на осиротели приключи"
-            BulkContactsTaskAction.CLEANUP -> "Почистването приключи"
-            BulkContactsTaskAction.IDLE -> "Обработката приключи"
-        }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_transparent)
-            .setContentTitle(title)
+            .setContentTitle(finishedTitle(context, action))
             .setContentText(status)
             .setStyle(NotificationCompat.BigTextStyle().bigText(status))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -101,12 +92,34 @@ internal object BulkContactsProgressNotification {
         manager.createNotificationChannel(
             NotificationChannel(
                 CHANNEL_ID,
-                "RM контакти - прогрес",
+                context.getString(R.string.contacts_sync_notification_channel),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Прогрес при синхронизация и почистване на RM контакти."
+                description = context.getString(R.string.contacts_sync_notification_channel_description)
             }
         )
+    }
+
+    private fun runningTitle(context: Context, action: BulkContactsTaskAction, stopping: Boolean): String {
+        val titleRes = when (action) {
+            BulkContactsTaskAction.REGISTER -> if (stopping) R.string.contacts_sync_notification_stopping_register else R.string.contacts_sync_notification_register
+            BulkContactsTaskAction.REPAIR -> if (stopping) R.string.contacts_sync_notification_stopping_repair else R.string.contacts_sync_notification_repair
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> if (stopping) R.string.contacts_sync_notification_stopping_orphans else R.string.contacts_sync_notification_orphans
+            BulkContactsTaskAction.CLEANUP -> if (stopping) R.string.contacts_sync_notification_stopping_cleanup else R.string.contacts_sync_notification_cleanup
+            BulkContactsTaskAction.IDLE -> R.string.contacts_sync_notification_idle
+        }
+        return context.getString(titleRes)
+    }
+
+    private fun finishedTitle(context: Context, action: BulkContactsTaskAction): String {
+        val titleRes = when (action) {
+            BulkContactsTaskAction.REGISTER -> R.string.contacts_sync_notification_finished_register
+            BulkContactsTaskAction.REPAIR -> R.string.contacts_sync_notification_finished_repair
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> R.string.contacts_sync_notification_finished_orphans
+            BulkContactsTaskAction.CLEANUP -> R.string.contacts_sync_notification_finished_cleanup
+            BulkContactsTaskAction.IDLE -> R.string.contacts_sync_notification_finished_idle
+        }
+        return context.getString(titleRes)
     }
 
     private fun settingsPendingIntent(context: Context): PendingIntent {
