@@ -1,0 +1,7 @@
+<resources>
+    <string name="external_phone_not_found">Не намерих телефонен номер</string>
+    <string name="external_opening_history">Отварям историята в Call Report</string>
+    <string name="external_contact_without_phone_or_email">Не намерих телефон или e-mail в контакта</string>
+    <string name="external_choose_email_app">Избери e-mail приложение</string>
+    <string name="external_email_app_not_found">Няма намерено e-mail приложение</string>
+</resources>
