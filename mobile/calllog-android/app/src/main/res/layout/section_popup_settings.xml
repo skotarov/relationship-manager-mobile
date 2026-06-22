@@ -16,7 +16,6 @@
             android:id="@+id/postCallTimeoutInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
             android:inputType="number"
             android:text="10" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -26,53 +25,23 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/popup_after_call_title"
-        android:textColor="@color/calllog_text"
-        android:textSize="16sp"
         android:textStyle="bold" />
-
     <RadioGroup
         android:id="@+id/postCallEndActionGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
         android:orientation="vertical">
-
-        <RadioButton
-            android:id="@+id/postCallEndActionEdit"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/popup_action_edit_note" />
-
-        <RadioButton
-            android:id="@+id/postCallEndActionHistory"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/popup_action_history_screen" />
-
-        <RadioButton
-            android:id="@+id/postCallEndActionNothing"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/popup_action_nothing" />
+        <RadioButton android:id="@+id/postCallEndActionEdit" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/popup_action_edit_note" />
+        <RadioButton android:id="@+id/postCallEndActionHistory" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/popup_action_history_screen" />
+        <RadioButton android:id="@+id/postCallEndActionNothing" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/popup_action_nothing" />
     </RadioGroup>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="@string/popup_after_call_description"
-        android:textColor="@color/calllog_muted_text"
-        android:textSize="13sp" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/popup_type_title"
-        android:textColor="@color/calllog_text"
-        android:textSize="16sp"
         android:textStyle="bold" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -80,7 +49,6 @@
         android:text="Popup-ите над други приложения се включват и изключват от Приложение → Разрешения."
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
-
     <TextView
         android:id="@+id/overlayPermissionWarningText"
         android:layout_width="match_parent"
@@ -88,29 +56,18 @@
         android:layout_marginTop="6dp"
         android:text="@string/popup_overlay_warning"
         android:textColor="@color/calllog_error"
-        android:textSize="13sp"
         android:visibility="gone" />
-
     <LinearLayout
         android:id="@+id/overlayPopupOptionsGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
         android:orientation="vertical">
-
-        <CheckBox
-            android:id="@+id/useCustomStartPopupCheckBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:checked="true"
-            android:text="@string/popup_custom_start" />
-
-        <CheckBox
-            android:id="@+id/useCustomEndPopupCheckBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="@string/popup_custom_end" />
+        <CheckBox android:id="@+id/useCustomStartPopupCheckBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/popup_custom_start" />
+        <CheckBox android:id="@+id/useCustomEndPopupCheckBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/popup_custom_end" />
     </LinearLayout>
+    <CheckBox
+        android:id="@+id/useOverlayPopupsCheckBox"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone" />
 </LinearLayout>
