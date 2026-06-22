@@ -56,8 +56,6 @@ class HomeActivity : AppCompatActivity() {
             noteKey = HomeCallPageLoader::noteKey,
             roundedRect = ::roundedRect,
             openContactNotesScreen = homeActions::openContactNotesScreen,
-            openDialer = homeActions::openDialer,
-            togglePhoneFilter = ::togglePhoneFilter,
             openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
         )
     }
@@ -91,6 +89,9 @@ class HomeActivity : AppCompatActivity() {
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
         binding.defaultCallLogButton.setOnClickListener { openDefaultCallLog() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
+        binding.filteredDialButton.setOnClickListener {
+            homeActions.openDialer(activePhoneFilter)
+        }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
         binding.clearSearchButton.setOnClickListener { clearSearch() }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
@@ -305,7 +306,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updatePhoneFilterStatusStyle() {
-        if (activePhoneFilter.isNotBlank()) {
+        val isPhoneFiltered = activePhoneFilter.isNotBlank()
+        binding.filteredDialButton.visibility = if (isPhoneFiltered) View.VISIBLE else View.GONE
+        if (isPhoneFiltered) {
             binding.homeStatusText.background = roundedRect(
                 color = Color.rgb(255, 237, 213),
                 radius = dp(12),
