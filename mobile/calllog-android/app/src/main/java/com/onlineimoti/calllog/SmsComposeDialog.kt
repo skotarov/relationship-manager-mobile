@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.app.Activity
 import android.app.Dialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -33,6 +34,9 @@ internal class SmsComposeDialog(
     private val dp: (Int) -> Int,
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val subscriptionPrefs by lazy {
+        activity.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     private data class SmsSubscriptionOption(
         val subscriptionId: Int,
@@ -176,7 +180,9 @@ internal class SmsComposeDialog(
     private fun addSubscriptionChooser(root: LinearLayout): () -> Int? {
         val options = activeSmsSubscriptions()
         val defaultSubscriptionId = defaultSmsSubscriptionId()
-        val initiallySelected = options.firstOrNull { it.subscriptionId == defaultSubscriptionId }
+        val rememberedSubscriptionId = lastSuccessfulSubscriptionId()
+        val initiallySelected = options.firstOrNull { it.subscriptionId == rememberedSubscriptionId }
+            ?: options.firstOrNull { it.subscriptionId == defaultSubscriptionId }
             ?: options.firstOrNull()
 
         if (options.isEmpty()) return { defaultSubscriptionId }
@@ -261,6 +267,21 @@ internal class SmsComposeDialog(
         }.getOrNull()
     }
 
+    private fun lastSuccessfulSubscriptionId(): Int? {
+        return subscriptionPrefs
+            .getInt(KEY_LAST_SUCCESSFUL_SUBSCRIPTION_ID, SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+            .takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+    }
+
+    private fun rememberSuccessfulSubscriptionId(subscriptionId: Int?) {
+        val validSubscriptionId = subscriptionId
+            ?.takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+            ?: return
+        subscriptionPrefs.edit()
+            .putInt(KEY_LAST_SUCCESSFUL_SUBSCRIPTION_ID, validSubscriptionId)
+            .apply()
+    }
+
     private fun sendInBackground(
         dialog: Dialog,
         phone: String,
@@ -281,6 +302,7 @@ internal class SmsComposeDialog(
                 runCatching {
                     if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@post
                     result.onSuccess { outcome ->
+                        rememberSuccessfulSubscriptionId(subscriptionId)
                         activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
                         Toast.makeText(
                             activity,
@@ -329,5 +351,10 @@ internal class SmsComposeDialog(
             setColor(color)
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
+    }
+
+    private companion object {
+        const val PREFS_NAME = "sms_compose_dialog"
+        const val KEY_LAST_SUCCESSFUL_SUBSCRIPTION_ID = "last_successful_subscription_id"
     }
 }
