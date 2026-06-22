@@ -23,7 +23,7 @@ class SystemCallHistoryActivity : Activity() {
             else -> openSystemCallHistory(phone)
         }
         if (!opened) {
-            Toast.makeText(this, "Не успях да отворя контакта/историята", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.external_open_contact_or_history_failed), Toast.LENGTH_SHORT).show()
         }
         finish()
     }
