@@ -25,7 +25,6 @@ object MainSettingsConfigUi {
         popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
         remote.lookupPathInput.setText(config.lookupPath)
-        remote.formPathInput.setText(config.formPath)
         remote.historyPathInput.setText(config.historyPath)
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
         when (config.postCallEndAction) {
@@ -61,6 +60,7 @@ object MainSettingsConfigUi {
         val language = binding.languageSettingsSection
         val permissions = binding.permissionsSection
         val tests = binding.testsSection
+        val preservedFormPath = ConfigStore.load(binding.root.context).formPath
 
         return AppConfig(
             remoteEnabled = remote.remoteEnabledCheckBox.isChecked,
@@ -72,7 +72,7 @@ object MainSettingsConfigUi {
             homeCallPageSize = callLog.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_HOME_CALL_PAGE_SIZE,
             lookupPath = remote.lookupPathInput.text?.toString().orEmpty(),
-            formPath = remote.formPathInput.text?.toString().orEmpty(),
+            formPath = preservedFormPath,
             historyPath = remote.historyPathInput.text?.toString().orEmpty(),
             postCallPromptTimeoutSeconds = popup.postCallTimeoutInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS,
@@ -94,7 +94,7 @@ object MainSettingsConfigUi {
             },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
             useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
-            showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
+            showRmDebugBox = tests.showRmDebugBox.isChecked,
         )
     }
 }
