@@ -23,8 +23,6 @@ internal class HomeCallRowRenderer(
     private val noteKey: (String) -> String,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val openContactNotesScreen: (PhoneCallRecord, String) -> Unit,
-    private val openDialer: (String) -> Unit,
-    private val togglePhoneFilter: (String) -> Unit,
     private val openContactNotePopupForCall: (PhoneCallRecord, String) -> Unit,
 ) {
     fun compactCallRow(
@@ -45,7 +43,12 @@ internal class HomeCallRowRenderer(
             isClickable = true
             isFocusable = true
             setOnClickListener { openContactNotesScreen(call, displayName) }
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                bottomMargin = dp(8)
+            }
         }
 
         val row = LinearLayout(activity).apply {
@@ -54,13 +57,32 @@ internal class HomeCallRowRenderer(
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
 
-        row.addView(TextView(activity).apply {
-            text = callIcon(call)
-            textSize = if (call.isSms) 28f else 36f
-            gravity = Gravity.CENTER
-            setTextColor(callIconColor(call))
-            layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
-        })
+        if (call.isSms) {
+            row.addView(ImageView(activity).apply {
+                setImageResource(
+                    if (call.direction == "out") {
+                        R.drawable.ic_sms_bubble_left
+                    } else {
+                        R.drawable.ic_sms_bubble_right
+                    },
+                )
+                contentDescription = call.smsDirectionLabel
+                scaleType = ImageView.ScaleType.CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
+                    marginEnd = dp(6)
+                }
+            })
+        } else {
+            row.addView(TextView(activity).apply {
+                text = callIcon(call)
+                textSize = 36f
+                gravity = Gravity.CENTER
+                setTextColor(callIconColor(call))
+                layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = dp(6)
+                }
+            })
+        }
 
         val textColumn = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -112,7 +134,12 @@ internal class HomeCallRowRenderer(
                 maxLines = 2
                 setPadding(dp(8), dp(5), dp(8), dp(5))
                 background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(5)
+                }
             })
         }
         if (!callNote.isNullOrBlank()) {
@@ -126,22 +153,37 @@ internal class HomeCallRowRenderer(
                 maxLines = 3
                 setPadding(dp(8), dp(5), dp(8), dp(5))
                 background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = dp(5)
+                }
             })
         }
         row.addView(textColumn)
 
-        val actions = LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(3) }
-        }
-        actions.addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call)) { openDialer(call.number) })
-        actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
         if (!call.isSms) {
-            actions.addView(iconButton(R.drawable.ic_chat_note, activity.getString(R.string.dynamic_action_note)) { openContactNotePopupForCall(call, displayName) })
+            val actions = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    leftMargin = dp(3)
+                }
+            }
+            actions.addView(
+                iconButton(
+                    R.drawable.ic_chat_note,
+                    activity.getString(R.string.dynamic_action_note),
+                ) {
+                    openContactNotePopupForCall(call, displayName)
+                },
+            )
+            row.addView(actions)
         }
-        row.addView(actions)
 
         card.addView(row)
         return card
@@ -170,7 +212,9 @@ internal class HomeCallRowRenderer(
                     contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
                     alpha = 0.9f
                     scaleType = ImageView.ScaleType.FIT_CENTER
-                    layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(4) }
+                    layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply {
+                        marginStart = dp(4)
+                    }
                 })
             }
         }
@@ -221,7 +265,7 @@ internal class HomeCallRowRenderer(
             contentDescription = description
             background = null
             setBackgroundColor(Color.TRANSPARENT)
-            scaleType = android.widget.ImageView.ScaleType.CENTER
+            scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
             setOnClickListener { action() }
@@ -229,15 +273,10 @@ internal class HomeCallRowRenderer(
     }
 
     private fun callIcon(call: PhoneCallRecord): String {
-        return when {
-            call.isSms -> "✉"
-            call.direction == "out" -> "↗"
-            else -> "↙"
-        }
+        return if (call.direction == "out") "↗" else "↙"
     }
 
     private fun callIconColor(call: PhoneCallRecord): Int {
-        if (call.isSms) return Color.rgb(124, 58, 237)
         if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
         return when (call.direction) {
             "out" -> Color.rgb(34, 197, 94)
