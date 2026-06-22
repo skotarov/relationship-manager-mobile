@@ -141,77 +141,9 @@ jobs:
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
       - name: Build debug APK
-        id: build_debug
-        continue-on-error: true
-        run: gradle --no-daemon --stacktrace --info :app:assembleDebug
-
-      - name: Isolate value resource merge conflict
-        if: steps.build_debug.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import subprocess
-          import sys
-
-          candidates = sorted(
-              path for path in Path("app/src/main/res").glob("values*/*.xml")
-              if path.is_file()
-          )
-          if not candidates:
-              print("No values XML files found for merge diagnosis.")
-              sys.exit(0)
-
-          def merge_succeeds(removed):
-              disabled = []
-              try:
-                  for path in removed:
-                      parked = path.with_name(path.name + ".disabled")
-                      path.rename(parked)
-                      disabled.append((path, parked))
-                  result = subprocess.run(
-                      ["gradle", "--no-daemon", ":app:clean", ":app:mergeDebugResources"],
-                      stdout=subprocess.DEVNULL,
-                      stderr=subprocess.DEVNULL,
-                      check=False,
-                  )
-                  return result.returncode == 0
-              finally:
-                  for original, parked in reversed(disabled):
-                      parked.rename(original)
-
-          active = candidates
-          if not merge_succeeds(active):
-              print("Merge still fails after removing every values XML file; the problem is outside values resources.")
-              sys.exit(0)
-
-          while len(active) > 1:
-              midpoint = max(1, len(active) // 2)
-              left = active[:midpoint]
-              right = active[midpoint:]
-              if merge_succeeds(left):
-                  active = left
-              elif merge_succeeds(right):
-                  active = right
-              else:
-                  print("Unable to isolate one values XML file. The conflict may require a specific pair of files.")
-                  print("Remaining candidates:")
-                  for path in active:
-                      print(f"- {path}")
-                  sys.exit(0)
-
-          culprit = active[0]
-          print("MERGE RESOURCE SUSPECT:")
-          print(culprit)
-          print("Resource names in suspect file:")
-          print(culprit.read_text(encoding="utf-8"))
-          PY
-
-      - name: Mark build as failed
-        if: steps.build_debug.outcome == 'failure'
-        run: exit 1
+        run: gradle --no-daemon --console=plain :app:assembleDebug
 
       - name: Upload debug APK artifact
-        if: steps.build_debug.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: relationship-management-debug-apk
