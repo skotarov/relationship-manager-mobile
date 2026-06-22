@@ -8,7 +8,7 @@ import com.onlineimoti.calllog.databinding.SectionLanguageSettingsBinding
 import com.onlineimoti.calllog.databinding.SectionPermissionsBinding
 import com.onlineimoti.calllog.databinding.SectionPopupContactFilterBinding
 import com.onlineimoti.calllog.databinding.SectionPopupSettingsBinding
-import com.onlineimoti.calllog.databinding.SectionRemoteSettingsBinding
+import com.onlineimoti.calllog.databinding.SectionRemoteSettingsCompactBinding
 import com.onlineimoti.calllog.databinding.SectionStorageSettingsBinding
 import com.onlineimoti.calllog.databinding.SectionTestsBinding
 
@@ -27,7 +27,7 @@ internal val ActivityMainBinding.callLogSettingsSection: SectionCallLogSettingsB
 internal val ActivityMainBinding.contactLinkSection: SectionContactLinkBinding
     get() = settingsRmContactsGroup.contactLinkSection
 
-internal val ActivityMainBinding.remoteSettingsSection: SectionRemoteSettingsBinding
+internal val ActivityMainBinding.remoteSettingsSection: SectionRemoteSettingsCompactBinding
     get() = settingsServerGroup.remoteSettingsSection
 
 internal val ActivityMainBinding.permissionsSection: SectionPermissionsBinding
