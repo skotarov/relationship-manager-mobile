@@ -63,7 +63,6 @@ jobs:
           resources_root = Path("app/src/main/res")
           errors = []
           checked = 0
-          seen_by_directory = {}
           types_by_name = {}
           placeholders_by_key = {}
           placeholder_re = re.compile(r"%(?:(\d+)\$)?([a-zA-Z])")
@@ -105,22 +104,17 @@ jobs:
                       else:
                           seen[key] = xml_file
 
-                      previous_types = types_by_name.setdefault(name, set())
-                      previous_types.add(resource_type)
-
+                      types_by_name.setdefault(name, set()).add(resource_type)
                       text = "".join(child.itertext())
                       placeholders = tuple(placeholder_re.findall(text))
-                      format_key = (resource_type, name)
-                      existing_placeholders = placeholders_by_key.get(format_key)
+                      existing_placeholders = placeholders_by_key.get(key)
                       if existing_placeholders is None:
-                          placeholders_by_key[format_key] = placeholders
+                          placeholders_by_key[key] = placeholders
                       elif existing_placeholders != placeholders:
                           errors.append(
                               f"Format placeholders differ for {resource_type} resource '{name}': "
                               f"{existing_placeholders} versus {placeholders} in {xml_file}"
                           )
-
-              seen_by_directory[directory] = seen
 
           for name, resource_types in sorted(types_by_name.items()):
               if len(resource_types) > 1:
@@ -150,9 +144,77 @@ jobs:
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
       - name: Build debug APK
+        id: build_debug
+        continue-on-error: true
         run: gradle --no-daemon --stacktrace --info :app:assembleDebug
 
+      - name: Isolate value resource merge conflict
+        if: steps.build_debug.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          candidates = sorted(
+              path for path in Path("app/src/main/res").glob("values*/*.xml")
+              if path.is_file()
+          )
+          if not candidates:
+              print("No values XML files found for merge diagnosis.")
+              sys.exit(0)
+
+          def merge_succeeds(removed):
+              disabled = []
+              try:
+                  for path in removed:
+                      parked = path.with_name(path.name + ".disabled")
+                      path.rename(parked)
+                      disabled.append((path, parked))
+                  result = subprocess.run(
+                      ["gradle", "--no-daemon", ":app:clean", ":app:mergeDebugResources"],
+                      stdout=subprocess.DEVNULL,
+                      stderr=subprocess.DEVNULL,
+                      check=False,
+                  )
+                  return result.returncode == 0
+              finally:
+                  for original, parked in reversed(disabled):
+                      parked.rename(original)
+
+          active = candidates
+          if not merge_succeeds(active):
+              print("Merge still fails after removing every values XML file; the problem is outside values resources.")
+              sys.exit(0)
+
+          while len(active) > 1:
+              midpoint = max(1, len(active) // 2)
+              left = active[:midpoint]
+              right = active[midpoint:]
+              if merge_succeeds(left):
+                  active = left
+              elif merge_succeeds(right):
+                  active = right
+              else:
+                  print("Unable to isolate one values XML file. The conflict may require a specific pair of files.")
+                  print("Remaining candidates:")
+                  for path in active:
+                      print(f"- {path}")
+                  sys.exit(0)
+
+          culprit = active[0]
+          print("MERGE RESOURCE SUSPECT:")
+          print(culprit)
+          print("Resource names in suspect file:")
+          print(culprit.read_text(encoding="utf-8"))
+          PY
+
+      - name: Mark build as failed
+        if: steps.build_debug.outcome == 'failure'
+        run: exit 1
+
       - name: Upload debug APK artifact
+        if: steps.build_debug.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: relationship-management-debug-apk
