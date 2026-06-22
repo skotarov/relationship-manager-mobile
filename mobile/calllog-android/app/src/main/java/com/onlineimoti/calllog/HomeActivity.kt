@@ -309,15 +309,19 @@ class HomeActivity : AppCompatActivity() {
         val isPhoneFiltered = activePhoneFilter.isNotBlank()
         binding.filteredDialButton.visibility = if (isPhoneFiltered) View.VISIBLE else View.GONE
         if (isPhoneFiltered) {
-            binding.homeStatusText.background = roundedRect(
+            binding.filteredStatusContainer.background = roundedRect(
                 color = Color.rgb(255, 237, 213),
                 radius = dp(12),
                 strokeColor = Color.rgb(251, 146, 60),
                 strokeWidth = dp(1),
             )
+            binding.filteredStatusContainer.setPadding(dp(10), dp(2), dp(4), dp(2))
+            binding.homeStatusText.background = null
             binding.homeStatusText.setTextColor(Color.rgb(154, 52, 18))
-            binding.homeStatusText.setPadding(dp(10), dp(6), dp(10), dp(6))
+            binding.homeStatusText.setPadding(0, dp(4), 0, dp(4))
         } else {
+            binding.filteredStatusContainer.background = null
+            binding.filteredStatusContainer.setPadding(0, 0, 0, 0)
             binding.homeStatusText.background = null
             binding.homeStatusText.setTextColor(Color.rgb(71, 85, 105))
             binding.homeStatusText.setPadding(0, 0, 0, 0)
