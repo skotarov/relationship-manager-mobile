@@ -10,6 +10,7 @@ import android.os.Bundle
  */
 class SmsIncomingChoiceActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         openSenderTimeline()
     }
