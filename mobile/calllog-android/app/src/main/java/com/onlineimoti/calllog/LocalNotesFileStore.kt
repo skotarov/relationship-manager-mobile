@@ -14,14 +14,19 @@ object LocalNotesFileStore {
     private const val PROFILE_FILE = "profile.json"
 
     fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+    fun isEnabled(context: Context): Boolean = ConfigStore.load(context).useLocalNotesStorage
     fun shouldUsePublicFolder(context: Context): Boolean = ConfigStore.load(context).usePublicNotesFolder
-    fun canUseConfiguredFolder(context: Context): Boolean = !shouldUsePublicFolder(context) || canUsePublicFolder()
+    fun canUseConfiguredFolder(context: Context): Boolean = isEnabled(context) && (!shouldUsePublicFolder(context) || canUsePublicFolder())
     fun publicRootPath(): String = publicRoot().absolutePath
     fun privateRootPath(context: Context): String = privateRoot(context).absolutePath
-    fun activeRootPath(context: Context): String = if (shouldUsePublicFolder(context)) publicRootPath() else privateRootPath(context)
+    fun activeRootPath(context: Context): String = when {
+        !isEnabled(context) -> "изключено"
+        shouldUsePublicFolder(context) -> publicRootPath()
+        else -> privateRootPath(context)
+    }
 
     fun migratePrivateToPublic(context: Context): Boolean {
-        if (!canUsePublicFolder()) return false
+        if (!isEnabled(context) || !canUsePublicFolder()) return false
         val source = privateRoot(context)
         if (!source.exists()) return true
         val target = publicRoot()
