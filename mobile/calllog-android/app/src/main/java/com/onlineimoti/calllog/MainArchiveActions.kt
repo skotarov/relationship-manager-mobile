@@ -19,11 +19,11 @@ internal object MainArchiveActions {
             val json = LocalNotesArchiveManager.createArchiveJson(context)
             context.contentResolver.openOutputStream(uri, "wt")?.use { output ->
                 output.write(json.toByteArray(Charsets.UTF_8))
-            } ?: error("Не може да се отвори файлът за запис.")
-            setStatus("Архивът е създаден успешно.")
-            Toast.makeText(context, "Архивът е създаден", Toast.LENGTH_SHORT).show()
+            } ?: error(context.getString(R.string.archive_write_open_failed))
+            setStatus(context.getString(R.string.archive_created_status))
+            Toast.makeText(context, context.getString(R.string.archive_created_toast), Toast.LENGTH_SHORT).show()
         }.onFailure { error ->
-            val message = "Не успях да създам архив: ${error.message.orEmpty()}".trim()
+            val message = context.getString(R.string.archive_create_failed, error.message.orEmpty()).trim()
             setStatus(message)
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
@@ -31,15 +31,15 @@ internal object MainArchiveActions {
 
     fun askRestoreMode(context: Context, uri: Uri, setStatus: (String) -> Unit) {
         AlertDialog.Builder(context)
-            .setTitle("Връщане на архив")
-            .setMessage("Как да се върне архивът?")
-            .setPositiveButton("Изчисти и върни") { _, _ ->
+            .setTitle(R.string.archive_restore_title)
+            .setMessage(R.string.archive_restore_question)
+            .setPositiveButton(R.string.archive_restore_replace) { _, _ ->
                 restoreArchive(context, uri, LocalNotesArchiveManager.RestoreMode.ClearAndRestore, setStatus)
             }
-            .setNegativeButton("Добави") { _, _ ->
+            .setNegativeButton(R.string.archive_restore_merge) { _, _ ->
                 restoreArchive(context, uri, LocalNotesArchiveManager.RestoreMode.Merge, setStatus)
             }
-            .setNeutralButton("Отказ", null)
+            .setNeutralButton(R.string.archive_cancel, null)
             .show()
     }
 
@@ -52,17 +52,24 @@ internal object MainArchiveActions {
         runCatching {
             val json = context.contentResolver.openInputStream(uri)?.use { input ->
                 input.readBytes().toString(Charsets.UTF_8)
-            } ?: error("Не може да се прочете избраният файл.")
+            } ?: error(context.getString(R.string.archive_read_failed))
             val summary = LocalNotesArchiveManager.restoreArchiveJson(context, json, mode)
-            val modeText = when (summary.mode) {
-                LocalNotesArchiveManager.RestoreMode.ClearAndRestore -> "изчистен и върнат"
-                LocalNotesArchiveManager.RestoreMode.Merge -> "добавен към наличните данни"
-            }
-            val message = "Архивът е $modeText. Основни бележки: ${summary.generalNotes}, файлове: ${summary.files}."
+            val modeText = context.getString(
+                when (summary.mode) {
+                    LocalNotesArchiveManager.RestoreMode.ClearAndRestore -> R.string.archive_mode_replaced
+                    LocalNotesArchiveManager.RestoreMode.Merge -> R.string.archive_mode_merged
+                },
+            )
+            val message = context.getString(
+                R.string.archive_restore_summary,
+                modeText,
+                summary.generalNotes,
+                summary.files,
+            )
             setStatus(message)
-            Toast.makeText(context, "Архивът е върнат", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.archive_restored_toast), Toast.LENGTH_SHORT).show()
         }.onFailure { error ->
-            val message = "Не успях да върна архив: ${error.message.orEmpty()}".trim()
+            val message = context.getString(R.string.archive_restore_failed, error.message.orEmpty()).trim()
             setStatus(message)
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
