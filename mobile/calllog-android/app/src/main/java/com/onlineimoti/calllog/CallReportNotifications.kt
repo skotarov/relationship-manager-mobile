@@ -18,7 +18,6 @@ internal object CallReportNotifications {
     private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
-    private const val UNKNOWN_CONTACT_TITLE = "Непознат"
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -33,9 +32,9 @@ internal object CallReportNotifications {
         manager.createNotificationChannel(
             NotificationChannel(
                 PASSIVE_CHANNEL_ID,
-                "Call Report в панела",
+                context.getString(R.string.notification_passive_channel_name),
                 NotificationManager.IMPORTANCE_LOW,
-            ).apply { description = "Тиха информация в панела с известия, когато custom popup-ът е активен." }
+            ).apply { description = context.getString(R.string.notification_passive_channel_description) }
         )
     }
 
@@ -43,12 +42,18 @@ internal object CallReportNotifications {
         context: Context,
         phone: String,
         direction: String,
-        title: String = "Зарежда се информация…",
+        title: String = "",
         fullscreen: Boolean = false,
     ) {
+        val loadingTitle = title.ifBlank { context.getString(R.string.notification_loading_title) }
         showLookupNotification(
             context = context,
-            result = LookupResult(title = title, subtitle = phone, lines = listOf("Зарежда се информация от Call Report…"), openFormUrl = ""),
+            result = LookupResult(
+                title = loadingTitle,
+                subtitle = phone,
+                lines = listOf(context.getString(R.string.notification_loading_line)),
+                openFormUrl = "",
+            ),
             fullscreen = fullscreen,
             phone = phone,
             direction = direction,
@@ -69,8 +74,20 @@ internal object CallReportNotifications {
         showLookupNotificationInternal(context, result, false, phone, direction, PASSIVE_CHANNEL_ID, LOOKUP_NOTIFICATION_ID, NotificationCompat.PRIORITY_LOW, false, false)
     }
 
-    fun showImmediatePostCallPrompt(context: Context, formUrl: String, phone: String, direction: String, title: String = "Бележка след разговора") {
-        showPostCallPromptNotification(context, formUrl, phone, direction, title)
+    fun showImmediatePostCallPrompt(
+        context: Context,
+        formUrl: String,
+        phone: String,
+        direction: String,
+        title: String = "",
+    ) {
+        showPostCallPromptNotification(
+            context,
+            formUrl,
+            phone,
+            direction,
+            title.ifBlank { context.getString(R.string.notification_post_call_note_title) },
+        )
     }
 
     fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
@@ -127,11 +144,11 @@ internal object CallReportNotifications {
         actionIssuedAt: Long,
     ): NotificationCompat.Action {
         val remoteInput = RemoteInput.Builder(KEY_INLINE_NOTE_REPLY)
-            .setLabel("Напиши бележка…")
+            .setLabel(context.getString(R.string.notification_inline_note_hint))
             .build()
         return NotificationCompat.Action.Builder(
             R.drawable.ic_chat_note,
-            "Бележка",
+            context.getString(R.string.notification_note_action),
             inlineNotePendingIntent(context, 1101, phone, direction, callAt, durationSeconds, actionIssuedAt),
         )
             .addRemoteInput(remoteInput)
@@ -172,12 +189,13 @@ internal object CallReportNotifications {
         val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         val resolvedDirection = direction.ifBlank { latestCall?.direction.orEmpty() }
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
+        val unknownContactTitle = context.getString(R.string.notification_unknown_contact)
         val notificationTitle = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
             displayName.isNotBlank() -> displayName
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
-            phone.isNotBlank() -> UNKNOWN_CONTACT_TITLE
-            else -> result.title.ifBlank { UNKNOWN_CONTACT_TITLE }
+            phone.isNotBlank() -> unknownContactTitle
+            else -> result.title.ifBlank { unknownContactTitle }
         }
 
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, actionIssuedAt = actionIssuedAt)
@@ -189,7 +207,7 @@ internal object CallReportNotifications {
         val displayRows = when {
             firstCallInfoRow.isNotBlank() -> listOf(notificationTitle) + notificationRows.drop(1)
             notificationRows.isNotEmpty() -> notificationRows
-            else -> listOf(fallbackLookupRow(result, resolvedDirection))
+            else -> listOf(fallbackLookupRow(context, result, resolvedDirection))
         }
         val rowsText = displayRows.joinToString("\n")
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
@@ -210,7 +228,7 @@ internal object CallReportNotifications {
             .setOnlyAlertOnce(!alertAgain)
             .setContentIntent(editIntent)
             .addAction(noteReplyAction)
-            .addAction(0, "История", allNotesIntent)
+            .addAction(0, context.getString(R.string.notification_history_action), allNotesIntent)
             .setStyle(inboxStyle)
             .setCustomContentView(customView)
             .setCustomBigContentView(customView)
@@ -222,12 +240,12 @@ internal object CallReportNotifications {
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
 
-    private fun fallbackLookupRow(result: LookupResult, direction: String): String {
+    private fun fallbackLookupRow(context: Context, result: LookupResult, direction: String): String {
         return result.subtitle.ifBlank {
             when (direction) {
-                "out" -> "Изходящ разговор"
-                "in" -> "Входящ разговор"
-                else -> "Разговор"
+                "out" -> context.getString(R.string.notification_outgoing_call)
+                "in" -> context.getString(R.string.notification_incoming_call)
+                else -> context.getString(R.string.notification_call)
             }
         }
     }
