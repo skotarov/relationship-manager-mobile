@@ -51,12 +51,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    sourceSets {
-        getByName("main") {
-            java.exclude("**/MainPermissionSummary.kt")
-        }
-    }
-
     signingConfigs {
         getByName("debug") {
             storeFile = ensureFixedDebugKeystore()
