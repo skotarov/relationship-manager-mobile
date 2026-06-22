@@ -51,6 +51,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    sourceSets {
+        getByName("main") {
+            // `values` directories contain Android XML resources only. Ignore any
+            // accidentally added JSON metadata so AAPT2 cannot try to compile it.
+            res.exclude("values/*.json")
+            res.exclude("values-*/**/*.json")
+        }
+    }
+
     signingConfigs {
         getByName("debug") {
             storeFile = ensureFixedDebugKeystore()
