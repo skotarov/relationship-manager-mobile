@@ -38,7 +38,7 @@ class HomeActions(
         }
 
         if (!Settings.canDrawOverlays(activity)) {
-            binding.homeStatusText.text = "За popup бележка разреши 'Показване върху други приложения' от Настройки."
+            binding.homeStatusText.text = activity.getString(R.string.dynamic_home_overlay_note_permission)
             return
         }
         activity.startService(
