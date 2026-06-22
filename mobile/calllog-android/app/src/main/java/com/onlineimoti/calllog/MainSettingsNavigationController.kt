@@ -30,6 +30,12 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
         binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
+        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
+            saveServerSettingsArchive()
+        }
+        binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener {
+            restoreServerSettingsArchive()
+        }
     }
 
     fun showMenu() {
@@ -41,6 +47,35 @@ internal class MainSettingsNavigationController(
         binding.quickTestBar.visibility = View.GONE
         allGroupViews().forEach { it.visibility = View.GONE }
         scrollTop()
+    }
+
+    private fun saveServerSettingsArchive() {
+        val config = MainSettingsConfigUi.read(binding)
+        ConfigStore.save(activity, config)
+        PersistentServerSettingsArchive.save(activity, ConfigStore.load(activity))
+            .onSuccess { path ->
+                setStatus(activity.getString(R.string.server_settings_backup_saved, path))
+            }
+            .onFailure { error ->
+                setStatus(activity.getString(R.string.server_settings_backup_failed, error.message.orEmpty()))
+            }
+    }
+
+    private fun restoreServerSettingsArchive() {
+        PersistentServerSettingsArchive.restore(activity, ConfigStore.load(activity))
+            .onSuccess { config ->
+                ConfigStore.save(activity, config)
+                MainSettingsConfigUi.hydrateServerSettings(binding, config)
+                setStatus(activity.getString(R.string.server_settings_backup_restored, PersistentServerSettingsArchive.path()))
+            }
+            .onFailure { error ->
+                setStatus(activity.getString(R.string.server_settings_backup_failed, error.message.orEmpty()))
+            }
+    }
+
+    private fun setStatus(message: String) {
+        binding.statusText.visibility = View.VISIBLE
+        binding.statusText.text = message
     }
 
     private fun showSection(section: SettingsSection) {
