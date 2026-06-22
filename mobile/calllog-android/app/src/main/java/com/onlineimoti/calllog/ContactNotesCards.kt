@@ -45,7 +45,7 @@ internal class ContactNotesCards(
             ).apply { bottomMargin = dp(8) }
 
             addView(TextView(activity).apply {
-                text = "+ Добави към последния разговор"
+                text = activity.getString(R.string.dynamic_notes_add_latest_call)
                 textSize = 14.5f
                 setTextColor(mutedLinkColor)
             })
