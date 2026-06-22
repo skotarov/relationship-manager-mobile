@@ -38,7 +38,6 @@ internal class MainSettingsAutoSaveController(
             remote.baseUrlInput,
             remote.accessTokenInput,
             remote.lookupPathInput,
-            remote.formPathInput,
             remote.historyPathInput,
             popup.postCallTimeoutInput,
             callLog.homeCallPageSizeInput,
