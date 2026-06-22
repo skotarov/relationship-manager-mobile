@@ -42,7 +42,6 @@ class ContactNotesHeaderUi(
         openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
         val displayName = displayNameFromTitle(title, phone)
-        val contactIcon = if (contactExists) R.drawable.ic_contact_person else R.drawable.ic_contact_person_add
         val contactDescription = if (contactExists) "Отвори контакт" else "Създай контакт"
 
         return LinearLayout(activity).apply {
@@ -59,7 +58,9 @@ class ContactNotesHeaderUi(
                     addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
                     addView(verticalDivider())
                 }
-                addView(iconButton(contactIcon, contactDescription, openDefaultContact))
+                if (contactExists) {
+                    addView(iconButton(R.drawable.ic_contact_person, contactDescription, openDefaultContact))
+                }
                 if (showCrmSyncButton) {
                     addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
                 }
@@ -85,9 +86,13 @@ class ContactNotesHeaderUi(
                     addView(phoneNumberText(phone))
                     addView(textDivider())
                 }
-                addView(contactNameText(displayName, contactExists, contactDescription).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                })
+                if (contactExists) {
+                    addView(contactNameText(displayName, true, contactDescription).apply {
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    })
+                } else {
+                    addView(iconButton(R.drawable.ic_contact_person_add, contactDescription, openDefaultContact))
+                }
             })
         }
     }
