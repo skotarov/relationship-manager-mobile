@@ -1,0 +1,45 @@
+<resources>
+    <string name="contacts_sync_panel_title">Синхронизация на RM контакти</string>
+    <string name="contacts_sync_panel_prepare">Подготовка…</string>
+    <string name="contacts_sync_stop">Стоп</string>
+    <string name="contacts_sync_stopping">Спиране…</string>
+    <string name="contacts_sync_settings_hint">Настройките остават активни, докато синхронизацията тече.</string>
+    <string name="contacts_sync_title_register">Синхронизация на RM контакти</string>
+    <string name="contacts_sync_title_repair">Поправка на RM контакти</string>
+    <string name="contacts_sync_title_cleanup_orphans">Почистване на осиротели RM записи</string>
+    <string name="contacts_sync_title_cleanup">Почистване на RM контакти</string>
+    <string name="contacts_sync_title_idle">Обработка на контакти</string>
+    <string name="contacts_sync_status_processing">Обработка на RM записите…</string>
+    <string name="contacts_sync_stop_register">Спирам синхронизацията след текущия запис…</string>
+    <string name="contacts_sync_stop_repair">Спирам поправката след текущия запис…</string>
+    <string name="contacts_sync_stop_orphans">Спирам почистването на осиротели записи след текущия запис…</string>
+    <string name="contacts_sync_stop_cleanup">Спирам почистването след текущия запис…</string>
+    <string name="contacts_sync_stop_generic">Спирам…</string>
+    <string name="contacts_sync_running">Синхронизирам RM контактите… %1$d%%</string>
+    <string name="contacts_sync_running_auto">Автоматична синхронизация на RM контактите… %1$d%%</string>
+    <string name="contacts_sync_cleanup_running">Почиствам RM записите от контактите… %1$d%%</string>
+    <string name="contacts_sync_cleanup_started">Почиствам RM записите от контактите… 0%%</string>
+    <string name="contacts_sync_stopped_removed">Почистването е спряно. Премахнати RM записи: %1$d</string>
+    <string name="contacts_sync_removed">Премахнати RM записи от контактите: %1$d</string>
+    <string name="contacts_sync_canceled_summary">%1$s е спряна. Променени: %2$d, без промяна: %3$d, грешки: %4$d, проверени: %5$d</string>
+    <string name="contacts_sync_auto_label">Автоматичната синхронизация</string>
+    <string name="contacts_sync_manual_label">Синхронизацията</string>
+    <string name="contacts_sync_finished_summary">Променени: %1$d, без промяна: %2$d, грешки: %3$d, проверени: %4$d</string>
+
+    <string name="contacts_sync_notification_channel">Напредък на RM контакти</string>
+    <string name="contacts_sync_notification_channel_description">Напредък при синхронизация и почистване на RM контакти.</string>
+    <string name="contacts_sync_notification_stopping_register">Спиране на синхронизацията…</string>
+    <string name="contacts_sync_notification_stopping_repair">Спиране на поправката…</string>
+    <string name="contacts_sync_notification_stopping_orphans">Спиране на почистването на осиротели записи…</string>
+    <string name="contacts_sync_notification_stopping_cleanup">Спиране на почистването…</string>
+    <string name="contacts_sync_notification_register">Синхронизация на RM контакти</string>
+    <string name="contacts_sync_notification_repair">Поправяне на RM записите</string>
+    <string name="contacts_sync_notification_orphans">Почистване на осиротели RM записи</string>
+    <string name="contacts_sync_notification_cleanup">Почистване на контактите</string>
+    <string name="contacts_sync_notification_idle">Обработка на контактите</string>
+    <string name="contacts_sync_notification_finished_register">Синхронизацията приключи</string>
+    <string name="contacts_sync_notification_finished_repair">Поправката приключи</string>
+    <string name="contacts_sync_notification_finished_orphans">Почистването на осиротели приключи</string>
+    <string name="contacts_sync_notification_finished_cleanup">Почистването приключи</string>
+    <string name="contacts_sync_notification_finished_idle">Обработката приключи</string>
+</resources>
