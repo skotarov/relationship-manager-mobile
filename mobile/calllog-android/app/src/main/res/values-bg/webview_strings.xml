@@ -1,0 +1,4 @@
+<resources>
+    <string name="webview_title">Форма Call Report</string>
+    <string name="webview_loading">Зареждане…</string>
+</resources>
