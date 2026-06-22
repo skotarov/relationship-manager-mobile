@@ -9,9 +9,6 @@ on:
       - .github/workflows/android-build.yml
       - mobile/calllog-android/**
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-debug:
     runs-on: ubuntu-latest
