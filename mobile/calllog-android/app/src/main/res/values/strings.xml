@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Relationship Management</string>
     <string name="notification_channel_name">Relationship Management</string>
-    <string name="notification_channel_description">Caller lookup and quick open</string>
+    <string name="notification_channel_description">Caller lookup and quick access</string>
 
     <string name="home_title">RM Call Log</string>
     <string name="home_settings_button">Settings</string>
@@ -10,45 +10,45 @@
     <string name="clear_filter_content_description">Clear filter</string>
     <string name="search_content_description">Search notes</string>
     <string name="search_clear_content_description">Clear search</string>
-    <string name="search_hint">Search in notes</string>
+    <string name="search_hint">Search notes</string>
     <string name="previous_20">Previous 20</string>
     <string name="next_20">Next 20</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_back_content_description">Back</string>
-    <string name="settings_description">Android wrapper settings for call popups, local history and server WebView form.</string>
+    <string name="settings_description">Android settings for call popups, local history and the server WebView form.</string>
     <string name="settings_basic_section">Basic settings</string>
     <string name="settings_archive_section">Archive</string>
     <string name="settings_application_section">Application</string>
     <string name="settings_language_section">Language</string>
     <string name="settings_storage_section">Notes storage</string>
-    <string name="settings_call_log_section">Call Log</string>
-    <string name="settings_call_log_overlay_section">Call Log overlay button</string>
+    <string name="settings_call_log_section">Call log</string>
+    <string name="settings_call_log_overlay_section">Call log overlay button</string>
     <string name="settings_popup_section">Popup behavior</string>
     <string name="settings_crm_section">Relationship Management contacts</string>
     <string name="settings_permissions_section">Permissions</string>
     <string name="settings_server_section">Server settings</string>
     <string name="settings_debug_section">Debug / Tests</string>
-    <string name="settings_debug_description">These buttons are only for checking whether popups, server connection and WebView screens work correctly.</string>
+    <string name="settings_debug_description">These buttons are only for checking whether popups, the server connection and WebView screens work correctly.</string>
 
     <string name="language_title">Language</string>
     <string name="language_system">System default</string>
-    <string name="language_bg">Български</string>
+    <string name="language_bg">Bulgarian</string>
     <string name="language_en">English</string>
     <string name="language_description">Changes only the app language. The phone language remains unchanged.</string>
 
     <string name="storage_title">Notes storage</string>
-    <string name="storage_use_public_folder">Use shared file system — Documents/.callreport</string>
-    <string name="storage_description">On: notes are stored in a shared folder and Android may ask for All files access. Off: notes are stored only in the app private storage and shared file access is not requested.</string>
+    <string name="storage_use_public_folder">Use shared storage — Documents/.callreport</string>
+    <string name="storage_description">On: notes are stored in a shared folder and Android may request All files access. Off: notes are stored only in the app's private storage and shared file access is not requested.</string>
 
-    <string name="contact_filter_title">Show popup and call log settings</string>
+    <string name="contact_filter_title">Popup and call log settings</string>
     <string name="popup_contact_filter_title">Which contacts trigger popups</string>
     <string name="home_call_page_size_hint">Calls per page</string>
-    <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each next page. Allowed range: 5–100.</string>
-    <string name="call_log_overlay_button_enabled">Show round Call Report button over system call log</string>
-    <string name="call_log_overlay_button_description">Shows only while the default phone call log window opened from this app is visible. Requires Accessibility and Display over other apps.</string>
+    <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each following page. Allowed range: 5–100.</string>
+    <string name="call_log_overlay_button_enabled">Show the round Call Report button over the system call log</string>
+    <string name="call_log_overlay_button_description">Shown only while the default phone call log opened from this app is visible. Requires Accessibility and Display over other apps.</string>
     <string name="call_log_overlay_debug_enabled">Show overlay detection debug</string>
-    <string name="call_log_overlay_debug_description">When enabled, a small debug label is shown under the floating button with detected target and visible texts.</string>
+    <string name="call_log_overlay_debug_description">When enabled, a small debug label appears below the floating button with the detected target and visible texts.</string>
     <string name="call_log_overlay_access_button">Open Accessibility settings for this button</string>
     <string name="call_log_overlay_button_position_title">Button position</string>
     <string name="call_log_overlay_position_top_end">Top right</string>
@@ -60,49 +60,49 @@
     <string name="notify_unknown_contacts">Unknown numbers</string>
     <string name="notify_known_contacts">Known contacts</string>
     <string name="contact_groups_hint">Groups for known contacts</string>
-    <string name="contact_groups_description">If Known contacts is enabled: empty field = all known contacts; filled field = only contacts from these groups.</string>
+    <string name="contact_groups_description">When Known contacts is enabled: an empty field means all known contacts; a filled field means only contacts from these groups.</string>
 
     <string name="contact_link_title">Relationship Management linking in Android contacts</string>
     <string name="contact_link_show_crm_buttons">Show Contact link button</string>
     <string name="contact_link_mode_app">As app — show Relationship Management in linked apps</string>
-    <string name="contact_link_mode_contact">As contact — add Relationship Management as linked contact</string>
+    <string name="contact_link_mode_contact">As contact — add Relationship Management as a linked contact</string>
     <string name="contact_link_description">The change applies on the next save through Contact link.</string>
     <string name="contact_link_bulk_title">Contacts sync</string>
     <string name="contact_link_register_all_button">Register all</string>
     <string name="contact_link_sync_all_button">Sync RM contacts</string>
     <string name="contact_link_debug_button">Repair RM records</string>
     <string name="contact_link_clean_orphans_button">Clean orphan RM records</string>
-    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relationship Management registrations are skipped and not changed.</string>
+    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relationship Management registrations are skipped and unchanged.</string>
     <string name="contact_link_sync_description">Unified sync: adds missing RM links, updates existing records and cleans orphan RM contacts.</string>
 
-    <string name="popup_timeout_hint">Seconds for auto-close after call</string>
+    <string name="popup_timeout_hint">Seconds until automatic close after the call</string>
     <string name="popup_after_call_title">After the call ends</string>
     <string name="popup_action_edit_note">Edit note</string>
     <string name="popup_action_history_screen">History screen</string>
     <string name="popup_action_nothing">Nothing</string>
-    <string name="popup_after_call_description">In overlay mode a small button is shown and opens the selected action. In system mode the action opens directly.</string>
+    <string name="popup_after_call_description">In overlay mode, a small button is shown and opens the selected action. In system mode, the action opens directly.</string>
     <string name="popup_type_title">Popup type</string>
     <string name="popup_use_overlay">Use Display over other apps / overlay popups</string>
-    <string name="popup_overlay_description">Off by default. When off or permission is missing, the first popup is system-based and editing opens in full screen.</string>
-    <string name="popup_overlay_warning">Overlay popups are selected, but the Android permission is missing. A system popup will be shown until Display over other apps is allowed.</string>
-    <string name="popup_custom_start">First popup as custom overlay</string>
-    <string name="popup_custom_end">Final popup as custom floating icon</string>
+    <string name="popup_overlay_description">Off by default. When off or permission is missing, the first popup is system-based and editing opens full screen.</string>
+    <string name="popup_overlay_warning">Overlay popups are selected, but Android permission is missing. A system popup will be shown until Display over other apps is allowed.</string>
+    <string name="popup_custom_start">Use a custom overlay for the first popup</string>
+    <string name="popup_custom_end">Use a custom floating icon for the final popup</string>
 
     <string name="permissions_title">Permission status</string>
-    <string name="permissions_open_button">Open Permissions</string>
+    <string name="permissions_open_button">Open permissions</string>
     <string name="permissions_overlay_button">Allow Display over other apps</string>
     <string name="permissions_call_screening_button">Activate Call screening</string>
-    <string name="permissions_fullscreen_button">Allow Full-screen popup</string>
+    <string name="permissions_fullscreen_button">Allow full-screen popup</string>
     <string name="permissions_cleanup_contacts_button">Clean all Relationship Management records</string>
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
-    <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as Default caller ID / spam app.</string>
-    <string name="permissions_sms_role_title">SMS приложение</string>
-    <string name="permissions_sms_role_description">Когато Relationship Manager е Default SMS, новите SMS първо идват тук. От известието избираш дали да останеш в Call Report или да отвориш предишното SMS приложение.</string>
-    <string name="permissions_sms_role_button">Избери като SMS приложение</string>
-    <string name="permissions_sms_theme_title">SMS икона</string>
-    <string name="permissions_sms_theme_description">Във файловия избор отвори Downloads → Call Report и избери CallReport-SMS-icon.mtz. Темата съдържа само иконата на Call Report; след приложението ѝ премести Call Report на мястото на старата SMS иконка.</string>
-    <string name="permissions_sms_theme_install_button">Инсталирай CRM SMS тема</string>
-    <string name="permissions_sms_theme_restore_button">Върни запазената иконка</string>
+    <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as the default Caller ID / spam app.</string>
+    <string name="permissions_sms_role_title">SMS app</string>
+    <string name="permissions_sms_role_description">When Relationship Manager is the default SMS app, new SMS messages arrive here first. From the notification, choose whether to stay in Call Report or open the previous SMS app.</string>
+    <string name="permissions_sms_role_button">Set as SMS app</string>
+    <string name="permissions_sms_theme_title">SMS icon</string>
+    <string name="permissions_sms_theme_description">The SMS theme installer is no longer used. Call Report now provides its own SMS app icon.</string>
+    <string name="permissions_sms_theme_install_button">Update SMS icon</string>
+    <string name="permissions_sms_theme_restore_button">Restore saved icon</string>
 
     <string name="server_enabled">Server</string>
     <string name="server_base_url_hint">Base URL</string>
@@ -112,7 +112,7 @@
     <string name="server_history_path_hint">Path to full/history log file</string>
     <string name="save_server_settings">Save server settings</string>
 
-    <string name="archive_description">Create or restore a JSON archive of the local notes data. Android contacts are not included.</string>
+    <string name="archive_description">Create or restore a JSON archive of local note data. Android contacts are not included.</string>
     <string name="archive_create_button">Create archive</string>
     <string name="archive_restore_button">Restore archive</string>
 
