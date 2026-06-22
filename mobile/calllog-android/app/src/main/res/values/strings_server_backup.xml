@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="restore_server_settings">Restore</string>
+    <string name="server_settings_backup_saved">Server settings saved. Backup: %1$s</string>
+    <string name="server_settings_backup_restored">Server settings restored from %1$s.</string>
+    <string name="server_settings_backup_not_found">No saved server settings were found in %1$s.</string>
+    <string name="server_settings_backup_failed">Could not read or write the server settings backup: %1$s</string>
+    <string name="server_settings_backup_storage_permission">Server settings were saved in RM. Allow all files access to keep a reinstall backup in %1$s.</string>
+</resources>
