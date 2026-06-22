@@ -16,14 +16,18 @@ internal object MainTestActions {
         val phone = binding.testsSection.phoneInput.text?.toString().orEmpty().ifBlank { "0877904903" }
         val direction = selectedDirection(binding)
         executor.execute {
-            val title = ContactGroupFilter.resolveDisplayName(activity, phone).orEmpty().ifBlank { "Тестов стартов popup" }
+            val title = ContactGroupFilter.resolveDisplayName(activity, phone).orEmpty()
+                .ifBlank { activity.getString(R.string.test_start_title) }
             val result = LookupResult(
                 title = title,
                 subtitle = phone,
                 lines = listOf(
-                    "Тест: popup при старт на разговор",
-                    "Посока: ${PhoneCallReader.directionLabel(direction).ifBlank { direction }}",
-                    "Това е тест без реално обаждане.",
+                    activity.getString(R.string.test_start_line),
+                    activity.getString(
+                        R.string.test_direction_line,
+                        PhoneCallReader.directionLabel(direction).ifBlank { direction },
+                    ),
+                    activity.getString(R.string.test_no_real_call),
                 ),
                 openFormUrl = "",
             )
@@ -36,12 +40,14 @@ internal object MainTestActions {
                     direction = direction,
                 )
                 val config = ConfigStore.load(activity)
-                val mode = if (config.useOverlayPopups && config.useCustomStartPopup && Settings.canDrawOverlays(activity)) {
-                    "custom overlay"
-                } else {
-                    "system notification"
-                }
-                setStatus("Пуснат е тестов стартов popup ($mode) за $phone.")
+                val mode = activity.getString(
+                    if (config.useOverlayPopups && config.useCustomStartPopup && Settings.canDrawOverlays(activity)) {
+                        R.string.test_mode_custom_overlay
+                    } else {
+                        R.string.test_mode_system_notification
+                    },
+                )
+                setStatus(activity.getString(R.string.test_start_status, mode, phone))
             }
         }
     }
@@ -55,11 +61,12 @@ internal object MainTestActions {
         val phone = binding.testsSection.phoneInput.text?.toString().orEmpty().ifBlank { "0877904903" }
         val direction = selectedDirection(binding)
         executor.execute {
-            val title = ContactGroupFilter.resolveDisplayName(activity, phone).orEmpty().ifBlank { "Тестов финален popup" }
+            val title = ContactGroupFilter.resolveDisplayName(activity, phone).orEmpty()
+                .ifBlank { activity.getString(R.string.test_end_title) }
             activity.runOnUiThread {
                 val config = ConfigStore.load(activity)
                 if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) {
-                    setStatus("Финалният popup е изключен: настройката After the call ends е Nothing.")
+                    setStatus(activity.getString(R.string.test_end_disabled))
                     return@runOnUiThread
                 }
                 CallReportRuntime.showPostCallPromptNotification(
@@ -69,14 +76,14 @@ internal object MainTestActions {
                     direction = direction,
                     title = title,
                 )
-                val mode = if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(activity)) {
-                    "custom overlay"
-                } else if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_HISTORY) {
-                    "history screen"
-                } else {
-                    "note editor"
-                }
-                setStatus("Пуснат е тестов финален popup/action ($mode) за $phone.")
+                val mode = activity.getString(
+                    when {
+                        config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(activity) -> R.string.test_mode_custom_overlay
+                        config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_HISTORY -> R.string.test_mode_history
+                        else -> R.string.test_mode_note_editor
+                    },
+                )
+                setStatus(activity.getString(R.string.test_end_status, mode, phone))
             }
         }
     }
