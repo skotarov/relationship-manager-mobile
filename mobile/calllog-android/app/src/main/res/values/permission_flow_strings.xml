@@ -6,7 +6,7 @@
     <string name="permission_flow_permission_not_enabled">%1$s is not enabled. You can enable it from the button in the permission list.</string>
     <string name="permission_flow_screening_active">Call screening role is active.</string>
     <string name="permission_flow_screening_not_active">Call screening role is not active. The setting will not change the next time the app opens.</string>
-    <string name="permission_flow_storage_denied">Shared file access was not allowed. The setting was disabled and notes will be stored in the app's private storage.</string>
+    <string name="permission_flow_storage_denied">Shared file access was not allowed. The setting was disabled and notes will be stored in the app\'s private storage.</string>
     <string name="permission_flow_overlay_allowed">Display over other apps permission was granted.</string>
     <string name="permission_flow_overlay_denied">Display over other apps permission was not granted. The setting was disabled and the app will use a system popup.</string>
     <string name="permission_flow_fullscreen_allowed">Full-screen Call Report popup permission was granted.</string>
