@@ -15,6 +15,7 @@ class RecentCallsActivity : AppCompatActivity() {
     private var phoneFilter: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         binding = ActivityRecentCallsBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -29,14 +30,12 @@ class RecentCallsActivity : AppCompatActivity() {
     private fun renderCalls() {
         binding.recentCallsContainer.removeAllViews()
         val isFiltered = phoneFilter.isNotBlank()
-        binding.recentCallsTitleText.text = if (isFiltered) {
-            "История за номера"
-        } else {
-            "Последни разговори"
-        }
+        binding.recentCallsTitleText.text = getString(
+            if (isFiltered) R.string.recent_calls_title_filtered else R.string.recent_calls_title,
+        )
 
         if (!PhoneCallReader.hasCallLogPermission(this)) {
-            binding.recentCallsStatusText.text = "Липсва достъп до телефонния log. Отвори Настройки и разреши Call log."
+            binding.recentCallsStatusText.text = getString(R.string.recent_calls_permission_missing)
             return
         }
 
@@ -47,17 +46,17 @@ class RecentCallsActivity : AppCompatActivity() {
         }
         if (calls.isEmpty()) {
             binding.recentCallsStatusText.text = if (isFiltered) {
-                "Няма намерени разговори за $phoneFilter."
+                getString(R.string.recent_calls_empty_filtered, phoneFilter)
             } else {
-                "Няма намерени разговори."
+                getString(R.string.recent_calls_empty)
             }
             return
         }
 
         binding.recentCallsStatusText.text = if (isFiltered) {
-            "Показвам ${calls.size} разговора за $phoneFilter."
+            getString(R.string.recent_calls_showing_filtered, calls.size, phoneFilter)
         } else {
-            "Показвам последните ${calls.size} разговора."
+            getString(R.string.recent_calls_showing, calls.size)
         }
         calls.forEach { call ->
             binding.recentCallsContainer.addView(callCard(call))
@@ -102,7 +101,7 @@ class RecentCallsActivity : AppCompatActivity() {
             setPadding(0, dp(6), 0, 0)
         })
         content.addView(MaterialButton(this).apply {
-            text = "Запиши бележка"
+            text = getString(R.string.recent_calls_write_note)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
