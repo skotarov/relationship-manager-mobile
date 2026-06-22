@@ -1,0 +1,10 @@
+<resources>
+    <string name="recent_calls_title_filtered">History for number</string>
+    <string name="recent_calls_title">Recent calls</string>
+    <string name="recent_calls_permission_missing">Phone call log access is missing. Open Settings and allow Call log.</string>
+    <string name="recent_calls_empty_filtered">No calls found for %1$s.</string>
+    <string name="recent_calls_empty">No calls found.</string>
+    <string name="recent_calls_showing_filtered">Showing %1$d calls for %2$s.</string>
+    <string name="recent_calls_showing">Showing the latest %1$d calls.</string>
+    <string name="recent_calls_write_note">Write note</string>
+</resources>
