@@ -1,0 +1,24 @@
+<resources>
+    <string name="permission_flow_public_storage_request">Разреши достъп до всички файлове, за да пазим бележките в общата папка %1$s.</string>
+    <string name="permission_flow_already_enabled">%1$s вече е включено.</string>
+    <string name="permission_flow_request_from_dialog">Разреши %1$s от системния прозорец.</string>
+    <string name="permission_flow_enable_in_settings">Включи %1$s от Android настройките на приложението.</string>
+    <string name="permission_flow_permission_not_enabled">%1$s не е включено. Можеш да го включиш от бутона в карето с разрешения.</string>
+    <string name="permission_flow_screening_active">Ролята за филтриране на обажданията е активирана.</string>
+    <string name="permission_flow_screening_not_active">Ролята за филтриране на обажданията не е активирана. Настройката няма да се променя при следващо отваряне.</string>
+    <string name="permission_flow_storage_denied">Достъпът до общата файлова система не е разрешен. Настройката е изключена и бележките ще се пазят във вътрешната памет на приложението.</string>
+    <string name="permission_flow_overlay_allowed">Разрешението за показване над други приложения е дадено.</string>
+    <string name="permission_flow_overlay_denied">Разрешението за показване над други приложения не е дадено. Настройката е изключена и приложението ще използва системен popup.</string>
+    <string name="permission_flow_fullscreen_allowed">Разрешението за popup на цял екран на Call Report е дадено.</string>
+    <string name="permission_flow_request_notifications">Разреши известията, за да могат системните popup-и да се показват.</string>
+    <string name="permission_flow_request_phone">Разреши Телефон, за да засичаме начало и край на разговор.</string>
+    <string name="permission_flow_request_call_log">Разреши Дневник на разговорите, за да виждаме последните разговори.</string>
+    <string name="permission_flow_request_contacts_read">Разреши Четене на контакти, за да показваме имена вместо само номера.</string>
+    <string name="permission_flow_request_contacts_write">Разреши Запис в контакти за съвместимост със старите бележки към контакти.</string>
+    <string name="permission_flow_request_fullscreen">Разреши Popup на цял екран от системния екран.</string>
+    <string name="permission_flow_overlay_already_allowed">Показването над други приложения вече е разрешено.</string>
+    <string name="permission_flow_public_folder_active">Общата папка за бележки е активна: %1$s</string>
+    <string name="permission_flow_public_folder_migration_failed">Общата папка е разрешена, но прехвърлянето на бележките не успя.</string>
+    <string name="permission_flow_screening_unavailable">Ролята за филтриране на обажданията / идентификация на обаждащия се не е налична на този телефон. Настройката остава непроменена.</string>
+    <string name="permission_flow_success">Основните разрешения са проверени. Бележките са в %1$s.</string>
+</resources>
