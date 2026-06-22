@@ -21,39 +21,6 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
-    <CheckBox
-        android:id="@+id/useCallScreeningCheckBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:checked="false"
-        android:text="@string/permissions_use_call_screening" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="@string/permissions_call_screening_description"
-        android:textColor="@color/calllog_muted_text"
-        android:textSize="13sp" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/permissions_sms_role_title"
-        android:textColor="@color/calllog_text"
-        android:textSize="15sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="@string/permissions_sms_role_description"
-        android:textColor="@color/calllog_muted_text"
-        android:textSize="13sp" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -71,52 +38,12 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
-    <LinearLayout
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/openSmsThemeButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:orientation="vertical">
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openAppPermissionsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/permissions_open_button" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openOverlayPermissionButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/permissions_overlay_button" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openCallScreeningButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/permissions_call_screening_button" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openSmsRoleButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/permissions_sms_role_button" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openSmsThemeButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:onClick="openSmsThemeInstaller"
-            android:text="Добави SMS икона на началния екран" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openFullscreenIntentButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/permissions_fullscreen_button" />
-    </LinearLayout>
+        android:onClick="openSmsThemeInstaller"
+        android:text="Добави SMS икона на началния екран" />
 </LinearLayout>
