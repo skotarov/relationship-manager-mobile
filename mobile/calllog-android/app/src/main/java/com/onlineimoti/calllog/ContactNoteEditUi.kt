@@ -77,7 +77,9 @@ internal class ContactNoteEditUi(
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 addView(TextView(activity).apply {
-                    text = if (current.isGeneralNote) "Основна бележка" else "Бележка от разговора"
+                    text = activity.getString(
+                        if (current.isGeneralNote) R.string.dynamic_note_general_title else R.string.dynamic_note_call_title,
+                    )
                     textSize = 18f
                     typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.rgb(17, 24, 39))
@@ -90,10 +92,10 @@ internal class ContactNoteEditUi(
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
             })
-            addView(iconButton(R.drawable.ic_calendar_event, "Календар") {
+            addView(iconButton(R.drawable.ic_calendar_event, activity.getString(R.string.dynamic_action_calendar)) {
                 saveAndOpenCalendar(input.text?.toString().orEmpty())
             })
-            addView(iconButton(R.drawable.ic_popup_close, "Затвори") { close() })
+            addView(iconButton(R.drawable.ic_popup_close, activity.getString(R.string.dynamic_sms_close)) { close() })
         }
     }
 
@@ -113,7 +115,9 @@ internal class ContactNoteEditUi(
     private fun crmModeRow(current: ContactNoteEditUiState): TextView {
         val enabled = CrmContactSyncStore.isEnabled(activity, current.phone)
         return TextView(activity).apply {
-            text = if (enabled) "Към CRM: тази бележка ще се изпрати към сървъра" else "Само локално: тази бележка остава в телефона"
+            text = activity.getString(
+                if (enabled) R.string.dynamic_note_crm_enabled else R.string.dynamic_note_local_only,
+            )
             textSize = 12.5f
             setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(107, 114, 128))
             setPadding(0, dp(10), 0, 0)
@@ -131,7 +135,9 @@ internal class ContactNoteEditUi(
         return EditText(activity).apply {
             setText(value)
             setSelection(text?.length ?: 0)
-            hint = if (current.isGeneralNote) "Основна бележка към контакта/номера" else "Бележка към това обаждане"
+            hint = activity.getString(
+                if (current.isGeneralNote) R.string.dynamic_note_general_hint else R.string.dynamic_note_call_hint,
+            )
             minLines = if (current.isGeneralNote) 4 else 3
             maxLines = 8
             textSize = 16f
@@ -156,9 +162,9 @@ internal class ContactNoteEditUi(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
-            addView(secondaryTextButton("Отказ") { close() })
+            addView(secondaryTextButton(activity.getString(R.string.dynamic_note_cancel)) { close() })
             addView(TextView(activity).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-            addView(primaryTextButton("Запази") { saveAndClose(input.text?.toString().orEmpty()) })
+            addView(primaryTextButton(activity.getString(R.string.dynamic_note_save)) { saveAndClose(input.text?.toString().orEmpty()) })
         }
     }
 
