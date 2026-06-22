@@ -98,6 +98,30 @@
                 android:text="/broker/callreport/history.php" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="@string/server_backup_code_hint"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxStrokeColor="@color/calllog_border">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/serverBackupCodeInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@android:color/transparent"
+                android:inputType="number"
+                android:maxLength="4" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/server_backup_code_description"
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="13sp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/saveServerSettingsButton"
             android:layout_width="match_parent"
