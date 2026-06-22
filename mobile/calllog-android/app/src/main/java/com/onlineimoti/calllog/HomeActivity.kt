@@ -150,13 +150,13 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         val size = pageSize()
-        binding.previousCallsButton.text = "Предишни $size"
-        binding.nextCallsButton.text = "Следващи $size"
+        binding.previousCallsButton.text = getString(R.string.dynamic_home_previous_calls, size)
+        binding.nextCallsButton.text = getString(R.string.dynamic_home_next_calls, size)
         binding.homeCallsContainer.removeAllViews()
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         updatePhoneFilterStatusStyle()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
-            binding.homeStatusText.text = "Липсва достъп до телефонния log. Отвори ⚙ Настройки и разреши Call log."
+            binding.homeStatusText.text = getString(R.string.dynamic_home_missing_call_log_permission)
             binding.paginationContainer.visibility = View.GONE
             return
         }
@@ -200,15 +200,15 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderEmptyState() {
         binding.homeStatusText.text = when {
-            activeSearchQuery.isNotBlank() -> "Няма резултати за „${activeSearchQuery.trim()}“."
-            activePhoneFilter.isNotBlank() && pageIndex == 0 -> "Филтър: ${activePhoneFilter} • няма разговори или SMS"
-            pageIndex == 0 -> "Няма намерени разговори."
-            else -> "Няма повече разговори."
+            activeSearchQuery.isNotBlank() -> getString(R.string.dynamic_home_no_search_results, activeSearchQuery.trim())
+            activePhoneFilter.isNotBlank() && pageIndex == 0 -> getString(R.string.dynamic_home_filter_no_calls_or_sms, activePhoneFilter)
+            pageIndex == 0 -> getString(R.string.dynamic_home_no_calls)
+            else -> getString(R.string.dynamic_home_no_more_calls)
         }
         updatePhoneFilterStatusStyle()
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = false
-        binding.pageText.text = "Стр. ${pageIndex + 1}"
+        binding.pageText.text = getString(R.string.dynamic_home_page, pageIndex + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
 
@@ -216,15 +216,31 @@ class HomeActivity : AppCompatActivity() {
         val startNumber = pageIndex * pageSize + 1
         val endNumber = pageIndex * pageSize + currentCalls.size
         binding.homeStatusText.text = when {
-            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> "Филтър: ${activePhoneFilter} • търсене „${activeSearchQuery.trim()}“ • $startNumber–$endNumber"
-            activeSearchQuery.isNotBlank() -> "Търсене „${activeSearchQuery.trim()}“ • $startNumber–$endNumber"
-            activePhoneFilter.isNotBlank() -> "Филтър: ${activePhoneFilter} • $startNumber–$endNumber"
-            else -> "Разговори $startNumber–$endNumber"
+            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> getString(
+                R.string.dynamic_home_status_filter_search,
+                activePhoneFilter,
+                activeSearchQuery.trim(),
+                startNumber,
+                endNumber,
+            )
+            activeSearchQuery.isNotBlank() -> getString(
+                R.string.dynamic_home_status_search,
+                activeSearchQuery.trim(),
+                startNumber,
+                endNumber,
+            )
+            activePhoneFilter.isNotBlank() -> getString(
+                R.string.dynamic_home_status_filter,
+                activePhoneFilter,
+                startNumber,
+                endNumber,
+            )
+            else -> getString(R.string.dynamic_home_status_calls, startNumber, endNumber)
         }
         updatePhoneFilterStatusStyle()
         binding.previousCallsButton.isEnabled = pageIndex > 0
         binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
-        binding.pageText.text = "Стр. ${pageIndex + 1}"
+        binding.pageText.text = getString(R.string.dynamic_home_page, pageIndex + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
 
