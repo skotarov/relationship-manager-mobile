@@ -57,21 +57,26 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           from xml.etree import ElementTree as ET
+          import re
           import sys
 
           resources_root = Path("app/src/main/res")
           errors = []
           checked = 0
+          seen_by_directory = {}
+          types_by_name = {}
+          placeholders_by_key = {}
+          placeholder_re = re.compile(r"%(?:(\d+)\$)?([a-zA-Z])")
 
           for directory in sorted(resources_root.iterdir()):
               if not directory.is_dir() or not (directory.name == "values" or directory.name.startswith("values-")):
                   continue
 
+              seen = {}
               for entry in sorted(directory.iterdir()):
                   if entry.is_file() and entry.suffix.lower() != ".xml":
                       errors.append(f"Non-XML file in {directory}: {entry.name}")
 
-              seen = {}
               for xml_file in sorted(directory.glob("*.xml")):
                   checked += 1
                   try:
@@ -100,6 +105,30 @@ jobs:
                       else:
                           seen[key] = xml_file
 
+                      previous_types = types_by_name.setdefault(name, set())
+                      previous_types.add(resource_type)
+
+                      text = "".join(child.itertext())
+                      placeholders = tuple(placeholder_re.findall(text))
+                      format_key = (resource_type, name)
+                      existing_placeholders = placeholders_by_key.get(format_key)
+                      if existing_placeholders is None:
+                          placeholders_by_key[format_key] = placeholders
+                      elif existing_placeholders != placeholders:
+                          errors.append(
+                              f"Format placeholders differ for {resource_type} resource '{name}': "
+                              f"{existing_placeholders} versus {placeholders} in {xml_file}"
+                          )
+
+              seen_by_directory[directory] = seen
+
+          for name, resource_types in sorted(types_by_name.items()):
+              if len(resource_types) > 1:
+                  errors.append(
+                      f"Resource name '{name}' is declared with incompatible types across values folders: "
+                      f"{', '.join(sorted(resource_types))}"
+                  )
+
           if errors:
               print("Android values resource validation failed:")
               print("\n".join(f"- {error}" for error in errors))
@@ -107,6 +136,18 @@ jobs:
 
           print(f"Android values resource validation passed ({checked} XML files checked).")
           PY
+
+      - name: Compile value XML resources one by one
+        run: |
+          AAPT2="${ANDROID_HOME}/build-tools/35.0.0/aapt2"
+          test -x "$AAPT2"
+          output_root="$(mktemp -d)"
+          while IFS= read -r -d '' resource_file; do
+            output_dir="$output_root/$(printf '%s' "$resource_file" | sha256sum | cut -d' ' -f1)"
+            mkdir -p "$output_dir"
+            echo "AAPT2 compile: $resource_file"
+            "$AAPT2" compile -o "$output_dir" "$resource_file"
+          done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace --info :app:assembleDebug
