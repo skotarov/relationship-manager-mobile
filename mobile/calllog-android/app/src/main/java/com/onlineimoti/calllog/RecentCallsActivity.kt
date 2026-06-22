@@ -159,8 +159,8 @@ class RecentCallsActivity : AppCompatActivity() {
             Intent(this, PostCallPromptActivity::class.java)
                 .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, formUrl)
                 .putExtra(PostCallPromptActivity.EXTRA_PHONE, call.number)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, call.displayName)
+                .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, call.direction)
+                .putExtra(PostCallPromptActivity.EXTRA_TITLE, call.displayName)
         )
     }
 
