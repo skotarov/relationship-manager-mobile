@@ -54,47 +54,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Основни функции"
-            android:textColor="@color/calllog_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <CheckBox
-            android:id="@+id/applicationUsePublicNotesFolderCheckBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:checked="true"
-            android:text="Пиши бележките в shared файловата система" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Същата настройка остава и в Storage/Data archive секцията."
-            android:textColor="@color/calllog_muted_text"
-            android:textSize="13sp" />
-
-        <CheckBox
-            android:id="@+id/applicationUseOverlayPopupsCheckBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:checked="false"
-            android:text="Използвай custom popup-и върху други приложения" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Същата настройка остава и в Popup секцията. При включване ще поиска Display over other apps."
-            android:textColor="@color/calllog_muted_text"
-            android:textSize="13sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
             android:text="@string/settings_permissions_section"
             android:textColor="@color/calllog_text"
             android:textSize="15sp"
