@@ -1,0 +1,70 @@
+<resources>
+    <string name="dynamic_home_previous_calls">Previous %1$d</string>
+    <string name="dynamic_home_next_calls">Next %1$d</string>
+    <string name="dynamic_home_missing_call_log_permission">Phone call log access is missing. Open ⚙ Settings and allow Call log.</string>
+    <string name="dynamic_home_search_minimum">Enter at least 2 characters to search.</string>
+    <string name="dynamic_home_searching">Searching “%1$s”…</string>
+    <string name="dynamic_home_no_search_results">No results for “%1$s”.</string>
+    <string name="dynamic_home_filter_no_calls_or_sms">Filter: %1$s • no calls or SMS</string>
+    <string name="dynamic_home_no_calls">No calls found.</string>
+    <string name="dynamic_home_no_more_calls">No more calls.</string>
+    <string name="dynamic_home_page">Page %1$d</string>
+    <string name="dynamic_home_status_filter_search">Filter: %1$s • search “%2$s” • %3$d–%4$d</string>
+    <string name="dynamic_home_status_search">Search “%1$s” • %2$d–%3$d</string>
+    <string name="dynamic_home_status_filter">Filter: %1$s • %2$d–%3$d</string>
+    <string name="dynamic_home_status_calls">Calls %1$d–%2$d</string>
+
+    <string name="dynamic_notes_default_title">Notes</string>
+    <string name="dynamic_note_default_title">Note</string>
+    <string name="dynamic_note_saved">Note saved</string>
+    <string name="dynamic_note_save_failed">Could not save the note</string>
+    <string name="dynamic_note_general_title">General note</string>
+    <string name="dynamic_note_call_title">Call note</string>
+    <string name="dynamic_note_general_hint">General note for this contact or number</string>
+    <string name="dynamic_note_call_hint">Note for this call</string>
+    <string name="dynamic_note_cancel">Cancel</string>
+    <string name="dynamic_note_save">Save</string>
+    <string name="dynamic_note_crm_enabled">CRM: this note will be sent to the server</string>
+    <string name="dynamic_note_local_only">Local only: this note stays on the phone</string>
+
+    <string name="dynamic_contact_open">Open contact</string>
+    <string name="dynamic_contact_create">Create contact</string>
+    <string name="dynamic_action_back">Back</string>
+    <string name="dynamic_action_all_calls">All calls</string>
+    <string name="dynamic_action_call">Call</string>
+    <string name="dynamic_action_write_sms">Write SMS</string>
+    <string name="dynamic_action_calendar">Calendar</string>
+    <string name="dynamic_phone_copied">Phone number copied</string>
+    <string name="dynamic_name_copied">Name copied</string>
+    <string name="dynamic_direction_in">↙ incoming</string>
+    <string name="dynamic_direction_out">↗ outgoing</string>
+    <string name="dynamic_crm_sync_changing">Changing CRM sync</string>
+    <string name="dynamic_crm_sync_enabled">CRM sync is enabled</string>
+    <string name="dynamic_crm_sync_enable">Enable CRM sync</string>
+    <string name="dynamic_crm_sync_turned_on">Sync enabled</string>
+    <string name="dynamic_crm_sync_turned_off">Sync disabled</string>
+    <string name="dynamic_crm_sync_create_failed">Could not create the RM layer. Check Contacts permissions.</string>
+    <string name="dynamic_crm_sync_clear_failed">Sync was disabled, but RM data could not be cleared. Check Contacts permissions.</string>
+    <string name="dynamic_rm_progress_updating">RM progress: Updating…</string>
+
+    <string name="dynamic_calendar_default_contact">contact</string>
+    <string name="dynamic_calendar_event_title">Meeting with %1$s</string>
+    <string name="dynamic_calendar_name_line">Name: %1$s</string>
+    <string name="dynamic_calendar_phone_line">Phone: %1$s</string>
+    <string name="dynamic_calendar_call_line">Call: %1$s</string>
+    <string name="dynamic_calendar_note_heading">Note:</string>
+    <string name="dynamic_calendar_app_not_found">No calendar app found</string>
+
+    <string name="dynamic_sms_open_failed">Could not open the SMS screen.</string>
+    <string name="dynamic_sms_new">New SMS</string>
+    <string name="dynamic_sms_close">Close</string>
+    <string name="dynamic_sms_message_hint">Write a message</string>
+    <string name="dynamic_sms_send">Send</string>
+    <string name="dynamic_sms_sending">Sending…</string>
+    <string name="dynamic_sms_send_from">Send from</string>
+    <string name="dynamic_sms_sim">SIM %1$d</string>
+    <string name="dynamic_sms_sim_unknown">SIM</string>
+    <string name="dynamic_sms_sent">SMS was sent to the carrier</string>
+    <string name="dynamic_sms_sent_refresh">SMS was sent to the carrier. Reopen history if the row has not appeared yet.</string>
+    <string name="dynamic_sms_send_failed">Could not send SMS.</string>
+</resources>
