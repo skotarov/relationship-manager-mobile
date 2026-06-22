@@ -1,0 +1,28 @@
+<resources>
+    <string name="permission_label_notifications">Notifications</string>
+    <string name="permission_label_phone">Phone</string>
+    <string name="permission_label_call_log">Call log</string>
+    <string name="permission_label_contacts_read">Read contacts</string>
+    <string name="permission_label_contacts_write">Write contacts</string>
+    <string name="permission_label_public_notes_storage">Shared notes storage</string>
+    <string name="permission_label_private_notes_storage">Private notes storage</string>
+    <string name="permission_label_overlay">Display over other apps</string>
+    <string name="permission_label_call_screening">Call screening</string>
+    <string name="permission_label_default_sms">Default SMS</string>
+    <string name="permission_label_sms_receive">Receive SMS</string>
+    <string name="permission_label_sms_read">Read SMS</string>
+    <string name="permission_label_sms_send">Send SMS</string>
+    <string name="permission_label_fullscreen_popup">Full-screen popup</string>
+    <string name="permission_action_enable">Enable</string>
+    <string name="permission_action_disable">Disable</string>
+    <string name="permission_state_active">active</string>
+    <string name="permission_state_missing">missing</string>
+    <string name="permission_state_disabled">disabled</string>
+    <string name="permission_toast_local_notes_disabled">Local notes are disabled. Existing notes were not deleted.</string>
+    <string name="permission_toast_public_notes_enabled">Shared notes storage is enabled.</string>
+    <string name="permission_toast_private_notes_enabled">Private notes storage is enabled.</string>
+    <string name="permission_toast_overlay_disabled">Display over other apps popups are disabled.</string>
+    <string name="permission_toast_screening_disabled">Call screening is disabled in the app.</string>
+    <string name="permission_toast_fullscreen_disabled">Full-screen popup is disabled in the app.</string>
+    <string name="permission_toast_fullscreen_enabled">Full-screen popup is enabled.</string>
+</resources>
