@@ -215,7 +215,8 @@ internal object CallReportNotifications {
             .setCustomContentView(customView)
             .setCustomBigContentView(customView)
             .setCustomHeadsUpContentView(customView)
-        if (fullscreen || alertAgain) builder.setFullScreenIntent(editIntent, fullscreen)
+        val useFullScreen = fullscreen && ConfigStore.load(context).useFullScreenPopup
+        if (useFullScreen || alertAgain) builder.setFullScreenIntent(editIntent, useFullScreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
