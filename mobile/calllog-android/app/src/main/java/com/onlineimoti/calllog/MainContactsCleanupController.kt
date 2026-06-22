@@ -74,13 +74,13 @@ internal class MainContactsCleanupController(
         }
 
         progressTitle = TextView(activity).apply {
-            text = "Синхронизация на RM контакти"
+            text = activity.getString(R.string.contacts_sync_panel_title)
             textSize = 16f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(15, 23, 42))
         }
         progressStatus = TextView(activity).apply {
-            text = "Подготовка…"
+            text = activity.getString(R.string.contacts_sync_panel_prepare)
             textSize = 13.5f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, dp(5), 0, 0)
@@ -110,7 +110,7 @@ internal class MainContactsCleanupController(
             }
         }
         progressStopButton = MaterialButton(activity).apply {
-            text = "Стоп"
+            text = activity.getString(R.string.contacts_sync_stop)
             textSize = 14f
             setOnClickListener { BulkContactsTaskRunner.cancel() }
             layoutParams = LinearLayout.LayoutParams(
@@ -119,7 +119,7 @@ internal class MainContactsCleanupController(
             ).apply { topMargin = dp(10) }
         }
         val hint = TextView(activity).apply {
-            text = "Настройките остават активни, докато синхронизацията тече."
+            text = activity.getString(R.string.contacts_sync_settings_hint)
             textSize = 12f
             setTextColor(Color.rgb(100, 116, 139))
             setPadding(0, dp(6), 0, 0)
@@ -148,17 +148,11 @@ internal class MainContactsCleanupController(
         progressPanel?.visibility = if (state.running) View.VISIBLE else View.GONE
         if (!state.running) return
 
-        progressTitle?.text = when (state.action) {
-            BulkContactsTaskAction.REGISTER -> "Синхронизация на RM контакти"
-            BulkContactsTaskAction.REPAIR -> "Поправка на RM контакти"
-            BulkContactsTaskAction.CLEANUP_ORPHANS -> "Почистване на осиротели RM записи"
-            BulkContactsTaskAction.CLEANUP -> "Почистване на RM контакти"
-            BulkContactsTaskAction.IDLE -> "Обработка на контакти"
-        }
-        progressStatus?.text = state.status.ifBlank { "Обработка на RM записите…" }
+        progressTitle?.text = actionTitle(state.action)
+        progressStatus?.text = state.status.ifBlank { activity.getString(R.string.contacts_sync_status_processing) }
         progressStopButton?.apply {
             isEnabled = !state.stopping
-            text = if (state.stopping) "Спиране…" else "Стоп"
+            text = activity.getString(if (state.stopping) R.string.contacts_sync_stopping else R.string.contacts_sync_stop)
         }
 
         val progress = state.progress
@@ -171,19 +165,29 @@ internal class MainContactsCleanupController(
         } else {
             progressBar?.visibility = View.GONE
             progressSpinner?.visibility = View.VISIBLE
-            progressPercent?.text = "Подготовка…"
+            progressPercent?.text = activity.getString(R.string.contacts_sync_panel_prepare)
         }
     }
 
     private fun renderSettingsButton(state: BulkContactsTaskState) {
         if (state.running) {
             syncButton.isEnabled = state.action == BulkContactsTaskAction.REGISTER && !state.stopping
-            syncButton.text = if (state.stopping) "Спиране…" else "Стоп"
+            syncButton.text = activity.getString(if (state.stopping) R.string.contacts_sync_stopping else R.string.contacts_sync_stop)
         } else {
             syncButton.isEnabled = true
             syncButton.text = activity.getString(R.string.contact_link_sync_all_button)
         }
     }
+
+    private fun actionTitle(action: BulkContactsTaskAction): String = activity.getString(
+        when (action) {
+            BulkContactsTaskAction.REGISTER -> R.string.contacts_sync_title_register
+            BulkContactsTaskAction.REPAIR -> R.string.contacts_sync_title_repair
+            BulkContactsTaskAction.CLEANUP_ORPHANS -> R.string.contacts_sync_title_cleanup_orphans
+            BulkContactsTaskAction.CLEANUP -> R.string.contacts_sync_title_cleanup
+            BulkContactsTaskAction.IDLE -> R.string.contacts_sync_title_idle
+        },
+    )
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
         return GradientDrawable().apply {
