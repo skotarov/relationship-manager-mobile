@@ -15,10 +15,10 @@
     <string name="contacts_sync_stop_orphans">Stopping orphan cleanup after the current record…</string>
     <string name="contacts_sync_stop_cleanup">Stopping cleanup after the current record…</string>
     <string name="contacts_sync_stop_generic">Stopping…</string>
-    <string name="contacts_sync_running">Syncing RM contacts… %1$d%%</string>
-    <string name="contacts_sync_running_auto">Automatically syncing RM contacts… %1$d%%</string>
-    <string name="contacts_sync_cleanup_running">Cleaning RM records from contacts… %1$d%%</string>
-    <string name="contacts_sync_cleanup_started">Cleaning RM records from contacts… 0%%</string>
+    <string name="contacts_sync_running">Syncing RM contacts… %1$d percent</string>
+    <string name="contacts_sync_running_auto">Automatically syncing RM contacts… %1$d percent</string>
+    <string name="contacts_sync_cleanup_running">Cleaning RM records from contacts… %1$d percent</string>
+    <string name="contacts_sync_cleanup_started">Cleaning RM records from contacts… 0 percent</string>
     <string name="contacts_sync_stopped_removed">Cleanup stopped. Removed RM records: %1$d</string>
     <string name="contacts_sync_removed">Removed RM records from contacts: %1$d</string>
     <string name="contacts_sync_canceled_summary">%1$s was stopped. Changed: %2$d, unchanged: %3$d, errors: %4$d, checked: %5$d</string>
