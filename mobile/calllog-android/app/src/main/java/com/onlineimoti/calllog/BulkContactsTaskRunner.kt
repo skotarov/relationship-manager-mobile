@@ -41,6 +41,9 @@ internal object BulkContactsTaskRunner {
     @Volatile
     private var state = BulkContactsTaskState()
 
+    @Volatile
+    private var activeContext: Context? = null
+
     fun currentState(): BulkContactsTaskState = state
 
     fun addListener(listener: (BulkContactsTaskState) -> Unit) {
@@ -55,27 +58,27 @@ internal object BulkContactsTaskRunner {
 
     fun cancel(context: Context? = null) {
         val snapshot = state
-        context?.applicationContext?.let { cancelAndroidContactsSync(it) }
+        val appContext = context?.applicationContext ?: activeContext
+        appContext?.let { cancelAndroidContactsSync(it) }
         if (!snapshot.running || snapshot.stopping) return
         cancelRequested.set(true)
         updateProgress(
             action = snapshot.action,
             progress = snapshot.progress,
-            status = when (snapshot.action) {
-                BulkContactsTaskAction.REGISTER -> "Спирам синхронизацията след текущия запис…"
-                BulkContactsTaskAction.REPAIR -> "Спирам поправката след текущия запис…"
-                BulkContactsTaskAction.CLEANUP_ORPHANS -> "Спирам почистването на осиротели записи след текущия запис…"
-                BulkContactsTaskAction.CLEANUP -> "Спирам почистването след текущия запис…"
-                BulkContactsTaskAction.IDLE -> "Спирам…"
-            },
+            status = stoppingStatus(snapshot.action, appContext),
             stopping = true,
-            context = context?.applicationContext,
+            context = appContext,
         )
     }
 
     fun registerAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Синхронизирам RM контактите… 0%", appContext)) return
+        if (!tryStart(
+                BulkContactsTaskAction.REGISTER,
+                appContext.getString(R.string.contacts_sync_running, 0),
+                appContext,
+            )
+        ) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             runReconcileAll(
@@ -88,7 +91,12 @@ internal object BulkContactsTaskRunner {
     fun registerAllFromSync(context: Context): BulkContactRegistrationResult? {
         val appContext = context.applicationContext
         if (!RmContactAutoSyncGate.shouldRunAutomaticSync(appContext)) return null
-        if (!tryStart(BulkContactsTaskAction.REGISTER, "Автоматична синхронизация на RM контактите… 0%", appContext)) return null
+        if (!tryStart(
+                BulkContactsTaskAction.REGISTER,
+                appContext.getString(R.string.contacts_sync_running_auto, 0),
+                appContext,
+            )
+        ) return null
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
         return runReconcileAll(
             context = appContext,
@@ -106,7 +114,12 @@ internal object BulkContactsTaskRunner {
 
     fun cleanupAll(context: Context) {
         val appContext = context.applicationContext
-        if (!tryStart(BulkContactsTaskAction.CLEANUP, "Почиствам RM записите от контактите… 0%", appContext)) return
+        if (!tryStart(
+                BulkContactsTaskAction.CLEANUP,
+                appContext.getString(R.string.contacts_sync_cleanup_started),
+                appContext,
+            )
+        ) return
         executor.execute {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
             var latestProgress = BulkContactRegistrationProgress(0, 0)
@@ -118,9 +131,9 @@ internal object BulkContactsTaskRunner {
                         action = BulkContactsTaskAction.CLEANUP,
                         progress = progress,
                         status = if (cancelRequested.get()) {
-                            "Спирам почистването след текущия запис…"
+                            stoppingStatus(BulkContactsTaskAction.CLEANUP, appContext)
                         } else {
-                            "Почиствам RM записите от контактите… ${progress.percent}%"
+                            appContext.getString(R.string.contacts_sync_cleanup_running, progress.percent)
                         },
                         stopping = cancelRequested.get(),
                         context = appContext,
@@ -132,9 +145,9 @@ internal object BulkContactsTaskRunner {
                 action = BulkContactsTaskAction.CLEANUP,
                 progress = latestProgress,
                 status = if (cancelRequested.get()) {
-                    "Почистването е спряно. Премахнати RM записи: $deleted"
+                    appContext.getString(R.string.contacts_sync_stopped_removed, deleted)
                 } else {
-                    "Премахнати RM записи от контактите: $deleted"
+                    appContext.getString(R.string.contacts_sync_removed, deleted)
                 },
                 context = appContext,
             )
@@ -142,7 +155,6 @@ internal object BulkContactsTaskRunner {
     }
 
     private fun runReconcileAll(context: Context, automatic: Boolean): BulkContactRegistrationResult {
-        val prefix = if (automatic) "Автоматична синхронизация на RM контактите" else "Синхронизирам RM контактите"
         val result = RmContactReconciler.reconcileAll(
             context = context,
             onProgress = { progress ->
@@ -150,9 +162,11 @@ internal object BulkContactsTaskRunner {
                     action = BulkContactsTaskAction.REGISTER,
                     progress = progress,
                     status = if (cancelRequested.get()) {
-                        "Спирам синхронизацията след текущия запис…"
+                        stoppingStatus(BulkContactsTaskAction.REGISTER, context)
+                    } else if (automatic) {
+                        context.getString(R.string.contacts_sync_running_auto, progress.percent)
                     } else {
-                        "$prefix… ${progress.percent}%"
+                        context.getString(R.string.contacts_sync_running, progress.percent)
                     },
                     stopping = cancelRequested.get(),
                     context = context,
@@ -166,24 +180,41 @@ internal object BulkContactsTaskRunner {
         finish(
             action = BulkContactsTaskAction.REGISTER,
             progress = BulkContactRegistrationProgress(result.scanned, result.scanned),
-            status = reconcileFinishedStatus(result, automatic),
+            status = reconcileFinishedStatus(context, result, automatic),
             context = context,
         )
         return result
     }
 
-    private fun reconcileFinishedStatus(result: BulkContactRegistrationResult, automatic: Boolean): String {
-        val prefix = if (automatic) "Автоматичната синхронизация" else "Синхронизацията"
+    private fun reconcileFinishedStatus(
+        context: Context,
+        result: BulkContactRegistrationResult,
+        automatic: Boolean,
+    ): String {
         return if (result.canceled) {
-            "$prefix е спряна. Променени: ${result.created}, без промяна: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+            context.getString(
+                R.string.contacts_sync_canceled_summary,
+                context.getString(if (automatic) R.string.contacts_sync_auto_label else R.string.contacts_sync_manual_label),
+                result.created,
+                result.skippedExisting,
+                result.failed,
+                result.scanned,
+            )
         } else {
-            "Променени: ${result.created}, без промяна: ${result.skippedExisting}, грешки: ${result.failed}, проверени: ${result.scanned}"
+            context.getString(
+                R.string.contacts_sync_finished_summary,
+                result.created,
+                result.skippedExisting,
+                result.failed,
+                result.scanned,
+            )
         }
     }
 
     @Synchronized
     private fun tryStart(action: BulkContactsTaskAction, status: String, context: Context): Boolean {
         if (state.running) return false
+        activeContext = context.applicationContext
         cancelRequested.set(false)
         state = BulkContactsTaskState(
             running = true,
@@ -227,8 +258,22 @@ internal object BulkContactsTaskRunner {
             status = status,
             stopping = wasCanceled,
         )
+        activeContext = null
         BulkContactsProgressNotification.showFinished(context, action, status)
         notifyListeners()
+    }
+
+    private fun stoppingStatus(action: BulkContactsTaskAction, context: Context?): String {
+        if (context == null) return state.status
+        return context.getString(
+            when (action) {
+                BulkContactsTaskAction.REGISTER -> R.string.contacts_sync_stop_register
+                BulkContactsTaskAction.REPAIR -> R.string.contacts_sync_stop_repair
+                BulkContactsTaskAction.CLEANUP_ORPHANS -> R.string.contacts_sync_stop_orphans
+                BulkContactsTaskAction.CLEANUP -> R.string.contacts_sync_stop_cleanup
+                BulkContactsTaskAction.IDLE -> R.string.contacts_sync_stop_generic
+            },
+        )
     }
 
     private fun cancelAndroidContactsSync(context: Context) {
