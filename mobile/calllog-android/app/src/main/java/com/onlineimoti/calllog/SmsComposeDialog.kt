@@ -174,9 +174,9 @@ internal class SmsComposeDialog(
                         Toast.makeText(
                             activity,
                             if (outcome.historySaved) {
-                                "SMS е изпратен"
+                                "SMS е изпратен към оператора"
                             } else {
-                                "SMS е изпратен. Отвори отново историята, ако редът още не се е появил."
+                                "SMS е изпратен към оператора. Отвори отново историята, ако редът още не се е появил."
                             },
                             Toast.LENGTH_LONG,
                         ).show()
