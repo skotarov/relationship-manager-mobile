@@ -1,0 +1,20 @@
+<resources>
+    <string name="crm_history_no_phone">No phone number for CRM lookup</string>
+    <string name="crm_history_connection_disabled">CRM connection is disabled in Server settings</string>
+    <string name="crm_history_title">History</string>
+    <string name="crm_history_full_log">Full log</string>
+    <string name="crm_history_loading_local">Loading calls and SMS…</string>
+    <string name="crm_history_refreshing_local">Refreshing calls and SMS…</string>
+    <string name="crm_history_loading_server">Loading CRM history…</string>
+    <string name="crm_history_not_loaded">CRM history was not loaded</string>
+    <string name="crm_history_no_entries">No notes, SMS or CRM entries for this number</string>
+    <string name="crm_history_no_server_entries">No CRM entries from the server for this number</string>
+    <string name="crm_history_hidden_calls">%1$d older calls without notes are hidden. All calls are available on the home screen.</string>
+    <string name="crm_history_add_note_at">+ Add a note to %1$s</string>
+    <string name="crm_history_add_latest">+ Add a note to the latest call</string>
+    <string name="crm_history_latest_without_note">latest call without note</string>
+    <string name="crm_history_local_note">local note</string>
+    <string name="crm_history_sms">SMS</string>
+    <string name="crm_history_property">Property: %1$s</string>
+    <string name="crm_history_crm_label">CRM</string>
+</resources>
