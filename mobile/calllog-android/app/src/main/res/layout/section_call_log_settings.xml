@@ -28,4 +28,19 @@
         android:text="@string/home_call_page_size_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
+
+    <CheckBox
+        android:id="@+id/useInternalSmsComposerCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/sms_use_internal_composer" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/sms_use_internal_composer_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
 </LinearLayout>
