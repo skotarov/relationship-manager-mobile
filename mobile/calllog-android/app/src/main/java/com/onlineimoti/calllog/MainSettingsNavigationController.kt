@@ -30,12 +30,8 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
         binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
-        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
-            saveServerSettingsArchive()
-        }
-        binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener {
-            restoreServerSettingsArchive()
-        }
+        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
+        binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
     }
 
     fun showMenu() {
@@ -50,10 +46,13 @@ internal class MainSettingsNavigationController(
     }
 
     private fun saveServerSettingsArchive() {
+        val code = archiveCode() ?: return
         val config = MainSettingsConfigUi.read(binding)
         ConfigStore.save(activity, config)
-        PersistentServerSettingsArchive.save(activity, ConfigStore.load(activity))
+
+        ServerSettingsArchiveFile.save(ConfigStore.load(activity), code)
             .onSuccess { path ->
+                binding.remoteSettingsSection.serverBackupCodeInput.text?.clear()
                 setStatus(activity.getString(R.string.server_settings_backup_saved, path))
             }
             .onFailure { error ->
@@ -62,15 +61,26 @@ internal class MainSettingsNavigationController(
     }
 
     private fun restoreServerSettingsArchive() {
-        PersistentServerSettingsArchive.restore(activity, ConfigStore.load(activity))
-            .onSuccess { config ->
-                ConfigStore.save(activity, config)
-                MainSettingsConfigUi.hydrateServerSettings(binding, config)
-                setStatus(activity.getString(R.string.server_settings_backup_restored, PersistentServerSettingsArchive.path()))
+        val code = archiveCode() ?: return
+        when (val result = ServerSettingsArchiveFile.restore(ConfigStore.load(activity), code)) {
+            is ServerSettingsBackupStore.RestoreResult.Restored -> {
+                ConfigStore.save(activity, result.config)
+                MainSettingsConfigUi.hydrateServerSettings(binding, result.config)
+                binding.remoteSettingsSection.serverBackupCodeInput.text?.clear()
+                setStatus(activity.getString(R.string.server_settings_backup_restored, ServerSettingsArchiveFile.path()))
             }
-            .onFailure { error ->
-                setStatus(activity.getString(R.string.server_settings_backup_failed, error.message.orEmpty()))
+            is ServerSettingsBackupStore.RestoreResult.Failed -> {
+                setStatus(activity.getString(R.string.server_settings_backup_failed, result.message))
             }
+        }
+    }
+
+    private fun archiveCode(): String? {
+        val input = binding.remoteSettingsSection.serverBackupCodeInput
+        val code = input.text?.toString().orEmpty()
+        if (code.length == 4 && code.all(Char::isDigit)) return code
+        input.error = "Въведи 4 цифри"
+        return null
     }
 
     private fun setStatus(message: String) {
