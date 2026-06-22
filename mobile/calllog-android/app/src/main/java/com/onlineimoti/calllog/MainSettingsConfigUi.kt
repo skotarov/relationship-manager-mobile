@@ -94,7 +94,7 @@ object MainSettingsConfigUi {
             },
             usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
             useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
-            showRmDebugBox = tests.showRmDebugBox.isChecked,
+            showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
         )
     }
 }
