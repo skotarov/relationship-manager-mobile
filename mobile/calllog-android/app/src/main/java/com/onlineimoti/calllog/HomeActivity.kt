@@ -57,6 +57,8 @@ class HomeActivity : AppCompatActivity() {
             roundedRect = ::roundedRect,
             openContactNotesScreen = homeActions::openContactNotesScreen,
             openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
+            openDialer = homeActions::openDialer,
+            togglePhoneFilter = ::togglePhoneFilter,
         )
     }
     private var pageIndex = 0
@@ -89,9 +91,7 @@ class HomeActivity : AppCompatActivity() {
         binding.settingsButton.setOnClickListener { homeActions.openSettings() }
         binding.defaultCallLogButton.setOnClickListener { openDefaultCallLog() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
-        binding.filteredDialButton.setOnClickListener {
-            homeActions.openDialer(activePhoneFilter)
-        }
+        binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
         binding.clearSearchButton.setOnClickListener { clearSearch() }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
@@ -137,9 +137,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        if (::binding.isInitialized) {
-            noteSavedReceiver.unregister()
-        }
+        if (::binding.isInitialized) noteSavedReceiver.unregister()
         handler.removeCallbacks(noteRefreshRunnable)
         handler.removeCallbacks(searchRunnable)
         super.onPause()
@@ -201,6 +199,7 @@ class HomeActivity : AppCompatActivity() {
                     highlightQuery = activeSearchQuery,
                     showContactIdentity = !isPhoneFiltered,
                     showGeneralContactNote = !isPhoneFiltered,
+                    showQuickActions = !isPhoneFiltered,
                 )
             )
         }
@@ -213,7 +212,6 @@ class HomeActivity : AppCompatActivity() {
             container.visibility = View.GONE
             return
         }
-
         val name = ContactGroupFilter.resolveDisplayName(this, activePhoneFilter)
             .orEmpty()
             .takeIf { HomeCallPageLoader.noteKey(it) != HomeCallPageLoader.noteKey(activePhoneFilter) }
@@ -223,7 +221,6 @@ class HomeActivity : AppCompatActivity() {
             container.visibility = View.GONE
             return
         }
-
         container.visibility = View.VISIBLE
         if (name.isNotBlank()) {
             container.addView(TextView(this).apply {
@@ -235,9 +232,7 @@ class HomeActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    bottomMargin = dp(4)
-                }
+                ).apply { bottomMargin = dp(4) }
             })
         }
         if (note.isNotBlank()) {
