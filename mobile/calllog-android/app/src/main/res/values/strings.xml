@@ -39,7 +39,7 @@
 
     <string name="storage_title">Notes storage</string>
     <string name="storage_use_public_folder">Use shared storage — Documents/.callreport</string>
-    <string name="storage_description">On: notes are stored in a shared folder and Android may request All files access. Off: notes are stored only in the app's private storage and shared file access is not requested.</string>
+    <string name="storage_description">On: notes are stored in a shared folder and Android may request All files access. Off: notes are stored only in the app\'s private storage and shared file access is not requested.</string>
 
     <string name="contact_filter_title">Popup and call log settings</string>
     <string name="popup_contact_filter_title">Which contacts trigger popups</string>
