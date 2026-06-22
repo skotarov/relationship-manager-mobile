@@ -33,6 +33,8 @@ internal class HomeCallRowRenderer(
         contactNote: String? = null,
         callNote: String? = null,
         highlightQuery: String = "",
+        showContactIdentity: Boolean = true,
+        showGeneralContactNote: Boolean = true,
     ): MaterialCardView {
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
@@ -65,7 +67,7 @@ internal class HomeCallRowRenderer(
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         textColumn.addView(TextView(activity).apply {
-            val hasContactName = displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
+            val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
             val metaText = if (call.isSms) {
                 listOf(
                     PhoneCallReader.formatStartedAt(call.startedAt),
@@ -85,7 +87,9 @@ internal class HomeCallRowRenderer(
             textSize = 12.5f
             maxLines = 1
         })
-        textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+        if (showContactIdentity) {
+            textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+        }
         if (call.isSms) {
             textColumn.addView(TextView(activity).apply {
                 val body = call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) }
@@ -97,7 +101,7 @@ internal class HomeCallRowRenderer(
                 setPadding(0, dp(4), 0, 0)
             })
         }
-        if (!contactNote.isNullOrBlank()) {
+        if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(contactNote, highlightQuery, colors.text)
