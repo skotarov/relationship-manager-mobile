@@ -28,6 +28,8 @@ data class AppConfig(
     val usePublicNotesFolder: Boolean,
     val useCallScreening: Boolean,
     val showRmDebugBox: Boolean,
+    val useLocalNotesStorage: Boolean = true,
+    val useFullScreenPopup: Boolean = true,
 )
 
 object ConfigStore {
@@ -54,6 +56,8 @@ object ConfigStore {
     private const val KEY_USE_PUBLIC_NOTES_FOLDER = "use_public_notes_folder"
     private const val KEY_USE_CALL_SCREENING = "use_call_screening"
     private const val KEY_SHOW_RM_DEBUG_BOX = "show_rm_debug_box"
+    private const val KEY_USE_LOCAL_NOTES_STORAGE = "use_local_notes_storage"
+    private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
 
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
@@ -77,6 +81,8 @@ object ConfigStore {
     const val DEFAULT_APP_LANGUAGE = LANGUAGE_SYSTEM
     const val DEFAULT_USE_CALL_SCREENING = false
     const val DEFAULT_SHOW_RM_DEBUG_BOX = false
+    const val DEFAULT_USE_LOCAL_NOTES_STORAGE = true
+    const val DEFAULT_USE_FULL_SCREEN_POPUP = true
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -110,6 +116,8 @@ object ConfigStore {
             },
             useCallScreening = prefs.getBoolean(KEY_USE_CALL_SCREENING, DEFAULT_USE_CALL_SCREENING),
             showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
+            useLocalNotesStorage = prefs.getBoolean(KEY_USE_LOCAL_NOTES_STORAGE, DEFAULT_USE_LOCAL_NOTES_STORAGE),
+            useFullScreenPopup = prefs.getBoolean(KEY_USE_FULL_SCREEN_POPUP, DEFAULT_USE_FULL_SCREEN_POPUP),
         )
     }
 
@@ -138,6 +146,8 @@ object ConfigStore {
             .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, config.usePublicNotesFolder)
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
             .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
+            .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, config.useLocalNotesStorage)
+            .putBoolean(KEY_USE_FULL_SCREEN_POPUP, config.useFullScreenPopup)
             .apply()
     }
 
