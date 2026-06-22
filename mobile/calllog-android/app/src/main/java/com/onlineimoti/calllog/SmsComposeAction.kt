@@ -12,7 +12,7 @@ internal object SmsComposeAction {
         if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) return
 
         val config = ConfigStore.load(activity)
-        if (config.useInternalSmsComposer || SmsRoleController.isDefaultSmsApp(activity)) {
+        if (config.useInternalSmsComposer || isRmDefaultSmsApp(activity)) {
             SmsComposeDialog(activity, dp).show(phone, title)
             return
         }
@@ -25,6 +25,10 @@ internal object SmsComposeAction {
             Toast.LENGTH_LONG,
         ).show()
         SmsComposeDialog(activity, dp).show(phone, title)
+    }
+
+    private fun isRmDefaultSmsApp(activity: Activity): Boolean {
+        return Telephony.Sms.getDefaultSmsPackage(activity) == activity.packageName
     }
 
     private fun openDefaultSmsApp(activity: Activity, phone: String): Boolean {
