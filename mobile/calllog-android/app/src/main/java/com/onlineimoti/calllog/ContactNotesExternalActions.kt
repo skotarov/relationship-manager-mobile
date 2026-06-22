@@ -75,7 +75,9 @@ class ContactNotesExternalActions(private val activity: Activity) {
     }
 
     private fun openCreateContact(phone: String, titleText: String) {
-        val safeName = titleText.takeUnless { it.isBlank() || it == phone || it == "Бележки" }.orEmpty()
+        val safeName = titleText.takeUnless {
+            it.isBlank() || it == phone || it == activity.getString(R.string.dynamic_notes_default_title)
+        }.orEmpty()
         val intent = Intent(Intent.ACTION_INSERT).apply {
             type = ContactsContract.RawContacts.CONTENT_TYPE
             if (safeName.isNotBlank()) putExtra(ContactsContract.Intents.Insert.NAME, safeName)
@@ -86,21 +88,21 @@ class ContactNotesExternalActions(private val activity: Activity) {
     }
 
     fun openCalendarEvent(phone: String, titleText: String) {
-        val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
+        val safeName = titleText.ifBlank { phone.ifBlank { activity.getString(R.string.dynamic_calendar_default_contact) } }
         val begin = System.currentTimeMillis() + 60 * 60 * 1000L
         val end = begin + 60 * 60 * 1000L
         val intent = Intent(Intent.ACTION_INSERT).apply {
             data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, "Среща с $safeName")
+            putExtra(CalendarContract.Events.TITLE, activity.getString(R.string.dynamic_calendar_event_title, safeName))
             putExtra(CalendarContract.Events.DESCRIPTION, buildString {
-                appendLine("Име: $safeName")
-                if (phone.isNotBlank()) appendLine("Телефон: $phone")
+                appendLine(activity.getString(R.string.dynamic_calendar_name_line, safeName))
+                if (phone.isNotBlank()) appendLine(activity.getString(R.string.dynamic_calendar_phone_line, phone))
             }.trim())
             putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
             putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
         }
         runCatching { activity.startActivity(intent) }.onFailure {
-            Toast.makeText(activity, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, activity.getString(R.string.dynamic_calendar_app_not_found), Toast.LENGTH_SHORT).show()
         }
     }
 
