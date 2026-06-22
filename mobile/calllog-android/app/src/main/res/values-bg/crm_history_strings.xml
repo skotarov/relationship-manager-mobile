@@ -1,0 +1,20 @@
+<resources>
+    <string name="crm_history_no_phone">Няма телефон за CRM проверка</string>
+    <string name="crm_history_connection_disabled">CRM връзката е изключена от Сървърни настройки</string>
+    <string name="crm_history_title">Хронология</string>
+    <string name="crm_history_full_log">Пълен лог</string>
+    <string name="crm_history_loading_local">Зареждам разговори и SMS…</string>
+    <string name="crm_history_refreshing_local">Обновявам разговори и SMS…</string>
+    <string name="crm_history_loading_server">Зареждам CRM история…</string>
+    <string name="crm_history_not_loaded">CRM историята не е заредена</string>
+    <string name="crm_history_no_entries">Няма бележки, SMS или CRM записи за този номер</string>
+    <string name="crm_history_no_server_entries">Няма CRM записи от сървъра за този номер</string>
+    <string name="crm_history_hidden_calls">Скрити са %1$d по-стари разговора без бележка. Всички позвънявания се виждат на началния екран.</string>
+    <string name="crm_history_add_note_at">+ Добави бележка към %1$s</string>
+    <string name="crm_history_add_latest">+ Добави бележка към последния разговор</string>
+    <string name="crm_history_latest_without_note">последен разговор без бележка</string>
+    <string name="crm_history_local_note">локална бележка</string>
+    <string name="crm_history_sms">SMS</string>
+    <string name="crm_history_property">Обява: %1$s</string>
+    <string name="crm_history_crm_label">CRM</string>
+</resources>
