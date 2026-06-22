@@ -24,12 +24,15 @@ data class PhoneCallRecord(
         get() = direction == "sms_in" || direction == "sms_out"
 
     val smsDirectionLabel: String
-        get() = if (direction == "sms_out") "изпратено" else "получено"
+        get() = when {
+            AppLocaleText.isBulgarian() && direction == "sms_out" -> "изпратено"
+            AppLocaleText.isBulgarian() -> "получено"
+            direction == "sms_out" -> "sent"
+            else -> "received"
+        }
 }
 
 object PhoneCallReader {
-    private val timeFormat = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
-
     fun hasCallLogPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
     }
@@ -153,22 +156,25 @@ object PhoneCallReader {
 
     fun directionLabel(direction: String): String {
         return when (direction) {
-            "in" -> "входящ"
-            "out" -> "изходящ"
-            else -> "разговор"
+            "in" -> if (AppLocaleText.isBulgarian()) "входящ" else "incoming"
+            "out" -> if (AppLocaleText.isBulgarian()) "изходящ" else "outgoing"
+            else -> if (AppLocaleText.isBulgarian()) "разговор" else "call"
         }
     }
 
     fun formatStartedAt(startedAt: Long): String {
         if (startedAt <= 0L) return ""
-        return timeFormat.format(Date(startedAt))
+        val locale = if (AppLocaleText.isBulgarian()) Locale("bg") else Locale.US
+        return SimpleDateFormat("dd.MM HH:mm", locale).format(Date(startedAt))
     }
 
     fun formatDuration(seconds: Long): String {
-        if (seconds <= 0L) return "0 сек"
+        val suffixSeconds = if (AppLocaleText.isBulgarian()) "сек" else "s"
+        val suffixMinutes = if (AppLocaleText.isBulgarian()) "м" else "m"
+        if (seconds <= 0L) return "0 $suffixSeconds"
         val minutes = seconds / 60
         val restSeconds = seconds % 60
-        return if (minutes > 0) "${minutes}м ${restSeconds}с" else "${restSeconds}с"
+        return if (minutes > 0) "$minutes$suffixMinutes $restSeconds$suffixSeconds" else "$restSeconds$suffixSeconds"
     }
 
     private fun directionFromType(type: Int): String {
