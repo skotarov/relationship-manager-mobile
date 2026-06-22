@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="sms_use_internal_composer">Използвай прозореца за SMS на Call Report</string>
-    <string name="sms_use_internal_composer_description">По подразбиране бутонът за SMS отваря Google Messages за контакта. Когато е включено, отваря прозореца на Call Report и изпраща от приложението.</string>
-    <string name="sms_google_messages_not_found">Google Messages не е намерено. Вместо това е отворен прозорецът за SMS на Call Report.</string>
+    <string name="sms_use_internal_composer">Винаги използвай RM за SMS</string>
+    <string name="sms_use_internal_composer_description">Когато е включено, SMS бутонът винаги отваря прозореца на RM. Когато е изключено, RM използва своя прозорец само ако е SMS приложение по подразбиране; иначе отваря избраното SMS приложение по подразбиране на телефона.</string>
+    <string name="sms_default_app_not_found">Няма намерено SMS приложение по подразбиране. Вместо това е отворен прозорецът за SMS на RM.</string>
 </resources>
