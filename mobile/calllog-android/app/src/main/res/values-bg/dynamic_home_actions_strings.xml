@@ -1,0 +1,7 @@
+<resources>
+    <string name="dynamic_home_overlay_note_permission">За popup бележка разреши „Показване над други приложения“ от Настройки.</string>
+    <string name="dynamic_action_filter">Филтър</string>
+    <string name="dynamic_action_note">Бележка</string>
+    <string name="dynamic_sms_empty_body">(SMS без текст)</string>
+    <string name="dynamic_crm_synced_notes">Има синхронизирани CRM бележки</string>
+</resources>
