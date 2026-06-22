@@ -11,6 +11,7 @@ import android.os.Bundle
  */
 class CommunicationActionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         openSmsContactHistory(intent)
     }
