@@ -1,0 +1,4 @@
+<resources>
+    <string name="webview_title">Call Report Form</string>
+    <string name="webview_loading">Loading…</string>
+</resources>
