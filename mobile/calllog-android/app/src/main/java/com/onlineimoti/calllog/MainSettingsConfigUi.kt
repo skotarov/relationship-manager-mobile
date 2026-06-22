@@ -5,7 +5,6 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 object MainSettingsConfigUi {
     fun hydrate(binding: ActivityMainBinding, config: AppConfig) {
-        val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
@@ -13,17 +12,12 @@ object MainSettingsConfigUi {
         val language = binding.languageSettingsSection
         val tests = binding.testsSection
 
-        remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
-        remote.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
-        remote.baseUrlInput.setText(config.baseUrl)
-        remote.accessTokenInput.setText(config.accessToken)
+        hydrateServerSettings(binding, config)
         popupFilter.contactGroupsInput.setText(config.contactGroups)
         popupFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
         popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
         callLog.useInternalSmsComposerCheckBox.isChecked = config.useInternalSmsComposer
-        remote.lookupPathInput.setText(config.lookupPath)
-        remote.historyPathInput.setText(config.historyPath)
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
         when (config.postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> popup.postCallEndActionHistory.isChecked = true
@@ -41,6 +35,17 @@ object MainSettingsConfigUi {
             else -> language.appLanguageSystem.isChecked = true
         }
         tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
+    }
+
+    fun hydrateServerSettings(binding: ActivityMainBinding, config: AppConfig) {
+        val remote = binding.remoteSettingsSection
+        remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
+        remote.remoteSettingsGroup.visibility = if (config.remoteEnabled) View.VISIBLE else View.GONE
+        remote.baseUrlInput.setText(config.baseUrl)
+        remote.accessTokenInput.setText(config.accessToken)
+        remote.lookupPathInput.setText(config.lookupPath)
+        remote.formPathInput.setText(config.formPath)
+        remote.historyPathInput.setText(config.historyPath)
     }
 
     fun read(binding: ActivityMainBinding): AppConfig {
@@ -63,7 +68,7 @@ object MainSettingsConfigUi {
             homeCallPageSize = callLog.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_HOME_CALL_PAGE_SIZE,
             lookupPath = remote.lookupPathInput.text?.toString().orEmpty(),
-            formPath = currentConfig.formPath,
+            formPath = remote.formPathInput.text?.toString().orEmpty(),
             historyPath = remote.historyPathInput.text?.toString().orEmpty(),
             postCallPromptTimeoutSeconds = popup.postCallTimeoutInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS,
@@ -85,7 +90,7 @@ object MainSettingsConfigUi {
             },
             usePublicNotesFolder = currentConfig.usePublicNotesFolder,
             useCallScreening = currentConfig.useCallScreening,
-            showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
+            showRmDebugBox = tests.showRmDebugBox.isChecked,
             useLocalNotesStorage = currentConfig.useLocalNotesStorage,
             useFullScreenPopup = currentConfig.useFullScreenPopup,
             useInternalSmsComposer = callLog.useInternalSmsComposerCheckBox.isChecked,
