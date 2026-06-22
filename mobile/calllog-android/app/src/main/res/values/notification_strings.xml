@@ -1,0 +1,22 @@
+<resources>
+    <string name="post_call_prompt_title">Save a note?</string>
+    <string name="post_call_prompt_write_note">Write note</string>
+    <string name="post_call_prompt_skip">Skip</string>
+    <string name="post_call_direction_incoming">incoming call</string>
+    <string name="post_call_direction_outgoing">outgoing call</string>
+    <string name="post_call_direction_generic">call</string>
+    <string name="post_call_auto_close">closes in %1$d sec</string>
+
+    <string name="notification_unknown_contact">Unknown</string>
+    <string name="notification_passive_channel_name">Call Report in notification panel</string>
+    <string name="notification_passive_channel_description">Silent information in the notification panel while the custom popup is active.</string>
+    <string name="notification_loading_title">Loading information…</string>
+    <string name="notification_loading_line">Loading information from Call Report…</string>
+    <string name="notification_post_call_note_title">Note after the call</string>
+    <string name="notification_inline_note_hint">Write a note…</string>
+    <string name="notification_note_action">Note</string>
+    <string name="notification_history_action">History</string>
+    <string name="notification_outgoing_call">Outgoing call</string>
+    <string name="notification_incoming_call">Incoming call</string>
+    <string name="notification_call">Call</string>
+</resources>
