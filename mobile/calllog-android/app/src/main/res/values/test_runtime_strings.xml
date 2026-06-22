@@ -1,0 +1,14 @@
+<resources>
+    <string name="test_start_title">Test start popup</string>
+    <string name="test_start_line">Test: popup at call start</string>
+    <string name="test_direction_line">Direction: %1$s</string>
+    <string name="test_no_real_call">This is a test without a real call.</string>
+    <string name="test_mode_custom_overlay">custom overlay</string>
+    <string name="test_mode_system_notification">system notification</string>
+    <string name="test_start_status">Test start popup (%1$s) was shown for %2$s.</string>
+    <string name="test_end_title">Test end popup</string>
+    <string name="test_end_disabled">The final popup is disabled: After the call ends is set to Nothing.</string>
+    <string name="test_mode_history">history screen</string>
+    <string name="test_mode_note_editor">note editor</string>
+    <string name="test_end_status">Test final popup/action (%1$s) was shown for %2$s.</string>
+</resources>
