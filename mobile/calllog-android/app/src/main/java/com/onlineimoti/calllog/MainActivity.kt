@@ -39,9 +39,6 @@ class MainActivity : AppCompatActivity() {
             binding = binding,
             autoSaveSettings = ::autoSaveSettings,
             applyLanguageIfChanged = ::applyLanguageIfChanged,
-            requestOverlayPermissionIfNeeded = { permissionFlowController.requestOverlayPermissionIfNeeded() },
-            requestCallScreeningRoleIfNeeded = { permissionFlowController.requestCallScreeningRoleIfNeeded() },
-            requestPublicNotesStoragePermission = { permissionFlowController.requestPublicNotesStoragePermission() },
         )
     }
 
@@ -159,17 +156,6 @@ class MainActivity : AppCompatActivity() {
         val quickEndButton = findViewById<MaterialButton>(R.id.testEndPopupButton)
 
         binding.backToHomeButton.setOnClickListener { openCallLogHome() }
-        binding.permissionsSection.openAppPermissionsButton.setOnClickListener { permissionFlowController.start() }
-        binding.permissionsSection.openOverlayPermissionButton.setOnClickListener { permissionFlowController.requestOverlayPermissionIfNeeded() }
-        binding.permissionsSection.openCallScreeningButton.setOnClickListener {
-            saveConfig()
-            permissionFlowController.requestCallScreeningRoleIfNeeded()
-        }
-        binding.permissionsSection.openSmsRoleButton.setOnClickListener {
-            saveConfig()
-            requestDefaultSmsRole()
-        }
-        binding.permissionsSection.openFullscreenIntentButton.setOnClickListener { permissionFlowController.requestFullScreenIntentPermissionIfNeeded() }
         binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.syncAllRmContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
