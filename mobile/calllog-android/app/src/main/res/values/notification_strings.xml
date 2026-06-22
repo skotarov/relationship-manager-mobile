@@ -19,4 +19,8 @@
     <string name="notification_outgoing_call">Outgoing call</string>
     <string name="notification_incoming_call">Incoming call</string>
     <string name="notification_call">Call</string>
+
+    <string name="overlay_add_note">Add note</string>
+    <string name="overlay_no_previous_call">No previous call</string>
+    <string name="overlay_post_call_action">Post-call action</string>
 </resources>
