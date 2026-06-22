@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -10,6 +11,8 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -155,6 +158,7 @@ class HomeActivity : AppCompatActivity() {
         binding.homeCallsContainer.removeAllViews()
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         updatePhoneFilterStatusStyle()
+        renderFilteredContactSummary()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = getString(R.string.dynamic_home_missing_call_log_permission)
             binding.paginationContainer.visibility = View.GONE
@@ -183,6 +187,7 @@ class HomeActivity : AppCompatActivity() {
         currentCalls = renderData.calls
         binding.homeCallsContainer.removeAllViews()
         renderStatusAndPagination(pageSize)
+        val isPhoneFiltered = activePhoneFilter.isNotBlank()
         renderData.calls.forEach { call ->
             val key = HomeCallPageLoader.noteKey(call.number)
             val displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName }
@@ -190,11 +195,66 @@ class HomeActivity : AppCompatActivity() {
                 homeCallRowRenderer.compactCallRow(
                     call = call,
                     displayName = displayName,
-                    contactNote = renderData.contactNotesByNumber[key],
+                    contactNote = if (isPhoneFiltered) null else renderData.contactNotesByNumber[key],
                     callNote = ContactNoteReader.callNoteForPhone(this, call.number, call.startedAt, call.direction),
                     highlightQuery = activeSearchQuery,
+                    showContactIdentity = !isPhoneFiltered,
+                    showGeneralContactNote = !isPhoneFiltered,
                 )
             )
+        }
+    }
+
+    private fun renderFilteredContactSummary() {
+        val container = binding.filteredContactSummaryContainer
+        container.removeAllViews()
+        if (activePhoneFilter.isBlank()) {
+            container.visibility = View.GONE
+            return
+        }
+
+        val name = ContactGroupFilter.resolveDisplayName(this, activePhoneFilter)
+            .orEmpty()
+            .takeIf { HomeCallPageLoader.noteKey(it) != HomeCallPageLoader.noteKey(activePhoneFilter) }
+            .orEmpty()
+        val note = ContactNoteReader.generalNoteForPhone(this, activePhoneFilter).orEmpty()
+        if (name.isBlank() && note.isBlank()) {
+            container.visibility = View.GONE
+            return
+        }
+
+        container.visibility = View.VISIBLE
+        if (name.isNotBlank()) {
+            container.addView(TextView(this).apply {
+                text = name
+                setTextColor(getColor(R.color.calllog_text))
+                textSize = 18f
+                setTypeface(typeface, Typeface.BOLD)
+                setPadding(dp(4), dp(2), dp(4), dp(4))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    bottomMargin = dp(4)
+                }
+            })
+        }
+        if (note.isNotBlank()) {
+            val colors = NoteUiStyle.General
+            container.addView(TextView(this).apply {
+                text = note
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+                compoundDrawablePadding = dp(5)
+                setTextColor(colors.text)
+                textSize = 13f
+                maxLines = 4
+                setPadding(dp(10), dp(7), dp(10), dp(7))
+                background = roundedRect(colors.background, dp(10), colors.border, dp(1))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                )
+            })
         }
     }
 
