@@ -20,6 +20,7 @@ internal class MainPermissionFlowController(
     private val canUsePublicNotesFolder: () -> Boolean,
     private val disablePublicNotesFolder: () -> Unit,
     private val disableOverlayPopups: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") private val disableCallScreening: () -> Unit,
     private val refreshPermissionSummary: () -> Unit,
     private val setStatus: (String) -> Unit,
 ) {
