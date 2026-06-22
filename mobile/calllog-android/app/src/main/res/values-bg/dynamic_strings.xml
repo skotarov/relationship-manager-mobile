@@ -26,6 +26,9 @@
     <string name="dynamic_note_save">Запази</string>
     <string name="dynamic_note_crm_enabled">Към CRM: тази бележка ще се изпрати към сървъра</string>
     <string name="dynamic_note_local_only">Само локално: тази бележка остава в телефона</string>
+    <string name="dynamic_notes_call_section">Бележки от разговори</string>
+    <string name="dynamic_notes_add_latest_call">+ Добави към последния разговор</string>
+    <string name="dynamic_notes_add_general">+ Добави</string>
 
     <string name="dynamic_contact_open">Отвори контакта</string>
     <string name="dynamic_contact_create">Създай контакт</string>
