@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_sms_role_active">Relationship Manager is selected as the SMS app. New SMS messages will arrive here first.</string>
+    <string name="settings_sms_role_not_changed">Default SMS was not changed.</string>
+    <string name="settings_server_saved">Server settings were saved.</string>
+</resources>
