@@ -52,8 +52,64 @@ jobs:
             -storepass android \
             -alias androiddebugkey > /dev/null
 
+      - name: Validate Android value resources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          import sys
+
+          resources_root = Path("app/src/main/res")
+          errors = []
+          checked = 0
+
+          for directory in sorted(resources_root.iterdir()):
+              if not directory.is_dir() or not (directory.name == "values" or directory.name.startswith("values-")):
+                  continue
+
+              for entry in sorted(directory.iterdir()):
+                  if entry.is_file() and entry.suffix.lower() != ".xml":
+                      errors.append(f"Non-XML file in {directory}: {entry.name}")
+
+              seen = {}
+              for xml_file in sorted(directory.glob("*.xml")):
+                  checked += 1
+                  try:
+                      root = ET.parse(xml_file).getroot()
+                  except ET.ParseError as error:
+                      errors.append(f"Invalid XML in {xml_file}: {error}")
+                      continue
+
+                  if root.tag != "resources":
+                      errors.append(f"Root element in {xml_file} must be <resources>, found <{root.tag}>")
+                      continue
+
+                  for child in root:
+                      tag = child.tag.split("}")[-1] if isinstance(child.tag, str) else ""
+                      name = child.attrib.get("name")
+                      if not name:
+                          continue
+                      resource_type = child.attrib.get("type") if tag == "item" else tag
+                      key = (resource_type, name)
+                      previous = seen.get(key)
+                      if previous is not None:
+                          errors.append(
+                              f"Duplicate {resource_type} resource '{name}' in {directory}: "
+                              f"{previous.name} and {xml_file.name}"
+                          )
+                      else:
+                          seen[key] = xml_file
+
+          if errors:
+              print("Android values resource validation failed:")
+              print("\n".join(f"- {error}" for error in errors))
+              sys.exit(1)
+
+          print(f"Android values resource validation passed ({checked} XML files checked).")
+          PY
+
       - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon --stacktrace --info :app:assembleDebug
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
