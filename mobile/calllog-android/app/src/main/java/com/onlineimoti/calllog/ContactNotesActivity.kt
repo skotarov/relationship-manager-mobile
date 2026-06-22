@@ -38,7 +38,9 @@ class ContactNotesActivity : Activity() {
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == PostCallOverlayService.ACTION_NOTES_CHANGED) render()
+            if (intent?.action != PostCallOverlayService.ACTION_NOTES_CHANGED) return
+            crmHistoryController.refreshLocal(phone)
+            render()
         }
     }
 
@@ -90,6 +92,7 @@ class ContactNotesActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshTitleFromRealContact()
+        crmHistoryController.refreshLocal(phone)
         render()
         scheduleContactNameRefresh()
     }
