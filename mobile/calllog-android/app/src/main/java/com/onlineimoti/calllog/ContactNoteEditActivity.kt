@@ -21,7 +21,9 @@ class ContactNoteEditActivity : Activity() {
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
 
         phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
-        titleText = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележка" } }
+        titleText = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty().ifBlank {
+            phone.ifBlank { getString(R.string.dynamic_note_default_title) }
+        }
         direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
         callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
@@ -52,14 +54,18 @@ class ContactNoteEditActivity : Activity() {
 
     private fun saveAndClose(noteText: String) {
         val saved = saveCurrentNote(noteText)
-        Toast.makeText(this, if (saved) "Бележката е записана" else "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            this,
+            getString(if (saved) R.string.dynamic_note_saved else R.string.dynamic_note_save_failed),
+            Toast.LENGTH_SHORT,
+        ).show()
         if (saved) finish()
     }
 
     private fun saveAndOpenCalendar(noteText: String) {
         val saved = saveCurrentNote(noteText)
         if (!saved) {
-            Toast.makeText(this, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.dynamic_note_save_failed), Toast.LENGTH_SHORT).show()
             return
         }
         openCalendarEvent(noteText)
@@ -83,22 +89,21 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun openCalendarEvent(noteText: String) {
-        val safeName = titleText.ifBlank { phone.ifBlank { "контакт" } }
-        val eventTitle = "Среща с $safeName"
+        val safeName = titleText.ifBlank { phone.ifBlank { getString(R.string.dynamic_calendar_default_contact) } }
         val description = buildString {
-            appendLine("Име: $safeName")
-            if (phone.isNotBlank()) appendLine("Телефон: $phone")
+            appendLine(getString(R.string.dynamic_calendar_name_line, safeName))
+            if (phone.isNotBlank()) appendLine(getString(R.string.dynamic_calendar_phone_line, phone))
             if (!isGeneralNote && callAt > 0L) {
                 val callInfo = listOf(
                     PhoneCallReader.directionLabel(direction),
                     PhoneCallReader.formatStartedAt(callAt),
                     PhoneCallReader.formatDuration(durationSeconds),
                 ).filter { it.isNotBlank() }.joinToString(" • ")
-                if (callInfo.isNotBlank()) appendLine("Разговор: $callInfo")
+                if (callInfo.isNotBlank()) appendLine(getString(R.string.dynamic_calendar_call_line, callInfo))
             }
             if (noteText.isNotBlank()) {
                 appendLine()
-                appendLine("Бележка:")
+                appendLine(getString(R.string.dynamic_calendar_note_heading))
                 appendLine(noteText.trim())
             }
         }.trim()
@@ -106,7 +111,7 @@ class ContactNoteEditActivity : Activity() {
         val end = begin + 60 * 60 * 1000L
         val intent = Intent(Intent.ACTION_INSERT).apply {
             data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, eventTitle)
+            putExtra(CalendarContract.Events.TITLE, getString(R.string.dynamic_calendar_event_title, safeName))
             putExtra(CalendarContract.Events.DESCRIPTION, description)
             putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
             putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
@@ -114,7 +119,7 @@ class ContactNoteEditActivity : Activity() {
         runCatching {
             startActivity(intent)
         }.onFailure {
-            Toast.makeText(this, "Няма намерено приложение Календар", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.dynamic_calendar_app_not_found), Toast.LENGTH_SHORT).show()
         }
     }
 }
