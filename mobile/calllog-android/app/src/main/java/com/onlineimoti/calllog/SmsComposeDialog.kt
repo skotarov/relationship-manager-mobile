@@ -248,11 +248,15 @@ internal class SmsComposeDialog(
             manager.activeSubscriptionInfoList.orEmpty()
                 .map { info ->
                     val simLabel = if (info.simSlotIndex >= 0) "SIM ${info.simSlotIndex + 1}" else "SIM"
-                    val carrierLabel = info.displayName?.toString()?.trim().orEmpty()
-                        .ifBlank { info.carrierName?.toString()?.trim().orEmpty() }
+                    val operatorLabel = info.carrierName?.toString()?.trim().orEmpty()
+                    val customName = info.displayName?.toString()?.trim().orEmpty()
+                    val label = listOf(simLabel, operatorLabel, customName)
+                        .filter { it.isNotBlank() }
+                        .distinctBy { it.lowercase() }
+                        .joinToString(" • ")
                     SmsSubscriptionOption(
                         subscriptionId = info.subscriptionId,
-                        label = if (carrierLabel.isBlank()) simLabel else "$simLabel • $carrierLabel",
+                        label = label,
                         slotIndex = info.simSlotIndex,
                     )
                 }
