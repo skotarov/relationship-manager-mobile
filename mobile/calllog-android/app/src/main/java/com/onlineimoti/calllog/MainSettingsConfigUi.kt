@@ -5,15 +5,12 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 object MainSettingsConfigUi {
     fun hydrate(binding: ActivityMainBinding, config: AppConfig) {
-        val application = binding.settingsApplicationGroup
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
         val contactLink = binding.contactLinkSection
-        val storage = binding.storageSettingsSection
         val language = binding.languageSettingsSection
-        val permissions = binding.permissionsSection
         val tests = binding.testsSection
 
         remote.remoteEnabledCheckBox.isChecked = config.remoteEnabled
@@ -32,8 +29,6 @@ object MainSettingsConfigUi {
             ConfigStore.POST_CALL_END_ACTION_NOTHING -> popup.postCallEndActionNothing.isChecked = true
             else -> popup.postCallEndActionEdit.isChecked = true
         }
-        popup.useOverlayPopupsCheckBox.isChecked = config.useOverlayPopups
-        application.applicationUseOverlayPopupsCheckBox.isChecked = config.useOverlayPopups
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         popup.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
@@ -44,9 +39,6 @@ object MainSettingsConfigUi {
             ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
             else -> language.appLanguageSystem.isChecked = true
         }
-        storage.usePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
-        application.applicationUsePublicNotesFolderCheckBox.isChecked = config.usePublicNotesFolder
-        permissions.useCallScreeningCheckBox.isChecked = config.useCallScreening
         tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
     }
 
@@ -56,11 +48,9 @@ object MainSettingsConfigUi {
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
         val contactLink = binding.contactLinkSection
-        val storage = binding.storageSettingsSection
         val language = binding.languageSettingsSection
-        val permissions = binding.permissionsSection
         val tests = binding.testsSection
-        val preservedFormPath = ConfigStore.load(binding.root.context).formPath
+        val currentConfig = ConfigStore.load(binding.root.context)
 
         return AppConfig(
             remoteEnabled = remote.remoteEnabledCheckBox.isChecked,
@@ -72,11 +62,11 @@ object MainSettingsConfigUi {
             homeCallPageSize = callLog.homeCallPageSizeInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_HOME_CALL_PAGE_SIZE,
             lookupPath = remote.lookupPathInput.text?.toString().orEmpty(),
-            formPath = preservedFormPath,
+            formPath = currentConfig.formPath,
             historyPath = remote.historyPathInput.text?.toString().orEmpty(),
             postCallPromptTimeoutSeconds = popup.postCallTimeoutInput.text?.toString()?.toIntOrNull()
                 ?: ConfigStore.DEFAULT_POST_CALL_TIMEOUT_SECONDS,
-            useOverlayPopups = popup.useOverlayPopupsCheckBox.isChecked,
+            useOverlayPopups = currentConfig.useOverlayPopups,
             useCustomStartPopup = popup.useCustomStartPopupCheckBox.isChecked,
             useCustomEndPopup = popup.useCustomEndPopupCheckBox.isChecked,
             postCallEndAction = when {
@@ -92,8 +82,8 @@ object MainSettingsConfigUi {
                 language.appLanguageEn.isChecked -> ConfigStore.LANGUAGE_EN
                 else -> ConfigStore.LANGUAGE_SYSTEM
             },
-            usePublicNotesFolder = storage.usePublicNotesFolderCheckBox.isChecked,
-            useCallScreening = permissions.useCallScreeningCheckBox.isChecked,
+            usePublicNotesFolder = currentConfig.usePublicNotesFolder,
+            useCallScreening = currentConfig.useCallScreening,
             showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
         )
     }
