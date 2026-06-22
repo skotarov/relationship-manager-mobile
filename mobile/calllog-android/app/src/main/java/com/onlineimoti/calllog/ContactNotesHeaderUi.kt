@@ -42,7 +42,9 @@ class ContactNotesHeaderUi(
         openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
         val displayName = displayNameFromTitle(title, phone)
-        val contactDescription = if (contactExists) "Отвори контакт" else "Създай контакт"
+        val contactDescription = activity.getString(
+            if (contactExists) R.string.dynamic_contact_open else R.string.dynamic_contact_create,
+        )
 
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -51,11 +53,11 @@ class ContactNotesHeaderUi(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(iconButton(R.drawable.ic_arrow_back, "Назад", goBack).apply {
+                addView(iconButton(R.drawable.ic_arrow_back, activity.getString(R.string.dynamic_action_back), goBack).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
                 if (showRmCallLogButton) {
-                    addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
+                    addView(iconButton(R.drawable.ic_system_call_log, activity.getString(R.string.dynamic_action_all_calls), openRmCallLog))
                     addView(verticalDivider())
                 }
                 if (showCrmSyncButton) {
@@ -68,12 +70,12 @@ class ContactNotesHeaderUi(
                     if (contactExists) {
                         addView(iconButton(R.drawable.ic_contact_person, contactDescription, openDefaultContact))
                     }
-                    addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
-                    addView(iconButton(R.drawable.ic_sms_message, "Напиши SMS") {
+                    addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
+                    addView(iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
                         SmsComposeDialog(activity, dp).show(phone, displayName.ifBlank { title })
                     })
                 }
-                addView(iconButton(R.drawable.ic_calendar_event, "Календар", openCalendarEvent).apply {
+                addView(iconButton(R.drawable.ic_calendar_event, activity.getString(R.string.dynamic_action_calendar), openCalendarEvent).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
                 })
             })
@@ -87,7 +89,7 @@ class ContactNotesHeaderUi(
                     addView(textDivider())
                 }
                 if (contactExists) {
-                    addView(contactNameText(displayName, true, contactDescription).apply {
+                    addView(contactNameText(displayName, contactDescription).apply {
                         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     })
                 } else {
@@ -109,15 +111,15 @@ class ContactNotesHeaderUi(
 
     fun directionArrowLabel(direction: String): String {
         return when (direction) {
-            "in" -> "↙ входящ"
-            "out" -> "↗ изходящ"
+            "in" -> activity.getString(R.string.dynamic_direction_in)
+            "out" -> activity.getString(R.string.dynamic_direction_out)
             else -> PhoneCallReader.directionLabel(direction)
         }
     }
 
     private fun displayNameFromTitle(title: String, phone: String): String {
         val value = title.trim()
-        if (value.isBlank() || value == "Бележки") return ""
+        if (value.isBlank() || value == activity.getString(R.string.dynamic_notes_default_title)) return ""
         if (phone.isNotBlank()) {
             if (value == phone) return ""
             if (value.contains("|")) return value.substringAfterLast("|").trim()
@@ -153,23 +155,35 @@ class ContactNotesHeaderUi(
             isClickable = true
             isFocusable = true
             setPadding(0, dp(4), dp(4), dp(4))
-            setOnClickListener { copyToClipboard("Телефон", phone, "Номерът е копиран") }
+            setOnClickListener {
+                copyToClipboard(
+                    activity.getString(R.string.dynamic_clipboard_phone_label),
+                    phone,
+                    activity.getString(R.string.dynamic_phone_copied),
+                )
+            }
         }
     }
 
-    private fun contactNameText(displayName: String, contactExists: Boolean, description: String): TextView {
-        val value = displayName.ifBlank { if (contactExists) description else "Нов" }
+    private fun contactNameText(displayName: String, description: String): TextView {
+        val value = displayName.ifBlank { description }
         return TextView(activity).apply {
             text = value
             textSize = 18f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (contactExists) Color.rgb(15, 23, 42) else Color.rgb(30, 64, 175))
+            setTextColor(Color.rgb(15, 23, 42))
             maxLines = 2
             ellipsize = null
             isClickable = true
             isFocusable = true
             setPadding(0, dp(4), 0, dp(4))
-            setOnClickListener { copyToClipboard("Име", value, "Името е копирано") }
+            setOnClickListener {
+                copyToClipboard(
+                    activity.getString(R.string.dynamic_clipboard_name_label),
+                    value,
+                    activity.getString(R.string.dynamic_name_copied),
+                )
+            }
         }
     }
 
@@ -199,9 +213,9 @@ class ContactNotesHeaderUi(
     private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): FrameLayout {
         val iconColor = if (enabled) Color.WHITE else Color.BLACK
         val description = when {
-            busy -> "Синхронизацията се променя"
-            enabled -> "CRM синхронизацията е включена"
-            else -> "Включи CRM синхронизация"
+            busy -> activity.getString(R.string.dynamic_crm_sync_changing)
+            enabled -> activity.getString(R.string.dynamic_crm_sync_enabled)
+            else -> activity.getString(R.string.dynamic_crm_sync_enable)
         }
         val cloudIcon = ImageView(activity).apply {
             setImageResource(R.drawable.ic_cloud_note)
