@@ -21,6 +21,7 @@ object MainSettingsConfigUi {
         popupFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
         popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
+        callLog.useInternalSmsComposerCheckBox.isChecked = config.useInternalSmsComposer
         remote.lookupPathInput.setText(config.lookupPath)
         remote.historyPathInput.setText(config.historyPath)
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
@@ -87,6 +88,7 @@ object MainSettingsConfigUi {
             showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
             useLocalNotesStorage = currentConfig.useLocalNotesStorage,
             useFullScreenPopup = currentConfig.useFullScreenPopup,
+            useInternalSmsComposer = callLog.useInternalSmsComposerCheckBox.isChecked,
         )
     }
 }
