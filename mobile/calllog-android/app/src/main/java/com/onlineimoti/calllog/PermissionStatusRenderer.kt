@@ -24,9 +24,10 @@ internal object PermissionStatusRenderer {
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val config = ConfigStore.load(activity)
         val popup = binding.popupSettingsSection
-        val storageState = state(config.usePublicNotesFolder, LocalNotesFileStore.canUsePublicFolder())
+        val notesState = notesState(config)
         val overlayState = state(config.useOverlayPopups, Settings.canDrawOverlays(activity))
         val screeningState = state(config.useCallScreening, MainPermissionChecks.hasCallScreeningRole(activity))
+        val fullScreenState = state(config.useFullScreenPopup, canUseFullScreen(activity))
 
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.overlayPermissionWarningText.visibility = if (overlayState == State.MISSING) View.VISIBLE else View.GONE
@@ -37,30 +38,61 @@ internal object PermissionStatusRenderer {
         val rows = mutableListOf<Row>()
         fun runtime(label: String, permission: String, granted: Boolean = has(activity, permission)) {
             rows += Row(
-                label,
-                if (granted) State.ACTIVE else State.MISSING,
-                { activity.requestAppPermissionFromSummary(permission, label) },
-                { openAppPermissions(activity) },
+                label = label,
+                state = if (granted) State.ACTIVE else State.MISSING,
+                enable = { activity.requestAppPermissionFromSummary(permission, label) },
+                disable = { openAppPermissions(activity) },
             )
         }
-        runtime("Notifications", Manifest.permission.POST_NOTIFICATIONS, Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || has(activity, Manifest.permission.POST_NOTIFICATIONS))
+
+        runtime(
+            "Notifications",
+            Manifest.permission.POST_NOTIFICATIONS,
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || has(activity, Manifest.permission.POST_NOTIFICATIONS),
+        )
         runtime("Phone", Manifest.permission.READ_PHONE_STATE)
         runtime("Call report log", Manifest.permission.READ_CALL_LOG)
         runtime("Contacts read", Manifest.permission.READ_CONTACTS)
         runtime("Contacts write", Manifest.permission.WRITE_CONTACTS)
-        rows += Row("Достъп до файловата система", storageState, { setStorage(activity, binding, true) }, { setStorage(activity, binding, false) })
-        rows += Row("Popup над други приложения", overlayState, { setOverlay(activity, binding, true) }, { setOverlay(activity, binding, false) })
-        rows += Row("Call screening", screeningState, { setScreening(activity, binding, true) }, { setScreening(activity, binding, false) })
+
+        rows += Row(
+            label = if (config.usePublicNotesFolder) "Public notes storage" else "Private notes storage",
+            state = notesState,
+            enable = { setNotesStorage(activity, binding, true) },
+            disable = { setNotesStorage(activity, binding, false) },
+        )
+        rows += Row(
+            label = "Popup над други приложения",
+            state = overlayState,
+            enable = { setOverlay(activity, binding, true) },
+            disable = { setOverlay(activity, binding, false) },
+        )
+        rows += Row(
+            label = "Call screening",
+            state = screeningState,
+            enable = { setScreening(activity, binding, true) },
+            disable = { setScreening(activity, binding, false) },
+        )
 
         val defaultSms = SmsRoleController.isDefaultSmsApp(activity)
-        rows += Row("Default SMS", if (defaultSms) State.ACTIVE else State.MISSING, { activity.requestDefaultSmsRoleFromSummary() }, { openDefaults(activity) })
+        rows += Row(
+            label = "Default SMS",
+            state = if (defaultSms) State.ACTIVE else State.MISSING,
+            enable = { activity.requestDefaultSmsRoleFromSummary() },
+            disable = { openDefaults(activity) },
+        )
         if (defaultSms) {
             runtime("SMS receive", Manifest.permission.RECEIVE_SMS)
             runtime("SMS read", Manifest.permission.READ_SMS)
             runtime("SMS send", Manifest.permission.SEND_SMS)
         }
-        val fullScreen = canUseFullScreen(activity)
-        rows += Row("Full-screen popup", if (fullScreen) State.ACTIVE else State.MISSING, { activity.requestFullScreenIntentPermissionFromSummary() }, { openFullScreen(activity) })
+
+        rows += Row(
+            label = "Full-screen popup",
+            state = fullScreenState,
+            enable = { setFullScreenPopup(activity, binding, true) },
+            disable = { setFullScreenPopup(activity, binding, false) },
+        )
 
         val summary = binding.permissionsSection.permissionsSummaryText
         summary.visibility = View.GONE
@@ -75,11 +107,16 @@ internal object PermissionStatusRenderer {
         parent.addView(box, parent.indexOfChild(summary) + 1)
     }
 
-    private fun setStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
-        save(activity) { it.copy(usePublicNotesFolder = enabled) }
+    private fun setNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
+        save(activity) { it.copy(useLocalNotesStorage = enabled) }
         refresh(activity, binding)
-        if (enabled) activity.requestPublicNotesStoragePermissionFromSummary()
-        else toast(activity, "Файловата система е изключена. Новите бележки ще са в частната памет.")
+        val config = ConfigStore.load(activity)
+        when {
+            !enabled -> toast(activity, "Локалните бележки са изключени. Старите бележки не са изтрити.")
+            config.usePublicNotesFolder && !LocalNotesFileStore.canUsePublicFolder() -> activity.requestPublicNotesStoragePermissionFromSummary()
+            config.usePublicNotesFolder -> toast(activity, "Публичното записване на бележки е включено.")
+            else -> toast(activity, "Private notes storage е включено.")
+        }
     }
 
     private fun setOverlay(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
@@ -94,6 +131,18 @@ internal object PermissionStatusRenderer {
         refresh(activity, binding)
         if (enabled) activity.requestCallScreeningPermissionFromSummary()
         else toast(activity, "Call screening е изключен в приложението.")
+    }
+
+    private fun setFullScreenPopup(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
+        save(activity) { it.copy(useFullScreenPopup = enabled) }
+        refresh(activity, binding)
+        if (!enabled) {
+            toast(activity, "Full-screen popup е изключен в приложението.")
+        } else if (!canUseFullScreen(activity)) {
+            activity.requestFullScreenIntentPermissionFromSummary()
+        } else {
+            toast(activity, "Full-screen popup е включен.")
+        }
     }
 
     private fun save(activity: MainActivity, update: (AppConfig) -> AppConfig) {
@@ -136,6 +185,12 @@ internal object PermissionStatusRenderer {
         }
     }
 
+    private fun notesState(config: AppConfig): State = when {
+        !config.useLocalNotesStorage -> State.DISABLED
+        config.usePublicNotesFolder && !LocalNotesFileStore.canUsePublicFolder() -> State.MISSING
+        else -> State.ACTIVE
+    }
+
     private fun state(enabled: Boolean, granted: Boolean): State = when {
         !enabled -> State.DISABLED
         granted -> State.ACTIVE
@@ -160,16 +215,6 @@ internal object PermissionStatusRenderer {
         activity.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
     }
 
-    private fun openFullScreen(activity: MainActivity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            activity.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                data = Uri.parse("package:${activity.packageName}")
-            })
-        } else {
-            toast(activity, "На тази Android версия няма отделна настройка за Full-screen popup.")
-        }
-    }
-
     private fun toast(activity: MainActivity, message: String) {
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
     }
@@ -178,12 +223,21 @@ internal object PermissionStatusRenderer {
         shape = android.graphics.drawable.GradientDrawable.RECTANGLE
         cornerRadius = radius.toFloat()
         setColor(color)
-        setStroke(dpDummy(1), stroke)
+        setStroke(1, stroke)
     }
 
     private fun dp(activity: MainActivity, value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
-    private fun dpDummy(value: Int): Int = value
 
-    private enum class State(val label: String) { ACTIVE("активно"), MISSING("липсва"), DISABLED("изключено") }
-    private data class Row(val label: String, val state: State, val enable: (() -> Unit)?, val disable: (() -> Unit)?)
+    private enum class State(val label: String) {
+        ACTIVE("активно"),
+        MISSING("липсва"),
+        DISABLED("изключено"),
+    }
+
+    private data class Row(
+        val label: String,
+        val state: State,
+        val enable: (() -> Unit)?,
+        val disable: (() -> Unit)?,
+    )
 }
