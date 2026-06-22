@@ -72,7 +72,17 @@ class ContactNotesHeaderUi(
                     }
                     addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
                     addView(iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
-                        SmsComposeDialog(activity, dp).show(phone, displayName.ifBlank { title })
+                        val smsTitle = displayName.ifBlank { title }
+                        if (ConfigStore.load(activity).useInternalSmsComposer) {
+                            SmsComposeDialog(activity, dp).show(phone, smsTitle)
+                        } else if (!GoogleMessagesLauncher.openConversation(activity, phone)) {
+                            Toast.makeText(
+                                activity,
+                                activity.getString(R.string.sms_google_messages_not_found),
+                                Toast.LENGTH_LONG,
+                            ).show()
+                            SmsComposeDialog(activity, dp).show(phone, smsTitle)
+                        }
                     })
                 }
                 addView(iconButton(R.drawable.ic_calendar_event, activity.getString(R.string.dynamic_action_calendar), openCalendarEvent).apply {
