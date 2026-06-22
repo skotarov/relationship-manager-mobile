@@ -62,5 +62,16 @@
         <include
             android:id="@+id/permissionsSection"
             layout="@layout/section_permissions" />
+
+        <CheckBox
+            android:id="@+id/applicationUsePublicNotesFolderCheckBox"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+        <CheckBox
+            android:id="@+id/applicationUseOverlayPopupsCheckBox"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
