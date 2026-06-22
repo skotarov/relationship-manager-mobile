@@ -1,0 +1,24 @@
+<resources>
+    <string name="permission_flow_public_storage_request">Allow access to all files to store notes in the shared folder %1$s.</string>
+    <string name="permission_flow_already_enabled">%1$s is already enabled.</string>
+    <string name="permission_flow_request_from_dialog">Allow %1$s in the system dialog.</string>
+    <string name="permission_flow_enable_in_settings">Enable %1$s in Android app settings.</string>
+    <string name="permission_flow_permission_not_enabled">%1$s is not enabled. You can enable it from the button in the permission list.</string>
+    <string name="permission_flow_screening_active">Call screening role is active.</string>
+    <string name="permission_flow_screening_not_active">Call screening role is not active. The setting will not change the next time the app opens.</string>
+    <string name="permission_flow_storage_denied">Shared file access was not allowed. The setting was disabled and notes will be stored in the app's private storage.</string>
+    <string name="permission_flow_overlay_allowed">Display over other apps permission was granted.</string>
+    <string name="permission_flow_overlay_denied">Display over other apps permission was not granted. The setting was disabled and the app will use a system popup.</string>
+    <string name="permission_flow_fullscreen_allowed">Full-screen Call Report popup permission was granted.</string>
+    <string name="permission_flow_request_notifications">Allow notifications so system popups can be shown.</string>
+    <string name="permission_flow_request_phone">Allow Phone so the app can detect the start and end of calls.</string>
+    <string name="permission_flow_request_call_log">Allow Call log so the app can show recent calls.</string>
+    <string name="permission_flow_request_contacts_read">Allow Contacts so the app can show names instead of only phone numbers.</string>
+    <string name="permission_flow_request_contacts_write">Allow Write contacts for compatibility with older contact notes.</string>
+    <string name="permission_flow_request_fullscreen">Allow Full-screen popup on the system screen.</string>
+    <string name="permission_flow_overlay_already_allowed">Display over other apps is already allowed.</string>
+    <string name="permission_flow_public_folder_active">Shared notes folder is active: %1$s</string>
+    <string name="permission_flow_public_folder_migration_failed">Shared folder is allowed, but moving the notes failed.</string>
+    <string name="permission_flow_screening_unavailable">Call screening / Caller ID role is not available on this phone. The setting remains unchanged.</string>
+    <string name="permission_flow_success">The main permissions were checked. Notes are in %1$s.</string>
+</resources>
