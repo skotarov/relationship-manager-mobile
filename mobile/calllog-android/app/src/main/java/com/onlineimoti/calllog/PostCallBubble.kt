@@ -32,7 +32,7 @@ internal class PostCallBubble(
         val size = ui.dp(46)
         val bubble = ImageButton(service).apply {
             setImageResource(R.drawable.ic_chat_note)
-            contentDescription = "Действие след разговора"
+            contentDescription = service.getString(R.string.overlay_post_call_action)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
