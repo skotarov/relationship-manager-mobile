@@ -88,7 +88,7 @@ internal class HomeCallRowRenderer(
         textColumn.addView(mainNameRow(call, displayName, highlightQuery))
         if (call.isSms) {
             textColumn.addView(TextView(activity).apply {
-                val body = call.smsBody.ifBlank { "(SMS без текст)" }
+                val body = call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) }
                 text = highlightedText(body, highlightQuery, activity.getColor(R.color.calllog_text))
                 setTextColor(activity.getColor(R.color.calllog_text))
                 textSize = 13f
@@ -132,10 +132,10 @@ internal class HomeCallRowRenderer(
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = dp(3) }
         }
-        actions.addView(iconButton(R.drawable.ic_phone_call, "Обади се") { openDialer(call.number) })
-        actions.addView(iconButton(R.drawable.ic_filter_calls, "Филтър") { togglePhoneFilter(call.number) })
+        actions.addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call)) { openDialer(call.number) })
+        actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
         if (!call.isSms) {
-            actions.addView(iconButton(R.drawable.ic_chat_note, "Бележка") { openContactNotePopupForCall(call, displayName) })
+            actions.addView(iconButton(R.drawable.ic_chat_note, activity.getString(R.string.dynamic_action_note)) { openContactNotePopupForCall(call, displayName) })
         }
         row.addView(actions)
 
@@ -163,7 +163,7 @@ internal class HomeCallRowRenderer(
             if (showCloud) {
                 addView(ImageView(activity).apply {
                     setImageResource(R.drawable.ic_cloud_note)
-                    contentDescription = "Има синхронизирани CRM бележки"
+                    contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
                     alpha = 0.9f
                     scaleType = ImageView.ScaleType.FIT_CENTER
                     layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply { marginStart = dp(4) }
