@@ -29,7 +29,12 @@ internal object SmsMessageSender {
         val historySaved: Boolean,
     )
 
-    fun send(context: Context, rawPhone: String, rawBody: String): Result<Outcome> = runCatching {
+    fun send(
+        context: Context,
+        rawPhone: String,
+        rawBody: String,
+        subscriptionId: Int? = null,
+    ): Result<Outcome> = runCatching {
         val appContext = context.applicationContext
         val phone = PhoneNormalizer.normalize(rawPhone).ifBlank { rawPhone.trim() }
         val body = rawBody.trim()
@@ -44,7 +49,7 @@ internal object SmsMessageSender {
             "Липсва разрешение за изпращане на SMS. Отвори Settings → Permissions и разреши SMS."
         }
 
-        val manager = smsManagerForDefaultSubscription()
+        val manager = smsManagerForSubscription(subscriptionId)
         val parts = manager.divideMessage(body)
         require(parts.isNotEmpty()) { "Не успях да подготвя текста за изпращане." }
 
@@ -111,9 +116,11 @@ internal object SmsMessageSender {
         }
     }
 
-    private fun smsManagerForDefaultSubscription(): SmsManager {
+    private fun smsManagerForSubscription(requestedSubscriptionId: Int?): SmsManager {
         return runCatching {
-            val subscriptionId = SubscriptionManager.getDefaultSmsSubscriptionId()
+            val subscriptionId = requestedSubscriptionId
+                ?.takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+                ?: SubscriptionManager.getDefaultSmsSubscriptionId()
             if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                 SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
             } else {
