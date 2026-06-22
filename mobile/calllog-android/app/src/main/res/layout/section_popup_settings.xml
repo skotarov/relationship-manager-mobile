@@ -73,19 +73,11 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
-    <CheckBox
-        android:id="@+id/useOverlayPopupsCheckBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:checked="false"
-        android:text="@string/popup_use_overlay" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="@string/popup_overlay_description"
+        android:layout_marginTop="4dp"
+        android:text="Popup-ите над други приложения се включват и изключват от Приложение → Разрешения."
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -103,6 +95,7 @@
         android:id="@+id/overlayPopupOptionsGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:orientation="vertical">
 
         <CheckBox
