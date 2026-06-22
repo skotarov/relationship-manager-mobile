@@ -14,6 +14,7 @@ import java.nio.charset.CodingErrorAction
 
 class ContactShareActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         handleSharedContact(intent)
     }
@@ -31,7 +32,7 @@ class ContactShareActivity : Activity() {
 
         // A phone number takes priority: Call Report is useful for its call history and notes.
         if (phone.isNotBlank()) {
-            Toast.makeText(this, "Отварям историята в Call Report", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.external_opening_history), Toast.LENGTH_SHORT).show()
             startActivity(
                 Intent(this, ContactNotesActivity::class.java)
                     .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
@@ -48,7 +49,7 @@ class ContactShareActivity : Activity() {
             return
         }
 
-        Toast.makeText(this, "Не намерих телефон или e-mail в контакта", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.external_contact_without_phone_or_email), Toast.LENGTH_SHORT).show()
         finish()
     }
 
@@ -57,10 +58,10 @@ class ContactShareActivity : Activity() {
             data = Uri.parse("mailto:${Uri.encode(email)}")
         }
         runCatching {
-            startActivity(Intent.createChooser(intent, "Избери e-mail приложение"))
+            startActivity(Intent.createChooser(intent, getString(R.string.external_choose_email_app)))
             finish()
         }.onFailure {
-            Toast.makeText(this, "Няма намерено e-mail приложение", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.external_email_app_not_found), Toast.LENGTH_SHORT).show()
             finish()
         }
     }
