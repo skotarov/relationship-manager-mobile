@@ -58,9 +58,6 @@ class ContactNotesHeaderUi(
                     addView(iconButton(R.drawable.ic_system_call_log, "Всички разговори", openRmCallLog))
                     addView(verticalDivider())
                 }
-                if (contactExists) {
-                    addView(iconButton(R.drawable.ic_contact_person, contactDescription, openDefaultContact))
-                }
                 if (showCrmSyncButton) {
                     addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
                 }
@@ -69,6 +66,9 @@ class ContactNotesHeaderUi(
                 })
                 if (phone.isNotBlank()) {
                     addView(iconButton(R.drawable.ic_phone_call, "Обади се", openDialer))
+                    if (contactExists) {
+                        addView(iconButton(R.drawable.ic_contact_person, contactDescription, openDefaultContact))
+                    }
                     addView(iconButton(R.drawable.ic_sms_message, "Напиши SMS") {
                         SmsComposeDialog(activity, dp).show(phone, displayName.ifBlank { title })
                     })
