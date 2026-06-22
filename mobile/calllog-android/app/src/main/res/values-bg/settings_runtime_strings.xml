@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_sms_role_active">Relationship Manager е избрано като SMS приложение. Новите SMS-и ще идват първо тук.</string>
+    <string name="settings_sms_role_not_changed">SMS приложението по подразбиране не е променено.</string>
+    <string name="settings_server_saved">Сървърните настройки са записани.</string>
+</resources>
