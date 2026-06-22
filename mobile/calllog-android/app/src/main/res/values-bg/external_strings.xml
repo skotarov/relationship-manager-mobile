@@ -4,4 +4,5 @@
     <string name="external_contact_without_phone_or_email">Не намерих телефон или e-mail в контакта</string>
     <string name="external_choose_email_app">Избери e-mail приложение</string>
     <string name="external_email_app_not_found">Няма намерено e-mail приложение</string>
+    <string name="external_open_contact_or_history_failed">Не успях да отворя контакта или историята на разговорите</string>
 </resources>
