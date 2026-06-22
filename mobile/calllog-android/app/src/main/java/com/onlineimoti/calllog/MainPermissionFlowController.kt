@@ -161,7 +161,7 @@ internal class MainPermissionFlowController(
                 setStatus("Разреши достъп до всички файлове, за да пазим бележките в публичната папка ${LocalNotesFileStore.publicRootPath()}.")
                 requestStorageManagerPermissionIfNeeded()
             }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
+            fullScreenPopupSelected() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
                 setStatus("Разреши Full-screen popup от системния екран.")
                 requestFullScreenIntentPermissionIfNeeded()
             }
@@ -252,6 +252,7 @@ internal class MainPermissionFlowController(
 
     private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
     private fun overlayPopupsSelected(): Boolean = ConfigStore.load(activity).useOverlayPopups
+    private fun fullScreenPopupSelected(): Boolean = ConfigStore.load(activity).useFullScreenPopup
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
     private fun canUseFullScreenIntent(): Boolean = MainPermissionChecks.canUseFullScreenIntent(activity)
 
