@@ -21,6 +21,7 @@ class PostCallPromptActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         binding = ActivityPostCallPromptBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -36,7 +37,7 @@ class PostCallPromptActivity : AppCompatActivity() {
             return
         }
 
-        binding.postCallTitleText.text = "Да запиша ли бележка?"
+        binding.postCallTitleText.text = getString(R.string.post_call_prompt_title)
         binding.postCallSubtitleText.text = buildSubtitle()
 
         binding.writeNoteButton.setOnClickListener {
@@ -66,13 +67,15 @@ class PostCallPromptActivity : AppCompatActivity() {
     private fun buildSubtitle(): String {
         val person = title.ifBlank { phone }
         val directionLabel = when (direction) {
-            "in" -> "входящ разговор"
-            "out" -> "изходящ разговор"
-            else -> "разговор"
+            "in" -> getString(R.string.post_call_direction_incoming)
+            "out" -> getString(R.string.post_call_direction_outgoing)
+            else -> getString(R.string.post_call_direction_generic)
         }
-        return listOf(person, directionLabel, "затваря се след ${timeoutSeconds} сек")
-            .filter { it.isNotBlank() }
-            .joinToString(" • ")
+        return listOf(
+            person,
+            directionLabel,
+            getString(R.string.post_call_auto_close, timeoutSeconds),
+        ).filter { it.isNotBlank() }.joinToString(" • ")
     }
 
     companion object {
