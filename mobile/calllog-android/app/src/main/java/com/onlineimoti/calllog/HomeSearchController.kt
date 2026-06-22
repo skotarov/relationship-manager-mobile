@@ -26,10 +26,10 @@ internal class HomeSearchController(
         val currentPageSize = pageSize()
         if (HomeCallPageLoader.isSearchTooShort(query)) {
             setCurrentCalls(emptyList())
-            binding.homeStatusText.text = "Въведи поне 2 символа за търсене."
+            binding.homeStatusText.text = context.getString(R.string.dynamic_home_search_minimum)
             binding.previousCallsButton.isEnabled = false
             binding.nextCallsButton.isEnabled = false
-            binding.pageText.text = "Стр. ${pageIndex() + 1}"
+            binding.pageText.text = context.getString(R.string.dynamic_home_page, pageIndex() + 1)
             binding.paginationContainer.visibility = View.VISIBLE
             return
         }
@@ -37,7 +37,7 @@ internal class HomeSearchController(
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
         val page = pageIndex()
-        binding.homeStatusText.text = "Търси „${query.trim()}“…"
+        binding.homeStatusText.text = context.getString(R.string.dynamic_home_searching, query.trim())
         binding.previousCallsButton.isEnabled = false
         binding.nextCallsButton.isEnabled = false
         binding.paginationContainer.visibility = View.VISIBLE
