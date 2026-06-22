@@ -45,7 +45,7 @@ internal class PostCallOverlayUi(private val context: Context) {
     fun noteRightAction(onClick: () -> Unit): ImageButton {
         return ImageButton(context).apply {
             setImageResource(R.drawable.ic_chat_note)
-            contentDescription = "Добави бележка"
+            contentDescription = context.getString(R.string.overlay_add_note)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
