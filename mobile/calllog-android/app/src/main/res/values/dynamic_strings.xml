@@ -26,6 +26,9 @@
     <string name="dynamic_note_save">Save</string>
     <string name="dynamic_note_crm_enabled">CRM: this note will be sent to the server</string>
     <string name="dynamic_note_local_only">Local only: this note stays on the phone</string>
+    <string name="dynamic_notes_call_section">Call notes</string>
+    <string name="dynamic_notes_add_latest_call">+ Add to the latest call</string>
+    <string name="dynamic_notes_add_general">+ Add</string>
 
     <string name="dynamic_contact_open">Open contact</string>
     <string name="dynamic_contact_create">Create contact</string>
