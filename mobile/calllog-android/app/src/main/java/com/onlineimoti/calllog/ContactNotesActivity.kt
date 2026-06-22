@@ -77,7 +77,9 @@ class ContactNotesActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
-        titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { phone.ifBlank { "Бележки" } }
+        titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank {
+            phone.ifBlank { getString(R.string.dynamic_notes_default_title) }
+        }
         backTargetsUnfilteredHome = intent.getBooleanExtra(EXTRA_BACK_TARGETS_UNFILTERED_HOME, false)
         render()
         autoUpdateContactLinkOnce()
@@ -179,10 +181,10 @@ class ContactNotesActivity : Activity() {
                 Toast.makeText(
                     this,
                     when {
-                        updated && enabled -> "Синхронизацията е включена"
-                        updated -> "Синхронизацията е изключена"
-                        enabled -> "Не успях да създам RM layer. Провери Contacts permissions."
-                        else -> "Sync е изключен, но RM данните не бяха изчистени. Провери Contacts permissions."
+                        updated && enabled -> getString(R.string.dynamic_crm_sync_turned_on)
+                        updated -> getString(R.string.dynamic_crm_sync_turned_off)
+                        enabled -> getString(R.string.dynamic_crm_sync_create_failed)
+                        else -> getString(R.string.dynamic_crm_sync_clear_failed)
                     },
                     Toast.LENGTH_SHORT,
                 ).show()
@@ -222,7 +224,7 @@ class ContactNotesActivity : Activity() {
     private fun buildDebugText(): String {
         val debugText = RmContactDebugReader.debugText(this, phone, titleText)
         return if (contactUpdateBusy) {
-            "RM progress: Updating…\n$debugText"
+            "${getString(R.string.dynamic_rm_progress_updating)}\n$debugText"
         } else {
             debugText
         }
