@@ -1,0 +1,17 @@
+<resources>
+    <string name="archive_write_open_failed">Could not open the file for writing.</string>
+    <string name="archive_created_status">Archive was created successfully.</string>
+    <string name="archive_created_toast">Archive created</string>
+    <string name="archive_create_failed">Could not create archive: %1$s</string>
+    <string name="archive_restore_title">Restore archive</string>
+    <string name="archive_restore_question">How should the archive be restored?</string>
+    <string name="archive_restore_replace">Clear and restore</string>
+    <string name="archive_restore_merge">Add</string>
+    <string name="archive_cancel">Cancel</string>
+    <string name="archive_read_failed">Could not read the selected file.</string>
+    <string name="archive_mode_replaced">cleared and restored</string>
+    <string name="archive_mode_merged">added to the existing data</string>
+    <string name="archive_restore_summary">Archive was %1$s. General notes: %2$d, files: %3$d.</string>
+    <string name="archive_restored_toast">Archive restored</string>
+    <string name="archive_restore_failed">Could not restore archive: %1$s</string>
+</resources>
