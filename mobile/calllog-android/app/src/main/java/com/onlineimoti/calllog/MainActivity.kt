@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         if (active) {
             setStatus(
                 "Relationship Manager е избрано като SMS приложение. " +
-                    "Новите SMS ще идват първо тук. След това можеш да натиснеш „Добави SMS икона“.",
+                    "Новите SMS ще идват първо тук.",
             )
             smsPermissionsLauncher.launch(
                 arrayOf(
@@ -86,7 +86,6 @@ class MainActivity : AppCompatActivity() {
             setStatus("Default SMS не е променено.")
         }
         refreshPermissionSummary()
-        updateSmsThemeButton()
     }
 
     private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -123,7 +122,6 @@ class MainActivity : AppCompatActivity() {
         CallReportRuntime.ensureNotificationChannel(this)
         hydrateFields()
         refreshPermissionSummary()
-        updateSmsThemeButton()
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
@@ -138,7 +136,6 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
-        updateSmsThemeButton()
     }
 
     override fun onDestroy() {
@@ -176,13 +173,6 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             testEndPopup()
         }
-    }
-
-    /** Called by the XML SMS-icon button. */
-    fun openSmsThemeInstaller(@Suppress("UNUSED_PARAMETER") view: android.view.View) {
-        saveConfig()
-        SmsThemeInstaller.openNext(this, ::setStatus)
-        updateSmsThemeButton()
     }
 
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
@@ -253,15 +243,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun updateSmsThemeButton() {
-        if (!::binding.isInitialized) return
-        binding.permissionsSection.openSmsThemeButton.text = if (SmsThemeInstaller.isRestoreActionNext(this)) {
-            "Върни иконата Call Report"
-        } else {
-            "Добави SMS икона на началния екран"
-        }
     }
 
     private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
