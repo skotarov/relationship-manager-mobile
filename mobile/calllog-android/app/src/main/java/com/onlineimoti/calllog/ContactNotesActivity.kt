@@ -75,6 +75,7 @@ class ContactNotesActivity : Activity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         phone = intent.getStringExtra(EXTRA_PHONE).orEmpty()
         titleText = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank {
@@ -155,6 +156,7 @@ class ContactNotesActivity : Activity() {
             openFilteredLog = { openRmCallLog(filtered = true) },
             onEditCallNote = ::openCallNoteEditor,
         )
+        CrmHistoryTextLocalizer.apply(this, root)
 
         return ScrollView(this).apply {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
