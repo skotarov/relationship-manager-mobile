@@ -24,6 +24,8 @@ internal class HomeCallRowRenderer(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val openContactNotesScreen: (PhoneCallRecord, String) -> Unit,
     private val openContactNotePopupForCall: (PhoneCallRecord, String) -> Unit,
+    private val openDialer: (String) -> Unit = {},
+    private val togglePhoneFilter: (String) -> Unit = {},
 ) {
     fun compactCallRow(
         call: PhoneCallRecord,
@@ -33,6 +35,7 @@ internal class HomeCallRowRenderer(
         highlightQuery: String = "",
         showContactIdentity: Boolean = true,
         showGeneralContactNote: Boolean = true,
+        showQuickActions: Boolean = true,
     ): MaterialCardView {
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
@@ -163,7 +166,7 @@ internal class HomeCallRowRenderer(
         }
         row.addView(textColumn)
 
-        if (!call.isSms) {
+        if (showQuickActions || !call.isSms) {
             val actions = LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
@@ -174,14 +177,34 @@ internal class HomeCallRowRenderer(
                     leftMargin = dp(3)
                 }
             }
-            actions.addView(
-                iconButton(
-                    R.drawable.ic_chat_note,
-                    activity.getString(R.string.dynamic_action_note),
-                ) {
-                    openContactNotePopupForCall(call, displayName)
-                },
-            )
+            if (showQuickActions) {
+                actions.addView(
+                    iconButton(
+                        R.drawable.ic_phone_call,
+                        activity.getString(R.string.dynamic_action_call),
+                    ) {
+                        openDialer(call.number)
+                    },
+                )
+                actions.addView(
+                    iconButton(
+                        R.drawable.ic_filter_calls,
+                        activity.getString(R.string.dynamic_action_filter),
+                    ) {
+                        togglePhoneFilter(call.number)
+                    },
+                )
+            }
+            if (!call.isSms) {
+                actions.addView(
+                    iconButton(
+                        R.drawable.ic_chat_note,
+                        activity.getString(R.string.dynamic_action_note),
+                    ) {
+                        openContactNotePopupForCall(call, displayName)
+                    },
+                )
+            }
             row.addView(actions)
         }
 
