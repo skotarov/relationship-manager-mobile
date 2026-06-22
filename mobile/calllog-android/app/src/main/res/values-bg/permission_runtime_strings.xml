@@ -1,0 +1,28 @@
+<resources>
+    <string name="permission_label_notifications">Известия</string>
+    <string name="permission_label_phone">Телефон</string>
+    <string name="permission_label_call_log">Дневник на разговорите</string>
+    <string name="permission_label_contacts_read">Четене на контакти</string>
+    <string name="permission_label_contacts_write">Запис в контакти</string>
+    <string name="permission_label_public_notes_storage">Общо съхранение на бележките</string>
+    <string name="permission_label_private_notes_storage">Частно съхранение на бележките</string>
+    <string name="permission_label_overlay">Показване над други приложения</string>
+    <string name="permission_label_call_screening">Филтриране на обажданията</string>
+    <string name="permission_label_default_sms">SMS приложение по подразбиране</string>
+    <string name="permission_label_sms_receive">Получаване на SMS</string>
+    <string name="permission_label_sms_read">Четене на SMS</string>
+    <string name="permission_label_sms_send">Изпращане на SMS</string>
+    <string name="permission_label_fullscreen_popup">Popup на цял екран</string>
+    <string name="permission_action_enable">Включи</string>
+    <string name="permission_action_disable">Изключи</string>
+    <string name="permission_state_active">активно</string>
+    <string name="permission_state_missing">липсва</string>
+    <string name="permission_state_disabled">изключено</string>
+    <string name="permission_toast_local_notes_disabled">Локалните бележки са изключени. Старите бележки не са изтрити.</string>
+    <string name="permission_toast_public_notes_enabled">Общото съхранение на бележките е включено.</string>
+    <string name="permission_toast_private_notes_enabled">Частното съхранение на бележките е включено.</string>
+    <string name="permission_toast_overlay_disabled">Popup-ите над други приложения са изключени.</string>
+    <string name="permission_toast_screening_disabled">Филтрирането на обажданията е изключено в приложението.</string>
+    <string name="permission_toast_fullscreen_disabled">Popup-ът на цял екран е изключен в приложението.</string>
+    <string name="permission_toast_fullscreen_enabled">Popup-ът на цял екран е включен.</string>
+</resources>
