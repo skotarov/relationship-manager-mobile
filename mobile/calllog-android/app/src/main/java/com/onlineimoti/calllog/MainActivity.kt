@@ -71,10 +71,7 @@ class MainActivity : AppCompatActivity() {
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         val active = SmsRoleController.isDefaultSmsApp(this)
         if (active) {
-            setStatus(
-                "Relationship Manager е избрано като SMS приложение. " +
-                    "Новите SMS ще идват първо тук.",
-            )
+            setStatus(getString(R.string.settings_sms_role_active))
             smsPermissionsLauncher.launch(
                 arrayOf(
                     Manifest.permission.RECEIVE_SMS,
@@ -83,7 +80,7 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         } else {
-            setStatus("Default SMS не е променено.")
+            setStatus(getString(R.string.settings_sms_role_not_changed))
         }
         refreshPermissionSummary()
     }
@@ -156,7 +153,7 @@ class MainActivity : AppCompatActivity() {
         binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.syncAllRmContacts() }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
             saveConfig()
-            setStatus("Server настройките са записани.")
+            setStatus(getString(R.string.settings_server_saved))
             refreshPermissionSummary()
         }
         binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
@@ -249,7 +246,10 @@ class MainActivity : AppCompatActivity() {
     private fun disablePublicNotesFolder() = MainStorageSettings.disablePublicNotesFolder(this)
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
     private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
-    private fun refreshPermissionSummary() = PermissionStatusRenderer.refresh(this, binding)
+    private fun refreshPermissionSummary() {
+        PermissionStatusRenderer.refresh(this, binding)
+        PermissionSummaryLocalizer.apply(this, binding)
+    }
     private fun renderBuildVersion() = MainBuildVersion.render(this, binding)
     private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
     private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
