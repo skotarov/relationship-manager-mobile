@@ -4,4 +4,5 @@
     <string name="external_contact_without_phone_or_email">No phone number or e-mail address was found in the contact</string>
     <string name="external_choose_email_app">Choose an e-mail app</string>
     <string name="external_email_app_not_found">No e-mail app found</string>
+    <string name="external_open_contact_or_history_failed">Could not open the contact or call history</string>
 </resources>
