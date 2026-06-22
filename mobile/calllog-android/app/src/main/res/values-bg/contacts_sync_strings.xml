@@ -15,10 +15,10 @@
     <string name="contacts_sync_stop_orphans">Спирам почистването на осиротели записи след текущия запис…</string>
     <string name="contacts_sync_stop_cleanup">Спирам почистването след текущия запис…</string>
     <string name="contacts_sync_stop_generic">Спирам…</string>
-    <string name="contacts_sync_running">Синхронизирам RM контактите… %1$d%%</string>
-    <string name="contacts_sync_running_auto">Автоматична синхронизация на RM контактите… %1$d%%</string>
-    <string name="contacts_sync_cleanup_running">Почиствам RM записите от контактите… %1$d%%</string>
-    <string name="contacts_sync_cleanup_started">Почиствам RM записите от контактите… 0%%</string>
+    <string name="contacts_sync_running">Синхронизирам RM контактите… %1$d процента</string>
+    <string name="contacts_sync_running_auto">Автоматична синхронизация на RM контактите… %1$d процента</string>
+    <string name="contacts_sync_cleanup_running">Почиствам RM записите от контактите… %1$d процента</string>
+    <string name="contacts_sync_cleanup_started">Почиствам RM записите от контактите… 0 процента</string>
     <string name="contacts_sync_stopped_removed">Почистването е спряно. Премахнати RM записи: %1$d</string>
     <string name="contacts_sync_removed">Премахнати RM записи от контактите: %1$d</string>
     <string name="contacts_sync_canceled_summary">%1$s е спряна. Променени: %2$d, без промяна: %3$d, грешки: %4$d, проверени: %5$d</string>
