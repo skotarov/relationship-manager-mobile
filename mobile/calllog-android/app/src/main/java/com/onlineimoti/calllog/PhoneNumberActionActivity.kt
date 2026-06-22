@@ -8,6 +8,7 @@ import android.widget.Toast
 
 class PhoneNumberActionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         handlePhoneAction(intent)
     }
@@ -21,7 +22,7 @@ class PhoneNumberActionActivity : Activity() {
     private fun handlePhoneAction(sourceIntent: Intent?) {
         val phone = extractPhone(sourceIntent)
         if (phone.isBlank()) {
-            Toast.makeText(this, "Не намерих телефонен номер", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.external_phone_not_found), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
