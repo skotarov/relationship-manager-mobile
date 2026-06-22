@@ -1,0 +1,14 @@
+<resources>
+    <string name="test_start_title">Тестов стартов popup</string>
+    <string name="test_start_line">Тест: popup при старт на разговор</string>
+    <string name="test_direction_line">Посока: %1$s</string>
+    <string name="test_no_real_call">Това е тест без реално обаждане.</string>
+    <string name="test_mode_custom_overlay">персонализирано наслагване</string>
+    <string name="test_mode_system_notification">системно известие</string>
+    <string name="test_start_status">Пуснат е тестов стартов popup (%1$s) за %2$s.</string>
+    <string name="test_end_title">Тестов финален popup</string>
+    <string name="test_end_disabled">Финалният popup е изключен: „След края на разговора“ е зададено на „Нищо“.</string>
+    <string name="test_mode_history">екран „История“</string>
+    <string name="test_mode_note_editor">редактор на бележка</string>
+    <string name="test_end_status">Пуснат е тестов финален popup/действие (%1$s) за %2$s.</string>
+</resources>
