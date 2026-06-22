@@ -4,19 +4,11 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <CheckBox
-        android:id="@+id/usePublicNotesFolderCheckBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:checked="true"
-        android:text="@string/storage_use_public_folder" />
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="@string/storage_description"
+        android:layout_marginTop="6dp"
+        android:text="Достъпът до общата файлова система за бележките се включва и изключва от Приложение → Разрешения."
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 </LinearLayout>
