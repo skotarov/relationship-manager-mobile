@@ -1,0 +1,26 @@
+<resources>
+    <plurals name="time_ago_minutes">
+        <item quantity="one">преди %d минута</item>
+        <item quantity="other">преди %d минути</item>
+    </plurals>
+    <plurals name="time_ago_hours">
+        <item quantity="one">преди %d час</item>
+        <item quantity="other">преди %d часа</item>
+    </plurals>
+    <plurals name="time_ago_days">
+        <item quantity="one">преди %d ден</item>
+        <item quantity="other">преди %d дни</item>
+    </plurals>
+    <plurals name="time_ago_weeks">
+        <item quantity="one">преди %d седмица</item>
+        <item quantity="other">преди %d седмици</item>
+    </plurals>
+    <plurals name="time_ago_months">
+        <item quantity="one">преди %d месец</item>
+        <item quantity="other">преди %d месеца</item>
+    </plurals>
+    <plurals name="time_ago_years">
+        <item quantity="one">преди %d година</item>
+        <item quantity="other">преди %d години</item>
+    </plurals>
+</resources>
