@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Икона „Съобщения“"
+        android:text="SMS тема"
         android:textColor="@color/calllog_text"
         android:textSize="15sp"
         android:textStyle="bold" />
@@ -34,7 +34,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Добавя наша SMS/CRM иконка на началния екран. Не отваря Xiaomi Themes и не изисква файл. Постави я на мястото на старата SMS иконка."
+        android:text="Създава Xiaomi/HyperOS тема само за иконата на системното SMS приложение. Не добавя втора икона и не променя тапет, шрифт или други приложения."
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -45,7 +45,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:onClick="openSmsThemeInstaller"
-        android:text="Добави SMS икона на началния екран" />
+        android:text="Инсталирай SMS тема" />
 
     <CheckBox
         android:id="@+id/useCallScreeningCheckBox"
