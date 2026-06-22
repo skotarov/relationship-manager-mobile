@@ -79,7 +79,7 @@ internal class SmsComposeDialog(
         }.onFailure { error ->
             Toast.makeText(
                 activity,
-                error.message.orEmpty().ifBlank { "Не успях да отворя SMS екрана." },
+                error.message.orEmpty().ifBlank { activity.getString(R.string.dynamic_sms_open_failed) },
                 Toast.LENGTH_LONG,
             ).show()
         }
@@ -97,7 +97,7 @@ internal class SmsComposeDialog(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(TextView(activity).apply {
-                text = "Нов SMS"
+                text = activity.getString(R.string.dynamic_sms_new)
                 textSize = 21f
                 setTextColor(Color.rgb(15, 23, 42))
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -108,7 +108,7 @@ internal class SmsComposeDialog(
                 textSize = 30f
                 gravity = Gravity.CENTER
                 setTextColor(Color.rgb(71, 85, 105))
-                contentDescription = "Затвори"
+                contentDescription = activity.getString(R.string.dynamic_sms_close)
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { dialog.dismiss() }
@@ -126,7 +126,7 @@ internal class SmsComposeDialog(
         val selectedSubscriptionId = addSubscriptionChooser(root)
 
         val messageInput = EditText(activity).apply {
-            hint = "Напиши съобщение"
+            hint = activity.getString(R.string.dynamic_sms_message_hint)
             textSize = 16f
             minLines = 4
             maxLines = 8
@@ -151,7 +151,7 @@ internal class SmsComposeDialog(
         }
         root.addView(status)
 
-        val sendButton = primaryButton("Изпрати")
+        val sendButton = primaryButton(activity.getString(R.string.dynamic_sms_send))
         root.addView(sendButton.apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -162,7 +162,7 @@ internal class SmsComposeDialog(
         sendButton.setOnClickListener {
             val message = messageInput.text?.toString().orEmpty()
             sendButton.isEnabled = false
-            sendButton.text = "Изпращане…"
+            sendButton.text = activity.getString(R.string.dynamic_sms_sending)
             status.visibility = TextView.GONE
             sendInBackground(
                 dialog = dialog,
@@ -188,7 +188,7 @@ internal class SmsComposeDialog(
         if (options.isEmpty()) return { defaultSubscriptionId }
 
         root.addView(TextView(activity).apply {
-            text = "Изпращане от"
+            text = activity.getString(R.string.dynamic_sms_send_from)
             textSize = 13f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, 0, 0, dp(4))
@@ -247,7 +247,11 @@ internal class SmsComposeDialog(
         return runCatching {
             manager.activeSubscriptionInfoList.orEmpty()
                 .map { info ->
-                    val simLabel = if (info.simSlotIndex >= 0) "SIM ${info.simSlotIndex + 1}" else "SIM"
+                    val simLabel = if (info.simSlotIndex >= 0) {
+                        activity.getString(R.string.dynamic_sms_sim, info.simSlotIndex + 1)
+                    } else {
+                        activity.getString(R.string.dynamic_sms_sim_unknown)
+                    }
                     val operatorLabel = info.carrierName?.toString()?.trim().orEmpty()
                     val customName = info.displayName?.toString()?.trim().orEmpty()
                     val label = listOf(simLabel, operatorLabel, customName)
@@ -310,11 +314,9 @@ internal class SmsComposeDialog(
                         activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
                         Toast.makeText(
                             activity,
-                            if (outcome.historySaved) {
-                                "SMS е изпратен към оператора"
-                            } else {
-                                "SMS е изпратен към оператора. Отвори отново историята, ако редът още не се е появил."
-                            },
+                            activity.getString(
+                                if (outcome.historySaved) R.string.dynamic_sms_sent else R.string.dynamic_sms_sent_refresh,
+                            ),
                             Toast.LENGTH_LONG,
                         ).show()
                         dialog.dismiss()
@@ -332,8 +334,8 @@ internal class SmsComposeDialog(
 
     private fun restoreAfterFailure(sendButton: Button, status: TextView, error: Throwable) {
         sendButton.isEnabled = true
-        sendButton.text = "Изпрати"
-        status.text = error.message.orEmpty().ifBlank { "Не успях да изпратя SMS." }
+        sendButton.text = activity.getString(R.string.dynamic_sms_send)
+        status.text = error.message.orEmpty().ifBlank { activity.getString(R.string.dynamic_sms_send_failed) }
         status.visibility = TextView.VISIBLE
     }
 
