@@ -36,7 +36,7 @@ internal class PostCallLookupPopup(
             else -> phoneValue.ifBlank { titleValue.ifBlank { "Call Report" } }
         }
         val infoRows = LocalCallStatsProvider.buildPopupInfoRows(service, phoneValue)
-        val headerText = infoRows.firstOrNull().orEmpty().ifBlank { "Няма предишен разговор" }
+        val headerText = infoRows.firstOrNull().orEmpty().ifBlank { service.getString(R.string.overlay_no_previous_call) }
         val remainingInfoRows = infoRows.drop(1)
 
         val card = LinearLayout(service).apply {
