@@ -39,6 +39,6 @@
 
         <include
             android:id="@+id/remoteSettingsSection"
-            layout="@layout/section_remote_settings" />
+            layout="@layout/section_remote_settings_compact" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
