@@ -13,7 +13,7 @@ object CallReportRuntime {
         CallReportContactsSyncBridge.ensureAccountAndRequestSync(context, force)
     }
 
-    fun fetchLookup(
+    internal fun fetchLookup(
         config: AppConfig,
         phone: String,
         direction: String,
