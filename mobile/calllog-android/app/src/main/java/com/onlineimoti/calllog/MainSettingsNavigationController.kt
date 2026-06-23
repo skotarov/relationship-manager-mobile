@@ -26,7 +26,7 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.APPLICATION) }
         binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.POPUP) }
         binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSection(SettingsSection.CALL_LOG) }
-        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.RM_CONTACTS) }
+        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.INTEGRATION) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
         binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
@@ -111,7 +111,7 @@ internal class MainSettingsNavigationController(
         APPLICATION(R.string.settings_application_section),
         POPUP(R.string.settings_popup_section),
         CALL_LOG(R.string.settings_call_log_section),
-        RM_CONTACTS(R.string.settings_crm_section),
+        INTEGRATION(R.string.settings_integration_section),
         SERVER(R.string.settings_server_section),
         DATA_ARCHIVE(R.string.settings_storage_section),
         DEBUG(R.string.settings_debug_section);
@@ -121,7 +121,7 @@ internal class MainSettingsNavigationController(
                 APPLICATION -> binding.settingsApplicationGroup.root
                 POPUP -> binding.settingsPopupGroup.root
                 CALL_LOG -> binding.settingsCallLogGroup.root
-                RM_CONTACTS -> binding.settingsRmContactsGroup.root
+                INTEGRATION -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
                 DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
