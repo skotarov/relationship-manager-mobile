@@ -48,5 +48,9 @@
         <include
             android:id="@+id/testsSection"
             layout="@layout/section_tests" />
+
+        <include
+            android:id="@+id/serverTestsSection"
+            layout="@layout/section_server_tests" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
