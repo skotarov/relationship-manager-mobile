@@ -21,9 +21,9 @@ class CallReportSyncWorker(
         }
 
         val events = buildList {
-            PhoneCallReader.recentCalls(applicationContext, limit = CALL_SYNC_LIMIT)
+            CallReportProviderEventReader.recentPhoneEvents(applicationContext, CALL_SYNC_LIMIT)
                 .mapNotNullTo(this) { call -> CallReportSyncEventFactory.fromPhoneCall(applicationContext, call) }
-            SmsMessageReader.recentMessages(applicationContext, limit = SMS_SYNC_LIMIT)
+            CallReportProviderEventReader.recentSmsEvents(applicationContext, SMS_SYNC_LIMIT)
                 .mapNotNullTo(this) { sms -> CallReportSyncEventFactory.fromSms(applicationContext, sms) }
         }
             .distinctBy { event -> event.clientEventId }
