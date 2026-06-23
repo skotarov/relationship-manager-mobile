@@ -8,6 +8,7 @@ object MainSettingsConfigUi {
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
+        val defaultSms = binding.defaultSmsSection
         val contactLink = binding.contactLinkSection
         val language = binding.languageSettingsSection
         val tests = binding.testsSection
@@ -17,7 +18,7 @@ object MainSettingsConfigUi {
         popupFilter.notifyUnknownContactsCheckBox.isChecked = config.notifyUnknownContacts
         popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
-        callLog.useInternalSmsComposerCheckBox.isChecked = config.useInternalSmsComposer
+        defaultSms.useInternalSmsComposerCheckBox.isChecked = config.useInternalSmsComposer
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
         when (config.postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> popup.postCallEndActionHistory.isChecked = true
@@ -53,6 +54,7 @@ object MainSettingsConfigUi {
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
+        val defaultSms = binding.defaultSmsSection
         val contactLink = binding.contactLinkSection
         val language = binding.languageSettingsSection
         val tests = binding.testsSection
@@ -93,7 +95,7 @@ object MainSettingsConfigUi {
             showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
             useLocalNotesStorage = currentConfig.useLocalNotesStorage,
             useFullScreenPopup = currentConfig.useFullScreenPopup,
-            useInternalSmsComposer = callLog.useInternalSmsComposerCheckBox.isChecked,
+            useInternalSmsComposer = defaultSms.useInternalSmsComposerCheckBox.isChecked,
         )
     }
 }
