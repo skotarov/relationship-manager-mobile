@@ -1,11 +1,10 @@
 # Relationship Management Mobile
 
-Mobile prototype and CI setup for the OnlineImoti relationship management workflow.
+Android application repository for the OnlineImoti relationship management workflow.
 
 ## Structure
 
-- `mobile/calllog-android/` - Android prototype app
-- `broker/callreport/` - server-side notes and integration docs
+- `mobile/calllog-android/` - Android application source
 - `.github/workflows/android-build.yml` - GitHub Actions build for debug APK
 
 ## Android build
@@ -14,6 +13,8 @@ The repository builds the Android app in GitHub Actions on `ubuntu-latest` with 
 
 After a successful workflow run, download the `relationship-management-debug-apk` artifact.
 
-## Notes
+## Server-side repository
 
-The Android app is intentionally a thin native wrapper around the remote PHP flow hosted under `/broker/callreport/`.
+The PHP/HTML/CSS/JS server-side source for the remote flow under `/broker/callreport/` lives in:
+
+- `skotarov/relationship-manager-server`
