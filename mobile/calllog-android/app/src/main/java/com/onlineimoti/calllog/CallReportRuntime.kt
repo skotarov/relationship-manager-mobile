@@ -13,8 +13,13 @@ object CallReportRuntime {
         CallReportContactsSyncBridge.ensureAccountAndRequestSync(context, force)
     }
 
-    fun fetchLookup(config: AppConfig, phone: String, direction: String): LookupResult {
-        return CallReportLookupClient.fetchLookup(config, phone, direction)
+    fun fetchLookup(
+        config: AppConfig,
+        phone: String,
+        direction: String,
+        context: CallReportLookupContext = CallReportLookupContext(),
+    ): LookupResult {
+        return CallReportLookupClient.fetchLookup(config, phone, direction, context)
     }
 
     fun showLoadingLookupNotification(context: Context, phone: String, direction: String, title: String = "Loading", fullscreen: Boolean = false) {
