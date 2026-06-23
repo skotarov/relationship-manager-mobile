@@ -17,6 +17,7 @@ internal class MainSettingsAutoSaveController(
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
+        val defaultSms = binding.defaultSmsSection
         val contactLink = binding.contactLinkSection
         val language = binding.languageSettingsSection
         val tests = binding.testsSection
@@ -39,7 +40,7 @@ internal class MainSettingsAutoSaveController(
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
         popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
-        callLog.useInternalSmsComposerCheckBox.autoSaveCheckedChanges()
+        defaultSms.useInternalSmsComposerCheckBox.autoSaveCheckedChanges()
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.showBulkContactSyncNotificationsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
