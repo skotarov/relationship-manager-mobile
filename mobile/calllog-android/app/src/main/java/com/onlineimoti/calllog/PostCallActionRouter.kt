@@ -23,12 +23,11 @@ internal object PostCallActionRouter {
                 }
             }
             else -> {
-                // A server form is authoritative for remote mode. Do not silently fall back to a
-                // local-only note when the server already supplied a concrete event URL.
-                if (formUrl.isNotBlank()) {
-                    openRemoteForm(context, formUrl, phone, direction)
-                } else if (shouldUseOverlay(context, config)) {
+                // With overlay enabled retain the post-call bubble. Its tap opens the server form.
+                if (shouldUseOverlay(context, config)) {
                     startOverlay(context, formUrl, phone, direction, title)
+                } else if (formUrl.isNotBlank()) {
+                    openRemoteForm(context, formUrl, phone, direction)
                 } else {
                     CallNoteEditorLauncher.startEditor(
                         context = context,
