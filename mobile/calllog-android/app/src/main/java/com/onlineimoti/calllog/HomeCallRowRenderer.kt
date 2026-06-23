@@ -10,6 +10,7 @@ import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -164,6 +165,26 @@ internal class HomeCallRowRenderer(
                 }
             })
         }
+
+        // All visible rows are queued for one notes_lookup.php batch before this slot is populated.
+        val serverNoteSlot = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(5)
+            }
+        }
+        textColumn.addView(serverNoteSlot)
+        HomeServerNotesLoader.load(activity, call.number) { note ->
+            if (note == null || note.lastNote.isBlank() || activity.isFinishing || activity.isDestroyed) return@load
+            serverNoteSlot.removeAllViews()
+            serverNoteSlot.addView(serverNoteView(note, highlightQuery))
+            serverNoteSlot.visibility = View.VISIBLE
+        }
+
         row.addView(textColumn)
 
         if (showQuickActions || !call.isSms) {
@@ -210,6 +231,28 @@ internal class HomeCallRowRenderer(
 
         card.addView(row)
         return card
+    }
+
+    private fun serverNoteView(note: CallReportServerNote, highlightQuery: String): TextView {
+        val textColor = Color.rgb(30, 64, 105)
+        val attribution = note.authorBrokerName.takeIf { value -> value.isNotBlank() }
+            ?.let { value -> "Сървърна бележка · $value" }
+            ?: "Сървърна бележка"
+        return TextView(activity).apply {
+            text = "${highlightedText(note.lastNote, highlightQuery, textColor)}\n$attribution"
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+            compoundDrawablePadding = dp(5)
+            setTextColor(textColor)
+            textSize = 12.5f
+            maxLines = 4
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = roundedRect(
+                Color.rgb(239, 246, 255),
+                dp(9),
+                Color.rgb(147, 197, 253),
+                dp(1),
+            )
+        }
     }
 
     private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
