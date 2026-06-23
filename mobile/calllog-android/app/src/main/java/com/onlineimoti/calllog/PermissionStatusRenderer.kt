@@ -73,20 +73,6 @@ internal object PermissionStatusRenderer {
             enable = { setScreening(activity, binding, true) },
             disable = { setScreening(activity, binding, false) },
         )
-
-        val defaultSms = SmsRoleController.isDefaultSmsApp(activity)
-        rows += Row(
-            label = "Default SMS",
-            state = if (defaultSms) State.ACTIVE else State.MISSING,
-            enable = { activity.requestDefaultSmsRoleFromSummary() },
-            disable = { openDefaults(activity) },
-        )
-        if (defaultSms) {
-            runtime("SMS receive", Manifest.permission.RECEIVE_SMS)
-            runtime("SMS read", Manifest.permission.READ_SMS)
-            runtime("SMS send", Manifest.permission.SEND_SMS)
-        }
-
         rows += Row(
             label = "Full-screen popup",
             state = fullScreenState,
@@ -209,10 +195,6 @@ internal object PermissionStatusRenderer {
         activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.parse("package:${activity.packageName}")
         })
-    }
-
-    private fun openDefaults(activity: MainActivity) {
-        activity.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
     }
 
     private fun toast(activity: MainActivity, message: String) {
