@@ -61,7 +61,7 @@
         android:layout_marginTop="8dp"
         android:gravity="center_vertical"
         android:minHeight="52dp"
-        android:text="@string/settings_crm_section"
+        android:text="@string/settings_integration_section"
         app:icon="@drawable/ic_settings_rm_contacts"
         app:iconGravity="textStart"
         app:iconPadding="14dp"
