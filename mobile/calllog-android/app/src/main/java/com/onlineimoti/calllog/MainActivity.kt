@@ -130,6 +130,13 @@ class MainActivity : AppCompatActivity() {
         settingsAutoSaveController.wire()
         defaultSmsSettingsController.wire()
         wireSettingsActions()
+        MainServerTestsController(
+            activity = this,
+            binding = binding,
+            executor = executor,
+            saveConfig = ::saveConfig,
+            setStatus = ::setStatus,
+        ).wire()
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
         defaultSmsSettingsController.refresh()
