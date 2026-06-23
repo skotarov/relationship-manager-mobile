@@ -196,7 +196,16 @@ class PostCallOverlayService : Service() {
         when (ConfigStore.load(this).postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> openContactNotesScreen()
             ConfigStore.POST_CALL_END_ACTION_NOTHING -> stopSelf()
-            else -> showNoteEditor()
+            else -> {
+                val remoteFormUrl = state.formUrl.trim()
+                if (remoteFormUrl.isNotBlank()) {
+                    removeOverlay()
+                    PostCallActionRouter.openRemoteForm(this, remoteFormUrl, state.phone, state.direction)
+                    stopSelf()
+                } else {
+                    showNoteEditor()
+                }
+            }
         }
     }
 
