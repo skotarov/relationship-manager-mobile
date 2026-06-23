@@ -49,6 +49,8 @@ class CallStateReceiver : BroadcastReceiver() {
     private fun handleCallEnded(context: Context, hasCallLog: Boolean) {
         val endedCall = CallLifecycleStore.takeEndedCall(context) ?: latestEndedCallFromLog(context, hasCallLog) ?: return
         if (!CallStateDeduper.markHandled(context, endedCall.number, "${endedCall.direction}_ended")) return
+        // The CallLog row may arrive shortly after PHONE_STATE_IDLE. The worker waits and then reads it.
+        CallReportSyncScheduler.enqueueCatchUp(context.applicationContext, reason = "call_ended", initialDelayMillis = 2_500L)
         showPostCallPrompt(context, endedCall.number, endedCall.direction)
     }
 
@@ -92,6 +94,10 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
                 val title = displayName.ifNullOrBlank { number }
+                val lookupContext = CallReportLookupContext(
+                    communicationType = "phone",
+                    contactName = displayName.orEmpty(),
+                )
 
                 CallReportRuntime.ensureNotificationChannel(context)
 
@@ -124,7 +130,7 @@ class CallStateReceiver : BroadcastReceiver() {
                     direction = direction,
                 )
 
-                val result = CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                val result = CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
                     if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
                 }
                 LookupPopupPresenter.show(
@@ -178,18 +184,21 @@ class CallStateReceiver : BroadcastReceiver() {
                     return@execute
                 }
 
+                val lookupContext = CallReportSyncEventFactory.latestPhoneCallContext(context, number, direction)
+                val fallbackParams = linkedMapOf(
+                    "phone" to number,
+                    "direction" to direction,
+                    "access_token" to config.accessToken,
+                )
+                fallbackParams.putAll(lookupContext.asQueryParameters())
                 val fallbackFormUrl = buildEndpoint(
                     baseUrl = config.baseUrl,
                     path = config.formPath,
-                    params = linkedMapOf(
-                        "phone" to number,
-                        "direction" to direction,
-                        "access_token" to config.accessToken,
-                    )
+                    params = fallbackParams,
                 )
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
                 val result = runCatching {
-                    CallReportRuntime.fetchLookup(config, number, direction).let { lookup ->
+                    CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
                         if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
                     }
                 }.getOrElse {
