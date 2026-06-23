@@ -1,8 +1,10 @@
 package com.onlineimoti.calllog
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -33,6 +35,9 @@ class WebViewActivity : AppCompatActivity() {
         binding.webView.settings.javaScriptEnabled = true
         binding.webView.settings.domStorageEnabled = true
         binding.webView.settings.loadsImagesAutomatically = true
+        binding.webView.settings.allowFileAccess = false
+        binding.webView.settings.allowContentAccess = false
+        binding.webView.addJavascriptInterface(CallReportBridge(), "CallReportBridge")
         binding.webView.webChromeClient = WebChromeClient()
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -52,10 +57,21 @@ class WebViewActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (::binding.isInitialized) binding.webView.removeJavascriptInterface("CallReportBridge")
         if (popupPhone.isNotBlank()) {
             CallPopupTracker.markPopupClosed(this, popupPhone, popupDirection)
         }
         super.onDestroy()
+    }
+
+    private inner class CallReportBridge {
+        @JavascriptInterface
+        fun closeWithMessage(message: String) {
+            runOnUiThread {
+                sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+                finish()
+            }
+        }
     }
 
     companion object {
