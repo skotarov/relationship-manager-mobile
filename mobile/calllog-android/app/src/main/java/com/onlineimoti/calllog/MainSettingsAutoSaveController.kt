@@ -17,7 +17,7 @@ internal class MainSettingsAutoSaveController(
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
         val callLog = binding.callLogSettingsSection
-        val defaultSms = binding.defaultSmsSection
+        val defaultSms = binding.settingsRmContactsGroup.defaultSmsSection
         val contactLink = binding.contactLinkSection
         val language = binding.languageSettingsSection
         val tests = binding.testsSection
