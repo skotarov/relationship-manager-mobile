@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_integration_section">Интеграция</string>
+    <string name="default_sms_section_title">Дефолт СМС</string>
+    <string name="default_sms_section_description">Избери RM за SMS приложение по подразбиране, провери SMS разрешенията му или отвори Android настройките за приложенията по подразбиране.</string>
+    <string name="default_sms_status_active">RM е SMS приложението по подразбиране.</string>
+    <string name="default_sms_status_inactive">RM не е SMS приложението по подразбиране.</string>
+    <string name="default_sms_activate_button">Активирай като Дефолт СМС</string>
+    <string name="default_sms_permissions_button">Провери SMS разрешенията</string>
+    <string name="default_sms_manage_button">Управление в Android</string>
+    <string name="default_sms_permissions_checked">SMS разрешенията са проверени.</string>
+</resources>
