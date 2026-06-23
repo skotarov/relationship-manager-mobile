@@ -12,7 +12,7 @@ internal class DefaultSmsSettingsController(
     private val setStatus: (String) -> Unit,
 ) {
     fun wire() {
-        val sms = binding.defaultSmsSection
+        val sms = binding.settingsRmContactsGroup.defaultSmsSection
         sms.defaultSmsRoleButton.setOnClickListener {
             if (SmsRoleController.isDefaultSmsApp(activity)) {
                 requestSmsPermissions()
@@ -27,7 +27,7 @@ internal class DefaultSmsSettingsController(
     }
 
     fun refresh() {
-        val sms = binding.defaultSmsSection
+        val sms = binding.settingsRmContactsGroup.defaultSmsSection
         val active = SmsRoleController.isDefaultSmsApp(activity)
         sms.defaultSmsStatusText.text = activity.getString(
             if (active) R.string.default_sms_status_active else R.string.default_sms_status_inactive,
