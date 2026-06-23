@@ -25,6 +25,8 @@ internal object PostCallActionRouter {
             else -> {
                 if (shouldUseOverlay(context, config)) {
                     startOverlay(context, formUrl, phone, direction, title)
+                } else if (formUrl.isNotBlank()) {
+                    openRemoteForm(context, formUrl, phone, direction)
                 } else {
                     CallNoteEditorLauncher.startEditor(
                         context = context,
@@ -37,6 +39,17 @@ internal object PostCallActionRouter {
                 }
             }
         }
+    }
+
+    fun openRemoteForm(context: Context, formUrl: String, phone: String, direction: String) {
+        if (formUrl.isBlank()) return
+        context.startActivity(
+            Intent(context, WebViewActivity::class.java)
+                .putExtra(WebViewActivity.EXTRA_URL, formUrl)
+                .putExtra(WebViewActivity.EXTRA_PHONE, phone)
+                .putExtra(WebViewActivity.EXTRA_DIRECTION, direction)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 
     private fun shouldUseOverlay(context: Context, config: AppConfig): Boolean {
