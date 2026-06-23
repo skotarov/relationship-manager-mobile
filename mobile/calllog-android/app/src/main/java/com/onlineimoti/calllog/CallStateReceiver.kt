@@ -168,19 +168,18 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
                 if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) return@execute
 
-                if (!config.useOverlayPopups || !config.useCustomEndPopup || !Settings.canDrawOverlays(context)) {
-                    routeLocalPostCall(context, number, direction, config)
-                    return@execute
-                }
-
                 if (!remoteReady(config)) {
-                    CallReportRuntime.showImmediatePostCallPrompt(
-                        context = context,
-                        formUrl = "",
-                        phone = number,
-                        direction = direction,
-                        title = "Локални действия след разговора",
-                    )
+                    if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
+                        CallReportRuntime.showImmediatePostCallPrompt(
+                            context = context,
+                            formUrl = "",
+                            phone = number,
+                            direction = direction,
+                            title = "Локални действия след разговора",
+                        )
+                    } else {
+                        routeLocalPostCall(context, number, direction, config)
+                    }
                     return@execute
                 }
 
