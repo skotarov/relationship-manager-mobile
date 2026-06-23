@@ -3,10 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import java.util.UUID
 
-/**
- * Canonical Android representation of one server-side communication event.
- * The provider row id is part of clientEventId so a catch-up sync is idempotent.
- */
+/** Canonical Android representation of one server-side communication event. */
 internal data class CallReportSyncEvent(
     val clientEventId: String,
     val communicationType: String,
@@ -64,44 +61,57 @@ internal object CallReportInstallationId {
 }
 
 internal object CallReportSyncEventFactory {
-    fun fromPhoneCall(context: Context, call: PhoneCallRecord): CallReportSyncEvent? {
-        val providerId = call.providerId.trim()
-        val phone = call.number.trim()
-        if (providerId.isBlank() || phone.isBlank() || call.startedAt <= 0L) return null
+    fun fromPhoneCall(context: Context, call: CallReportProviderEventReader.PhoneEvent): CallReportSyncEvent? =
+        fromProviderEvent(
+            context = context,
+            type = "phone",
+            providerId = call.providerId,
+            phone = call.phone,
+            contactName = call.contactName,
+            direction = call.direction,
+            status = call.status,
+            occurredAtMs = call.occurredAtMs,
+            durationSeconds = call.durationSeconds,
+        )
+
+    fun fromSms(context: Context, sms: CallReportProviderEventReader.SmsEvent): CallReportSyncEvent? =
+        fromProviderEvent(
+            context = context,
+            type = "sms",
+            providerId = sms.providerId,
+            phone = sms.phone,
+            contactName = "",
+            direction = sms.direction,
+            status = sms.status,
+            occurredAtMs = sms.occurredAtMs,
+            durationSeconds = 0L,
+        )
+
+    private fun fromProviderEvent(
+        context: Context,
+        type: String,
+        providerId: String,
+        phone: String,
+        contactName: String,
+        direction: String,
+        status: String,
+        occurredAtMs: Long,
+        durationSeconds: Long,
+    ): CallReportSyncEvent? {
+        if (providerId.isBlank() || phone.isBlank() || occurredAtMs <= 0L) return null
         val deviceId = CallReportInstallationId.get(context)
-        val contactName = call.name.trim().ifBlank {
+        val resolvedName = contactName.trim().ifBlank {
             ContactGroupFilter.resolveDisplayName(context, phone).orEmpty().trim()
         }
         return CallReportSyncEvent(
-            clientEventId = "$deviceId:phone:$providerId",
-            communicationType = "phone",
-            direction = call.direction.ifBlank { "in" },
-            status = call.status.ifBlank { "answered" },
+            clientEventId = "$deviceId:$type:$providerId",
+            communicationType = type,
+            direction = direction,
+            status = status,
             phone = phone,
-            contactName = contactName,
-            occurredAtMs = call.startedAt,
-            durationSeconds = call.durationSeconds.coerceAtLeast(0L),
-            providerRowId = providerId,
-            deviceId = deviceId,
-            appVersion = BuildConfig.VERSION_NAME,
-        )
-    }
-
-    fun fromSms(context: Context, sms: SmsMessageRecord): CallReportSyncEvent? {
-        val providerId = sms.providerId.trim()
-        val phone = sms.address.trim()
-        if (providerId.isBlank() || phone.isBlank() || sms.timestampMs <= 0L) return null
-        val deviceId = CallReportInstallationId.get(context)
-        val contactName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty().trim()
-        return CallReportSyncEvent(
-            clientEventId = "$deviceId:sms:$providerId",
-            communicationType = "sms",
-            direction = if (sms.isOutgoing) "out" else "in",
-            status = sms.status,
-            phone = phone,
-            contactName = contactName,
-            occurredAtMs = sms.timestampMs,
-            durationSeconds = 0L,
+            contactName = resolvedName,
+            occurredAtMs = occurredAtMs,
+            durationSeconds = durationSeconds.coerceAtLeast(0L),
             providerRowId = providerId,
             deviceId = deviceId,
             appVersion = BuildConfig.VERSION_NAME,
@@ -109,18 +119,15 @@ internal object CallReportSyncEventFactory {
     }
 
     fun latestPhoneCallContext(context: Context, phone: String, direction: String): CallReportLookupContext {
-        val latest = PhoneCallReader.callsForPhone(context, phone, limit = 5)
-            .firstOrNull { item -> direction.isBlank() || item.direction == direction }
-        if (latest != null) {
-            return fromPhoneCall(context, latest)?.toLookupContext()
-                ?: CallReportLookupContext(
-                    communicationType = "phone",
-                    status = latest.status,
-                    contactName = latest.name.trim(),
-                    occurredAtMs = latest.startedAt,
-                    durationSeconds = latest.durationSeconds,
-                )
-        }
+        val latest = CallReportProviderEventReader.recentPhoneEvents(context, 8)
+            .firstOrNull { item -> PhoneNormalizer.samePhone(item.phone, phone) && (direction.isBlank() || item.direction == direction) }
+        if (latest != null) return fromPhoneCall(context, latest)?.toLookupContext() ?: CallReportLookupContext(
+            communicationType = "phone",
+            status = latest.status,
+            contactName = latest.contactName,
+            occurredAtMs = latest.occurredAtMs,
+            durationSeconds = latest.durationSeconds,
+        )
         return CallReportLookupContext(
             communicationType = "phone",
             contactName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty().trim(),
