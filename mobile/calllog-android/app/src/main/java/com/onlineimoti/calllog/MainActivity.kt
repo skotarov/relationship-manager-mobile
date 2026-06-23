@@ -42,6 +42,16 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val defaultSmsSettingsController by lazy {
+        DefaultSmsSettingsController(
+            activity = this,
+            binding = binding,
+            requestDefaultRole = ::requestDefaultSmsRole,
+            requestSmsPermissions = ::requestSmsPermissions,
+            setStatus = ::setStatus,
+        )
+    }
+
     private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
@@ -72,21 +82,17 @@ class MainActivity : AppCompatActivity() {
         val active = SmsRoleController.isDefaultSmsApp(this)
         if (active) {
             setStatus(getString(R.string.settings_sms_role_active))
-            smsPermissionsLauncher.launch(
-                arrayOf(
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.READ_SMS,
-                    Manifest.permission.SEND_SMS,
-                )
-            )
+            requestSmsPermissions()
         } else {
             setStatus(getString(R.string.settings_sms_role_not_changed))
         }
         refreshPermissionSummary()
+        defaultSmsSettingsController.refresh()
     }
 
     private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         refreshPermissionSummary()
+        defaultSmsSettingsController.refresh()
     }
 
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -122,9 +128,11 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
+        defaultSmsSettingsController.wire()
         wireSettingsActions()
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
+        defaultSmsSettingsController.refresh()
         permissionFlowController.start()
     }
 
@@ -133,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
+        defaultSmsSettingsController.refresh()
     }
 
     override fun onDestroy() {
@@ -202,6 +211,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestDefaultSmsRole() {
         SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
+    }
+
+    private fun requestSmsPermissions() {
+        smsPermissionsLauncher.launch(
+            arrayOf(
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.SEND_SMS,
+            )
+        )
     }
 
     private fun autoSaveSettings(): AppConfig {
