@@ -79,9 +79,11 @@ internal class FilteredFullLogController(
         val size = safePageSize()
         val pageCount = pageCount(size)
         pageIndex = pageIndex.coerceIn(0, pageCount - 1)
-        val pageEntries = if (loading) emptyList() else entries
-            .drop(pageIndex * size)
-            .take(size)
+        val pageEntries = if (loading) {
+            emptyList()
+        } else {
+            entries.drop(pageIndex * size).take(size)
+        }
 
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = if (loading) View.VISIBLE else View.GONE
@@ -94,7 +96,11 @@ internal class FilteredFullLogController(
         binding.homeStatusText.text = when {
             loading -> "Зареждам пълния лог…"
             errorText.isNotBlank() -> errorText
-            entries.isEmpty() -> if (remoteEnabled) "Няма локални или сървърни записи за този номер" else "Няма локални записи за този номер"
+            entries.isEmpty() -> if (remoteEnabled) {
+                "Няма локални или сървърни записи за този номер"
+            } else {
+                "Няма локални записи за този номер"
+            }
             else -> {
                 val first = pageIndex * size + 1
                 val last = first + pageEntries.size - 1
@@ -234,17 +240,21 @@ internal class FilteredFullLogController(
 
     private fun rowView(phone: String, entry: FullLogEntry, remoteEnabled: Boolean): MaterialCardView {
         val row = entry.row
-        val foreignNote = remoteEnabled && isForeignNote(row)
+        val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val localCall = row.localCall
         val localNote = row.localNote
-        val editableAttachedNote = entry.attachedNotes.firstOrNull { it.localNote != null && it.editable }
+        val editableAttachedNote = if (foreignRecord) {
+            null
+        } else {
+            entry.attachedNotes.firstOrNull { it.localNote != null && it.editable && !it.authorIsOtherBroker }
+        }
         val backgroundColor = when {
-            foreignNote -> Color.rgb(248, 250, 252)
+            foreignRecord -> FOREIGN_BACKGROUND
             row.kind == CallReportHistoryRowKind.NOTE -> NoteUiStyle.Call.background
             else -> activity.getColor(R.color.calllog_surface)
         }
         val borderColor = when {
-            foreignNote -> Color.rgb(203, 213, 225)
+            foreignRecord -> FOREIGN_BORDER
             row.kind == CallReportHistoryRowKind.NOTE -> NoteUiStyle.Call.border
             else -> activity.getColor(R.color.calllog_border)
         }
@@ -269,7 +279,15 @@ internal class FilteredFullLogController(
             column.addView(TextView(activity).apply {
                 text = row.text
                 textSize = 14.5f
-                setTextColor(if (row.kind == CallReportHistoryRowKind.NOTE) NoteUiStyle.Call.text else activity.getColor(R.color.calllog_text))
+                setTextColor(
+                    if (foreignRecord) {
+                        FOREIGN_TEXT
+                    } else if (row.kind == CallReportHistoryRowKind.NOTE) {
+                        NoteUiStyle.Call.text
+                    } else {
+                        activity.getColor(R.color.calllog_text)
+                    },
+                )
                 if (row.kind == CallReportHistoryRowKind.NOTE) setTypeface(typeface, Typeface.BOLD)
                 setPadding(0, dp(5), 0, 0)
             })
@@ -277,7 +295,6 @@ internal class FilteredFullLogController(
         if (remoteEnabled) {
             addServerAuthor(column, row)
             addServerVersionNotice(column, row)
-            addReadOnlyNotice(column, row)
         }
 
         entry.attachedNotes.forEach { note ->
@@ -285,19 +302,19 @@ internal class FilteredFullLogController(
         }
 
         when {
-            row.kind == CallReportHistoryRowKind.NOTE && localNote != null && row.editable -> {
+            !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && localNote != null && row.editable -> {
                 card.isClickable = true
                 card.isFocusable = true
                 card.setOnClickListener { openNoteEditor(phone, localNote) }
             }
-            row.kind == CallReportHistoryRowKind.PHONE && localCall != null -> {
+            !foreignRecord && row.kind == CallReportHistoryRowKind.PHONE && localCall != null -> {
                 card.isClickable = true
                 card.isFocusable = true
                 card.setOnClickListener { openContactNotes(localCall, localCall.displayName) }
             }
         }
 
-        if (row.kind == CallReportHistoryRowKind.PHONE && localCall != null) {
+        if (!foreignRecord && row.kind == CallReportHistoryRowKind.PHONE && localCall != null) {
             card.addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -316,11 +333,11 @@ internal class FilteredFullLogController(
     }
 
     private fun attachedNoteView(phone: String, note: CallReportHistoryRow, remoteEnabled: Boolean): LinearLayout {
-        val foreignNote = remoteEnabled && isForeignNote(note)
+        val foreignRecord = remoteEnabled && note.authorIsOtherBroker
         val localNote = note.localNote
-        val backgroundColor = if (foreignNote) Color.rgb(248, 250, 252) else NoteUiStyle.Call.background
-        val borderColor = if (foreignNote) Color.rgb(203, 213, 225) else NoteUiStyle.Call.border
-        val textColor = if (foreignNote) Color.rgb(71, 85, 105) else NoteUiStyle.Call.text
+        val backgroundColor = if (foreignRecord) FOREIGN_BACKGROUND else NoteUiStyle.Call.background
+        val borderColor = if (foreignRecord) FOREIGN_BORDER else NoteUiStyle.Call.border
+        val textColor = if (foreignRecord) FOREIGN_TEXT else NoteUiStyle.Call.text
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
@@ -329,7 +346,7 @@ internal class FilteredFullLogController(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(8) }
-            if (localNote != null && note.editable) {
+            if (!foreignRecord && localNote != null && note.editable) {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { openNoteEditor(phone, localNote) }
@@ -347,7 +364,6 @@ internal class FilteredFullLogController(
             if (remoteEnabled) {
                 addServerAuthor(this, note)
                 addServerVersionNotice(this, note)
-                addReadOnlyNotice(this, note)
             }
         }
     }
@@ -390,37 +406,23 @@ internal class FilteredFullLogController(
     }
 
     private fun addServerAuthor(container: LinearLayout, row: CallReportHistoryRow) {
-        if (!row.hasServerCopy || row.authorName.isBlank()) return
+        if (!row.authorIsOtherBroker || row.authorName.isBlank()) return
         container.addView(TextView(activity).apply {
             text = "Записал: ${row.authorName}"
             textSize = 12f
-            setTextColor(Color.rgb(100, 116, 139))
+            setTextColor(FOREIGN_TEXT)
             setPadding(0, dp(6), 0, 0)
         })
     }
 
     private fun addServerVersionNotice(container: LinearLayout, row: CallReportHistoryRow) {
-        if (!row.serverNewer) return
+        if (!row.serverNewer || row.authorIsOtherBroker) return
         container.addView(TextView(activity).apply {
             text = "По-нова версия на бележката е на сървъра"
             textSize = 12f
             setTextColor(Color.rgb(37, 99, 235))
             setPadding(0, dp(6), 0, 0)
         })
-    }
-
-    private fun addReadOnlyNotice(container: LinearLayout, row: CallReportHistoryRow) {
-        if (!isForeignNote(row)) return
-        container.addView(TextView(activity).apply {
-            text = "Бележка от ${row.authorName} · само за преглед"
-            textSize = 12f
-            setTextColor(Color.rgb(100, 116, 139))
-            setPadding(0, dp(6), 0, 0)
-        })
-    }
-
-    private fun isForeignNote(row: CallReportHistoryRow): Boolean {
-        return row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
     }
 
     private fun metaView(row: CallReportHistoryRow, remoteEnabled: Boolean): TextView {
@@ -441,9 +443,10 @@ internal class FilteredFullLogController(
         }
         return TextView(activity).apply {
             text = listOf(type, PhoneCallReader.formatStartedAt(row.timeMs), direction, duration)
-                .filter { it.isNotBlank() }.joinToString(" • ")
+                .filter { it.isNotBlank() }
+                .joinToString(" • ")
             textSize = 12.5f
-            setTextColor(Color.rgb(71, 85, 105))
+            setTextColor(if (row.authorIsOtherBroker) FOREIGN_TEXT else Color.rgb(71, 85, 105))
             setTypeface(typeface, Typeface.BOLD)
             val leftIcon = if (row.kind == CallReportHistoryRowKind.PHONE) callStatusIcon(row) else 0
             val rightIcon = if (remoteEnabled && row.hasServerCopy) R.drawable.ic_cloud_note else 0
@@ -472,5 +475,8 @@ internal class FilteredFullLogController(
         const val SOURCE_CALL_LIMIT = 200
         const val SOURCE_SMS_LIMIT = 100
         const val NOTE_CALL_MATCH_WINDOW_MS = 90_000L
+        val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
+        val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
+        val FOREIGN_TEXT: Int = Color.rgb(100, 116, 139)
     }
 }
