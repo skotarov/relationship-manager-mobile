@@ -85,7 +85,7 @@ internal object ServerRecordIndex {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CONFIRMED_IDS, array.toString())
-            .apply()
+            .commit()
     }
 
     private fun phoneKey(phone: String): String {
