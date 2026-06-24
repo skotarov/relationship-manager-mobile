@@ -50,6 +50,7 @@ object HomeCallPageLoader {
                 startedAt = sms.timestampMs,
                 durationSeconds = 0L,
                 smsBody = sms.body,
+                providerId = sms.providerId,
             )
         }
         val offset = pageIndex * pageSize
