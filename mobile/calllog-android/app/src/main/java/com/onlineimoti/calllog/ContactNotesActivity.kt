@@ -172,9 +172,16 @@ class ContactNotesActivity : Activity() {
         }
     }
 
-    /** Never rebuild every note operation on the UI thread. Only wake an existing durable outbox. */
+    /** Wakes the durable outbox and also adopts older main notes that predate the outbox. */
     private fun retryPendingNoteSyncIfEnabled() {
-        if (phone.isBlank() || !CrmContactSyncStore.isEnabled(this, phone)) return
+        if (phone.isBlank()) return
+        val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
+        val isGeneralPending = CallReportNoteOutbox.isGeneralPending(this, phone)
+        val hasGeneralServerCopy = ServerRecordIndex.isGeneralNoteConfirmed(this, phone) ||
+            CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
+        if (generalNote.isNotBlank() && !isGeneralPending && !hasGeneralServerCopy) {
+            CallReportNoteOutbox.enqueueGeneral(applicationContext, phone, generalNote)
+        }
         if (CallReportNoteOutbox.hasPending(applicationContext)) {
             CallReportNoteOutboxScheduler.enqueue(applicationContext, reason = "contact_notes_visible")
         }
