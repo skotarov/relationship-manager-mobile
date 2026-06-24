@@ -27,7 +27,7 @@
     <string name="settings_popup_section">Popup behavior</string>
     <string name="settings_crm_section">Relationship Management contacts</string>
     <string name="settings_permissions_section">Permissions</string>
-    <string name="settings_server_section">Server settings</string>
+    <string name="settings_server_section">CRM server</string>
     <string name="settings_debug_section">Debug / Tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, the server connection and WebView screens work correctly.</string>
 
