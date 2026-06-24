@@ -12,7 +12,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.concurrent.Executors
 
-/** Renders one combined local/server timeline for a contact. */
+/** Shows only notes and SMS for one contact; phone call rows stay on the Home Call Log screen. */
 internal class CallReportMergedHistoryController(
     private val activity: Activity,
     private val headerUi: ContactNotesHeaderUi,
@@ -26,7 +26,6 @@ internal class CallReportMergedHistoryController(
     private var started = false
     private var localLoading = false
     private var serverLoading = false
-    private var localCalls: List<PhoneCallRecord> = emptyList()
     private var localSms: List<SmsMessageRecord> = emptyList()
     private var localNotes: List<ContactCallNote> = emptyList()
     private var serverHistory = CallReportHistoryLookupResult()
@@ -49,7 +48,7 @@ internal class CallReportMergedHistoryController(
                     loadError = ""
                     ServerRecordIndex.markConfirmed(activity, it.events.map { event -> event.clientEventId })
                 }.onFailure {
-                    loadError = "Сървърната история не е заредена"
+                    loadError = "Сървърните бележки и SMS не са заредени"
                 }
                 rerender()
             }
@@ -62,14 +61,12 @@ internal class CallReportMergedHistoryController(
         executor.execute {
             val result = runCatching {
                 LocalSnapshot(
-                    calls = PhoneCallReader.callsForPhone(activity, phone, limit = 100),
                     sms = SmsMessageReader.messagesForPhone(activity, phone, limit = 150),
                     notes = ContactNoteReader.callNotesForPhone(activity, phone),
                 )
             }.getOrDefault(LocalSnapshot())
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
-                localCalls = result.calls
                 localSms = result.sms
                 localNotes = result.notes
                 localLoading = false
@@ -84,14 +81,18 @@ internal class CallReportMergedHistoryController(
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
+        val historyEvents = serverHistory.events.filter { event ->
+            event.communicationType.equals("sms", ignoreCase = true) ||
+                event.communicationType.equals("note", ignoreCase = true)
+        }
         val rows = CallReportHistoryMerge.merge(
             context = activity,
             phone = phone,
             principal = serverHistory.principal,
-            localCalls = localCalls,
+            localCalls = emptyList(),
             localSms = localSms,
             localNotes = localNotes,
-            serverEvents = serverHistory.events,
+            serverEvents = historyEvents,
         )
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -102,7 +103,7 @@ internal class CallReportMergedHistoryController(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(14) }
             addView(titleRow(openFilteredLog))
-            rows.forEach { row -> addView(historyRow(row, onEditCallNote)) }
+            rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote)) }
             addStatus(this, rows)
         })
     }
@@ -123,7 +124,7 @@ internal class CallReportMergedHistoryController(
                 layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
             })
             addView(TextView(activity).apply {
-                text = "Хронология"
+                text = "Бележки и SMS"
                 textSize = 16f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(30, 41, 59))
@@ -140,7 +141,11 @@ internal class CallReportMergedHistoryController(
         }
     }
 
-    private fun historyRow(row: CallReportHistoryRow, onEditCallNote: (ContactCallNote) -> Unit): LinearLayout {
+    private fun historyRow(
+        phone: String,
+        row: CallReportHistoryRow,
+        onEditCallNote: (ContactCallNote) -> Unit,
+    ): LinearLayout {
         val foreignNote = row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
         val colors = when {
             foreignNote -> Triple(Color.rgb(248, 250, 252), Color.rgb(203, 213, 225), Color.rgb(71, 85, 105))
@@ -168,7 +173,7 @@ internal class CallReportMergedHistoryController(
                     )
                 }
             }
-            addView(metaView(row))
+            addView(metaView(phone, row))
             if (row.text.isNotBlank()) {
                 addView(TextView(activity).apply {
                     text = row.text
@@ -197,26 +202,38 @@ internal class CallReportMergedHistoryController(
         }
     }
 
-    private fun metaView(row: CallReportHistoryRow): TextView {
+    private fun metaView(phone: String, row: CallReportHistoryRow): TextView {
         val kindText = when (row.kind) {
-            CallReportHistoryRowKind.PHONE -> "Телефон"
             CallReportHistoryRowKind.SMS -> "SMS"
-            CallReportHistoryRowKind.NOTE -> if (row.isServerOnly) "Сървърна бележка" else "Бележка"
+            CallReportHistoryRowKind.NOTE -> "Бележка"
+            CallReportHistoryRowKind.PHONE -> "Телефон"
         }
         val direction = when (row.direction) {
             "in" -> "входящ"
             "out" -> "изходящ"
             else -> ""
         }
-        val duration = if (row.kind == CallReportHistoryRowKind.PHONE) PhoneCallReader.formatDuration(row.durationSeconds) else ""
-        val status = row.status.ifBlank { "" }
+        val serverConfirmed = when (row.kind) {
+            CallReportHistoryRowKind.SMS -> row.hasServerCopy || row.localSms?.providerId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { providerId ->
+                    ServerRecordIndex.isConfirmed(
+                        activity,
+                        ServerRecordIndex.communicationEventId(activity, "sms", providerId),
+                    )
+                } == true
+            CallReportHistoryRowKind.NOTE -> row.hasServerCopy || row.localNote?.let { note ->
+                ServerRecordIndex.isCallNoteConfirmed(activity, phone, note)
+            } == true
+            CallReportHistoryRowKind.PHONE -> false
+        }
         return TextView(activity).apply {
-            text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), direction, duration, status)
+            text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), direction)
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
             setTextColor(Color.rgb(71, 85, 105))
             setTypeface(typeface, Typeface.BOLD)
-            if (row.hasServerCopy) {
+            if (serverConfirmed) {
                 setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
                 compoundDrawablePadding = dp(6)
             }
@@ -225,10 +242,10 @@ internal class CallReportMergedHistoryController(
 
     private fun addStatus(container: LinearLayout, rows: List<CallReportHistoryRow>) {
         when {
-            localLoading -> container.addView(status("Зареждам локалната история…"))
-            serverLoading -> container.addView(status("Добавям сървърната история…"))
+            localLoading -> container.addView(status("Зареждам SMS и бележки…"))
+            serverLoading -> container.addView(status("Добавям сървърни бележки и SMS…"))
             loadError.isNotBlank() -> container.addView(status(loadError))
-            rows.isEmpty() -> container.addView(status("Няма разговори, SMS или бележки за този номер"))
+            rows.isEmpty() -> container.addView(status("Няма SMS или бележки за този номер"))
         }
     }
 
@@ -240,7 +257,6 @@ internal class CallReportMergedHistoryController(
     }
 
     private data class LocalSnapshot(
-        val calls: List<PhoneCallRecord> = emptyList(),
         val sms: List<SmsMessageRecord> = emptyList(),
         val notes: List<ContactCallNote> = emptyList(),
     )
