@@ -154,6 +154,7 @@ object ConfigStore {
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, config.useFullScreenPopup)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, config.useInternalSmsComposer)
             .apply()
+        CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
 
     fun localeTagForLanguage(language: String): String {
