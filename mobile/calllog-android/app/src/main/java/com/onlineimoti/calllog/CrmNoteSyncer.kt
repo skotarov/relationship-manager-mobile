@@ -1,19 +1,14 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
-import java.util.concurrent.Executors
 
+/**
+ * Compatibility facade retained for existing note editors.
+ * Notes now enter the durable Call Report outbox instead of making a one-shot CRM request.
+ */
 internal object CrmNoteSyncer {
-    private val executor = Executors.newSingleThreadExecutor()
-
     fun syncGeneralIfEnabled(context: Context, phone: String, note: String) {
-        if (!CrmContactSyncStore.isEnabled(context, phone) || note.trim().isBlank()) return
-        val appContext = context.applicationContext
-        val config = ConfigStore.load(appContext)
-        val clientNoteId = "general-${phone.normalizePhoneKey()}"
-        executor.execute {
-            runCatching { CrmNoteSaveWithClientIdClient.saveGeneral(config, phone, note, clientNoteId) }
-        }
+        CallReportNoteOutbox.enqueueGeneral(context, phone, note)
     }
 
     fun syncCallIfEnabled(
@@ -25,24 +20,14 @@ internal object CrmNoteSyncer {
         durationSeconds: Long,
         clientNoteId: String = "",
     ) {
-        if (!CrmContactSyncStore.isEnabled(context, phone) || note.trim().isBlank()) return
-        val appContext = context.applicationContext
-        val config = ConfigStore.load(appContext)
-        val effectiveClientNoteId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
-        executor.execute {
-            runCatching {
-                CrmNoteSaveWithClientIdClient.saveCall(
-                    config = config,
-                    phone = phone,
-                    note = note,
-                    direction = direction,
-                    callAt = callAt,
-                    durationSeconds = durationSeconds,
-                    clientNoteId = effectiveClientNoteId,
-                )
-            }
-        }
+        CallReportNoteOutbox.enqueueCall(
+            context = context,
+            phone = phone,
+            note = note,
+            direction = direction,
+            callAt = callAt,
+            durationSeconds = durationSeconds,
+            clientNoteId = clientNoteId,
+        )
     }
-
-    private fun String.normalizePhoneKey(): String = filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
 }
