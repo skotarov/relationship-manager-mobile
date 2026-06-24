@@ -6,36 +6,29 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Sends persisted note operations only after Android reports a usable network. */
 class CallReportNoteOutboxWorker(
     appContext: Context,
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val config = ConfigStore.load(applicationContext)
-        // Keep the durable queue intact until server configuration is completed again.
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
             return@withContext Result.success()
         }
-
         try {
             while (CallReportNoteOutbox.hasPending(applicationContext)) {
-                val candidateBatch = CallReportNoteOutbox.takeBatch(applicationContext, MAX_BATCH_SIZE)
-                if (candidateBatch.isEmpty()) break
-
-                // The setting may be switched off between queue selection and the HTTP request.
-                val batch = candidateBatch.filter { operation ->
-                    CrmContactSyncStore.isEnabled(applicationContext, operation.phone)
-                }
-                val skippedIds = candidateBatch.map { operation -> operation.clientEventId }.toSet() -
-                    batch.map { operation -> operation.clientEventId }.toSet()
-                if (skippedIds.isNotEmpty()) {
-                    CallReportNoteOutbox.acknowledge(applicationContext, skippedIds)
-                }
+                val candidates = CallReportNoteOutbox.takeBatch(applicationContext, MAX_BATCH_SIZE)
+                if (candidates.isEmpty()) break
+                val batch = candidates.filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
+                val skipped = candidates.map { it.clientEventId }.toSet() - batch.map { it.clientEventId }.toSet()
+                if (skipped.isNotEmpty()) CallReportNoteOutbox.acknowledge(applicationContext, skipped)
                 if (batch.isEmpty()) continue
 
-                CallReportSyncClient.sync(config, batch.map { operation -> operation.toSyncEvent(applicationContext) })
-                CallReportNoteOutbox.acknowledge(applicationContext, batch.map { operation -> operation.clientEventId })
+                val confirmed = CallReportSyncClient.sync(config, batch.map { it.toSyncEvent(applicationContext) })
+                val expected = batch.map { it.clientEventId }.toSet()
+                if (!confirmed.containsAll(expected)) throw CallReportSyncException("Missing sync confirmations.", true)
+                ServerRecordIndex.markConfirmed(applicationContext, confirmed)
+                CallReportNoteOutbox.acknowledge(applicationContext, confirmed)
             }
             Result.success()
         } catch (error: CallReportSyncException) {
