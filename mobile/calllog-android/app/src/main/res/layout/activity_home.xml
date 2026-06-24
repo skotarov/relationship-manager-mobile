@@ -34,12 +34,15 @@
             android:src="@drawable/ic_search" />
 
         <ImageButton
-            android:id="@+id/defaultCallLogButton"
-            android:layout_width="1dp"
-            android:layout_height="1dp"
+            android:id="@+id/dialPadButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="4dp"
             android:background="@android:color/transparent"
-            android:contentDescription="@string/open_default_call_log"
-            android:visibility="gone" />
+            android:contentDescription="Keypad"
+            android:padding="10dp"
+            android:scaleType="center"
+            android:src="@drawable/ic_dial_pad" />
 
         <ImageButton
             android:id="@+id/settingsButton"
