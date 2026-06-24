@@ -36,6 +36,11 @@ internal class CallReportMergedHistoryController(
         if (started || phone.isBlank()) return
         started = true
         refreshLocal(phone)
+        refreshServer(phone)
+    }
+
+    fun refreshServer(phone: String) {
+        if (phone.isBlank() || serverLoading) return
         val config = ConfigStore.load(activity)
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) return
         serverLoading = true
@@ -193,6 +198,10 @@ internal class CallReportMergedHistoryController(
         onEditCallNote: (ContactCallNote) -> Unit,
     ): LinearLayout {
         val foreignNote = row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
+        val serverConfirmed = isServerConfirmed(phone, row)
+        val pendingNote = row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
+            CallReportNoteOutbox.isCallPending(activity, phone, it)
+        } == true
         val colors = when {
             foreignNote -> Triple(Color.rgb(248, 250, 252), Color.rgb(203, 213, 225), Color.rgb(71, 85, 105))
             row.kind == CallReportHistoryRowKind.NOTE -> Triple(NoteUiStyle.Call.background, NoteUiStyle.Call.border, NoteUiStyle.Call.text)
@@ -219,7 +228,7 @@ internal class CallReportMergedHistoryController(
                     )
                 }
             }
-            addView(metaView(phone, row))
+            addView(metaView(row, serverConfirmed))
             if (row.text.isNotBlank()) {
                 addView(TextView(activity).apply {
                     text = row.text
@@ -227,6 +236,15 @@ internal class CallReportMergedHistoryController(
                     setTextColor(colors.third)
                     if (row.kind == CallReportHistoryRowKind.NOTE) setTypeface(typeface, Typeface.BOLD)
                     setPadding(0, dp(5), 0, 0)
+                })
+            }
+            if (pendingNote && !serverConfirmed) {
+                val failure = CallReportNoteOutbox.lastFailure(activity)
+                addView(TextView(activity).apply {
+                    text = if (failure.isBlank()) "Чака сървърна синхронизация" else "Синхронизацията не е потвърдена: $failure"
+                    textSize = 12f
+                    setTextColor(if (failure.isBlank()) Color.rgb(100, 116, 139) else Color.rgb(185, 28, 28))
+                    setPadding(0, dp(6), 0, 0)
                 })
             }
             if (row.serverNewer) {
@@ -248,25 +266,21 @@ internal class CallReportMergedHistoryController(
         }
     }
 
-    private fun metaView(phone: String, row: CallReportHistoryRow): TextView {
+    private fun isServerConfirmed(phone: String, row: CallReportHistoryRow): Boolean = when (row.kind) {
+        CallReportHistoryRowKind.SMS -> row.hasServerCopy || row.localSms?.providerId
+            ?.takeIf { it.isNotBlank() }
+            ?.let { ServerRecordIndex.isConfirmed(activity, ServerRecordIndex.communicationEventId(activity, "sms", it)) } == true
+        CallReportHistoryRowKind.NOTE -> row.hasServerCopy || row.localNote?.let {
+            ServerRecordIndex.isCallNoteConfirmed(activity, phone, it)
+        } == true
+        CallReportHistoryRowKind.PHONE -> false
+    }
+
+    private fun metaView(row: CallReportHistoryRow, serverConfirmed: Boolean): TextView {
         val kindText = when (row.kind) {
             CallReportHistoryRowKind.SMS -> "SMS"
             CallReportHistoryRowKind.NOTE -> "Бележка"
             CallReportHistoryRowKind.PHONE -> "Телефон"
-        }
-        val serverConfirmed = when (row.kind) {
-            CallReportHistoryRowKind.SMS -> row.hasServerCopy || row.localSms?.providerId
-                ?.takeIf { it.isNotBlank() }
-                ?.let { providerId ->
-                    ServerRecordIndex.isConfirmed(
-                        activity,
-                        ServerRecordIndex.communicationEventId(activity, "sms", providerId),
-                    )
-                } == true
-            CallReportHistoryRowKind.NOTE -> row.hasServerCopy || row.localNote?.let { note ->
-                ServerRecordIndex.isCallNoteConfirmed(activity, phone, note)
-            } == true
-            CallReportHistoryRowKind.PHONE -> false
         }
         return TextView(activity).apply {
             text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), directionLabel(row.direction))
