@@ -24,7 +24,12 @@ class HomeActivity : AppCompatActivity() {
     private val searchExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
     private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
-    private val noteSavedReceiver by lazy { HomeNoteSavedReceiverController(this, ::renderCalls) }
+    private val noteSavedReceiver by lazy {
+        HomeNoteSavedReceiverController(this) {
+            filteredFullLogController.invalidate()
+            renderCalls()
+        }
+    }
     private val homeActions by lazy {
         HomeActions(
             activity = this,
@@ -61,6 +66,17 @@ class HomeActivity : AppCompatActivity() {
             togglePhoneFilter = ::togglePhoneFilter,
         )
     }
+    private val filteredFullLogController by lazy {
+        FilteredFullLogController(
+            activity = this,
+            binding = binding,
+            dp = ::dp,
+            roundedRect = ::roundedRect,
+            openContactNotes = homeActions::openContactNotesScreen,
+            openCallNoteEditor = homeActions::openContactNotePopupForCall,
+            onLoaded = ::renderCalls,
+        )
+    }
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
     private var noteRefreshUntilMs = 0L
@@ -70,6 +86,7 @@ class HomeActivity : AppCompatActivity() {
     private val noteRefreshRunnable = object : Runnable {
         override fun run() {
             if (System.currentTimeMillis() > noteRefreshUntilMs) return
+            filteredFullLogController.invalidate()
             renderCalls()
             handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
         }
@@ -122,6 +139,7 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         activeSearchQuery = ""
         pageIndex = 0
+        filteredFullLogController.invalidate()
         if (::binding.isInitialized) {
             binding.searchInput.setText("")
             renderCalls()
@@ -133,6 +151,7 @@ class HomeActivity : AppCompatActivity() {
         if (!::binding.isInitialized) return
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
+        if (activePhoneFilter.isNotBlank()) filteredFullLogController.invalidate()
         renderCalls()
     }
 
@@ -146,6 +165,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
         searchExecutor.shutdownNow()
+        filteredFullLogController.release()
         contactsSyncPreparer.release()
         super.onDestroy()
     }
@@ -165,6 +185,10 @@ class HomeActivity : AppCompatActivity() {
         }
         if (activeSearchQuery.isNotBlank()) {
             searchController.renderSearchCallsAsync()
+            return
+        }
+        if (activePhoneFilter.isNotBlank()) {
+            filteredFullLogController.render(activePhoneFilter)
             return
         }
         currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, size)
@@ -327,6 +351,7 @@ class HomeActivity : AppCompatActivity() {
         val key = HomeCallPageLoader.noteKey(number)
         activePhoneFilter = if (activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key) "" else number
         pageIndex = 0
+        filteredFullLogController.invalidate()
         renderCalls()
     }
 
@@ -334,6 +359,7 @@ class HomeActivity : AppCompatActivity() {
         if (activePhoneFilter.isBlank()) return
         activePhoneFilter = ""
         pageIndex = 0
+        filteredFullLogController.invalidate()
         renderCalls()
     }
 
