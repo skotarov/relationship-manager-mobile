@@ -10,6 +10,7 @@ internal data class SmsMessageRecord(
     val body: String,
     val timestampMs: Long,
     val type: Int,
+    val providerId: String = "",
 ) {
     val isOutgoing: Boolean
         get() = type == Telephony.Sms.MESSAGE_TYPE_SENT || type == Telephony.Sms.MESSAGE_TYPE_OUTBOX
@@ -37,8 +38,6 @@ internal object SmsMessageReader {
             if (exact.isNotEmpty()) {
                 exact
             } else {
-                // Some phones save an address with spaces or dashes. This fallback stays inside
-                // the SMS provider instead of copying thousands of unrelated rows into the app.
                 val lastDigits = targetPhone.filter { it.isDigit() }.takeLast(9)
                 if (lastDigits.length < 7) emptyList() else queryMessages(
                     context = context,
@@ -59,6 +58,7 @@ internal object SmsMessageReader {
         limit: Int,
     ): List<SmsMessageRecord> {
         val projection = arrayOf(
+            Telephony.Sms._ID,
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
@@ -72,6 +72,7 @@ internal object SmsMessageReader {
             selectionArgs,
             "${Telephony.Sms.DATE} DESC",
         )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
             val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
             val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
             val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
@@ -83,6 +84,7 @@ internal object SmsMessageReader {
                     body = cursor.getString(bodyIndex).orEmpty().trim(),
                     timestampMs = cursor.getLong(dateIndex),
                     type = cursor.getInt(typeIndex),
+                    providerId = cursor.getLong(idIndex).toString(),
                 )
             }
         }
