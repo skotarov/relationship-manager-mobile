@@ -64,10 +64,8 @@ internal object CallReportHistoryMerge {
                 direction = call.direction,
                 status = match?.status.orEmpty(),
                 durationSeconds = call.durationSeconds.takeIf { it > 0L } ?: match?.durationSeconds.orEmpty(),
-                text = match?.note.orEmpty(),
                 localCall = call,
                 serverEvent = match,
-                editable = false,
             )
         }
 
@@ -87,7 +85,6 @@ internal object CallReportHistoryMerge {
                 text = sms.body,
                 localSms = sms,
                 serverEvent = match,
-                editable = false,
             )
         }
 
