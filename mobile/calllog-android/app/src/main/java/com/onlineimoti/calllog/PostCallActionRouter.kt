@@ -13,21 +13,21 @@ internal object PostCallActionRouter {
         formUrl: String = "",
         config: AppConfig = ConfigStore.load(context),
     ) {
+        val allowedFormUrl = if (CrmContactSyncStore.isEnabled(context.applicationContext, phone)) formUrl else ""
         when (config.postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> {
                 if (shouldUseOverlay(context, config)) {
-                    startOverlay(context, formUrl, phone, direction, title)
+                    startOverlay(context, allowedFormUrl, phone, direction, title)
                 } else {
                     CallNoteEditorLauncher.startHistory(context, phone, title.ifBlank { phone.ifBlank { "История" } })
                 }
             }
             else -> {
-                // With overlay enabled retain the post-call bubble. Its tap opens the server form.
                 if (shouldUseOverlay(context, config)) {
-                    startOverlay(context, formUrl, phone, direction, title)
-                } else if (formUrl.isNotBlank()) {
-                    openRemoteForm(context, formUrl, phone, direction)
+                    startOverlay(context, allowedFormUrl, phone, direction, title)
+                } else if (allowedFormUrl.isNotBlank()) {
+                    openRemoteForm(context, allowedFormUrl, phone, direction)
                 } else {
                     CallNoteEditorLauncher.startEditor(
                         context = context,
