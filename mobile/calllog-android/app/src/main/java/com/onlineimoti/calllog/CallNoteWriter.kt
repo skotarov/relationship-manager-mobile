@@ -56,21 +56,21 @@ internal object CallNoteWriter {
         if (!result.saved) return
         if (result.savedAsGeneralNote) {
             RmLayerContactDataSyncer.sync(context, phone, noteOverride = text)
-            if (text.trim().isNotBlank()) CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
+            // A blank value is a real delete operation and must reach the durable server outbox.
+            CrmNoteSyncer.syncGeneralIfEnabled(context, phone, text)
         } else if (result.target.hasCall) {
             RmLayerContactDataSyncer.sync(context, phone)
-            if (text.trim().isNotBlank()) {
-                val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
-                CrmNoteSyncer.syncCallIfEnabled(
-                    context = context,
-                    phone = phone,
-                    note = text,
-                    direction = result.target.direction,
-                    callAt = result.target.callAt,
-                    durationSeconds = result.target.durationSeconds,
-                    clientNoteId = clientNoteId,
-                )
-            }
+            val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, result.target.callAt, result.target.direction)
+            // A blank value clears the note for the same stable call-note id on the server.
+            CrmNoteSyncer.syncCallIfEnabled(
+                context = context,
+                phone = phone,
+                note = text,
+                direction = result.target.direction,
+                callAt = result.target.callAt,
+                durationSeconds = result.target.durationSeconds,
+                clientNoteId = clientNoteId,
+            )
         }
     }
 
