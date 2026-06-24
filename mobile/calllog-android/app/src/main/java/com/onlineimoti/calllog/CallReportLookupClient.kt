@@ -14,6 +14,16 @@ internal object CallReportLookupClient {
         direction: String,
         context: CallReportLookupContext = CallReportLookupContext(),
     ): LookupResult {
+        // Server-off mode must never create a network connection, even when a caller
+        // accidentally reaches this client directly.
+        if (!CallReportRemoteAccess.isReady(config) || phone.isBlank()) {
+            return LookupResult(
+                title = phone,
+                subtitle = "",
+                lines = emptyList(),
+                openFormUrl = "",
+            )
+        }
         val params = linkedMapOf(
             "phone" to phone,
             "direction" to direction,
