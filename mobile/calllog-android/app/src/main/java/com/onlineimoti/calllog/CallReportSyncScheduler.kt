@@ -19,7 +19,7 @@ internal object CallReportSyncScheduler {
         val config = ConfigStore.load(context)
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) return
 
-        val request = OneTimeWorkRequestBuilder<CallReportSyncWorker>()
+        val request = OneTimeWorkRequestBuilder<EnabledContactCommunicationSyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setInputData(Data.Builder().putString(INPUT_REASON, reason).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
