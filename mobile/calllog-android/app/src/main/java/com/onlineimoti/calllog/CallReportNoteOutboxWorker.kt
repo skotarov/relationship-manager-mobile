@@ -13,6 +13,7 @@ class CallReportNoteOutboxWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val config = ConfigStore.load(applicationContext)
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+            CallReportNoteOutbox.recordFailure(applicationContext, "Липсва активна server конфигурация.")
             return@withContext Result.success()
         }
         try {
@@ -26,14 +27,17 @@ class CallReportNoteOutboxWorker(
 
                 val confirmed = CallReportSyncClient.sync(config, batch.map { it.toSyncEvent(applicationContext) })
                 val expected = batch.map { it.clientEventId }.toSet()
-                if (!confirmed.containsAll(expected)) throw CallReportSyncException("Missing sync confirmations.", true)
+                if (!confirmed.containsAll(expected)) throw CallReportSyncException("Сървърът не потвърди всички бележки.", true)
                 ServerRecordIndex.markConfirmed(applicationContext, confirmed)
                 CallReportNoteOutbox.acknowledge(applicationContext, confirmed)
+                CallReportNoteOutbox.clearFailure(applicationContext)
             }
             Result.success()
         } catch (error: CallReportSyncException) {
+            CallReportNoteOutbox.recordFailure(applicationContext, error.message.orEmpty())
             if (error.retryable) Result.retry() else Result.failure()
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            CallReportNoteOutbox.recordFailure(applicationContext, "Неочаквана грешка при синхронизация.")
             Result.retry()
         }
     }
