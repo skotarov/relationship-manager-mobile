@@ -50,9 +50,7 @@ internal class HomeCallRowRenderer(
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                bottomMargin = dp(8)
-            }
+            ).apply { bottomMargin = dp(8) }
         }
 
         val row = LinearLayout(activity).apply {
@@ -63,18 +61,10 @@ internal class HomeCallRowRenderer(
 
         if (call.isSms) {
             row.addView(ImageView(activity).apply {
-                setImageResource(
-                    if (call.direction == "out") {
-                        R.drawable.ic_sms_bubble_left
-                    } else {
-                        R.drawable.ic_sms_bubble_right
-                    },
-                )
+                setImageResource(if (call.direction == "sms_out") R.drawable.ic_sms_bubble_left else R.drawable.ic_sms_bubble_right)
                 contentDescription = call.smsDirectionLabel
                 scaleType = ImageView.ScaleType.CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply {
-                    marginEnd = dp(6)
-                }
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(6) }
             })
         } else {
             row.addView(TextView(activity).apply {
@@ -82,9 +72,7 @@ internal class HomeCallRowRenderer(
                 textSize = 36f
                 gravity = Gravity.CENTER
                 setTextColor(callIconColor(call))
-                layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    marginEnd = dp(6)
-                }
+                layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
             })
         }
 
@@ -95,17 +83,11 @@ internal class HomeCallRowRenderer(
         textColumn.addView(TextView(activity).apply {
             val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
             val metaText = if (call.isSms) {
-                listOf(
-                    PhoneCallReader.formatStartedAt(call.startedAt),
-                    call.smsDirectionLabel,
-                    call.number.takeIf { hasContactName },
-                ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+                listOf(PhoneCallReader.formatStartedAt(call.startedAt), call.smsDirectionLabel, call.number.takeIf { hasContactName })
+                    .filter { !it.isNullOrBlank() }.joinToString(" • ")
             } else {
-                listOf(
-                    PhoneCallReader.formatStartedAt(call.startedAt),
-                    PhoneCallReader.formatDuration(call.durationSeconds),
-                    call.number.takeIf { hasContactName },
-                ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+                listOf(PhoneCallReader.formatStartedAt(call.startedAt), PhoneCallReader.formatDuration(call.durationSeconds), call.number.takeIf { hasContactName })
+                    .filter { !it.isNullOrBlank() }.joinToString(" • ")
             }
             val mutedTextColor = activity.getColor(R.color.calllog_muted_text)
             text = highlightedText(metaText, highlightQuery, mutedTextColor)
@@ -113,9 +95,7 @@ internal class HomeCallRowRenderer(
             textSize = 12.5f
             maxLines = 1
         })
-        if (showContactIdentity) {
-            textColumn.addView(mainNameRow(call, displayName, highlightQuery))
-        }
+        if (showContactIdentity) textColumn.addView(mainNameRow(call, displayName, highlightQuery))
         if (call.isSms) {
             textColumn.addView(TextView(activity).apply {
                 val body = call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) }
@@ -129,9 +109,15 @@ internal class HomeCallRowRenderer(
         }
         if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
+            val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, call.number)
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(contactNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+                setCompoundDrawablesWithIntrinsicBounds(
+                    R.drawable.ic_note_lines,
+                    0,
+                    if (serverConfirmed) R.drawable.ic_cloud_note else 0,
+                    0,
+                )
                 compoundDrawablePadding = dp(4)
                 setTextColor(colors.text)
                 textSize = 12.5f
@@ -141,16 +127,20 @@ internal class HomeCallRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = dp(5)
-                }
+                ).apply { topMargin = dp(5) }
             })
         }
         if (!callNote.isNullOrBlank()) {
             val colors = NoteUiStyle.Call
+            val serverConfirmed = ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(callNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
+                setCompoundDrawablesWithIntrinsicBounds(
+                    R.drawable.ic_chat_note,
+                    0,
+                    if (serverConfirmed) R.drawable.ic_cloud_note else 0,
+                    0,
+                )
                 compoundDrawablePadding = dp(5)
                 setTextColor(colors.text)
                 textSize = 12.5f
@@ -160,22 +150,17 @@ internal class HomeCallRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = dp(5)
-                }
+                ).apply { topMargin = dp(5) }
             })
         }
 
-        // All visible rows are queued for one notes_lookup.php batch before this slot is populated.
         val serverNoteSlot = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = dp(5)
-            }
+            ).apply { topMargin = dp(5) }
         }
         textColumn.addView(serverNoteSlot)
         HomeServerNotesLoader.load(activity, call.number) { note ->
@@ -186,6 +171,7 @@ internal class HomeCallRowRenderer(
         }
 
         row.addView(textColumn)
+        if (ServerRecordIndex.isCommunicationConfirmed(activity, call)) row.addView(serverCloudBadge())
 
         if (showQuickActions || !call.isSms) {
             val actions = LinearLayout(activity).apply {
@@ -194,37 +180,16 @@ internal class HomeCallRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    leftMargin = dp(3)
-                }
+                ).apply { leftMargin = dp(3) }
             }
             if (showQuickActions) {
-                actions.addView(
-                    iconButton(
-                        R.drawable.ic_phone_call,
-                        activity.getString(R.string.dynamic_action_call),
-                    ) {
-                        openDialer(call.number)
-                    },
-                )
-                actions.addView(
-                    iconButton(
-                        R.drawable.ic_filter_calls,
-                        activity.getString(R.string.dynamic_action_filter),
-                    ) {
-                        togglePhoneFilter(call.number)
-                    },
-                )
+                actions.addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call)) { openDialer(call.number) })
+                actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
             }
             if (!call.isSms) {
-                actions.addView(
-                    iconButton(
-                        R.drawable.ic_chat_note,
-                        activity.getString(R.string.dynamic_action_note),
-                    ) {
-                        openContactNotePopupForCall(call, displayName)
-                    },
-                )
+                actions.addView(iconButton(R.drawable.ic_chat_note, activity.getString(R.string.dynamic_action_note)) {
+                    openContactNotePopupForCall(call, displayName)
+                })
             }
             row.addView(actions)
         }
@@ -235,30 +200,34 @@ internal class HomeCallRowRenderer(
 
     private fun serverNoteView(note: CallReportServerNote, highlightQuery: String): TextView {
         val textColor = Color.rgb(30, 64, 105)
-        val attribution = note.authorBrokerName.takeIf { value -> value.isNotBlank() }
-            ?.let { value -> "Сървърна бележка · $value" }
+        val attribution = note.authorBrokerName.takeIf { it.isNotBlank() }
+            ?.let { "Сървърна бележка · $it" }
             ?: "Сървърна бележка"
         return TextView(activity).apply {
             text = "${highlightedText(note.lastNote, highlightQuery, textColor)}\n$attribution"
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, R.drawable.ic_cloud_note, 0)
             compoundDrawablePadding = dp(5)
             setTextColor(textColor)
             textSize = 12.5f
             maxLines = 4
             setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(
-                Color.rgb(239, 246, 255),
-                dp(9),
-                Color.rgb(147, 197, 253),
-                dp(1),
-            )
+            background = roundedRect(Color.rgb(239, 246, 255), dp(9), Color.rgb(147, 197, 253), dp(1))
+        }
+    }
+
+    private fun serverCloudBadge(): ImageView {
+        return ImageView(activity).apply {
+            setImageResource(R.drawable.ic_cloud_note)
+            contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
+            alpha = 0.9f
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginStart = dp(5) }
         }
     }
 
     private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
         val mainTextColor = activity.getColor(R.color.calllog_text)
         val titleValue = displayName.ifBlank { call.number }
-        val showCloud = ConfigStore.load(activity).remoteEnabled && CrmContactSyncStore.isEnabled(activity, call.number)
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -272,17 +241,6 @@ internal class HomeCallRowRenderer(
                 ellipsize = TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             })
-            if (showCloud) {
-                addView(ImageView(activity).apply {
-                    setImageResource(R.drawable.ic_cloud_note)
-                    contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
-                    alpha = 0.9f
-                    scaleType = ImageView.ScaleType.FIT_CENTER
-                    layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).apply {
-                        marginStart = dp(4)
-                    }
-                })
-            }
         }
     }
 
@@ -338,15 +296,10 @@ internal class HomeCallRowRenderer(
         }
     }
 
-    private fun callIcon(call: PhoneCallRecord): String {
-        return if (call.direction == "out") "↗" else "↙"
-    }
+    private fun callIcon(call: PhoneCallRecord): String = if (call.direction == "out") "↗" else "↙"
 
     private fun callIconColor(call: PhoneCallRecord): Int {
         if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
-        return when (call.direction) {
-            "out" -> Color.rgb(34, 197, 94)
-            else -> Color.rgb(59, 130, 246)
-        }
+        return if (call.direction == "out") Color.rgb(34, 197, 94) else Color.rgb(59, 130, 246)
     }
 }
