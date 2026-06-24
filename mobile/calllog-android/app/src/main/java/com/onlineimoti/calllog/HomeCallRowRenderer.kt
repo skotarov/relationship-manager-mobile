@@ -63,14 +63,14 @@ internal class HomeCallRowRenderer(
                 setImageResource(if (call.direction == "sms_out") R.drawable.ic_sms_bubble_left else R.drawable.ic_sms_bubble_right)
                 contentDescription = call.smsDirectionLabel
                 scaleType = ImageView.ScaleType.CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(6) }
+                layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
             })
         } else {
             row.addView(ImageView(activity).apply {
                 setImageResource(callStatusIcon(call))
                 contentDescription = callStatusDescription(call)
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(6) }
+                layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
             })
         }
 
