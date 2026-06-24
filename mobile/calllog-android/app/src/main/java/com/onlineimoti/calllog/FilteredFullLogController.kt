@@ -258,7 +258,7 @@ internal class FilteredFullLogController(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = roundedRect(background, dp(10), border, dp(1))
+            this.background = roundedRect(background, dp(10), border, dp(1))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
