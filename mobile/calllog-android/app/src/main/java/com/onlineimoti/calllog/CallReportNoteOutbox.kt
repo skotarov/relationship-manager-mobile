@@ -48,6 +48,7 @@ internal object CallReportNoteOutbox {
         if (!CrmContactSyncStore.isEnabled(appContext, phone)) return false
         val phoneKey = phoneKey(phone)
         if (phoneKey.isBlank()) return false
+        val now = System.currentTimeMillis()
         val installationId = CallReportInstallationId.get(appContext)
         return enqueue(
             context = appContext,
@@ -55,11 +56,11 @@ internal object CallReportNoteOutbox {
                 clientEventId = "$installationId:note:general:$phoneKey",
                 phone = phone,
                 direction = "",
-                occurredAtMs = System.currentTimeMillis(),
+                occurredAtMs = now,
                 durationSeconds = 0L,
                 note = note.trim(),
                 contactName = contactName(appContext, phone),
-                updatedAtMs = System.currentTimeMillis(),
+                updatedAtMs = now,
             ),
         )
     }
@@ -97,14 +98,14 @@ internal object CallReportNoteOutbox {
         )
     }
 
-    /** When sync is enabled after notes already exist, queue their current local state once. */
+    /** When sync is enabled after notes already exist, queue the current local note state once. */
     fun enqueueCurrentLocalNotes(context: Context, phone: String) {
         val appContext = context.applicationContext
         if (!CrmContactSyncStore.isEnabled(appContext, phone)) return
-        val generalNote = ContactNoteReader.generalNoteForPhone(appContext, phone)
-        if (generalNote.isNotBlank()) enqueueGeneral(appContext, phone, generalNote)
+        // General notes have a stable id, so an empty value deliberately clears stale server text.
+        enqueueGeneral(appContext, phone, ContactNoteReader.generalNoteForPhone(appContext, phone))
         ContactNoteReader.callNotesForPhone(appContext, phone).forEach { callNote ->
-            if (callNote.note.isNotBlank() && callNote.callAt > 0L) {
+            if (callNote.callAt > 0L) {
                 enqueueCall(
                     context = appContext,
                     phone = phone,
@@ -130,7 +131,11 @@ internal object CallReportNoteOutbox {
 
     internal fun takeBatch(context: Context, limit: Int): List<CallReportQueuedNote> {
         synchronized(lock) {
-            return readLocked(context)
+            val all = readLocked(context)
+            // A stale operation must never be sent after the user switched the contact off.
+            val enabled = all.filter { operation -> CrmContactSyncStore.isEnabled(context.applicationContext, operation.phone) }
+            if (enabled.size != all.size) writeLocked(context, enabled)
+            return enabled
                 .sortedBy { operation -> operation.updatedAtMs }
                 .take(limit.coerceIn(1, 50))
         }
