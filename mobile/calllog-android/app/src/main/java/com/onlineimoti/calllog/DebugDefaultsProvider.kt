@@ -11,6 +11,8 @@ import android.os.Bundle
 import com.google.android.material.textfield.TextInputEditText
 
 class DebugDefaultsProvider : ContentProvider() {
+    private var startupSyncScheduled = false
+
     override fun onCreate(): Boolean {
         val appContext = context ?: return true
         appContext.getSharedPreferences("callreport_prefs", Context.MODE_PRIVATE)
@@ -18,20 +20,19 @@ class DebugDefaultsProvider : ContentProvider() {
             .putBoolean("notify_known_contacts", true)
             .putInt("post_call_timeout", 6)
             .apply()
-        CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "app_start")
-        CallReportNoteOutboxScheduler.enqueue(appContext, reason = "app_start")
 
         (appContext.applicationContext as? Application)?.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
                 override fun onActivityResumed(activity: Activity) {
-                    if (activity !is MainActivity) {
-                        return
-                    }
+                    if (activity !is MainActivity) return
+
                     val phoneInput = activity.findViewById<TextInputEditText>(R.id.phoneInput) ?: return
                     val currentPhone = phoneInput.text?.toString().orEmpty().trim()
                     if (currentPhone.isBlank() || currentPhone == OLD_TEST_PHONE) {
                         phoneInput.setText(DEFAULT_TEST_PHONE)
                     }
+
+                    scheduleStartupSyncAfterUiReady(activity)
                 }
 
                 override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
@@ -43,6 +44,17 @@ class DebugDefaultsProvider : ContentProvider() {
             }
         )
         return true
+    }
+
+    private fun scheduleStartupSyncAfterUiReady(activity: Activity) {
+        if (startupSyncScheduled) return
+        startupSyncScheduled = true
+        activity.window.decorView.post {
+            runCatching {
+                CallReportSyncScheduler.enqueueCatchUp(activity.applicationContext, reason = "app_start")
+                CallReportNoteOutboxScheduler.enqueue(activity.applicationContext, reason = "app_start")
+            }
+        }
     }
 
     override fun query(
@@ -61,6 +73,5 @@ class DebugDefaultsProvider : ContentProvider() {
     companion object {
         private const val DEFAULT_TEST_PHONE = "0877904903"
         private const val OLD_TEST_PHONE = "0876442321"
-        private const val DEBUG_DEFAULTS_VERSION = 3
     }
 }
