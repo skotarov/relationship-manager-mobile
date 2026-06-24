@@ -21,6 +21,8 @@ internal data class CallReportHistoryRow(
     val locallyConfirmedOnServer: Boolean = false,
     val serverNewer: Boolean = false,
     val editable: Boolean = false,
+    /** True only when the confirmed server author is different from the current authenticated broker. */
+    val authorIsOtherBroker: Boolean = false,
 ) {
     val authorName: String
         get() = serverEvent?.authorBrokerName.orEmpty()
@@ -72,6 +74,7 @@ internal object CallReportHistoryMerge {
                 localCall = call,
                 serverEvent = match,
                 locallyConfirmedOnServer = localConfirmed,
+                authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
         }
 
@@ -94,6 +97,7 @@ internal object CallReportHistoryMerge {
                 localSms = sms,
                 serverEvent = match,
                 locallyConfirmedOnServer = localConfirmed,
+                authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
         }
 
@@ -105,8 +109,7 @@ internal object CallReportHistoryMerge {
             val localConfirmed = expectedId.isNotBlank() && ServerRecordIndex.isConfirmed(context, expectedId)
             val match = serverByClientId[expectedId]
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
-            val foreignAuthor = match?.authorBrokerId?.isNotBlank() == true &&
-                principal.brokerId.isNotBlank() && match.authorBrokerId != principal.brokerId
+            val foreignAuthor = isOtherBrokerAuthor(match, principal)
             val serverNewer = match != null && note.savedAt > 0L && match.updatedAtMs > note.savedAt && match.note != note.note
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.NOTE,
@@ -120,6 +123,7 @@ internal object CallReportHistoryMerge {
                 locallyConfirmedOnServer = localConfirmed,
                 serverNewer = serverNewer,
                 editable = !foreignAuthor,
+                authorIsOtherBroker = foreignAuthor,
             )
         }
 
@@ -141,10 +145,30 @@ internal object CallReportHistoryMerge {
                 text = event.note,
                 serverEvent = event,
                 editable = false,
+                authorIsOtherBroker = isOtherBrokerAuthor(event, principal),
             )
         }
 
         return rows.sortedByDescending { it.timeMs }
+    }
+
+    private fun isOtherBrokerAuthor(
+        event: CallReportHistoryEvent?,
+        principal: CallReportHistoryPrincipal,
+    ): Boolean {
+        if (event == null) return false
+        val authorId = event.authorBrokerId.trim()
+        val authorName = event.authorBrokerName.trim()
+        val currentId = principal.brokerId.trim()
+        val currentName = principal.brokerName.trim()
+
+        if (authorId.isNotBlank() && currentId.isNotBlank()) {
+            return authorId != currentId
+        }
+        if (authorName.isNotBlank() && currentName.isNotBlank()) {
+            return !authorName.equals(currentName, ignoreCase = true)
+        }
+        return false
     }
 
     private fun fallbackMatch(
