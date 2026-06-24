@@ -70,6 +70,7 @@ internal class HomeCallRowRenderer(
                 setImageResource(callStatusIcon(call))
                 contentDescription = callStatusDescription(call)
                 scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(7), dp(7), dp(7), dp(7))
                 layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
             })
         }
