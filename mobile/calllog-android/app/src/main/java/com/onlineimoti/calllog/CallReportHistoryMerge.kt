@@ -17,6 +17,8 @@ internal data class CallReportHistoryRow(
     val localSms: SmsMessageRecord? = null,
     val localNote: ContactCallNote? = null,
     val serverEvent: CallReportHistoryEvent? = null,
+    /** Persisted acknowledgement from a prior successful sync; independent of current lookup. */
+    val locallyConfirmedOnServer: Boolean = false,
     val serverNewer: Boolean = false,
     val editable: Boolean = false,
 ) {
@@ -26,8 +28,9 @@ internal data class CallReportHistoryRow(
     val isServerOnly: Boolean
         get() = localCall == null && localSms == null && localNote == null && serverEvent != null
 
+    /** A cloud is shown for either a freshly returned server record or a persisted local acknowledgement. */
     val hasServerCopy: Boolean
-        get() = serverEvent != null
+        get() = serverEvent != null || locallyConfirmedOnServer
 }
 
 /** Merges Android history and canonical server history without duplicating matching records. */
@@ -55,7 +58,9 @@ internal object CallReportHistoryMerge {
             val expectedId = call.providerId.takeIf { it.isNotBlank() }
                 ?.let { ServerRecordIndex.communicationEventId(context, "phone", it) }
                 .orEmpty()
-            val match = serverByClientId[expectedId] ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "phone", call.direction, call.startedAt)
+            val localConfirmed = expectedId.isNotBlank() && ServerRecordIndex.isConfirmed(context, expectedId)
+            val match = serverByClientId[expectedId]
+                ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "phone", call.direction, call.startedAt)
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.PHONE,
@@ -66,6 +71,7 @@ internal object CallReportHistoryMerge {
                 durationSeconds = call.durationSeconds.takeIf { it > 0L } ?: match?.durationSeconds.orEmpty(),
                 localCall = call,
                 serverEvent = match,
+                locallyConfirmedOnServer = localConfirmed,
             )
         }
 
@@ -73,8 +79,10 @@ internal object CallReportHistoryMerge {
             val expectedId = sms.providerId.takeIf { it.isNotBlank() }
                 ?.let { ServerRecordIndex.communicationEventId(context, "sms", it) }
                 .orEmpty()
+            val localConfirmed = expectedId.isNotBlank() && ServerRecordIndex.isConfirmed(context, expectedId)
             val direction = if (sms.isOutgoing) "out" else "in"
-            val match = serverByClientId[expectedId] ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "sms", direction, sms.timestampMs)
+            val match = serverByClientId[expectedId]
+                ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "sms", direction, sms.timestampMs)
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.SMS,
@@ -85,6 +93,7 @@ internal object CallReportHistoryMerge {
                 text = sms.body,
                 localSms = sms,
                 serverEvent = match,
+                locallyConfirmedOnServer = localConfirmed,
             )
         }
 
@@ -93,6 +102,7 @@ internal object CallReportHistoryMerge {
                 LocalNotesFileStore.clientNoteIdForCall(phone, note.callAt, note.direction)
             }
             val expectedId = ServerRecordIndex.callNoteEventId(context, clientNoteId)
+            val localConfirmed = expectedId.isNotBlank() && ServerRecordIndex.isConfirmed(context, expectedId)
             val match = serverByClientId[expectedId]
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
             val foreignAuthor = match?.authorBrokerId?.isNotBlank() == true &&
@@ -107,6 +117,7 @@ internal object CallReportHistoryMerge {
                 text = if (serverNewer) match?.note.orEmpty() else note.note,
                 localNote = note,
                 serverEvent = match,
+                locallyConfirmedOnServer = localConfirmed,
                 serverNewer = serverNewer,
                 editable = !foreignAuthor,
             )
