@@ -75,13 +75,16 @@ internal object ServerRecordIndex {
         val array = runCatching { JSONArray(raw) }.getOrDefault(JSONArray())
         return linkedSetOf<String>().apply {
             for (index in 0 until array.length()) {
-                array.optString(index).trim().takeIf { it.isNotBlank() }?.let(::add)
+                val value = array.optString(index).trim()
+                if (value.isNotBlank()) add(value)
             }
         }
     }
 
     private fun writeLocked(context: Context, ids: Set<String>) {
-        val array = JSONArray().apply { ids.sorted().forEach(::put) }
+        val array = JSONArray().apply {
+            ids.sorted().forEach { value -> put(value) }
+        }
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CONFIRMED_IDS, array.toString())
