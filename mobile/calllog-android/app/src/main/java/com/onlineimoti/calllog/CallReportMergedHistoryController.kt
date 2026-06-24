@@ -26,6 +26,7 @@ internal class CallReportMergedHistoryController(
     private var started = false
     private var localLoading = false
     private var serverLoading = false
+    private var latestLocalCall: PhoneCallRecord? = null
     private var localSms: List<SmsMessageRecord> = emptyList()
     private var localNotes: List<ContactCallNote> = emptyList()
     private var serverHistory = CallReportHistoryLookupResult()
@@ -61,12 +62,14 @@ internal class CallReportMergedHistoryController(
         executor.execute {
             val result = runCatching {
                 LocalSnapshot(
+                    latestCall = PhoneCallReader.callsForPhone(activity, phone, limit = 1).firstOrNull(),
                     sms = SmsMessageReader.messagesForPhone(activity, phone, limit = 150),
                     notes = ContactNoteReader.callNotesForPhone(activity, phone),
                 )
             }.getOrDefault(LocalSnapshot())
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
+                latestLocalCall = result.latestCall
                 localSms = result.sms
                 localNotes = result.notes
                 localLoading = false
@@ -103,6 +106,9 @@ internal class CallReportMergedHistoryController(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(14) }
             addView(titleRow(openFilteredLog))
+            latestCallWithoutNote()?.let { call ->
+                addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
+            }
             rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote)) }
             addStatus(this, rows)
         })
@@ -111,6 +117,15 @@ internal class CallReportMergedHistoryController(
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
+    }
+
+    private fun latestCallWithoutNote(): PhoneCallRecord? {
+        val call = latestLocalCall ?: return null
+        val alreadyHasNote = localNotes.any { note ->
+            note.callAt == call.startedAt &&
+                (note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction)
+        }
+        return call.takeUnless { alreadyHasNote }
     }
 
     private fun titleRow(openFilteredLog: () -> Unit): LinearLayout {
@@ -137,6 +152,37 @@ internal class CallReportMergedHistoryController(
                 isClickable = true
                 isFocusable = true
                 setOnClickListener { openFilteredLog() }
+            })
+        }
+    }
+
+    private fun addLatestCallNoteCard(call: PhoneCallRecord, action: () -> Unit): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedRect(Color.rgb(248, 250, 252), dp(12), Color.rgb(203, 213, 225), dp(1))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(8) }
+            addView(TextView(activity).apply {
+                text = "+ Добави бележка към последния разговор"
+                textSize = 14.5f
+                setTextColor(Color.rgb(30, 64, 175))
+                setTypeface(typeface, Typeface.BOLD)
+            })
+            addView(TextView(activity).apply {
+                text = listOf(
+                    PhoneCallReader.formatStartedAt(call.startedAt),
+                    directionLabel(call.direction),
+                    PhoneCallReader.formatDuration(call.durationSeconds),
+                ).filter { it.isNotBlank() }.joinToString(" • ")
+                textSize = 12.5f
+                setTextColor(Color.rgb(100, 116, 139))
+                setPadding(0, dp(5), 0, 0)
             })
         }
     }
@@ -208,11 +254,6 @@ internal class CallReportMergedHistoryController(
             CallReportHistoryRowKind.NOTE -> "Бележка"
             CallReportHistoryRowKind.PHONE -> "Телефон"
         }
-        val direction = when (row.direction) {
-            "in" -> "входящ"
-            "out" -> "изходящ"
-            else -> ""
-        }
         val serverConfirmed = when (row.kind) {
             CallReportHistoryRowKind.SMS -> row.hasServerCopy || row.localSms?.providerId
                 ?.takeIf { it.isNotBlank() }
@@ -228,7 +269,7 @@ internal class CallReportMergedHistoryController(
             CallReportHistoryRowKind.PHONE -> false
         }
         return TextView(activity).apply {
-            text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), direction)
+            text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), directionLabel(row.direction))
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
             setTextColor(Color.rgb(71, 85, 105))
@@ -240,12 +281,18 @@ internal class CallReportMergedHistoryController(
         }
     }
 
+    private fun directionLabel(direction: String): String = when (direction) {
+        "in" -> "входящ"
+        "out" -> "изходящ"
+        else -> ""
+    }
+
     private fun addStatus(container: LinearLayout, rows: List<CallReportHistoryRow>) {
         when {
             localLoading -> container.addView(status("Зареждам SMS и бележки…"))
             serverLoading -> container.addView(status("Добавям сървърни бележки и SMS…"))
             loadError.isNotBlank() -> container.addView(status(loadError))
-            rows.isEmpty() -> container.addView(status("Няма SMS или бележки за този номер"))
+            rows.isEmpty() && latestCallWithoutNote() == null -> container.addView(status("Няма SMS или бележки за този номер"))
         }
     }
 
@@ -256,7 +303,17 @@ internal class CallReportMergedHistoryController(
         setPadding(dp(12), dp(10), dp(12), dp(10))
     }
 
+    private fun PhoneCallRecord.toContactCallNote(): ContactCallNote = ContactCallNote(
+        note = "",
+        callAt = startedAt,
+        savedAt = startedAt,
+        direction = direction,
+        durationSeconds = durationSeconds,
+        clientNoteId = LocalNotesFileStore.clientNoteIdForCall(number, startedAt, direction),
+    )
+
     private data class LocalSnapshot(
+        val latestCall: PhoneCallRecord? = null,
         val sms: List<SmsMessageRecord> = emptyList(),
         val notes: List<ContactCallNote> = emptyList(),
     )
