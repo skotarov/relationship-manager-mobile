@@ -66,12 +66,15 @@ internal class HomeCallRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
             })
         } else {
-            row.addView(ImageView(activity).apply {
+            row.addView(ImageButton(activity).apply {
                 setImageResource(callStatusIcon(call))
-                contentDescription = callStatusDescription(call)
+                contentDescription = activity.getString(R.string.dynamic_action_call)
+                background = null
+                setBackgroundColor(Color.TRANSPARENT)
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 setPadding(dp(7), dp(7), dp(7), dp(7))
                 layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
+                setOnClickListener { openDialer(call.number) }
             })
         }
 
@@ -153,7 +156,6 @@ internal class HomeCallRowRenderer(
                 ).apply { leftMargin = dp(3) }
             }
             if (showQuickActions) {
-                actions.addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call)) { openDialer(call.number) })
                 actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
             }
             if (!call.isSms) {
@@ -253,12 +255,5 @@ internal class HomeCallRowRenderer(
         call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
         call.direction == "out" -> R.drawable.ic_call_outgoing
         else -> R.drawable.ic_call_incoming
-    }
-
-    private fun callStatusDescription(call: PhoneCallRecord): String = when (callStatusIcon(call)) {
-        R.drawable.ic_call_rejected -> "Отхвърлен разговор"
-        R.drawable.ic_call_missed -> "Пропуснат разговор"
-        R.drawable.ic_call_outgoing -> "Изходящ разговор"
-        else -> "Входящ разговор"
     }
 }
