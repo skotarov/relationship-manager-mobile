@@ -12,6 +12,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
@@ -107,8 +108,7 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         updateSearchButtonIcon()
 
-        binding.settingsButton.setOnClickListener { homeActions.openSettings() }
-        binding.defaultCallLogButton.setOnClickListener { openDefaultCallLog() }
+        binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
@@ -233,7 +233,7 @@ class HomeActivity : AppCompatActivity() {
                     showContactIdentity = !isPhoneFiltered,
                     showGeneralContactNote = !isPhoneFiltered,
                     showQuickActions = !isPhoneFiltered,
-                )
+                ),
             )
         }
     }
@@ -376,8 +376,29 @@ class HomeActivity : AppCompatActivity() {
     private fun openDefaultCallLog() {
         startActivity(
             Intent(this, SystemCallHistoryActivity::class.java)
-                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL)
+                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL),
         )
+    }
+
+    private fun showHomeOverflowMenu() {
+        PopupMenu(this, binding.settingsButton).apply {
+            menu.add(0, MENU_PHONE_CALL_LOG, 0, getString(R.string.home_overflow_phone_log))
+            menu.add(0, MENU_SETTINGS, 1, getString(R.string.home_overflow_settings))
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    MENU_PHONE_CALL_LOG -> {
+                        openDefaultCallLog()
+                        true
+                    }
+                    MENU_SETTINGS -> {
+                        homeActions.openSettings()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            show()
+        }
     }
 
     private fun toggleSearchRow() {
@@ -386,7 +407,10 @@ class HomeActivity : AppCompatActivity() {
             binding.searchRow.visibility = View.VISIBLE
             updateSearchButtonIcon()
             binding.searchInput.requestFocus()
-            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(binding.searchInput, InputMethodManager.SHOW_IMPLICIT)
+            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(
+                binding.searchInput,
+                InputMethodManager.SHOW_IMPLICIT,
+            )
         } else {
             clearSearch()
             binding.searchRow.visibility = View.GONE
@@ -405,7 +429,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun updateSearchButtonIcon() {
         binding.searchButton.setImageResource(
-            if (binding.searchRow.visibility == View.VISIBLE) R.drawable.ic_popup_close else R.drawable.ic_search
+            if (binding.searchRow.visibility == View.VISIBLE) R.drawable.ic_popup_close else R.drawable.ic_search,
         )
     }
 
@@ -436,6 +460,8 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
+        private const val MENU_PHONE_CALL_LOG = 1
+        private const val MENU_SETTINGS = 2
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
         private const val NOTE_REFRESH_INTERVAL_MS = 400L
         private const val SEARCH_DEBOUNCE_MS = 250L
