@@ -13,7 +13,12 @@ class CallReportNoteOutboxWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val config = ConfigStore.load(applicationContext)
-        if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
+        // Server-off mode is fully local. Do not contact the server and do not create a
+        // visible failure status for retained pending notes.
+        if (!CallReportRemoteAccess.isEnabled(config)) {
+            return@withContext Result.success()
+        }
+        if (!CallReportRemoteAccess.isReady(config)) {
             CallReportNoteOutbox.recordFailure(applicationContext, "Липсва активна server конфигурация.")
             return@withContext Result.success()
         }
