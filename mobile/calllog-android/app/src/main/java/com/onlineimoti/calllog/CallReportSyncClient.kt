@@ -69,6 +69,8 @@ internal object CallReportSyncClient {
         put("contact_name", contactName)
         put("occurred_at_ms", occurredAtMs)
         put("duration_seconds", durationSeconds)
+        // Absence means "leave the note unchanged"; an explicit empty string means "clear it".
+        note?.let { value -> put("note", value) }
         put("source", JSONObject().apply {
             put("device_id", deviceId)
             put("provider_row_id", providerRowId)
