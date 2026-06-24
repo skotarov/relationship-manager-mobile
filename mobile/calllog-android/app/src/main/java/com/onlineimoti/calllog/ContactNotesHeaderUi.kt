@@ -243,7 +243,8 @@ class ContactNotesHeaderUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = if (enabled) roundedIconBackground(Color.BLACK) else null
+            setPadding(dp(4), 0, 0, 0)
+            background = if (enabled) roundedIconBackground(activity.getColor(R.color.callreport_icon_background)) else null
             contentDescription = description
             isClickable = !busy
             isFocusable = !busy
