@@ -19,8 +19,9 @@ internal object CallReportSyncClient {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
-    fun sync(config: AppConfig, events: List<CallReportSyncEvent>) {
-        if (events.isEmpty()) return
+    /** Returns only client event IDs explicitly confirmed in the server response. */
+    fun sync(config: AppConfig, events: List<CallReportSyncEvent>): Set<String> {
+        if (events.isEmpty()) return emptySet()
         require(events.size <= 50) { "A sync request may contain up to 50 events." }
 
         val payload = JSONObject().apply {
@@ -51,6 +52,19 @@ internal object CallReportSyncClient {
                 val retryable = responseCode == 408 || responseCode == 429 || responseCode >= 500 || responseCode == 0
                 throw CallReportSyncException("Sync request was rejected ($responseCode).", retryable)
             }
+            return response.optJSONArray("results")
+                ?.let { results ->
+                    buildSet {
+                        for (index in 0 until results.length()) {
+                            results.optJSONObject(index)
+                                ?.optString("client_event_id")
+                                ?.trim()
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let(::add)
+                        }
+                    }
+                }
+                .orEmpty()
         } catch (error: CallReportSyncException) {
             throw error
         } catch (error: IOException) {
@@ -69,7 +83,6 @@ internal object CallReportSyncClient {
         put("contact_name", contactName)
         put("occurred_at_ms", occurredAtMs)
         put("duration_seconds", durationSeconds)
-        // Absence means "leave the note unchanged"; an explicit empty string means "clear it".
         note?.let { value -> put("note", value) }
         put("source", JSONObject().apply {
             put("device_id", deviceId)
