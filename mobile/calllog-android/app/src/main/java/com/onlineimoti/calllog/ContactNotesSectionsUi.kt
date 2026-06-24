@@ -14,13 +14,15 @@ internal class ContactNotesSectionsUi(
 ) {
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
+        val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
+            CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
         root.addView(sectionContainer().apply {
             addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
             addView(
                 cards.generalNoteCard(
                     textValue = generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                     muted = generalNote.isBlank(),
-                    serverConfirmed = generalNote.isNotBlank() && ServerRecordIndex.isGeneralNoteConfirmed(activity, phone),
+                    serverConfirmed = generalNote.isNotBlank() && serverConfirmed,
                     onClick = onEdit,
                 )
             )
