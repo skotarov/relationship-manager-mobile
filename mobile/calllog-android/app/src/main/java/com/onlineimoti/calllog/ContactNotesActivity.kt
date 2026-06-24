@@ -33,17 +33,23 @@ class ContactNotesActivity : Activity() {
         if (!isFinishing && !isDestroyed && refreshTitleFromRealContact()) render()
     }
     private val delayedServerRefreshRunnable = Runnable {
-        if (!isFinishing && !isDestroyed) historyController.refreshServer(phone)
+        if (!isFinishing && !isDestroyed && CallReportRemoteAccess.isEnabled(this)) {
+            historyController.refreshServer(phone)
+        }
     }
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != PostCallOverlayService.ACTION_NOTES_CHANGED) return
-            retryPendingNoteSyncIfEnabled()
             historyController.refreshLocal(phone)
-            historyController.refreshServer(phone)
-            mainHandler.removeCallbacks(delayedServerRefreshRunnable)
-            mainHandler.postDelayed(delayedServerRefreshRunnable, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
+            if (CallReportRemoteAccess.isEnabled(this@ContactNotesActivity)) {
+                retryPendingNoteSyncIfEnabled()
+                historyController.refreshServer(phone)
+                mainHandler.removeCallbacks(delayedServerRefreshRunnable)
+                mainHandler.postDelayed(delayedServerRefreshRunnable, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
+            } else {
+                mainHandler.removeCallbacks(delayedServerRefreshRunnable)
+            }
             render()
         }
     }
@@ -88,7 +94,9 @@ class ContactNotesActivity : Activity() {
         backTargetsUnfilteredHome = intent.getBooleanExtra(EXTRA_BACK_TARGETS_UNFILTERED_HOME, false)
         render()
         autoUpdateContactLinkOnce()
-        retryPendingNoteSyncIfEnabled()
+        if (CallReportRemoteAccess.isEnabled(this)) {
+            retryPendingNoteSyncIfEnabled()
+        }
         historyController.loadOnce(phone)
     }
 
@@ -100,8 +108,11 @@ class ContactNotesActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshTitleFromRealContact()
-        retryPendingNoteSyncIfEnabled()
+        if (CallReportRemoteAccess.isEnabled(this)) {
+            retryPendingNoteSyncIfEnabled()
+        }
         historyController.refreshLocal(phone)
+        // In local mode this only clears previous server state; it does not start a request.
         historyController.refreshServer(phone)
         render()
         scheduleContactNameRefresh()
@@ -174,7 +185,7 @@ class ContactNotesActivity : Activity() {
 
     /** Wakes the durable outbox and also adopts older main notes that predate the outbox. */
     private fun retryPendingNoteSyncIfEnabled() {
-        if (phone.isBlank()) return
+        if (phone.isBlank() || !CallReportRemoteAccess.isEnabled(this)) return
         val generalNote = ContactNoteReader.generalNoteForPhone(this, phone)
         val isGeneralPending = CallReportNoteOutbox.isGeneralPending(this, phone)
         val hasGeneralServerCopy = ServerRecordIndex.isGeneralNoteConfirmed(this, phone) ||
@@ -188,7 +199,7 @@ class ContactNotesActivity : Activity() {
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
-        if (crmSyncBusy || phone.isBlank()) return
+        if (crmSyncBusy || phone.isBlank() || !CallReportRemoteAccess.isEnabled(this)) return
         val requestedPhone = phone
         val requestedTitle = titleText
         crmSyncBusy = true
