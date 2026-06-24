@@ -101,6 +101,8 @@ internal object CallReportSyncEventFactory {
         durationSeconds: Long,
     ): CallReportSyncEvent? {
         if (providerId.isBlank() || phone.isBlank() || occurredAtMs <= 0L) return null
+        // The per-contact switch is the sole authorization for sending communication metadata.
+        if (!CrmContactSyncStore.isEnabled(context.applicationContext, phone)) return null
         val deviceId = CallReportInstallationId.get(context)
         val resolvedName = contactName.trim().ifBlank {
             ContactGroupFilter.resolveDisplayName(context, phone).orEmpty().trim()
