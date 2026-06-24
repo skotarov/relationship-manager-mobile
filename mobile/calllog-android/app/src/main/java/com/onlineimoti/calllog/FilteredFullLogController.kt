@@ -6,8 +6,11 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
@@ -168,6 +171,9 @@ internal class FilteredFullLogController(
     private fun rowView(phone: String, entry: FullLogEntry): MaterialCardView {
         val row = entry.row
         val foreignNote = isForeignNote(row)
+        val localCall = row.localCall
+        val localNote = row.localNote
+        val editableAttachedNote = entry.attachedNotes.firstOrNull { it.localNote != null && it.editable }
         val background = when {
             foreignNote -> Color.rgb(248, 250, 252)
             row.kind == CallReportHistoryRowKind.NOTE -> NoteUiStyle.Call.background
@@ -213,26 +219,39 @@ internal class FilteredFullLogController(
         }
 
         when {
-            row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable -> {
+            row.kind == CallReportHistoryRowKind.NOTE && localNote != null && row.editable -> {
                 card.isClickable = true
                 card.isFocusable = true
-                card.setOnClickListener { openNoteEditor(phone, row.localNote) }
+                card.setOnClickListener { openNoteEditor(phone, localNote) }
             }
-            row.kind == CallReportHistoryRowKind.PHONE && row.localCall != null -> {
-                val editableAttachedNote = entry.attachedNotes.firstOrNull { it.localNote != null && it.editable }
+            row.kind == CallReportHistoryRowKind.PHONE && localCall != null -> {
                 card.isClickable = true
                 card.isFocusable = true
-                card.setOnClickListener { openContactNotes(row.localCall, row.localCall.displayName) }
-                column.addView(callNoteAction(row.localCall, editableAttachedNote))
+                card.setOnClickListener { openContactNotes(localCall, localCall.displayName) }
             }
         }
 
-        card.addView(column)
+        if (row.kind == CallReportHistoryRowKind.PHONE && localCall != null) {
+            card.addView(LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                column.layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
+                addView(column)
+                addView(noteActionButton(localCall, editableAttachedNote))
+            })
+        } else {
+            card.addView(column)
+        }
         return card
     }
 
     private fun attachedNoteView(phone: String, note: CallReportHistoryRow): LinearLayout {
         val foreignNote = isForeignNote(note)
+        val localNote = note.localNote
         val background = if (foreignNote) Color.rgb(248, 250, 252) else NoteUiStyle.Call.background
         val border = if (foreignNote) Color.rgb(203, 213, 225) else NoteUiStyle.Call.border
         val textColor = if (foreignNote) Color.rgb(71, 85, 105) else NoteUiStyle.Call.text
@@ -244,10 +263,10 @@ internal class FilteredFullLogController(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(8) }
-            if (note.localNote != null && note.editable) {
+            if (localNote != null && note.editable) {
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { openNoteEditor(phone, note.localNote) }
+                setOnClickListener { openNoteEditor(phone, localNote) }
             }
             addView(metaView(note))
             if (note.text.isNotBlank()) {
@@ -265,20 +284,27 @@ internal class FilteredFullLogController(
         }
     }
 
-    private fun callNoteAction(
+    private fun noteActionButton(
         call: PhoneCallRecord,
         editableAttachedNote: CallReportHistoryRow?,
-    ): TextView {
-        return TextView(activity).apply {
-            text = if (editableAttachedNote == null) "+ Добави бележка" else "Редактирай бележката"
-            textSize = 12.5f
-            setTextColor(Color.rgb(30, 64, 175))
-            setPadding(0, dp(8), 0, 0)
-            isClickable = true
-            isFocusable = true
+    ): ImageButton {
+        return ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_chat_note)
+            contentDescription = if (editableAttachedNote == null) "Добави бележка" else "Редактирай бележката"
+            background = null
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply {
+                marginEnd = dp(8)
+            }
             setOnClickListener {
-                editableAttachedNote?.localNote?.let { openNoteEditor(call.number, it) }
-                    ?: openCallNoteEditor(call, call.displayName)
+                val existingLocalNote = editableAttachedNote?.localNote
+                if (existingLocalNote != null) {
+                    openNoteEditor(call.number, existingLocalNote)
+                } else {
+                    openCallNoteEditor(call, call.displayName)
+                }
             }
         }
     }
