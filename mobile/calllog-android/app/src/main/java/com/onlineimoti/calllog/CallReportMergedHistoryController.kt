@@ -234,7 +234,7 @@ internal class CallReportMergedHistoryController(
                     text = row.text
                     textSize = 14.5f
                     setTextColor(colors.third)
-                    if (row.kind == CallReportHistoryRowKind.NOTE) setTypeface(typeface, Typeface.BOLD)
+                    setTypeface(typeface, Typeface.BOLD)
                     setPadding(0, dp(5), 0, 0)
                 })
             }
@@ -287,7 +287,7 @@ internal class CallReportMergedHistoryController(
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
             setTextColor(Color.rgb(71, 85, 105))
-            setTypeface(typeface, Typeface.BOLD)
+            setTypeface(typeface, Typeface.NORMAL)
             if (serverConfirmed) {
                 setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
                 compoundDrawablePadding = dp(6)
