@@ -16,6 +16,8 @@ data class PhoneCallRecord(
     val startedAt: Long,
     val durationSeconds: Long,
     val smsBody: String = "",
+    /** Android CallLog/SMS provider row ID. Empty only for synthetic search rows. */
+    val providerId: String = "",
 ) {
     val displayName: String
         get() = name.ifBlank { number }
@@ -62,6 +64,7 @@ object PhoneCallReader {
         phoneFilter: String,
     ): List<PhoneCallRecord> {
         val projection = arrayOf(
+            CallLog.Calls._ID,
             CallLog.Calls.NUMBER,
             CallLog.Calls.CACHED_NAME,
             CallLog.Calls.TYPE,
@@ -84,8 +87,6 @@ object PhoneCallReader {
         )
         if (normalizedPhoneFilter.isBlank() || direct.isNotEmpty()) return direct
 
-        // Formatted numbers (spaces/dashes) are rare. Ask the provider for their final nine digits
-        // instead of reading every call record and filtering it in the application.
         val suffix = normalizedPhoneFilter.takeLast(9)
         return if (suffix.length < 7) {
             emptyList()
@@ -120,6 +121,7 @@ object PhoneCallReader {
                 selectionArgs.takeIf { it.isNotEmpty() },
                 sortOrder,
             )?.use { cursor ->
+                val idIndex = cursor.getColumnIndex(CallLog.Calls._ID)
                 val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
                 val nameIndex = cursor.getColumnIndex(CallLog.Calls.CACHED_NAME)
                 val typeIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
@@ -140,6 +142,7 @@ object PhoneCallReader {
                     val type = if (typeIndex >= 0) cursor.getInt(typeIndex) else 0
                     val startedAt = if (dateIndex >= 0) cursor.getLong(dateIndex) else 0L
                     val duration = if (durationIndex >= 0) cursor.getLong(durationIndex) else 0L
+                    val providerId = if (idIndex >= 0) cursor.getLong(idIndex).toString() else ""
                     add(
                         PhoneCallRecord(
                             number = number,
@@ -147,6 +150,7 @@ object PhoneCallReader {
                             direction = directionFromType(type),
                             startedAt = startedAt,
                             durationSeconds = duration,
+                            providerId = providerId,
                         ),
                     )
                 }
