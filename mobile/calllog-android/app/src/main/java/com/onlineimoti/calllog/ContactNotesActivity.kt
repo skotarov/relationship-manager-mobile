@@ -172,9 +172,12 @@ class ContactNotesActivity : Activity() {
         }
     }
 
+    /** Never rebuild every note operation on the UI thread. Only wake an existing durable outbox. */
     private fun retryPendingNoteSyncIfEnabled() {
         if (phone.isBlank() || !CrmContactSyncStore.isEnabled(this, phone)) return
-        CallReportNoteOutbox.enqueueCurrentLocalNotes(applicationContext, phone)
+        if (CallReportNoteOutbox.hasPending(applicationContext)) {
+            CallReportNoteOutboxScheduler.enqueue(applicationContext, reason = "contact_notes_visible")
+        }
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
