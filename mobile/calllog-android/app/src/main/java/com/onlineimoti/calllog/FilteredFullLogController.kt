@@ -73,28 +73,36 @@ internal class FilteredFullLogController(
         loading = true
         val requested = phone
         executor.execute {
-            val localCalls = PhoneCallReader.callsForPhone(activity, requested, limit = 500)
-            val localSms = SmsMessageReader.messagesForPhone(activity, requested, limit = 150)
-            val localNotes = ContactNoteReader.callNotesForPhone(activity, requested)
-            val config = ConfigStore.load(activity)
-            val serverHistory = runCatching {
-                CallReportHistoryLookupClient.lookup(config, requested)
-            }.getOrDefault(CallReportHistoryLookupResult())
-            val merged = CallReportHistoryMerge.merge(
-                context = activity,
-                phone = requested,
-                principal = serverHistory.principal,
-                localCalls = localCalls,
-                localSms = localSms,
-                localNotes = localNotes,
-                serverEvents = serverHistory.events,
-            )
+            val result = runCatching {
+                val localCalls = PhoneCallReader.callsForPhone(activity, requested, limit = 500)
+                val localSms = SmsMessageReader.messagesForPhone(activity, requested, limit = 150)
+                val localNotes = ContactNoteReader.callNotesForPhone(activity, requested)
+                val config = ConfigStore.load(activity)
+                val serverHistory = runCatching {
+                    CallReportHistoryLookupClient.lookup(config, requested)
+                }.getOrDefault(CallReportHistoryLookupResult())
+                CallReportHistoryMerge.merge(
+                    context = activity,
+                    phone = requested,
+                    principal = serverHistory.principal,
+                    localCalls = localCalls,
+                    localSms = localSms,
+                    localNotes = localNotes,
+                    serverEvents = serverHistory.events,
+                )
+            }
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed || requested != requestedPhone) return@post
-                rows = merged
-                loadedPhone = requested
                 loading = false
-                errorText = ""
+                result.onSuccess {
+                    rows = it
+                    loadedPhone = requested
+                    errorText = ""
+                }.onFailure {
+                    rows = emptyList()
+                    loadedPhone = requested
+                    errorText = "Пълният лог не е зареден"
+                }
                 onLoaded()
             }
         }
