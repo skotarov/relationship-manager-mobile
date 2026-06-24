@@ -41,12 +41,12 @@ internal object CallReportNoteOutbox {
     private val lock = Any()
 
     /**
-     * A deliberately saved main note is server data in its own right. It must not depend
-     * on whether the contact is registered in the CRM contact layer.
+     * A deliberately saved main note is server data in its own right. It is queued even
+     * while the server settings are incomplete, so the visible reason is retained and
+     * the note can be retried automatically after the settings are fixed.
      */
     fun enqueueGeneral(context: Context, phone: String, note: String): Boolean {
         val appContext = context.applicationContext
-        if (!hasActiveServerConfiguration(appContext)) return false
         val key = phoneKey(phone)
         if (key.isBlank()) return false
         val now = System.currentTimeMillis()
@@ -87,7 +87,6 @@ internal object CallReportNoteOutbox {
         ))
     }
 
-    /** True while this exact local call note is still waiting for sync.php confirmation. */
     fun isCallPending(context: Context, phone: String, note: ContactCallNote): Boolean {
         val localId = note.clientNoteId.ifBlank {
             LocalNotesFileStore.clientNoteIdForCall(phone, note.callAt, note.direction)
@@ -95,7 +94,6 @@ internal object CallReportNoteOutbox {
         return localId.isNotBlank() && isPending(context, ServerRecordIndex.callNoteEventId(context, localId))
     }
 
-    /** True while the main note for this contact is still waiting for sync.php confirmation. */
     fun isGeneralPending(context: Context, phone: String): Boolean {
         return isPending(context, ServerRecordIndex.generalNoteEventId(context, phone))
     }
@@ -118,8 +116,8 @@ internal object CallReportNoteOutbox {
 
     fun enqueueCurrentLocalNotes(context: Context, phone: String) {
         val appContext = context.applicationContext
-        if (!CrmContactSyncStore.isEnabled(appContext, phone)) return
         enqueueGeneral(appContext, phone, ContactNoteReader.generalNoteForPhone(appContext, phone))
+        if (!CrmContactSyncStore.isEnabled(appContext, phone)) return
         ContactNoteReader.callNotesForPhone(appContext, phone).forEach { callNote ->
             if (callNote.callAt > 0L) enqueueCall(
                 context = appContext,
@@ -144,8 +142,6 @@ internal object CallReportNoteOutbox {
         val eligible = all.filter { operation ->
             operation.isGeneralNote || CrmContactSyncStore.isEnabled(context.applicationContext, operation.phone)
         }
-        // Preserve the old behavior for call notes of CRM-disabled contacts, but never
-        // discard a main note merely because the CRM contact toggle is off.
         if (eligible.size != all.size) writeLocked(context, eligible)
         eligible.sortedBy { it.updatedAtMs }.take(limit.coerceIn(1, 50))
     }
@@ -163,7 +159,6 @@ internal object CallReportNoteOutbox {
     }
 
     private fun enqueue(context: Context, operation: CallReportQueuedNote): Boolean {
-        // A fresh local edit replaces the previous server-confirmed version.
         ServerRecordIndex.markPending(context, operation.clientEventId)
         synchronized(lock) {
             val operations = readLocked(context).filterNot { it.clientEventId == operation.clientEventId }.toMutableList()
@@ -172,11 +167,6 @@ internal object CallReportNoteOutbox {
         }
         CallReportNoteOutboxScheduler.enqueue(context, reason = "note_changed")
         return true
-    }
-
-    private fun hasActiveServerConfiguration(context: Context): Boolean {
-        val config = ConfigStore.load(context)
-        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
     }
 
     private fun readLocked(context: Context): List<CallReportQueuedNote> {
