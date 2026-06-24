@@ -152,7 +152,6 @@ internal object CallReportNoteOutbox {
             operations += operation
             writeLocked(context, operations)
         }
-        clearFailure(context)
         CallReportNoteOutboxScheduler.enqueue(context, reason = "note_changed")
         return true
     }
