@@ -17,7 +17,23 @@ class ContactNoteEditActivity : Activity() {
     private var isGeneralNote = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+
+        if (intent.getBooleanExtra(EXTRA_SHOW_NUMBER_KEYPAD, false)) {
+            setContentView(
+                NumberEntryUi(
+                    activity = this,
+                    onNumberConfirmed = { number ->
+                        setResult(RESULT_OK, Intent().putExtra(EXTRA_NUMBER, number))
+                        finish()
+                    },
+                    close = { finish() },
+                ).buildContent(),
+            )
+            return
+        }
+
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
 
         phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
@@ -37,7 +53,7 @@ class ContactNoteEditActivity : Activity() {
                 saveAndClose = ::saveAndClose,
                 saveAndOpenCalendar = ::saveAndOpenCalendar,
                 close = { finish() },
-            ).buildContent()
+            ).buildContent(),
         )
     }
 
@@ -121,5 +137,10 @@ class ContactNoteEditActivity : Activity() {
         }.onFailure {
             Toast.makeText(this, getString(R.string.dynamic_calendar_app_not_found), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    companion object {
+        const val EXTRA_SHOW_NUMBER_KEYPAD = "show_number_keypad"
+        const val EXTRA_NUMBER = "number"
     }
 }
