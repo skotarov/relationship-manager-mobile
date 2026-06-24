@@ -21,7 +21,8 @@ internal object CallReportNoteOutboxScheduler {
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .addTag(UNIQUE_WORK_NAME)
             .build()
+        // A new note save must not remain behind an old waiting/retrying request.
         WorkManager.getInstance(appContext)
-            .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 }
