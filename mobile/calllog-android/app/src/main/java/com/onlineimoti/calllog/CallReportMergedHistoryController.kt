@@ -219,13 +219,13 @@ internal class CallReportMergedHistoryController(
         onEditCallNote: (ContactCallNote) -> Unit,
         remoteEnabled: Boolean,
     ): LinearLayout {
-        val foreignNote = remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
+        val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val serverConfirmed = isServerConfirmed(phone, row)
-        val pendingNote = remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
+        val pendingNote = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
             CallReportNoteOutbox.isCallPending(activity, phone, it)
         } == true
         val colors = when {
-            foreignNote -> Triple(Color.rgb(248, 250, 252), Color.rgb(203, 213, 225), Color.rgb(71, 85, 105))
+            foreignRecord -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
             row.kind == CallReportHistoryRowKind.NOTE -> Triple(NoteUiStyle.Call.background, NoteUiStyle.Call.border, NoteUiStyle.Call.text)
             else -> Triple(Color.WHITE, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
         }
@@ -237,16 +237,20 @@ internal class CallReportMergedHistoryController(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
-            if (row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable) {
+            if (!foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable) {
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
                     val local = row.localNote
                     onEditCallNote(
-                        if (remoteEnabled && row.serverNewer) local.copy(
-                            note = row.text,
-                            savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
-                        ) else local,
+                        if (remoteEnabled && row.serverNewer) {
+                            local.copy(
+                                note = row.text,
+                                savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
+                            )
+                        } else {
+                            local
+                        },
                     )
                 }
             }
@@ -269,7 +273,7 @@ internal class CallReportMergedHistoryController(
                     setPadding(0, dp(6), 0, 0)
                 })
             }
-            if (remoteEnabled && row.serverNewer) {
+            if (!foreignRecord && remoteEnabled && row.serverNewer) {
                 addView(TextView(activity).apply {
                     text = "По-нова версия на сървъра"
                     textSize = 12f
@@ -277,15 +281,18 @@ internal class CallReportMergedHistoryController(
                     setPadding(0, dp(6), 0, 0)
                 })
             }
-            if (foreignNote) {
-                addView(TextView(activity).apply {
-                    text = "Бележка от ${row.authorName} · само за преглед"
-                    textSize = 12f
-                    setTextColor(Color.rgb(100, 116, 139))
-                    setPadding(0, dp(6), 0, 0)
-                })
-            }
+            addServerAuthor(this, row)
         }
+    }
+
+    private fun addServerAuthor(container: LinearLayout, row: CallReportHistoryRow) {
+        if (!row.authorIsOtherBroker || row.authorName.isBlank()) return
+        container.addView(TextView(activity).apply {
+            text = "Записал: ${row.authorName}"
+            textSize = 12f
+            setTextColor(FOREIGN_TEXT)
+            setPadding(0, dp(6), 0, 0)
+        })
     }
 
     private fun isServerConfirmed(phone: String, row: CallReportHistoryRow): Boolean = when (row.kind) {
@@ -308,7 +315,7 @@ internal class CallReportMergedHistoryController(
             text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), directionLabel(row.direction))
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
-            setTextColor(Color.rgb(71, 85, 105))
+            setTextColor(if (row.authorIsOtherBroker) FOREIGN_TEXT else Color.rgb(71, 85, 105))
             setTypeface(typeface, Typeface.NORMAL)
             if (serverConfirmed) {
                 setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
@@ -353,4 +360,10 @@ internal class CallReportMergedHistoryController(
         val sms: List<SmsMessageRecord> = emptyList(),
         val notes: List<ContactCallNote> = emptyList(),
     )
+
+    private companion object {
+        val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
+        val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
+        val FOREIGN_TEXT: Int = Color.rgb(100, 116, 139)
+    }
 }
