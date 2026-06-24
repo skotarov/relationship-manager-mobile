@@ -39,7 +39,6 @@ internal data class CallReportQueuedNote(
 internal object CallReportNoteOutbox {
     private const val PREFS = "callreport_note_outbox"
     private const val KEY_OPERATIONS = "operations_v1"
-    private const val MAX_OPERATION_COUNT = 2_000
     private val lock = Any()
 
     /** Queue an upsert or a delete (blank [note]) for the contact's general note. */
@@ -157,8 +156,9 @@ internal object CallReportNoteOutbox {
             val operations = readLocked(context)
                 .filterNot { item -> item.clientEventId == operation.clientEventId }
                 .toMutableList()
+            // Coalesce only the same note; do not silently discard any different note operation.
             operations += operation
-            writeLocked(context, operations.takeLast(MAX_OPERATION_COUNT))
+            writeLocked(context, operations)
         }
         CallReportNoteOutboxScheduler.enqueue(context, reason = "note_changed")
         return true
