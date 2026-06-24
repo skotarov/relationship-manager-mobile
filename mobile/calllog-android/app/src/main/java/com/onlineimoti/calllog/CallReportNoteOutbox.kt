@@ -32,6 +32,7 @@ internal data class CallReportQueuedNote(
             providerRowId = clientEventId,
             deviceId = deviceId,
             appVersion = BuildConfig.VERSION_NAME,
+            note = this.note,
         )
     }
 }
