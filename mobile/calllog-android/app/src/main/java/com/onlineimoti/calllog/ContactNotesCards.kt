@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.graphics.Color
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -10,14 +11,16 @@ internal class ContactNotesCards(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> android.graphics.drawable.GradientDrawable,
     private val directionArrowLabel: (String) -> String,
 ) {
-    fun generalNoteCard(textValue: String, muted: Boolean, serverConfirmed: Boolean, onClick: () -> Unit): TextView {
+    fun generalNoteCard(
+        textValue: String,
+        muted: Boolean,
+        serverConfirmed: Boolean,
+        syncStatusText: String,
+        onClick: () -> Unit,
+    ): LinearLayout {
         val colors = NoteUiStyle.General
-        return TextView(activity).apply {
-            text = textValue
-            textSize = 14.5f
-            setTextColor(if (muted) colors.mutedText else colors.text)
-            if (serverConfirmed) setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_cloud_note, 0, 0, 0)
-            compoundDrawablePadding = dp(6)
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             if (!muted) background = roundedRect(colors.background, dp(12), colors.border, dp(1))
             isClickable = true
@@ -27,6 +30,28 @@ internal class ContactNotesCards(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
+
+            addView(TextView(activity).apply {
+                text = textValue
+                textSize = 14.5f
+                setTextColor(if (muted) colors.mutedText else colors.text)
+                if (serverConfirmed) setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_cloud_note, 0, 0, 0)
+                compoundDrawablePadding = dp(6)
+            })
+            if (syncStatusText.isNotBlank()) {
+                addView(TextView(activity).apply {
+                    text = syncStatusText
+                    textSize = 12f
+                    setTextColor(
+                        if (syncStatusText.startsWith("Синхронизацията не е потвърдена:")) {
+                            Color.rgb(185, 28, 28)
+                        } else {
+                            Color.rgb(100, 116, 139)
+                        }
+                    )
+                    setPadding(0, dp(6), 0, 0)
+                })
+            }
         }
     }
 
