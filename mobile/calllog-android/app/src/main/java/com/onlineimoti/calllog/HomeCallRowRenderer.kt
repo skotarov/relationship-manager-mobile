@@ -10,7 +10,6 @@ import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -109,15 +108,9 @@ internal class HomeCallRowRenderer(
         }
         if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
-            val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, call.number)
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(contactNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(
-                    R.drawable.ic_note_lines,
-                    0,
-                    if (serverConfirmed) R.drawable.ic_cloud_note else 0,
-                    0,
-                )
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
                 compoundDrawablePadding = dp(4)
                 setTextColor(colors.text)
                 textSize = 12.5f
@@ -132,15 +125,9 @@ internal class HomeCallRowRenderer(
         }
         if (!callNote.isNullOrBlank()) {
             val colors = NoteUiStyle.Call
-            val serverConfirmed = ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(callNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(
-                    R.drawable.ic_chat_note,
-                    0,
-                    if (serverConfirmed) R.drawable.ic_cloud_note else 0,
-                    0,
-                )
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
                 compoundDrawablePadding = dp(5)
                 setTextColor(colors.text)
                 textSize = 12.5f
@@ -154,24 +141,7 @@ internal class HomeCallRowRenderer(
             })
         }
 
-        val serverNoteSlot = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        }
-        textColumn.addView(serverNoteSlot)
-        HomeServerNotesLoader.load(activity, call.number) { note ->
-            if (note == null || note.lastNote.isBlank() || activity.isFinishing || activity.isDestroyed) return@load
-            serverNoteSlot.removeAllViews()
-            serverNoteSlot.addView(serverNoteView(note, highlightQuery))
-            serverNoteSlot.visibility = View.VISIBLE
-        }
-
         row.addView(textColumn)
-        if (ServerRecordIndex.isCommunicationConfirmed(activity, call)) row.addView(serverCloudBadge())
 
         if (showQuickActions || !call.isSms) {
             val actions = LinearLayout(activity).apply {
@@ -198,36 +168,10 @@ internal class HomeCallRowRenderer(
         return card
     }
 
-    private fun serverNoteView(note: CallReportServerNote, highlightQuery: String): TextView {
-        val textColor = Color.rgb(30, 64, 105)
-        val attribution = note.authorBrokerName.takeIf { it.isNotBlank() }
-            ?.let { "Сървърна бележка · $it" }
-            ?: "Сървърна бележка"
-        return TextView(activity).apply {
-            text = "${highlightedText(note.lastNote, highlightQuery, textColor)}\n$attribution"
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, R.drawable.ic_cloud_note, 0)
-            compoundDrawablePadding = dp(5)
-            setTextColor(textColor)
-            textSize = 12.5f
-            maxLines = 4
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(Color.rgb(239, 246, 255), dp(9), Color.rgb(147, 197, 253), dp(1))
-        }
-    }
-
-    private fun serverCloudBadge(): ImageView {
-        return ImageView(activity).apply {
-            setImageResource(R.drawable.ic_cloud_note)
-            contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
-            alpha = 0.9f
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginStart = dp(5) }
-        }
-    }
-
     private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
         val mainTextColor = activity.getColor(R.color.calllog_text)
         val titleValue = displayName.ifBlank { call.number }
+        val syncEnabled = CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -241,6 +185,14 @@ internal class HomeCallRowRenderer(
                 ellipsize = TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             })
+            if (syncEnabled) {
+                addView(ImageView(activity).apply {
+                    setImageResource(R.drawable.ic_cloud_note)
+                    contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    layoutParams = LinearLayout.LayoutParams(dp(19), dp(19)).apply { marginStart = dp(5) }
+                })
+            }
         }
     }
 
