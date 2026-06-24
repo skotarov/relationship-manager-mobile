@@ -16,6 +16,8 @@ internal data class CallReportSyncEvent(
     val providerRowId: String,
     val deviceId: String,
     val appVersion: String,
+    /** null means do not alter a server note; an empty string explicitly clears it. */
+    val note: String? = null,
 ) {
     fun toLookupContext(): CallReportLookupContext = CallReportLookupContext(
         communicationType = communicationType,
