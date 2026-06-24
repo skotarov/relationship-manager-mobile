@@ -11,7 +11,6 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -31,23 +30,21 @@ class ContactNotesActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val contactNameRefreshRunnable = Runnable {
-        if (!isFinishing && !isDestroyed && refreshTitleFromRealContact()) {
-            render()
-        }
+        if (!isFinishing && !isDestroyed && refreshTitleFromRealContact()) render()
     }
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != PostCallOverlayService.ACTION_NOTES_CHANGED) return
-            crmHistoryController.refreshLocal(phone)
+            historyController.refreshLocal(phone)
             render()
         }
     }
 
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
-    private val crmHistoryController by lazy {
-        ContactNotesCrmHistoryController(
+    private val historyController by lazy {
+        CallReportMergedHistoryController(
             activity = this,
             headerUi = headerUi,
             dp = ::dp,
@@ -84,7 +81,7 @@ class ContactNotesActivity : Activity() {
         backTargetsUnfilteredHome = intent.getBooleanExtra(EXTRA_BACK_TARGETS_UNFILTERED_HOME, false)
         render()
         autoUpdateContactLinkOnce()
-        crmHistoryController.loadOnce(phone)
+        historyController.loadOnce(phone)
     }
 
     override fun onStart() {
@@ -95,7 +92,7 @@ class ContactNotesActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshTitleFromRealContact()
-        crmHistoryController.refreshLocal(phone)
+        historyController.refreshLocal(phone)
         render()
         scheduleContactNameRefresh()
     }
@@ -111,7 +108,7 @@ class ContactNotesActivity : Activity() {
     }
 
     override fun onDestroy() {
-        crmHistoryController.release()
+        historyController.release()
         crmSyncExecutor.shutdownNow()
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
@@ -150,7 +147,7 @@ class ContactNotesActivity : Activity() {
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
-        crmHistoryController.addSection(
+        historyController.addSection(
             root = root,
             phone = phone,
             openFilteredLog = { openRmCallLog(filtered = true) },
@@ -166,7 +163,6 @@ class ContactNotesActivity : Activity() {
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
         if (crmSyncBusy || phone.isBlank()) return
-
         val requestedPhone = phone
         val requestedTitle = titleText
         crmSyncBusy = true
@@ -225,11 +221,7 @@ class ContactNotesActivity : Activity() {
 
     private fun buildDebugText(): String {
         val debugText = RmContactDebugReader.debugText(this, phone, titleText)
-        return if (contactUpdateBusy) {
-            "${getString(R.string.dynamic_rm_progress_updating)}\n$debugText"
-        } else {
-            debugText
-        }
+        return if (contactUpdateBusy) "${getString(R.string.dynamic_rm_progress_updating)}\n$debugText" else debugText
     }
 
     private fun headerRow(): LinearLayout {
