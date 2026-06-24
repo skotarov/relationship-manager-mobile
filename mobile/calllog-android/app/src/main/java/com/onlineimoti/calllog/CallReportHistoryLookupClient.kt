@@ -5,6 +5,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 
 internal data class CallReportHistoryPrincipal(
     val brokerId: String = "",
@@ -35,6 +36,7 @@ internal data class CallReportHistoryLookupResult(
 
 internal object CallReportHistoryLookupClient {
     private const val PATH = "/broker/callreport/history_lookup.php"
+    private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(config: AppConfig, phone: String): CallReportHistoryLookupResult {
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
@@ -54,11 +56,41 @@ internal object CallReportHistoryLookupClient {
             if (status !in 200..299) throw IllegalStateException("HTTP $status")
             val json = JSONObject(body)
             if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
-            return parse(json)
+            return parse(json).also { result -> updateGeneralNoteServerPresence(phone, result.events) }
         } finally {
             connection.disconnect()
         }
     }
+
+    /** Server presence of the main contact note, independent of this installation's client_event_id. */
+    fun hasGeneralNoteOnServer(phone: String): Boolean {
+        val key = phoneKey(phone)
+        return key.isNotBlank() && key in generalNoteServerPhones
+    }
+
+    /** Called after a successful durable general-note sync, before a subsequent history refresh arrives. */
+    fun markGeneralNoteOnServer(phone: String) {
+        phoneKey(phone).takeIf { it.isNotBlank() }?.let { generalNoteServerPhones += it }
+    }
+
+    private fun updateGeneralNoteServerPresence(phone: String, events: List<CallReportHistoryEvent>) {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return
+        if (events.any { event -> isGeneralNoteEvent(event, key) }) {
+            generalNoteServerPhones += key
+        } else {
+            generalNoteServerPhones -= key
+        }
+    }
+
+    private fun isGeneralNoteEvent(event: CallReportHistoryEvent, requestedPhoneKey: String): Boolean {
+        if (!event.communicationType.equals("note", ignoreCase = true)) return false
+        if (phoneKey(event.phone) != requestedPhoneKey) return false
+        return event.clientEventId.contains(":note:general:") ||
+            (event.direction.isBlank() && event.durationSeconds <= 0L)
+    }
+
+    private fun phoneKey(phone: String): String = HomeCallPageLoader.noteKey(phone)
 
     private fun parse(json: JSONObject): CallReportHistoryLookupResult {
         val principalJson = json.optJSONObject("principal") ?: json.optJSONObject("authenticated_principal")
