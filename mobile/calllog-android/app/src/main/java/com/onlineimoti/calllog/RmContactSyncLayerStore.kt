@@ -28,8 +28,9 @@ internal object RmContactSyncLayerStore {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
             return false
         }
-        // Existing local notes are added once when the user enables server sync for this contact.
+        // Existing local notes and phone/SMS history are now eligible for the normal catch-up sync.
         CallReportNoteOutbox.enqueueCurrentLocalNotes(appContext, normalizedPhone)
+        CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "contact_sync_enabled")
         return true
     }
 
