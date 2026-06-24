@@ -12,6 +12,8 @@ internal object RmContactSyncLayerStore {
 
         if (!enabled) {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
+            // Respect the switch immediately: unsent local note changes must not leave the device.
+            CallReportNoteOutbox.removeForPhone(appContext, normalizedPhone)
             if (RmRealContactLookup.findRawContactId(appContext, normalizedPhone) <= 0L) {
                 return deleteRmLayer(appContext, normalizedPhone)
             }
@@ -26,6 +28,8 @@ internal object RmContactSyncLayerStore {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
             return false
         }
+        // Existing local notes are added once when the user enables server sync for this contact.
+        CallReportNoteOutbox.enqueueCurrentLocalNotes(appContext, normalizedPhone)
         return true
     }
 
