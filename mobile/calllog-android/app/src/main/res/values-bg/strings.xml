@@ -27,7 +27,7 @@
     <string name="settings_popup_section">Поведение на popup-ите</string>
     <string name="settings_crm_section">Контакти в Управление на взаимоотношения</string>
     <string name="settings_permissions_section">Разрешения</string>
-    <string name="settings_server_section">Сървърни настройки</string>
+    <string name="settings_server_section">CRM сървър</string>
     <string name="settings_debug_section">Отстраняване на грешки / Тестове</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, сървърната връзка и WebView екраните работят правилно.</string>
 
