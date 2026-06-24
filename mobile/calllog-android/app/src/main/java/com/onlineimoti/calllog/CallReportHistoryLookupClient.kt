@@ -67,7 +67,7 @@ internal object CallReportHistoryLookupClient {
             brokerName = principalJson?.optString("broker_name").orEmpty().trim(),
         )
         val events = buildList {
-            val items = json.optJSONArray("items")
+            val items = json.optJSONArray("history_items") ?: json.optJSONArray("items")
             if (items != null) {
                 for (index in 0 until items.length()) {
                     val item = items.optJSONObject(index) ?: continue
