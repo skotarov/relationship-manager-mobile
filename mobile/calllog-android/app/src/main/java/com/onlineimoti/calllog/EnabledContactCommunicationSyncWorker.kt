@@ -6,10 +6,6 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Uploads only Android call and SMS events whose phone is explicitly enabled for server sync.
- * It rechecks eligibility immediately before each HTTP request.
- */
 class EnabledContactCommunicationSyncWorker(
     appContext: Context,
     workerParams: WorkerParameters,
@@ -22,23 +18,20 @@ class EnabledContactCommunicationSyncWorker(
 
         val events = buildList {
             CallReportProviderEventReader.recentPhoneEvents(applicationContext, CALL_SYNC_LIMIT)
-                .filter { call -> CrmContactSyncStore.isEnabled(applicationContext, call.phone) }
-                .mapNotNullTo(this) { call -> CallReportSyncEventFactory.fromPhoneCall(applicationContext, call) }
+                .filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
+                .mapNotNullTo(this) { CallReportSyncEventFactory.fromPhoneCall(applicationContext, it) }
             CallReportProviderEventReader.recentSmsEvents(applicationContext, SMS_SYNC_LIMIT)
-                .filter { sms -> CrmContactSyncStore.isEnabled(applicationContext, sms.phone) }
-                .mapNotNullTo(this) { sms -> CallReportSyncEventFactory.fromSms(applicationContext, sms) }
-        }
-            .distinctBy { event -> event.clientEventId }
-            .sortedByDescending { event -> event.occurredAtMs }
-
-        if (events.isEmpty()) return@withContext Result.success()
+                .filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
+                .mapNotNullTo(this) { CallReportSyncEventFactory.fromSms(applicationContext, it) }
+        }.distinctBy { it.clientEventId }.sortedByDescending { it.occurredAtMs }
 
         try {
             events.chunked(MAX_BATCH_SIZE).forEach { candidates ->
-                val enabledNow = candidates.filter { event ->
-                    CrmContactSyncStore.isEnabled(applicationContext, event.phone)
+                val batch = candidates.filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
+                if (batch.isNotEmpty()) {
+                    val confirmed = CallReportSyncClient.sync(config, batch)
+                    ServerRecordIndex.markConfirmed(applicationContext, confirmed)
                 }
-                if (enabledNow.isNotEmpty()) CallReportSyncClient.sync(config, enabledNow)
             }
             Result.success()
         } catch (error: CallReportSyncException) {
