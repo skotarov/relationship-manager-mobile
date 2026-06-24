@@ -88,6 +88,11 @@ internal object CallReportNoteOutbox {
         return localId.isNotBlank() && isPending(context, ServerRecordIndex.callNoteEventId(context, localId))
     }
 
+    /** True while the main note for this contact is still waiting for sync.php confirmation. */
+    fun isGeneralPending(context: Context, phone: String): Boolean {
+        return isPending(context, ServerRecordIndex.generalNoteEventId(context, phone))
+    }
+
     fun lastFailure(context: Context): String = context.applicationContext
         .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         .getString(KEY_LAST_FAILURE, "")
@@ -147,6 +152,8 @@ internal object CallReportNoteOutbox {
     }
 
     private fun enqueue(context: Context, operation: CallReportQueuedNote): Boolean {
+        // A fresh local edit replaces the previous server-confirmed version.
+        ServerRecordIndex.markPending(context, operation.clientEventId)
         synchronized(lock) {
             val operations = readLocked(context).filterNot { it.clientEventId == operation.clientEventId }.toMutableList()
             operations += operation
