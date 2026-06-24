@@ -70,16 +70,18 @@ internal object CallReportHistoryLookupClient {
 
     /** Called after a successful durable general-note sync, before a subsequent history refresh arrives. */
     fun markGeneralNoteOnServer(phone: String) {
-        phoneKey(phone).takeIf { it.isNotBlank() }?.let { generalNoteServerPhones += it }
+        phoneKey(phone).takeIf { it.isNotBlank() }?.let { key ->
+            generalNoteServerPhones.add(key)
+        }
     }
 
     private fun updateGeneralNoteServerPresence(phone: String, events: List<CallReportHistoryEvent>) {
         val key = phoneKey(phone)
         if (key.isBlank()) return
         if (events.any { event -> isGeneralNoteEvent(event, key) }) {
-            generalNoteServerPhones += key
+            generalNoteServerPhones.add(key)
         } else {
-            generalNoteServerPhones -= key
+            generalNoteServerPhones.remove(key)
         }
     }
 
