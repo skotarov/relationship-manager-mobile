@@ -50,7 +50,13 @@ internal object CallReportSyncClient {
             val response = runCatching { JSONObject(body) }.getOrNull()
             if (responseCode !in 200..299 || response?.optBoolean("ok", false) != true) {
                 val retryable = responseCode == 408 || responseCode == 429 || responseCode >= 500 || responseCode == 0
-                throw CallReportSyncException("Sync request was rejected ($responseCode).", retryable)
+                val serverError = response?.optString("error").orEmpty().trim()
+                val message = if (serverError.isNotBlank()) {
+                    "$serverError (HTTP $responseCode)"
+                } else {
+                    "Sync request was rejected ($responseCode)."
+                }
+                throw CallReportSyncException(message, retryable)
             }
             return response.optJSONArray("results")
                 ?.let { results ->
