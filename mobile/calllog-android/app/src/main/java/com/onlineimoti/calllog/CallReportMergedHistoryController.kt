@@ -42,12 +42,28 @@ internal class CallReportMergedHistoryController(
     fun refreshServer(phone: String) {
         if (phone.isBlank() || serverLoading) return
         val config = ConfigStore.load(activity)
-        if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) return
+        if (!CallReportRemoteAccess.isEnabled(config)) {
+            val hadServerState = serverLoading || serverHistory.events.isNotEmpty() ||
+                serverHistory.principal != CallReportHistoryPrincipal() || loadError.isNotBlank()
+            serverLoading = false
+            serverHistory = CallReportHistoryLookupResult()
+            loadError = ""
+            if (hadServerState) rerender()
+            return
+        }
+        if (!CallReportRemoteAccess.isReady(config)) return
         serverLoading = true
         executor.execute {
             val result = runCatching { CallReportHistoryLookupClient.lookup(config, phone) }
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
+                if (!CallReportRemoteAccess.isEnabled(activity)) {
+                    serverLoading = false
+                    serverHistory = CallReportHistoryLookupResult()
+                    loadError = ""
+                    rerender()
+                    return@post
+                }
                 serverLoading = false
                 result.onSuccess {
                     serverHistory = it
@@ -89,14 +105,19 @@ internal class CallReportMergedHistoryController(
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
-        val historyEvents = serverHistory.events.filter { event ->
-            event.communicationType.equals("sms", ignoreCase = true) ||
-                event.communicationType.equals("note", ignoreCase = true)
+        val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
+        val historyEvents = if (remoteEnabled) {
+            serverHistory.events.filter { event ->
+                event.communicationType.equals("sms", ignoreCase = true) ||
+                    event.communicationType.equals("note", ignoreCase = true)
+            }
+        } else {
+            emptyList()
         }
         val rows = CallReportHistoryMerge.merge(
             context = activity,
             phone = phone,
-            principal = serverHistory.principal,
+            principal = if (remoteEnabled) serverHistory.principal else CallReportHistoryPrincipal(),
             localCalls = emptyList(),
             localSms = localSms,
             localNotes = localNotes,
@@ -114,8 +135,8 @@ internal class CallReportMergedHistoryController(
             latestCallWithoutNote()?.let { call ->
                 addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
             }
-            rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote)) }
-            addStatus(this, rows)
+            rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled)) }
+            addStatus(this, rows, remoteEnabled)
         })
     }
 
@@ -196,10 +217,11 @@ internal class CallReportMergedHistoryController(
         phone: String,
         row: CallReportHistoryRow,
         onEditCallNote: (ContactCallNote) -> Unit,
+        remoteEnabled: Boolean,
     ): LinearLayout {
-        val foreignNote = row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
+        val foreignNote = remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
         val serverConfirmed = isServerConfirmed(phone, row)
-        val pendingNote = row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
+        val pendingNote = remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
             CallReportNoteOutbox.isCallPending(activity, phone, it)
         } == true
         val colors = when {
@@ -221,7 +243,7 @@ internal class CallReportMergedHistoryController(
                 setOnClickListener {
                     val local = row.localNote
                     onEditCallNote(
-                        if (row.serverNewer) local.copy(
+                        if (remoteEnabled && row.serverNewer) local.copy(
                             note = row.text,
                             savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
                         ) else local,
@@ -247,7 +269,7 @@ internal class CallReportMergedHistoryController(
                     setPadding(0, dp(6), 0, 0)
                 })
             }
-            if (row.serverNewer) {
+            if (remoteEnabled && row.serverNewer) {
                 addView(TextView(activity).apply {
                     text = "По-нова версия на сървъра"
                     textSize = 12f
@@ -301,11 +323,11 @@ internal class CallReportMergedHistoryController(
         else -> ""
     }
 
-    private fun addStatus(container: LinearLayout, rows: List<CallReportHistoryRow>) {
+    private fun addStatus(container: LinearLayout, rows: List<CallReportHistoryRow>, remoteEnabled: Boolean) {
         when {
             localLoading -> container.addView(status("Зареждам SMS и бележки…"))
-            serverLoading -> container.addView(status("Добавям сървърни бележки и SMS…"))
-            loadError.isNotBlank() -> container.addView(status(loadError))
+            remoteEnabled && serverLoading -> container.addView(status("Добавям сървърни бележки и SMS…"))
+            remoteEnabled && loadError.isNotBlank() -> container.addView(status(loadError))
             rows.isEmpty() && latestCallWithoutNote() == null -> container.addView(status("Няма SMS или бележки за този номер"))
         }
     }
