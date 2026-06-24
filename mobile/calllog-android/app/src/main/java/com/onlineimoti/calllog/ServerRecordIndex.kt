@@ -5,8 +5,7 @@ import org.json.JSONArray
 
 /**
  * Persistent local index of records that the Call Report server has acknowledged.
- * It deliberately survives disabling contact sync: the switch controls future uploads,
- * while this index records historical server presence for UI cloud badges.
+ * The data survives disabling Server, but server indicators are hidden until Server is enabled again.
  */
 internal object ServerRecordIndex {
     private const val PREFS = "callreport_server_record_index"
@@ -46,7 +45,7 @@ internal object ServerRecordIndex {
     }
 
     fun isConfirmed(context: Context, clientEventId: String): Boolean {
-        if (clientEventId.isBlank()) return false
+        if (clientEventId.isBlank() || !CallReportRemoteAccess.isEnabled(context)) return false
         synchronized(lock) {
             return clientEventId in readLocked(context)
         }
