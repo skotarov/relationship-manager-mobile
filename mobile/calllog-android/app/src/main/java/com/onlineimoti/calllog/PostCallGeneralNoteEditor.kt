@@ -98,7 +98,11 @@ internal class PostCallGeneralNoteEditor(
         }
         actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") {
             setPendingGeneralNote(generalNoteInput.text?.toString().orEmpty())
-            showNoteEditor()
+            if (savePendingNoteChangesBeforeHistory()) {
+                showNoteEditor()
+            } else {
+                Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+            }
         })
         actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
         actions.addView(ui.secondaryTextAction("История") {
