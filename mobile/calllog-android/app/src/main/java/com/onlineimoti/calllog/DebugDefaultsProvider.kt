@@ -18,6 +18,8 @@ class DebugDefaultsProvider : ContentProvider() {
             .putBoolean("notify_known_contacts", true)
             .putInt("post_call_timeout", 6)
             .apply()
+        CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "app_start")
+        CallReportNoteOutboxScheduler.enqueue(appContext, reason = "app_start")
 
         (appContext.applicationContext as? Application)?.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
