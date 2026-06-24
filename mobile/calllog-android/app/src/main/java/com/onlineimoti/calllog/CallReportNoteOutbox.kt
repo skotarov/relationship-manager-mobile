@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Persistent, coalescing outbox for local notes that are allowed to sync. */
+/** Persistent, coalescing outbox for locally edited notes. */
 internal data class CallReportQueuedNote(
     val clientEventId: String,
     val phone: String,
@@ -15,6 +15,9 @@ internal data class CallReportQueuedNote(
     val contactName: String,
     val updatedAtMs: Long,
 ) {
+    val isGeneralNote: Boolean
+        get() = clientEventId.contains(":note:general:")
+
     fun toSyncEvent(context: Context): CallReportSyncEvent = CallReportSyncEvent(
         clientEventId = clientEventId,
         communicationType = "note",
@@ -37,9 +40,13 @@ internal object CallReportNoteOutbox {
     private const val KEY_LAST_FAILURE = "last_failure"
     private val lock = Any()
 
+    /**
+     * A deliberately saved main note is server data in its own right. It must not depend
+     * on whether the contact is registered in the CRM contact layer.
+     */
     fun enqueueGeneral(context: Context, phone: String, note: String): Boolean {
         val appContext = context.applicationContext
-        if (!CrmContactSyncStore.isEnabled(appContext, phone)) return false
+        if (!hasActiveServerConfiguration(appContext)) return false
         val key = phoneKey(phone)
         if (key.isBlank()) return false
         val now = System.currentTimeMillis()
@@ -134,9 +141,13 @@ internal object CallReportNoteOutbox {
 
     internal fun takeBatch(context: Context, limit: Int): List<CallReportQueuedNote> = synchronized(lock) {
         val all = readLocked(context)
-        val enabled = all.filter { CrmContactSyncStore.isEnabled(context.applicationContext, it.phone) }
-        if (enabled.size != all.size) writeLocked(context, enabled)
-        enabled.sortedBy { it.updatedAtMs }.take(limit.coerceIn(1, 50))
+        val eligible = all.filter { operation ->
+            operation.isGeneralNote || CrmContactSyncStore.isEnabled(context.applicationContext, operation.phone)
+        }
+        // Preserve the old behavior for call notes of CRM-disabled contacts, but never
+        // discard a main note merely because the CRM contact toggle is off.
+        if (eligible.size != all.size) writeLocked(context, eligible)
+        eligible.sortedBy { it.updatedAtMs }.take(limit.coerceIn(1, 50))
     }
 
     internal fun acknowledge(context: Context, clientEventIds: Collection<String>) {
@@ -161,6 +172,11 @@ internal object CallReportNoteOutbox {
         }
         CallReportNoteOutboxScheduler.enqueue(context, reason = "note_changed")
         return true
+    }
+
+    private fun hasActiveServerConfiguration(context: Context): Boolean {
+        val config = ConfigStore.load(context)
+        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
     }
 
     private fun readLocked(context: Context): List<CallReportQueuedNote> {
