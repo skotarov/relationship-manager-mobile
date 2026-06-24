@@ -33,13 +33,13 @@
             android:scaleType="center"
             android:src="@drawable/ic_search" />
 
-        <ImageButton
+        <com.onlineimoti.calllog.HomeDialPadButton
             android:id="@+id/dialPadButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginEnd="4dp"
             android:background="@android:color/transparent"
-            android:contentDescription="Keypad"
+            android:contentDescription="Клавиатура за набиране"
             android:padding="10dp"
             android:scaleType="center"
             android:src="@drawable/ic_dial_pad" />
