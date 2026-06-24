@@ -16,7 +16,7 @@ internal class ContactNotesCards(
             text = textValue
             textSize = 14.5f
             setTextColor(if (muted) colors.mutedText else colors.text)
-            if (serverConfirmed) setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
+            if (serverConfirmed) setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_cloud_note, 0, 0, 0)
             compoundDrawablePadding = dp(6)
             setPadding(dp(12), dp(10), dp(12), dp(10))
             if (!muted) background = roundedRect(colors.background, dp(12), colors.border, dp(1))
