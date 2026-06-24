@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
+import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ class CallReportNoteOutboxWorker(
                 ServerRecordIndex.markConfirmed(applicationContext, confirmed)
                 CallReportNoteOutbox.acknowledge(applicationContext, confirmed)
                 CallReportNoteOutbox.clearFailure(applicationContext)
+                notifyUiOfConfirmedSync()
             }
             Result.success()
         } catch (error: CallReportSyncException) {
@@ -40,6 +42,13 @@ class CallReportNoteOutboxWorker(
             CallReportNoteOutbox.recordFailure(applicationContext, "Неочаквана грешка при синхронизация.")
             Result.retry()
         }
+    }
+
+    private fun notifyUiOfConfirmedSync() {
+        applicationContext.sendBroadcast(
+            Intent(PostCallOverlayService.ACTION_NOTES_CHANGED)
+                .setPackage(applicationContext.packageName),
+        )
     }
 
     private companion object {
