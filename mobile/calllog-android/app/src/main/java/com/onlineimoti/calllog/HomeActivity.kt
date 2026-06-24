@@ -74,7 +74,8 @@ class HomeActivity : AppCompatActivity() {
             roundedRect = ::roundedRect,
             openContactNotes = homeActions::openContactNotesScreen,
             openCallNoteEditor = homeActions::openContactNotePopupForCall,
-            onLoaded = ::renderCalls,
+            pageSize = ::pageSize,
+            onStateChanged = ::renderCalls,
         )
     }
     private var pageIndex = 0
@@ -86,7 +87,8 @@ class HomeActivity : AppCompatActivity() {
     private val noteRefreshRunnable = object : Runnable {
         override fun run() {
             if (System.currentTimeMillis() > noteRefreshUntilMs) return
-            filteredFullLogController.invalidate()
+            // The full log was invalidated once when the note changed. Do not repeatedly
+            // trigger background history reloads while the popup is closing.
             renderCalls()
             handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
         }
@@ -120,13 +122,17 @@ class HomeActivity : AppCompatActivity() {
             }
         })
         binding.previousCallsButton.setOnClickListener {
-            if (pageIndex > 0) {
+            if (isFilteredFullLogMode()) {
+                filteredFullLogController.previousPage()
+            } else if (pageIndex > 0) {
                 pageIndex -= 1
                 renderCalls()
             }
         }
         binding.nextCallsButton.setOnClickListener {
-            if (currentCalls.size >= pageSize()) {
+            if (isFilteredFullLogMode()) {
+                filteredFullLogController.nextPage()
+            } else if (currentCalls.size >= pageSize()) {
                 pageIndex += 1
                 renderCalls()
             }
@@ -151,7 +157,8 @@ class HomeActivity : AppCompatActivity() {
         if (!::binding.isInitialized) return
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
-        if (activePhoneFilter.isNotBlank()) filteredFullLogController.invalidate()
+        // Keep the already loaded filtered timeline cached. A real note save broadcasts
+        // ACTION_CONTACT_NOTE_SAVED and invalidates it explicitly.
         renderCalls()
     }
 
@@ -175,6 +182,7 @@ class HomeActivity : AppCompatActivity() {
         binding.previousCallsButton.text = getString(R.string.dynamic_home_previous_calls, size)
         binding.nextCallsButton.text = getString(R.string.dynamic_home_next_calls, size)
         binding.homeCallsContainer.removeAllViews()
+        binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         updatePhoneFilterStatusStyle()
         renderFilteredContactSummary()
@@ -209,6 +217,7 @@ class HomeActivity : AppCompatActivity() {
     private fun applyRenderData(renderData: HomeRenderData, pageSize: Int) {
         currentCalls = renderData.calls
         binding.homeCallsContainer.removeAllViews()
+        binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
         val isPhoneFiltered = activePhoneFilter.isNotBlank()
         renderData.calls.forEach { call ->
@@ -279,6 +288,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderEmptyState() {
+        binding.fullLogProgress.visibility = View.GONE
         binding.homeStatusText.text = when {
             activeSearchQuery.isNotBlank() -> getString(R.string.dynamic_home_no_search_results, activeSearchQuery.trim())
             activePhoneFilter.isNotBlank() && pageIndex == 0 -> getString(R.string.dynamic_home_filter_no_calls_or_sms, activePhoneFilter)
@@ -399,9 +409,14 @@ class HomeActivity : AppCompatActivity() {
         )
     }
 
+    private fun isFilteredFullLogMode(): Boolean {
+        return activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
+    }
+
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     private fun startTemporaryNoteRefresh() {
+        filteredFullLogController.invalidate()
         noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
         handler.removeCallbacks(noteRefreshRunnable)
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
