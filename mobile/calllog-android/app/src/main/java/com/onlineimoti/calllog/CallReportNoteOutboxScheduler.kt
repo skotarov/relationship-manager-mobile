@@ -15,6 +15,7 @@ internal object CallReportNoteOutboxScheduler {
 
     fun enqueue(context: Context, reason: String = "unspecified") {
         val appContext = context.applicationContext
+        if (!CallReportRemoteAccess.isEnabled(appContext)) return
         if (!CallReportNoteOutbox.hasPending(appContext)) return
         val request = OneTimeWorkRequestBuilder<CallReportNoteOutboxWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -24,5 +25,9 @@ internal object CallReportNoteOutboxScheduler {
         // Keep the in-flight worker. It always reads the latest coalesced outbox state.
         WorkManager.getInstance(appContext)
             .enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
+    }
+
+    fun cancel(context: Context) {
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 }
