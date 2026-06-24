@@ -32,11 +32,18 @@ class ContactNotesActivity : Activity() {
     private val contactNameRefreshRunnable = Runnable {
         if (!isFinishing && !isDestroyed && refreshTitleFromRealContact()) render()
     }
+    private val delayedServerRefreshRunnable = Runnable {
+        if (!isFinishing && !isDestroyed) historyController.refreshServer(phone)
+    }
 
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != PostCallOverlayService.ACTION_NOTES_CHANGED) return
+            retryPendingNoteSyncIfEnabled()
             historyController.refreshLocal(phone)
+            historyController.refreshServer(phone)
+            mainHandler.removeCallbacks(delayedServerRefreshRunnable)
+            mainHandler.postDelayed(delayedServerRefreshRunnable, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
             render()
         }
     }
@@ -81,6 +88,7 @@ class ContactNotesActivity : Activity() {
         backTargetsUnfilteredHome = intent.getBooleanExtra(EXTRA_BACK_TARGETS_UNFILTERED_HOME, false)
         render()
         autoUpdateContactLinkOnce()
+        retryPendingNoteSyncIfEnabled()
         historyController.loadOnce(phone)
     }
 
@@ -92,13 +100,16 @@ class ContactNotesActivity : Activity() {
     override fun onResume() {
         super.onResume()
         refreshTitleFromRealContact()
+        retryPendingNoteSyncIfEnabled()
         historyController.refreshLocal(phone)
+        historyController.refreshServer(phone)
         render()
         scheduleContactNameRefresh()
     }
 
     override fun onPause() {
         mainHandler.removeCallbacks(contactNameRefreshRunnable)
+        mainHandler.removeCallbacks(delayedServerRefreshRunnable)
         super.onPause()
     }
 
@@ -161,6 +172,11 @@ class ContactNotesActivity : Activity() {
         }
     }
 
+    private fun retryPendingNoteSyncIfEnabled() {
+        if (phone.isBlank() || !CrmContactSyncStore.isEnabled(this, phone)) return
+        CallReportNoteOutbox.enqueueCurrentLocalNotes(applicationContext, phone)
+    }
+
     private fun setCrmSyncEnabled(enabled: Boolean) {
         if (crmSyncBusy || phone.isBlank()) return
         val requestedPhone = phone
@@ -186,6 +202,8 @@ class ContactNotesActivity : Activity() {
                     },
                     Toast.LENGTH_SHORT,
                 ).show()
+                if (updated && enabled) retryPendingNoteSyncIfEnabled()
+                historyController.refreshServer(phone)
                 render()
             }
         }
@@ -287,5 +305,6 @@ class ContactNotesActivity : Activity() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BACK_TARGETS_UNFILTERED_HOME = "back_targets_unfiltered_home"
         private const val CONTACT_NAME_REFRESH_DELAY_MS = 450L
+        private const val SERVER_CONFIRMATION_REFRESH_DELAY_MS = 1_500L
     }
 }
