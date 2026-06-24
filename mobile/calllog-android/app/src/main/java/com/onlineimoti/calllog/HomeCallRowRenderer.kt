@@ -66,12 +66,11 @@ internal class HomeCallRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(6) }
             })
         } else {
-            row.addView(TextView(activity).apply {
-                text = callIcon(call)
-                textSize = 36f
-                gravity = Gravity.CENTER
-                setTextColor(callIconColor(call))
-                layoutParams = LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) }
+            row.addView(ImageView(activity).apply {
+                setImageResource(callStatusIcon(call))
+                contentDescription = callStatusDescription(call)
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(6) }
             })
         }
 
@@ -248,10 +247,17 @@ internal class HomeCallRowRenderer(
         }
     }
 
-    private fun callIcon(call: PhoneCallRecord): String = if (call.direction == "out") "↗" else "↙"
+    private fun callStatusIcon(call: PhoneCallRecord): Int = when {
+        call.direction == "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_rejected
+        call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
+        call.direction == "out" -> R.drawable.ic_call_outgoing
+        else -> R.drawable.ic_call_incoming
+    }
 
-    private fun callIconColor(call: PhoneCallRecord): Int {
-        if (call.durationSeconds <= 0) return Color.rgb(239, 68, 68)
-        return if (call.direction == "out") Color.rgb(34, 197, 94) else Color.rgb(59, 130, 246)
+    private fun callStatusDescription(call: PhoneCallRecord): String = when (callStatusIcon(call)) {
+        R.drawable.ic_call_rejected -> "Отхвърлен разговор"
+        R.drawable.ic_call_missed -> "Пропуснат разговор"
+        R.drawable.ic_call_outgoing -> "Изходящ разговор"
+        else -> "Входящ разговор"
     }
 }
