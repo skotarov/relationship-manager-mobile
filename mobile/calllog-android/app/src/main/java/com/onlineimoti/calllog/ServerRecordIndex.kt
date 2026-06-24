@@ -24,7 +24,21 @@ internal object ServerRecordIndex {
         }
     }
 
-    /** Changes whenever a server-confirmed record is newly added to the local index. */
+    /**
+     * A new local edit supersedes the server-confirmed version for the same stable ID.
+     * Its cloud badge returns only after sync.php confirms this new version.
+     */
+    fun markPending(context: Context, clientEventId: String) {
+        val id = clientEventId.trim()
+        if (id.isBlank()) return
+        synchronized(lock) {
+            val known = readLocked(context).toMutableSet()
+            val changed = known.remove(id)
+            writeLocked(context, known, changed)
+        }
+    }
+
+    /** Changes whenever the persisted acknowledgement state changes. */
     fun confirmationVersion(context: Context): Long {
         return context.applicationContext
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
