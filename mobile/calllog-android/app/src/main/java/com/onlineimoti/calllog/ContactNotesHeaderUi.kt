@@ -14,7 +14,6 @@ import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import android.view.animation.RotateAnimation
-import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -215,7 +214,7 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): FrameLayout {
+    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): LinearLayout {
         val iconColor = if (enabled) Color.WHITE else Color.BLACK
         val description = when {
             busy -> activity.getString(R.string.dynamic_crm_sync_changing)
@@ -226,22 +225,36 @@ class ContactNotesHeaderUi(
             setImageResource(R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(iconColor)
             scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER,
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(30), dp(36))
+        }
+        val crmLabel = TextView(activity).apply {
+            text = "CRM"
+            textSize = 11.5f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(iconColor)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, dp(9), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
             )
         }
-        return FrameLayout(activity).apply {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             background = if (enabled) roundedIconBackground(Color.BLACK) else null
             contentDescription = description
             isClickable = !busy
             isFocusable = !busy
             isEnabled = !busy
             alpha = if (busy) 0.78f else 1f
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(36),
+            ).apply { marginEnd = dp(8) }
             addView(cloudIcon)
+            addView(crmLabel)
             setOnClickListener { action() }
             if (busy) cloudIcon.startAnimation(cloudSpinAnimation())
         }
