@@ -37,6 +37,7 @@ internal class FilteredFullLogController(
 
     private var selectedPhone = ""
     private var loadedPhone = ""
+    private var loadedRemoteEnabled: Boolean? = null
     private var loading = false
     private var pageIndex = 0
     private var loadGeneration = 0
@@ -46,6 +47,7 @@ internal class FilteredFullLogController(
     fun invalidate() {
         loadGeneration += 1
         loadedPhone = ""
+        loadedRemoteEnabled = null
         loading = false
         pageIndex = 0
         entries = emptyList()
@@ -66,11 +68,13 @@ internal class FilteredFullLogController(
 
     fun render(phone: String) {
         if (phone.isBlank()) return
-        if (selectedPhone != phone) {
+        val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
+        val modeChanged = loadedRemoteEnabled != null && loadedRemoteEnabled != remoteEnabled
+        if (selectedPhone != phone || modeChanged) {
             selectedPhone = phone
             invalidate()
         }
-        if (loadedPhone != phone && !loading) startLoad(phone)
+        if (loadedPhone != phone && !loading) startLoad(phone, remoteEnabled)
 
         val size = safePageSize()
         val pageCount = pageCount(size)
@@ -90,7 +94,7 @@ internal class FilteredFullLogController(
         binding.homeStatusText.text = when {
             loading -> "Зареждам пълния лог…"
             errorText.isNotBlank() -> errorText
-            entries.isEmpty() -> "Няма локални или сървърни записи за този номер"
+            entries.isEmpty() -> if (remoteEnabled) "Няма локални или сървърни записи за този номер" else "Няма локални записи за този номер"
             else -> {
                 val first = pageIndex * size + 1
                 val last = first + pageEntries.size - 1
@@ -98,7 +102,7 @@ internal class FilteredFullLogController(
             }
         }
         pageEntries.forEach { entry ->
-            binding.homeCallsContainer.addView(rowView(phone, entry))
+            binding.homeCallsContainer.addView(rowView(phone, entry, remoteEnabled))
         }
     }
 
@@ -107,7 +111,7 @@ internal class FilteredFullLogController(
         handler.removeCallbacksAndMessages(null)
     }
 
-    private fun startLoad(phone: String) {
+    private fun startLoad(phone: String, remoteEnabled: Boolean) {
         loading = true
         val requestedPhone = phone
         val generation = ++loadGeneration
@@ -124,10 +128,13 @@ internal class FilteredFullLogController(
                     limit = SOURCE_SMS_LIMIT,
                 )
                 val localNotes = ContactNoteReader.callNotesForPhone(activity, requestedPhone)
-                val config = ConfigStore.load(activity)
-                val serverHistory = runCatching {
-                    CallReportHistoryLookupClient.lookup(config, requestedPhone)
-                }.getOrDefault(CallReportHistoryLookupResult())
+                val serverHistory = if (remoteEnabled) {
+                    val config = ConfigStore.load(activity)
+                    runCatching { CallReportHistoryLookupClient.lookup(config, requestedPhone) }
+                        .getOrDefault(CallReportHistoryLookupResult())
+                } else {
+                    CallReportHistoryLookupResult()
+                }
                 val merged = CallReportHistoryMerge.merge(
                     context = activity,
                     phone = requestedPhone,
@@ -148,14 +155,23 @@ internal class FilteredFullLogController(
                 ) {
                     return@post
                 }
+                if (remoteEnabled != CallReportRemoteAccess.isEnabled(activity)) {
+                    loading = false
+                    loadedPhone = ""
+                    loadedRemoteEnabled = null
+                    onStateChanged()
+                    return@post
+                }
                 loading = false
                 result.onSuccess {
                     entries = it
                     loadedPhone = requestedPhone
+                    loadedRemoteEnabled = remoteEnabled
                     errorText = ""
                 }.onFailure {
                     entries = emptyList()
                     loadedPhone = requestedPhone
+                    loadedRemoteEnabled = remoteEnabled
                     errorText = "Пълният лог не е зареден"
                 }
                 onStateChanged()
@@ -216,9 +232,9 @@ internal class FilteredFullLogController(
         return closestIndex
     }
 
-    private fun rowView(phone: String, entry: FullLogEntry): MaterialCardView {
+    private fun rowView(phone: String, entry: FullLogEntry, remoteEnabled: Boolean): MaterialCardView {
         val row = entry.row
-        val foreignNote = isForeignNote(row)
+        val foreignNote = remoteEnabled && isForeignNote(row)
         val localCall = row.localCall
         val localNote = row.localNote
         val editableAttachedNote = entry.attachedNotes.firstOrNull { it.localNote != null && it.editable }
@@ -248,7 +264,7 @@ internal class FilteredFullLogController(
             setPadding(dp(12), dp(10), dp(12), dp(10))
         }
 
-        column.addView(metaView(row))
+        column.addView(metaView(row, remoteEnabled))
         if (row.text.isNotBlank()) {
             column.addView(TextView(activity).apply {
                 text = row.text
@@ -258,12 +274,14 @@ internal class FilteredFullLogController(
                 setPadding(0, dp(5), 0, 0)
             })
         }
-        addServerAuthor(column, row)
-        addServerVersionNotice(column, row)
-        addReadOnlyNotice(column, row)
+        if (remoteEnabled) {
+            addServerAuthor(column, row)
+            addServerVersionNotice(column, row)
+            addReadOnlyNotice(column, row)
+        }
 
         entry.attachedNotes.forEach { note ->
-            column.addView(attachedNoteView(phone, note))
+            column.addView(attachedNoteView(phone, note, remoteEnabled))
         }
 
         when {
@@ -297,8 +315,8 @@ internal class FilteredFullLogController(
         return card
     }
 
-    private fun attachedNoteView(phone: String, note: CallReportHistoryRow): LinearLayout {
-        val foreignNote = isForeignNote(note)
+    private fun attachedNoteView(phone: String, note: CallReportHistoryRow, remoteEnabled: Boolean): LinearLayout {
+        val foreignNote = remoteEnabled && isForeignNote(note)
         val localNote = note.localNote
         val backgroundColor = if (foreignNote) Color.rgb(248, 250, 252) else NoteUiStyle.Call.background
         val borderColor = if (foreignNote) Color.rgb(203, 213, 225) else NoteUiStyle.Call.border
@@ -316,7 +334,7 @@ internal class FilteredFullLogController(
                 isFocusable = true
                 setOnClickListener { openNoteEditor(phone, localNote) }
             }
-            addView(metaView(note))
+            addView(metaView(note, remoteEnabled))
             if (note.text.isNotBlank()) {
                 addView(TextView(activity).apply {
                     text = note.text
@@ -326,9 +344,11 @@ internal class FilteredFullLogController(
                     setPadding(0, dp(4), 0, 0)
                 })
             }
-            addServerAuthor(this, note)
-            addServerVersionNotice(this, note)
-            addReadOnlyNotice(this, note)
+            if (remoteEnabled) {
+                addServerAuthor(this, note)
+                addServerVersionNotice(this, note)
+                addReadOnlyNotice(this, note)
+            }
         }
     }
 
@@ -403,7 +423,7 @@ internal class FilteredFullLogController(
         return row.kind == CallReportHistoryRowKind.NOTE && row.authorName.isNotBlank() && !row.editable
     }
 
-    private fun metaView(row: CallReportHistoryRow): TextView {
+    private fun metaView(row: CallReportHistoryRow, remoteEnabled: Boolean): TextView {
         val type = when (row.kind) {
             CallReportHistoryRowKind.PHONE -> "Телефон"
             CallReportHistoryRowKind.SMS -> "SMS"
@@ -426,7 +446,7 @@ internal class FilteredFullLogController(
             setTextColor(Color.rgb(71, 85, 105))
             setTypeface(typeface, Typeface.BOLD)
             val leftIcon = if (row.kind == CallReportHistoryRowKind.PHONE) callStatusIcon(row) else 0
-            val rightIcon = if (row.hasServerCopy) R.drawable.ic_cloud_note else 0
+            val rightIcon = if (remoteEnabled && row.hasServerCopy) R.drawable.ic_cloud_note else 0
             if (leftIcon != 0 || rightIcon != 0) {
                 setCompoundDrawablesWithIntrinsicBounds(leftIcon, 0, rightIcon, 0)
                 compoundDrawablePadding = dp(6)
