@@ -14,14 +14,13 @@ internal class ContactNotesSectionsUi(
 ) {
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
-        val waitingForCurrentVersion = CallReportNoteOutbox.isGeneralPending(activity, phone)
-        val failure = CallReportNoteOutbox.lastFailure(activity)
-        val serverConfirmed = !waitingForCurrentVersion && (
-            ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
-                CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
-            )
+        val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
+        val waitingForCurrentVersion = remoteEnabled && CallReportNoteOutbox.isGeneralPending(activity, phone)
+        val failure = if (remoteEnabled) CallReportNoteOutbox.lastFailure(activity) else ""
+        val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
+            (remoteEnabled && CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone))
         val syncStatusText = when {
-            generalNote.isBlank() || !waitingForCurrentVersion -> ""
+            !remoteEnabled || generalNote.isBlank() || !waitingForCurrentVersion -> ""
             failure.isNotBlank() -> "Синхронизацията не е потвърдена: $failure"
             else -> "Чака сървърна синхронизация"
         }
