@@ -19,15 +19,16 @@ class CallReportNoteOutboxWorker(
         }
 
         try {
-            while (true) {
+            while (CallReportNoteOutbox.hasPending(applicationContext)) {
                 val candidateBatch = CallReportNoteOutbox.takeBatch(applicationContext, MAX_BATCH_SIZE)
-                if (candidateBatch.isEmpty()) return@withContext Result.success()
+                if (candidateBatch.isEmpty()) break
 
                 // The setting may be switched off between queue selection and the HTTP request.
                 val batch = candidateBatch.filter { operation ->
                     CrmContactSyncStore.isEnabled(applicationContext, operation.phone)
                 }
-                val skippedIds = candidateBatch.map { operation -> operation.clientEventId }.toSet() - batch.map { operation -> operation.clientEventId }.toSet()
+                val skippedIds = candidateBatch.map { operation -> operation.clientEventId }.toSet() -
+                    batch.map { operation -> operation.clientEventId }.toSet()
                 if (skippedIds.isNotEmpty()) {
                     CallReportNoteOutbox.acknowledge(applicationContext, skippedIds)
                 }
@@ -36,6 +37,7 @@ class CallReportNoteOutboxWorker(
                 CallReportSyncClient.sync(config, batch.map { operation -> operation.toSyncEvent(applicationContext) })
                 CallReportNoteOutbox.acknowledge(applicationContext, batch.map { operation -> operation.clientEventId })
             }
+            Result.success()
         } catch (error: CallReportSyncException) {
             if (error.retryable) Result.retry() else Result.failure()
         } catch (_: Throwable) {
