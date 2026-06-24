@@ -19,12 +19,8 @@ import java.util.concurrent.Executors
 import kotlin.math.abs
 
 /**
- * Used only when Home is opened with a phone filter from "Пълен лог".
- * It joins the phone's local Android log with the server timeline while the normal Home
- * screen remains a strictly local Call Log.
- *
- * Call notes are rendered inside their matching phone-call card, not as independent
- * timeline rows. A note without a matching phone call remains visible as a standalone card.
+ * Filtered "Пълен лог" for one contact. Source data is loaded and grouped on a
+ * background executor once, then only the current page is rendered on the UI thread.
  */
 internal class FilteredFullLogController(
     private val activity: Activity,
@@ -33,40 +29,75 @@ internal class FilteredFullLogController(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val openContactNotes: (PhoneCallRecord, String) -> Unit,
     private val openCallNoteEditor: (PhoneCallRecord, String) -> Unit,
-    private val onLoaded: () -> Unit,
+    private val pageSize: () -> Int,
+    private val onStateChanged: () -> Unit,
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
 
-    private var requestedPhone = ""
+    private var selectedPhone = ""
     private var loadedPhone = ""
     private var loading = false
-    private var rows: List<CallReportHistoryRow> = emptyList()
+    private var pageIndex = 0
+    private var loadGeneration = 0
+    private var entries: List<FullLogEntry> = emptyList()
     private var errorText = ""
 
     fun invalidate() {
+        loadGeneration += 1
         loadedPhone = ""
+        loading = false
+        pageIndex = 0
+        entries = emptyList()
+        errorText = ""
+    }
+
+    fun previousPage() {
+        if (loading || pageIndex <= 0) return
+        pageIndex -= 1
+        onStateChanged()
+    }
+
+    fun nextPage() {
+        if (loading || pageIndex >= lastPageIndex()) return
+        pageIndex += 1
+        onStateChanged()
     }
 
     fun render(phone: String) {
         if (phone.isBlank()) return
-        if (requestedPhone != phone) {
-            requestedPhone = phone
-            loadedPhone = ""
-            rows = emptyList()
-            errorText = ""
+        if (selectedPhone != phone) {
+            selectedPhone = phone
+            invalidate()
         }
-        if (loadedPhone != phone && !loading) load(phone)
+        if (loadedPhone != phone && !loading) startLoad(phone)
+
+        val size = safePageSize()
+        val pageCount = pageCount(size)
+        pageIndex = pageIndex.coerceIn(0, pageCount - 1)
+        val pageEntries = if (loading) emptyList() else entries
+            .drop(pageIndex * size)
+            .take(size)
 
         binding.homeCallsContainer.removeAllViews()
-        binding.paginationContainer.visibility = View.GONE
+        binding.fullLogProgress.visibility = if (loading) View.VISIBLE else View.GONE
+        binding.paginationContainer.visibility = View.VISIBLE
+        binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, size)
+        binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, size)
+        binding.previousCallsButton.isEnabled = !loading && pageIndex > 0
+        binding.nextCallsButton.isEnabled = !loading && pageIndex < pageCount - 1
+        binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex + 1)
         binding.homeStatusText.text = when {
             loading -> "Зареждам пълния лог…"
             errorText.isNotBlank() -> errorText
-            rows.isEmpty() -> "Няма локални или сървърни записи за този номер"
-            else -> "Пълен лог: локални и сървърни записи"
+            entries.isEmpty() -> "Няма локални или сървърни записи за този номер"
+            else -> {
+                val first = pageIndex * size + 1
+                val last = first + pageEntries.size - 1
+                "Пълен лог: $first–$last от ${entries.size}"
+            }
         }
-        groupedEntries(rows).forEach { entry ->
+        pageEntries.forEach { entry ->
             binding.homeCallsContainer.addView(rowView(phone, entry))
         }
     }
@@ -76,44 +107,67 @@ internal class FilteredFullLogController(
         handler.removeCallbacksAndMessages(null)
     }
 
-    private fun load(phone: String) {
+    private fun startLoad(phone: String) {
         loading = true
-        val requested = phone
+        val requestedPhone = phone
+        val generation = ++loadGeneration
         executor.execute {
             val result = runCatching {
-                val localCalls = PhoneCallReader.callsForPhone(activity, requested, limit = 500)
-                val localSms = SmsMessageReader.messagesForPhone(activity, requested, limit = 150)
-                val localNotes = ContactNoteReader.callNotesForPhone(activity, requested)
+                val localCalls = PhoneCallReader.callsForPhone(
+                    activity,
+                    requestedPhone,
+                    limit = SOURCE_CALL_LIMIT,
+                )
+                val localSms = SmsMessageReader.messagesForPhone(
+                    activity,
+                    requestedPhone,
+                    limit = SOURCE_SMS_LIMIT,
+                )
+                val localNotes = ContactNoteReader.callNotesForPhone(activity, requestedPhone)
                 val config = ConfigStore.load(activity)
                 val serverHistory = runCatching {
-                    CallReportHistoryLookupClient.lookup(config, requested)
+                    CallReportHistoryLookupClient.lookup(config, requestedPhone)
                 }.getOrDefault(CallReportHistoryLookupResult())
-                CallReportHistoryMerge.merge(
+                val merged = CallReportHistoryMerge.merge(
                     context = activity,
-                    phone = requested,
+                    phone = requestedPhone,
                     principal = serverHistory.principal,
                     localCalls = localCalls,
                     localSms = localSms,
                     localNotes = localNotes,
                     serverEvents = serverHistory.events,
                 )
+                groupedEntries(merged)
             }
             handler.post {
-                if (activity.isFinishing || activity.isDestroyed || requested != requestedPhone) return@post
+                if (
+                    activity.isFinishing ||
+                    activity.isDestroyed ||
+                    generation != loadGeneration ||
+                    requestedPhone != selectedPhone
+                ) {
+                    return@post
+                }
                 loading = false
                 result.onSuccess {
-                    rows = it
-                    loadedPhone = requested
+                    entries = it
+                    loadedPhone = requestedPhone
                     errorText = ""
                 }.onFailure {
-                    rows = emptyList()
-                    loadedPhone = requested
+                    entries = emptyList()
+                    loadedPhone = requestedPhone
                     errorText = "Пълният лог не е зареден"
                 }
-                onLoaded()
+                onStateChanged()
             }
         }
     }
+
+    private fun safePageSize(): Int = pageSize().coerceIn(5, 100)
+
+    private fun pageCount(size: Int): Int = if (entries.isEmpty()) 1 else ((entries.size - 1) / size) + 1
+
+    private fun lastPageIndex(): Int = pageCount(safePageSize()) - 1
 
     private fun groupedEntries(timeline: List<CallReportHistoryRow>): List<FullLogEntry> {
         val indexedCalls = timeline.mapIndexedNotNull { index, row ->
@@ -135,18 +189,12 @@ internal class FilteredFullLogController(
             } else {
                 FullLogEntry(
                     row = row,
-                    attachedNotes = notesByCallIndex[index]
-                        .orEmpty()
-                        .sortedBy { it.timeMs },
+                    attachedNotes = notesByCallIndex[index].orEmpty().sortedBy { it.timeMs },
                 )
             }
         }
     }
 
-    /**
-     * Local notes retain the original call timestamp. Canonical server notes use the
-     * same occurred_at timestamp. A short tolerance covers provider timestamp rounding.
-     */
     private fun matchingCallIndex(
         note: CallReportHistoryRow,
         callIndexes: List<Int>,
@@ -174,12 +222,12 @@ internal class FilteredFullLogController(
         val localCall = row.localCall
         val localNote = row.localNote
         val editableAttachedNote = entry.attachedNotes.firstOrNull { it.localNote != null && it.editable }
-        val background = when {
+        val backgroundColor = when {
             foreignNote -> Color.rgb(248, 250, 252)
             row.kind == CallReportHistoryRowKind.NOTE -> NoteUiStyle.Call.background
             else -> activity.getColor(R.color.calllog_surface)
         }
-        val border = when {
+        val borderColor = when {
             foreignNote -> Color.rgb(203, 213, 225)
             row.kind == CallReportHistoryRowKind.NOTE -> NoteUiStyle.Call.border
             else -> activity.getColor(R.color.calllog_border)
@@ -187,8 +235,8 @@ internal class FilteredFullLogController(
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
-            setStrokeColor(border)
-            setCardBackgroundColor(background)
+            setStrokeColor(borderColor)
+            setCardBackgroundColor(backgroundColor)
             cardElevation = 0f
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -252,13 +300,13 @@ internal class FilteredFullLogController(
     private fun attachedNoteView(phone: String, note: CallReportHistoryRow): LinearLayout {
         val foreignNote = isForeignNote(note)
         val localNote = note.localNote
-        val background = if (foreignNote) Color.rgb(248, 250, 252) else NoteUiStyle.Call.background
-        val border = if (foreignNote) Color.rgb(203, 213, 225) else NoteUiStyle.Call.border
+        val backgroundColor = if (foreignNote) Color.rgb(248, 250, 252) else NoteUiStyle.Call.background
+        val borderColor = if (foreignNote) Color.rgb(203, 213, 225) else NoteUiStyle.Call.border
         val textColor = if (foreignNote) Color.rgb(71, 85, 105) else NoteUiStyle.Call.text
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
-            this.background = roundedRect(background, dp(10), border, dp(1))
+            background = roundedRect(backgroundColor, dp(10), borderColor, dp(1))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -295,9 +343,7 @@ internal class FilteredFullLogController(
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply {
-                marginEnd = dp(8)
-            }
+            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(8) }
             setOnClickListener {
                 val existingLocalNote = editableAttachedNote?.localNote
                 if (existingLocalNote != null) {
@@ -403,6 +449,8 @@ internal class FilteredFullLogController(
     )
 
     private companion object {
+        const val SOURCE_CALL_LIMIT = 200
+        const val SOURCE_SMS_LIMIT = 100
         const val NOTE_CALL_MATCH_WINDOW_MS = 90_000L
     }
 }
