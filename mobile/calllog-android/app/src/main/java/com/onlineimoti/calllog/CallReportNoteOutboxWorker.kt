@@ -30,6 +30,11 @@ class CallReportNoteOutboxWorker(
                 val expected = batch.map { it.clientEventId }.toSet()
                 if (!confirmed.containsAll(expected)) throw CallReportSyncException("Сървърът не потвърди всички бележки.", true)
                 ServerRecordIndex.markConfirmed(applicationContext, confirmed)
+                batch.asSequence()
+                    .filter { it.clientEventId in confirmed && it.clientEventId.contains(":note:general:") }
+                    .map { it.phone }
+                    .distinct()
+                    .forEach(CallReportHistoryLookupClient::markGeneralNoteOnServer)
                 CallReportNoteOutbox.acknowledge(applicationContext, confirmed)
                 CallReportNoteOutbox.clearFailure(applicationContext)
                 notifyUiOfConfirmedSync()
