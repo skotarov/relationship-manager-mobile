@@ -21,7 +21,9 @@ class CallReportNoteOutboxWorker(
             while (CallReportNoteOutbox.hasPending(applicationContext)) {
                 val candidates = CallReportNoteOutbox.takeBatch(applicationContext, MAX_BATCH_SIZE)
                 if (candidates.isEmpty()) break
-                val batch = candidates.filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
+                val batch = candidates.filter { operation ->
+                    operation.isGeneralNote || CrmContactSyncStore.isEnabled(applicationContext, operation.phone)
+                }
                 val skipped = candidates.map { it.clientEventId }.toSet() - batch.map { it.clientEventId }.toSet()
                 if (skipped.isNotEmpty()) CallReportNoteOutbox.acknowledge(applicationContext, skipped)
                 if (batch.isEmpty()) continue
@@ -31,7 +33,7 @@ class CallReportNoteOutboxWorker(
                 if (!confirmed.containsAll(expected)) throw CallReportSyncException("Сървърът не потвърди всички бележки.", true)
                 ServerRecordIndex.markConfirmed(applicationContext, confirmed)
                 batch.asSequence()
-                    .filter { it.clientEventId in confirmed && it.clientEventId.contains(":note:general:") }
+                    .filter { it.clientEventId in confirmed && it.isGeneralNote }
                     .map { it.phone }
                     .distinct()
                     .forEach(CallReportHistoryLookupClient::markGeneralNoteOnServer)
