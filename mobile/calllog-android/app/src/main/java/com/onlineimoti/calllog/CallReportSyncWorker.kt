@@ -7,7 +7,7 @@ import androidx.work.WorkerParameters
 /** Backward-compatible WorkManager entry point delegating to the gated confirmation worker. */
 class CallReportSyncWorker(
     appContext: Context,
-    workerParams: WorkerParameters,
+    private val workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         return EnabledContactCommunicationSyncWorker(applicationContext, workerParams).doWork()
