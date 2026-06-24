@@ -18,9 +18,10 @@ internal class ContactNotesSectionsUi(
             addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
             addView(
                 cards.generalNoteCard(
-                    generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
-                    generalNote.isBlank(),
-                    onEdit,
+                    textValue = generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
+                    muted = generalNote.isBlank(),
+                    serverConfirmed = generalNote.isNotBlank() && ServerRecordIndex.isGeneralNoteConfirmed(activity, phone),
+                    onClick = onEdit,
                 )
             )
         })
@@ -37,15 +38,11 @@ internal class ContactNotesSectionsUi(
             addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_notes_call_section), R.drawable.ic_chat_note))
 
             latestCallWithoutNote(phone, callNotes)?.let { latestCall ->
-                addView(
-                    cards.addCallNoteButton(latestCall) {
-                        onAddLatestCallNote(latestCall.toContactCallNote())
-                    }
-                )
+                addView(cards.addCallNoteButton(latestCall) { onAddLatestCallNote(latestCall.toContactCallNote()) })
             }
 
             callNotes.forEach { note ->
-                addView(cards.callNoteCard(note) { onEditCallNote(note) })
+                addView(cards.callNoteCard(note, ServerRecordIndex.isCallNoteConfirmed(activity, phone, note)) { onEditCallNote(note) })
             }
         })
     }
@@ -54,12 +51,7 @@ internal class ContactNotesSectionsUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(8), dp(14), dp(12))
-            background = roundedRect(
-                Color.WHITE,
-                dp(18),
-                Color.rgb(218, 220, 224),
-                dp(1),
-            )
+            background = roundedRect(Color.WHITE, dp(18), Color.rgb(218, 220, 224), dp(1))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
