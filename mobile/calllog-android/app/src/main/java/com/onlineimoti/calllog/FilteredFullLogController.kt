@@ -236,10 +236,21 @@ internal class FilteredFullLogController(
             textSize = 12.5f
             setTextColor(Color.rgb(71, 85, 105))
             setTypeface(typeface, Typeface.BOLD)
-            if (row.hasServerCopy) {
-                setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
+            val leftIcon = if (row.kind == CallReportHistoryRowKind.PHONE) callStatusIcon(row) else 0
+            val rightIcon = if (row.hasServerCopy) R.drawable.ic_cloud_note else 0
+            if (leftIcon != 0 || rightIcon != 0) {
+                setCompoundDrawablesWithIntrinsicBounds(leftIcon, 0, rightIcon, 0)
                 compoundDrawablePadding = dp(6)
             }
         }
+    }
+
+    private fun callStatusIcon(row: CallReportHistoryRow): Int = when {
+        row.status == "rejected" || row.status == "blocked" -> R.drawable.ic_call_rejected
+        row.status == "missed" -> R.drawable.ic_call_missed
+        row.direction == "out" && row.durationSeconds <= 0L -> R.drawable.ic_call_rejected
+        row.direction != "out" && row.durationSeconds <= 0L -> R.drawable.ic_call_missed
+        row.direction == "out" -> R.drawable.ic_call_outgoing
+        else -> R.drawable.ic_call_incoming
     }
 }
