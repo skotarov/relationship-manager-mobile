@@ -11,6 +11,7 @@ import org.json.JSONArray
 internal object ServerRecordIndex {
     private const val PREFS = "callreport_server_record_index"
     private const val KEY_CONFIRMED_IDS = "confirmed_client_event_ids_v1"
+    private const val KEY_CONFIRMATION_VERSION = "confirmation_version"
     private val lock = Any()
 
     fun markConfirmed(context: Context, clientEventIds: Collection<String>) {
@@ -18,9 +19,16 @@ internal object ServerRecordIndex {
         if (ids.isEmpty()) return
         synchronized(lock) {
             val known = readLocked(context).toMutableSet()
-            known += ids
-            writeLocked(context, known)
+            val changed = known.addAll(ids)
+            writeLocked(context, known, changed)
         }
+    }
+
+    /** Changes whenever a server-confirmed record is newly added to the local index. */
+    fun confirmationVersion(context: Context): Long {
+        return context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getLong(KEY_CONFIRMATION_VERSION, 0L)
     }
 
     fun isConfirmed(context: Context, clientEventId: String): Boolean {
@@ -81,14 +89,14 @@ internal object ServerRecordIndex {
         }
     }
 
-    private fun writeLocked(context: Context, ids: Set<String>) {
+    private fun writeLocked(context: Context, ids: Set<String>, changed: Boolean) {
         val array = JSONArray().apply {
             ids.sorted().forEach { value -> put(value) }
         }
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_CONFIRMED_IDS, array.toString())
-            .commit()
+        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val editor = prefs.edit().putString(KEY_CONFIRMED_IDS, array.toString())
+        if (changed) editor.putLong(KEY_CONFIRMATION_VERSION, System.currentTimeMillis())
+        editor.commit()
     }
 
     private fun phoneKey(phone: String): String {
