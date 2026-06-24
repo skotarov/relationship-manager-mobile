@@ -15,10 +15,16 @@ internal class ContactNotesSectionsUi(
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
         val waitingForCurrentVersion = CallReportNoteOutbox.isGeneralPending(activity, phone)
+        val failure = CallReportNoteOutbox.lastFailure(activity)
         val serverConfirmed = !waitingForCurrentVersion && (
             ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
                 CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
             )
+        val syncStatusText = when {
+            generalNote.isBlank() || !waitingForCurrentVersion -> ""
+            failure.isNotBlank() -> "Синхронизацията не е потвърдена: $failure"
+            else -> "Чака сървърна синхронизация"
+        }
         root.addView(sectionContainer().apply {
             addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
             addView(
@@ -26,6 +32,7 @@ internal class ContactNotesSectionsUi(
                     textValue = generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                     muted = generalNote.isBlank(),
                     serverConfirmed = generalNote.isNotBlank() && serverConfirmed,
+                    syncStatusText = syncStatusText,
                     onClick = onEdit,
                 )
             )
