@@ -14,8 +14,11 @@ internal class ContactNotesSectionsUi(
 ) {
     fun addGeneralNote(root: LinearLayout, phone: String, onEdit: () -> Unit) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
-        val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
-            CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
+        val waitingForCurrentVersion = CallReportNoteOutbox.isGeneralPending(activity, phone)
+        val serverConfirmed = !waitingForCurrentVersion && (
+            ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
+                CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone)
+            )
         root.addView(sectionContainer().apply {
             addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
             addView(
