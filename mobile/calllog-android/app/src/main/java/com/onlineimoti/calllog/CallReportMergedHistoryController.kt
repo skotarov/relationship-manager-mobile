@@ -1,10 +1,12 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.widget.LinearLayout
+import android.widget.TextView
 import java.util.concurrent.Executors
 
 /** Loads local and remote history; [CallReportHistoryRowsUi] renders the result. */
@@ -89,7 +91,7 @@ internal class CallReportMergedHistoryController(
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
-        rowsUi.addServerErrorBelowContactName(root, remoteEnabled, loadError)
+        addServerErrorBelowContactName(root, remoteEnabled)
         rowsUi.addSection(
             root = root,
             phone = phone,
@@ -109,6 +111,20 @@ internal class CallReportMergedHistoryController(
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
+    }
+
+    private fun addServerErrorBelowContactName(root: LinearLayout, remoteEnabled: Boolean) {
+        if (!remoteEnabled || loadError.isBlank()) return
+        root.addView(TextView(activity).apply {
+            text = loadError
+            textSize = 12.5f
+            setTextColor(Color.rgb(185, 28, 28))
+            setPadding(dp(2), 0, dp(2), dp(8))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }, minOf(1, root.childCount))
     }
 
     private fun clearServerStateAndRerenderIfNeeded() {
@@ -150,7 +166,7 @@ internal class CallReportMergedHistoryController(
                 else -> "Сървър: HTTP $httpStatus"
             }
         }
-        return when (val cause = rootCause(error)) {
+        return when (rootCause(error)) {
             is java.net.UnknownHostException -> "Сървър: адресът не е открит"
             is java.net.ConnectException -> "Сървър: няма връзка със сървъра"
             is java.net.SocketTimeoutException -> "Сървър: изтече времето за изчакване"
