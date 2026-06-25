@@ -10,10 +10,15 @@ internal data class CallNoteWriteResult(
 )
 
 internal object CallNoteWriter {
-    fun writeGeneral(context: Context, phone: String, text: String): CallNoteWriteResult {
+    fun writeGeneral(
+        context: Context,
+        phone: String,
+        text: String,
+        syncToCrm: Boolean = true,
+    ): CallNoteWriteResult {
         val saved = NotePersistence.saveOrDeleteGeneralNote(context, phone, text)
         val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
-        syncToCrmIfNeeded(context, phone, text, result)
+        if (syncToCrm) syncToCrmIfNeeded(context, phone, text, result)
         return result
     }
 
@@ -25,6 +30,7 @@ internal object CallNoteWriter {
         callAt: Long,
         durationSeconds: Long,
         actionIssuedAt: Long = 0L,
+        syncToCrm: Boolean = true,
     ): CallNoteWriteResult {
         val target = targetFor(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
         if (!target.hasCall) {
@@ -37,7 +43,7 @@ internal object CallNoteWriter {
                 if (saved && text.trim().isNotBlank() && activeSession == null) PendingCallNoteStore.reconcileSoon(context, phone)
                 return CallNoteWriteResult(saved, false, CallNoteTarget(pendingDirection, 0L, 0L), savedAsPending = true)
             }
-            return writeGeneral(context, phone, text)
+            return writeGeneral(context, phone, text, syncToCrm)
         }
         val saved = NotePersistence.saveOrDeleteCallNote(
             context = context,
@@ -48,7 +54,7 @@ internal object CallNoteWriter {
             durationSeconds = target.durationSeconds,
         )
         val result = CallNoteWriteResult(saved, false, target)
-        syncToCrmIfNeeded(context, phone, text, result)
+        if (syncToCrm) syncToCrmIfNeeded(context, phone, text, result)
         return result
     }
 
