@@ -105,7 +105,8 @@ internal class CallReportHistoryRowsUi(
 
     private fun addLatestCallNoteCard(call: PhoneCallRecord, action: () -> Unit): LinearLayout {
         return LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             isClickable = true
             isFocusable = true
@@ -120,6 +121,12 @@ internal class CallReportHistoryRowsUi(
                 setTextColor(NoteUiStyle.General.mutedText)
             })
             addView(TextView(activity).apply {
+                text = "—"
+                textSize = 13f
+                setTextColor(Color.rgb(148, 163, 184))
+                setPadding(dp(8), 0, dp(8), 0)
+            })
+            addView(TextView(activity).apply {
                 text = listOf(
                     PhoneCallReader.formatStartedAt(call.startedAt),
                     directionLabel(call.direction),
@@ -127,7 +134,13 @@ internal class CallReportHistoryRowsUi(
                 ).filter { it.isNotBlank() }.joinToString(" • ")
                 textSize = 12.5f
                 setTextColor(Color.rgb(100, 116, 139))
-                setPadding(0, dp(5), 0, 0)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
             })
         }
     }
