@@ -294,9 +294,23 @@ class ContactNotesActivity : Activity() {
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
+            openRmContact = ::openRmContactForm,
             toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(this, phone)) },
             openRmCallLog = { openRmCallLog(filtered = false) },
             openRmCallLogFiltered = { openRmCallLog(filtered = true) },
+        )
+    }
+
+    private fun openRmContactForm() {
+        RmContactFormDialog(this).show(
+            phone = phone,
+            fallbackTitle = titleText,
+            onSaved = {
+                refreshTitleFromRealContact()
+                historyController.refreshLocal(phone)
+                if (CallReportRemoteAccess.isEnabled(this)) historyController.refreshServer(phone)
+                render()
+            },
         )
     }
 
