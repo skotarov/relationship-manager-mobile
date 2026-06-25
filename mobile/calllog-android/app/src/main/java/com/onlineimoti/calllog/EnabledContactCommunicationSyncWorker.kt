@@ -16,6 +16,9 @@ class EnabledContactCommunicationSyncWorker(
             return@withContext Result.success()
         }
 
+        // The acknowledgement index is a cache, not source data; trim legacy growth first.
+        ServerRecordIndex.prune(applicationContext)
+
         val events = buildList {
             CallReportProviderEventReader.recentPhoneEvents(applicationContext, CALL_SYNC_LIMIT)
                 .filter { CrmContactSyncStore.isEnabled(applicationContext, it.phone) }
