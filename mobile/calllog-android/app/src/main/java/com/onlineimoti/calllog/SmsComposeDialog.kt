@@ -65,11 +65,18 @@ internal class SmsComposeDialog(
             dialog.setOnShowListener {
                 dialog.window?.apply {
                     setBackgroundDrawable(roundedRect(Color.WHITE, dp(20), Color.TRANSPARENT, 0))
+                    // Keep the compose sheet anchored below the status bar. The keyboard then
+                    // resizes the available space below it instead of moving the whole sheet up.
+                    setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
+                    attributes = attributes.apply { y = dp(12) }
                     setLayout(
                         activity.resources.displayMetrics.widthPixels - dp(28),
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     )
-                    setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+                    setSoftInputMode(
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+                            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
+                    )
                 }
                 views.messageInput.requestFocus()
                 val keyboard = activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as? InputMethodManager
