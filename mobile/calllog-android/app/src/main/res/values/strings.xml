@@ -139,6 +139,7 @@
 
     <string name="note_company_for_sync">Conversation reason/topic</string>
     <string name="note_company_required">Choose a conversation reason/topic.</string>
+    <string name="note_topics_unavailable_local_only">Topics could not be loaded — the note will be saved locally only.</string>
     <string name="note_server_sync_will_be_enabled">After saving, this unknown number will be enabled for server sync.</string>
     <string name="note_server_sync_enabled">The note is saved and this number is enabled for server sync.</string>
     <string name="note_server_sync_activation_failed">The note is saved, but server sync could not be enabled. Check Contacts permission.</string>
