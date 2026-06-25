@@ -39,7 +39,7 @@
 
     <string name="storage_title">Notes storage</string>
     <string name="storage_use_public_folder">Use shared storage — Documents/.callreport</string>
-    <string name="storage_description">On: notes are stored in a shared folder and Android may request All files access. Off: notes are stored only in the app\'s private storage and shared file access is not requested.</string>
+    <string name="storage_description">On: notes are stored in a shared folder and Android may request All files access. Off: notes are stored only in the app's private storage and shared file access is not requested.</string>
 
     <string name="contact_filter_title">Popup and call log settings</string>
     <string name="popup_contact_filter_title">Which contacts trigger popups</string>
@@ -137,8 +137,8 @@
     <string name="contacts_app_not_found">No contacts app found</string>
     <string name="dial_handler_label">Relationship Manager</string>
 
-    <string name="note_company_for_sync">Company for server sync</string>
-    <string name="note_company_required">Choose a company for the note.</string>
+    <string name="note_company_for_sync">Conversation reason/topic</string>
+    <string name="note_company_required">Choose a conversation reason/topic.</string>
     <string name="note_server_sync_will_be_enabled">After saving, this unknown number will be enabled for server sync.</string>
     <string name="note_server_sync_enabled">The note is saved and this number is enabled for server sync.</string>
     <string name="note_server_sync_activation_failed">The note is saved, but server sync could not be enabled. Check Contacts permission.</string>
