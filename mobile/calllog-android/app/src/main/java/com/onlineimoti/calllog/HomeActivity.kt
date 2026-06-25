@@ -4,8 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
@@ -28,7 +26,7 @@ class HomeActivity : AppCompatActivity() {
         HomeActions(
             activity = this,
             binding = binding,
-            startTemporaryNoteRefresh = ::startTemporaryNoteRefresh,
+            startTemporaryNoteRefresh = screenRefreshController::start,
             isUnfilteredHome = { activePhoneFilter.isBlank() && activeSearchQuery.isBlank() },
         )
     }
@@ -53,7 +51,13 @@ class HomeActivity : AppCompatActivity() {
             onOpenSettings = homeActions::openSettings,
         )
     }
-    private val searchUiController by lazy { HomeSearchUiController(this, binding) }
+    private val searchUiController by lazy {
+        HomeSearchUiController(this, binding, handler, searchRunnable, SEARCH_DEBOUNCE_MS) {
+            activeSearchQuery = ""
+            pageIndex = 0
+            renderCalls()
+        }
+    }
     private val homeStatusRenderer by lazy { HomeStatusRenderer(this, binding, ::dp) }
     private val homeSummaryViewRenderer by lazy { HomeSummaryViewRenderer(this, binding, ::dp) }
     private val searchController by lazy {
@@ -126,16 +130,7 @@ class HomeActivity : AppCompatActivity() {
         binding.settingsButton.setOnClickListener { navigationController.showOverflowMenu() }
         binding.clearFilterButton.setOnClickListener { navigationController.clearFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
-        binding.searchButton.setOnClickListener { searchUiController.toggle(::clearSearch) }
-        binding.clearSearchButton.setOnClickListener { clearSearch() }
-        binding.searchInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) {
-                handler.removeCallbacks(searchRunnable)
-                handler.postDelayed(searchRunnable, SEARCH_DEBOUNCE_MS)
-            }
-        })
+        searchUiController.bind()
         binding.previousCallsButton.setOnClickListener {
             if (navigationController.isFilterOnly(activeSearchQuery)) {
                 filteredFullLogController.previousPage()
@@ -266,42 +261,19 @@ class HomeActivity : AppCompatActivity() {
         homeSummaryViewRenderer.render(name, note)
     }
 
-    private fun renderEmptyState() {
-        homeStatusRenderer.renderEmptyState(
-            searchQuery = activeSearchQuery,
-            phoneFilter = activePhoneFilter,
-            pageIndex = pageIndex,
-        )
-    }
+    private fun renderEmptyState() = homeStatusRenderer.renderEmptyState(activeSearchQuery, activePhoneFilter, pageIndex)
 
-    private fun renderStatusAndPagination(pageSize: Int) {
-        homeStatusRenderer.renderStatusAndPagination(
-            pageSize = pageSize,
-            callCount = currentCalls.size,
-            searchQuery = activeSearchQuery,
-            phoneFilter = activePhoneFilter,
-            pageIndex = pageIndex,
-        )
-    }
+    private fun renderStatusAndPagination(pageSize: Int) = homeStatusRenderer.renderStatusAndPagination(
+        pageSize,
+        currentCalls.size,
+        activeSearchQuery,
+        activePhoneFilter,
+        pageIndex,
+    )
 
-    private fun updatePhoneFilterStatusStyle() {
-        homeStatusRenderer.updatePhoneFilterStyle(activePhoneFilter)
-    }
-
-    private fun clearSearch() {
-        handler.removeCallbacks(searchRunnable)
-        binding.searchInput.setText("")
-        activeSearchQuery = ""
-        pageIndex = 0
-        renderCalls()
-        searchUiController.updateButtonIcon()
-    }
+    private fun updatePhoneFilterStatusStyle() = homeStatusRenderer.updatePhoneFilterStyle(activePhoneFilter)
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
-
-    private fun startTemporaryNoteRefresh() {
-        screenRefreshController.start()
-    }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
