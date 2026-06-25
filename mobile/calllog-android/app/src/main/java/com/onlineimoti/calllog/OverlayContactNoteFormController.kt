@@ -31,7 +31,13 @@ internal class OverlayContactNoteFormController(
             Toast.makeText(service, service.getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
             return null
         }
-        return ContactNoteFormWorkflow.save(service, draft, noteText, topicId)
+        return ContactNoteFormWorkflow.save(
+            context = service,
+            draft = draft,
+            noteText = noteText,
+            topicCompanyId = topicId,
+            localOnlyFallback = topicState.loadError.isNotBlank(),
+        )
     }
 
     private fun loadTopics() {
