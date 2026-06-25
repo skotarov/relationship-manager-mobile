@@ -5,7 +5,20 @@ import android.provider.ContactsContract
 
 /** Coordinates Cloud Sync state for a single RM layer. */
 internal object RmContactSyncLayerStore {
-    fun setEnabled(context: Context, phone: String, title: String, enabled: Boolean): Boolean {
+    /**
+     * Enables or disables the RM/server-sync layer for one phone.
+     *
+     * [enqueueExistingNotes] stays true for normal manual activation. Topic-note
+     * activation passes false because the note already has its own company-aware
+     * outbox record and must not be duplicated in the generic note outbox.
+     */
+    fun setEnabled(
+        context: Context,
+        phone: String,
+        title: String,
+        enabled: Boolean,
+        enqueueExistingNotes: Boolean = true,
+    ): Boolean {
         val appContext = context.applicationContext
         val normalizedPhone = PhoneNormalizer.normalize(phone)
         if (normalizedPhone.isBlank()) return false
@@ -28,9 +41,11 @@ internal object RmContactSyncLayerStore {
             CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
             return false
         }
-        // Existing local notes and phone/SMS history are now eligible for the normal catch-up sync.
-        CallReportNoteOutbox.enqueueCurrentLocalNotes(appContext, normalizedPhone)
-        CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "contact_sync_enabled")
+        if (enqueueExistingNotes) {
+            // Existing local notes and phone/SMS history are now eligible for the normal catch-up sync.
+            CallReportNoteOutbox.enqueueCurrentLocalNotes(appContext, normalizedPhone)
+            CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "contact_sync_enabled")
+        }
         return true
     }
 
