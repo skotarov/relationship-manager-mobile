@@ -1,0 +1,5 @@
+<resources>
+    <string name="history_page_previous">Предишни %1$d</string>
+    <string name="history_page_next">Следващи %1$d</string>
+    <string name="history_page_status">Страница %1$d от %2$d</string>
+</resources>
