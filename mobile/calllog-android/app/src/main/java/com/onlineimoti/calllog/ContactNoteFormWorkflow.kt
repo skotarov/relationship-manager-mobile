@@ -21,6 +21,7 @@ internal data class ContactNoteFormDraft(
 
 internal data class ContactNoteFormSaveResult(
     val writeResult: CallNoteWriteResult,
+    val localOnlyFallback: Boolean = false,
     val serverSyncActivationAttempted: Boolean = false,
     val serverSyncEnabled: Boolean = false,
 ) {
@@ -50,7 +51,7 @@ internal object ContactNoteFormWorkflow {
             loading = false,
             companies = companies,
             selectedCompanyId = selectedCompanyId,
-            loadError = if (loadFailed) "topic_request_failed" else "",
+            loadError = if (loadFailed) TOPIC_REQUEST_FAILED else "",
         )
     }
 
@@ -70,6 +71,7 @@ internal object ContactNoteFormWorkflow {
         draft: ContactNoteFormDraft,
         noteText: String,
         topicCompanyId: String,
+        localOnlyFallback: Boolean = false,
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
         val activateUnknownSync = noteText.trim().isNotBlank() &&
@@ -91,7 +93,14 @@ internal object ContactNoteFormWorkflow {
                     companyId = topicCompanyId,
                 )
             }
-            draft.isGeneralNote -> CallNoteWriter.writeGeneral(appContext, draft.phone, noteText)
+            draft.isGeneralNote -> {
+                CallNoteWriter.writeGeneral(
+                    context = appContext,
+                    phone = draft.phone,
+                    text = noteText,
+                    syncToCrm = !localOnlyFallback,
+                )
+            }
             else -> CallNoteWriter.writeCallOrGeneral(
                 context = appContext,
                 phone = draft.phone,
@@ -100,9 +109,10 @@ internal object ContactNoteFormWorkflow {
                 callAt = draft.callAt,
                 durationSeconds = draft.durationSeconds,
                 actionIssuedAt = draft.actionIssuedAt,
+                syncToCrm = !localOnlyFallback,
             )
         }
-        if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult)
+        if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult, localOnlyFallback = localOnlyFallback)
 
         val syncEnabled = if (activateUnknownSync) {
             RmContactSyncLayerStore.setEnabled(
@@ -117,6 +127,7 @@ internal object ContactNoteFormWorkflow {
         }
         return ContactNoteFormSaveResult(
             writeResult = writeResult,
+            localOnlyFallback = localOnlyFallback,
             serverSyncActivationAttempted = activateUnknownSync,
             serverSyncEnabled = syncEnabled,
         )
@@ -136,4 +147,6 @@ internal object ContactNoteFormWorkflow {
         }
         return RmRealContactLookup.findContactId(context, draft.phone) <= 0L
     }
+
+    private const val TOPIC_REQUEST_FAILED = "topic_request_failed"
 }
