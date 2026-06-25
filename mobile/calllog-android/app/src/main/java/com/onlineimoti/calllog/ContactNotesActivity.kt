@@ -56,6 +56,7 @@ class ContactNotesActivity : Activity() {
 
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
+    private val phaseUi by lazy { ContactNegotiationPhaseUi(this, ::dp) }
     private val historyController by lazy {
         CallReportMergedHistoryController(
             activity = this,
@@ -166,6 +167,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
+        root.addView(phaseUi.phaseBar(phone) { render() })
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
