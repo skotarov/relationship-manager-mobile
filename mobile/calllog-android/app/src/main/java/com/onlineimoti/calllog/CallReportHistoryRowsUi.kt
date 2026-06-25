@@ -160,6 +160,7 @@ internal class CallReportHistoryRowsUi(
         val colors = when {
             foreignRecord -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
             row.kind == CallReportHistoryRowKind.NOTE -> Triple(NoteUiStyle.Call.background, NoteUiStyle.Call.border, NoteUiStyle.Call.text)
+            row.kind == CallReportHistoryRowKind.SMS -> Triple(SMS_BACKGROUND, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
             else -> Triple(Color.WHITE, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
         }
         return LinearLayout(activity).apply {
@@ -293,6 +294,7 @@ internal class CallReportHistoryRowsUi(
     )
 
     private companion object {
+        val SMS_BACKGROUND: Int = Color.rgb(248, 250, 252)
         val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
         val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
         val FOREIGN_TEXT: Int = Color.rgb(100, 116, 139)
