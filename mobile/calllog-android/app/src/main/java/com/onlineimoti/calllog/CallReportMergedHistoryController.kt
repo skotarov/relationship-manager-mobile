@@ -50,7 +50,6 @@ internal class CallReportMergedHistoryController(
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
                 if (!CallReportRemoteAccess.isEnabled(activity)) {
-                    serverLoading = false
                     clearServerStateAndRerenderIfNeeded()
                     return@post
                 }
