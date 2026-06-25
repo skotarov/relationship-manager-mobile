@@ -15,6 +15,7 @@ internal class ContactNegotiationPhaseUi(
     private val dp: (Int) -> Int,
 ) {
     fun phaseBar(phone: String, onChanged: () -> Unit): LinearLayout {
+        reconcileWithServer(phone, onChanged)
         val selectedPhase = ContactNegotiationPhaseStore.selectedPhase(activity, phone)
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -67,7 +68,14 @@ internal class ContactNegotiationPhaseUi(
             setOnClickListener {
                 ContactNegotiationPhaseStore.togglePhase(activity, phone, phase.number)
                 onChanged()
+                reconcileWithServer(phone, onChanged)
             }
+        }
+    }
+
+    private fun reconcileWithServer(phone: String, onChanged: () -> Unit) {
+        ContactNegotiationPhaseSyncDispatcher.synchronize(activity, phone) { changed ->
+            if (changed && !activity.isFinishing && !activity.isDestroyed) onChanged()
         }
     }
 
