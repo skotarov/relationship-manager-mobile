@@ -34,7 +34,10 @@ internal class ContactNegotiationPhaseUi(
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(BAR_HEIGHT_DP),
-            ).apply { bottomMargin = dp(12) }
+            ).apply {
+                topMargin = dp(12)
+                bottomMargin = dp(12)
+            }
 
             phaseDefinitions().forEachIndexed { index, phase ->
                 addView(
