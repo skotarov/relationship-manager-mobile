@@ -246,7 +246,7 @@ internal class CallReportMergedHistoryController(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.rgb(248, 250, 252), dp(12), Color.rgb(203, 213, 225), dp(1))
+            background = roundedRect(Color.rgb(248, 250, 252), dp(12), Color.TRANSPARENT, 0)
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
