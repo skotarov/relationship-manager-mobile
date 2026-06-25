@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -60,7 +59,7 @@ class HomeActivity : AppCompatActivity() {
             activity = this,
             dp = ::dp,
             noteKey = HomeCallPageLoader::noteKey,
-            roundedRect = ::roundedRect,
+            roundedRect = ::homeRoundedRect,
             openContactNotesScreen = homeActions::openContactNotesScreen,
             openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
             openDialer = homeActions::openDialer,
@@ -72,7 +71,7 @@ class HomeActivity : AppCompatActivity() {
             activity = this,
             binding = binding,
             dp = ::dp,
-            roundedRect = ::roundedRect,
+            roundedRect = ::homeRoundedRect,
             openContactNotes = homeActions::openContactNotesScreen,
             openCallNoteEditor = homeActions::openContactNotePopupForCall,
             pageSize = ::pageSize,
@@ -278,7 +277,7 @@ class HomeActivity : AppCompatActivity() {
                 textSize = 13f
                 maxLines = 4
                 setPadding(dp(10), dp(7), dp(10), dp(7))
-                background = roundedRect(colors.background, dp(10), colors.border, dp(1))
+                background = homeRoundedRect(colors.background, dp(10), colors.border, dp(1))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -338,7 +337,7 @@ class HomeActivity : AppCompatActivity() {
         val isPhoneFiltered = activePhoneFilter.isNotBlank()
         binding.filteredDialButton.visibility = if (isPhoneFiltered) View.VISIBLE else View.GONE
         if (isPhoneFiltered) {
-            binding.filteredStatusContainer.background = roundedRect(
+            binding.filteredStatusContainer.background = homeRoundedRect(
                 color = Color.rgb(255, 237, 213),
                 radius = dp(12),
                 strokeColor = Color.rgb(251, 146, 60),
@@ -444,15 +443,6 @@ class HomeActivity : AppCompatActivity() {
         noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
         handler.removeCallbacks(noteRefreshRunnable)
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
-    }
-
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius.toFloat()
-            setColor(color)
-            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
-        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
