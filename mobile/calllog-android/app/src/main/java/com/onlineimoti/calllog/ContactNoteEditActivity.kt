@@ -82,7 +82,7 @@ class ContactNoteEditActivity : Activity() {
             durationSeconds = durationSeconds,
             isGeneralNote = isGeneralNote,
             topic = topicState,
-            willEnableServerSync = shouldAutoEnableServerSyncForUnknown(),
+            willEnableServerSync = shouldAutoEnableServerSyncForUnknown() && topicState.loadError.isBlank(),
         )
     }
 
@@ -108,19 +108,26 @@ class ContactNoteEditActivity : Activity() {
 
     private fun loadTopicCompanies() {
         topicExecutor.execute {
-            val companies = runCatching {
+            val result = runCatching {
                 CallReportTopicCompaniesClient.fetch(ConfigStore.load(applicationContext))
-            }.getOrDefault(emptyList())
+            }
+            val companies = result.getOrDefault(emptyList())
+            val loadError = result.exceptionOrNull()?.let { "topic_request_failed" }.orEmpty()
 
             runOnUiThread {
                 if (isFinishing || isDestroyed || !topicState.visible) return@runOnUiThread
-                val selectedCompanyId = topicState.selectedCompanyId.takeIf { selected ->
-                    companies.any { it.id == selected }
-                } ?: companies.singleOrNull()?.id.orEmpty()
+                val selectedCompanyId = if (loadError.isBlank()) {
+                    topicState.selectedCompanyId.takeIf { selected ->
+                        companies.any { it.id == selected }
+                    } ?: companies.singleOrNull()?.id.orEmpty()
+                } else {
+                    ""
+                }
                 topicState = topicState.copy(
                     loading = false,
                     companies = companies,
                     selectedCompanyId = selectedCompanyId,
+                    loadError = loadError,
                 )
                 topicSpinner?.let { spinner ->
                     ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
@@ -148,6 +155,8 @@ class ContactNoteEditActivity : Activity() {
 
     private fun selectedTopicCompanyIdOrNull(): String? {
         if (!topicState.visible) return ""
+        // A failed topic request must never prevent the user from keeping a local note.
+        if (topicState.loadError.isNotBlank()) return ""
         if (topicState.loading || topicState.selectedCompanyId.isBlank()) {
             Toast.makeText(this, getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
             return null
