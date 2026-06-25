@@ -121,7 +121,6 @@ internal class CallReportHistoryRowsUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = roundedRect(Color.rgb(248, 250, 252), dp(12), Color.TRANSPARENT, 0)
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
@@ -132,8 +131,7 @@ internal class CallReportHistoryRowsUi(
             addView(TextView(activity).apply {
                 text = "+ Добави бележка към последния разговор"
                 textSize = 14.5f
-                setTextColor(Color.rgb(30, 64, 175))
-                setTypeface(typeface, Typeface.BOLD)
+                setTextColor(NoteUiStyle.General.mutedText)
             })
             addView(TextView(activity).apply {
                 text = listOf(
