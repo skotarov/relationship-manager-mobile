@@ -9,7 +9,6 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
-import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
@@ -38,6 +37,7 @@ class HomeActivity : AppCompatActivity() {
             isUnfilteredHome = { activePhoneFilter.isBlank() && activeSearchQuery.isBlank() },
         )
     }
+    private val searchUiController by lazy { HomeSearchUiController(this, binding) }
     private val searchController by lazy {
         HomeSearchController(
             context = this,
@@ -105,12 +105,12 @@ class HomeActivity : AppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
-        updateSearchButtonIcon()
+        searchUiController.updateButtonIcon()
 
         binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
-        binding.searchButton.setOnClickListener { toggleSearchRow() }
+        binding.searchButton.setOnClickListener { searchUiController.toggle(::clearSearch) }
         binding.clearSearchButton.setOnClickListener { clearSearch() }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -400,36 +400,13 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun toggleSearchRow() {
-        val willShow = binding.searchRow.visibility != View.VISIBLE
-        if (willShow) {
-            binding.searchRow.visibility = View.VISIBLE
-            updateSearchButtonIcon()
-            binding.searchInput.requestFocus()
-            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(
-                binding.searchInput,
-                InputMethodManager.SHOW_IMPLICIT,
-            )
-        } else {
-            clearSearch()
-            binding.searchRow.visibility = View.GONE
-            updateSearchButtonIcon()
-        }
-    }
-
     private fun clearSearch() {
         handler.removeCallbacks(searchRunnable)
         binding.searchInput.setText("")
         activeSearchQuery = ""
         pageIndex = 0
         renderCalls()
-        updateSearchButtonIcon()
-    }
-
-    private fun updateSearchButtonIcon() {
-        binding.searchButton.setImageResource(
-            if (binding.searchRow.visibility == View.VISIBLE) R.drawable.ic_popup_close else R.drawable.ic_search,
-        )
+        searchUiController.updateButtonIcon()
     }
 
     private fun isFilteredFullLogMode(): Boolean {
