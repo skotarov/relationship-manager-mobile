@@ -24,6 +24,7 @@ internal data class ContactNoteEditUiState(
     val durationSeconds: Long,
     val isGeneralNote: Boolean,
     val topic: ContactNoteTopicState,
+    val willEnableServerSync: Boolean = false,
 )
 
 internal class ContactNoteEditUi(
@@ -119,12 +120,19 @@ internal class ContactNoteEditUi(
 
     private fun crmModeRow(current: ContactNoteEditUiState): TextView {
         val enabled = CrmContactSyncStore.isEnabled(activity, current.phone)
+        val text = when {
+            enabled -> activity.getString(R.string.dynamic_note_crm_enabled)
+            current.willEnableServerSync -> activity.getString(R.string.note_server_sync_will_be_enabled)
+            else -> activity.getString(R.string.dynamic_note_local_only)
+        }
+        val color = when {
+            enabled || current.willEnableServerSync -> Color.rgb(20, 83, 45)
+            else -> Color.rgb(107, 114, 128)
+        }
         return TextView(activity).apply {
-            text = activity.getString(
-                if (enabled) R.string.dynamic_note_crm_enabled else R.string.dynamic_note_local_only,
-            )
+            this.text = text
             textSize = 12.5f
-            setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(107, 114, 128))
+            setTextColor(color)
             setPadding(0, dp(10), 0, 0)
         }
     }
@@ -139,7 +147,7 @@ internal class ContactNoteEditUi(
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(12), 0, 0)
             addView(TextView(activity).apply {
-                text = "Тема / фирма"
+                text = activity.getString(R.string.note_company_for_sync)
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(55, 65, 81))
