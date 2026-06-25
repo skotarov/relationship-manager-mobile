@@ -1,11 +1,15 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.app.AlertDialog
+import android.app.Dialog
 import android.graphics.Color
 import android.provider.ContactsContract
 import android.text.InputType
+import android.view.Gravity
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -32,11 +36,45 @@ internal class RmContactFormDialog(
         }
 
         val initial = RmContactFormStore.read(activity, normalizedPhone, fallbackTitle)
+        val dialog = Dialog(activity).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setCanceledOnTouchOutside(true)
+        }
+
+        val root = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(14))
+            setBackgroundColor(Color.WHITE)
+        }
+        root.addView(TextView(activity).apply {
+            text = "RM контакт"
+            textSize = 20f
+            setTextColor(Color.rgb(15, 23, 42))
+            setPadding(0, 0, 0, dp(2))
+        })
+        root.addView(TextView(activity).apply {
+            text = "Данните се пазят само в RM слоя на контактите."
+            textSize = 13f
+            setTextColor(Color.rgb(100, 116, 139))
+            setPadding(0, 0, 0, dp(10))
+        })
+
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(4), dp(2), dp(4), dp(2))
+            setPadding(dp(2), 0, dp(2), 0)
         }
-        val scroll = ScrollView(activity).apply { addView(content) }
+        val scroll = ScrollView(activity).apply {
+            isFillViewport = true
+            addView(content)
+        }
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f,
+            ),
+        )
 
         content.addView(label("Основен телефон"))
         content.addView(TextView(activity).apply {
@@ -62,46 +100,69 @@ internal class RmContactFormDialog(
             multiLine = true,
         )
 
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle("RM контакт")
-            .setMessage("Данните се пазят в RM слоя на контактите.")
-            .setView(scroll)
-            .setNegativeButton("Откажи", null)
-            .setPositiveButton("Запази", null)
-            .create()
+        val actions = LinearLayout(activity).apply {
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(12), 0, 0)
+        }
+        val cancelButton = Button(activity).apply {
+            text = "Откажи"
+            isAllCaps = false
+            setOnClickListener { dialog.dismiss() }
+        }
+        val saveButton = Button(activity).apply {
+            text = "Запази"
+            isAllCaps = false
+        }
+        actions.addView(cancelButton)
+        actions.addView(saveButton)
+        root.addView(
+            actions,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val values = RmContactFormValues(
-                    displayName = displayName.text?.toString().orEmpty().trim(),
-                    givenName = givenName.text?.toString().orEmpty().trim(),
-                    middleName = middleName.text?.toString().orEmpty().trim(),
-                    familyName = familyName.text?.toString().orEmpty().trim(),
-                    additionalPhone = additionalPhone.text?.toString().orEmpty().trim(),
-                    organization = organization.text?.toString().orEmpty().trim(),
-                    jobTitle = jobTitle.text?.toString().orEmpty().trim(),
-                    emailWork = emailWork.text?.toString().orEmpty().trim(),
-                    note = note.text?.toString().orEmpty().trim(),
-                ).withFallbackName(fallbackTitle, normalizedPhone)
+        saveButton.setOnClickListener {
+            val values = RmContactFormValues(
+                displayName = displayName.text?.toString().orEmpty().trim(),
+                givenName = givenName.text?.toString().orEmpty().trim(),
+                middleName = middleName.text?.toString().orEmpty().trim(),
+                familyName = familyName.text?.toString().orEmpty().trim(),
+                additionalPhone = additionalPhone.text?.toString().orEmpty().trim(),
+                organization = organization.text?.toString().orEmpty().trim(),
+                jobTitle = jobTitle.text?.toString().orEmpty().trim(),
+                emailWork = emailWork.text?.toString().orEmpty().trim(),
+                note = note.text?.toString().orEmpty().trim(),
+            ).withFallbackName(fallbackTitle, normalizedPhone)
 
-                val saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                saveButton.isEnabled = false
-                saveButton.text = "Записва…"
-                Thread {
-                    val saved = save(normalizedPhone, values)
-                    activity.runOnUiThread {
-                        if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
-                        if (saved) {
-                            Toast.makeText(activity, "RM контактът е записан.", Toast.LENGTH_SHORT).show()
-                            dialog.dismiss()
-                            onSaved()
-                        } else {
-                            Toast.makeText(activity, "RM контактът не беше записан.", Toast.LENGTH_SHORT).show()
-                            saveButton.isEnabled = true
-                            saveButton.text = "Запази"
-                        }
+            saveButton.isEnabled = false
+            saveButton.text = "Записва…"
+            Thread {
+                val saved = save(normalizedPhone, values)
+                activity.runOnUiThread {
+                    if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+                    if (saved) {
+                        Toast.makeText(activity, "RM контактът е записан.", Toast.LENGTH_SHORT).show()
+                        dialog.dismiss()
+                        onSaved()
+                    } else {
+                        Toast.makeText(activity, "RM контактът не беше записан.", Toast.LENGTH_SHORT).show()
+                        saveButton.isEnabled = true
+                        saveButton.text = "Запази"
                     }
-                }.start()
+                }
+            }.start()
+        }
+
+        dialog.setContentView(root)
+        dialog.setOnShowListener {
+            dialog.window?.apply {
+                setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+                val width = (activity.resources.displayMetrics.widthPixels * 0.95f).toInt()
+                val height = (activity.resources.displayMetrics.heightPixels * 0.88f).toInt()
+                setLayout(width, height)
             }
         }
         dialog.show()
@@ -146,7 +207,7 @@ internal class RmContactFormDialog(
             if (multiLine) {
                 minLines = 3
                 maxLines = 6
-                gravity = android.view.Gravity.TOP
+                gravity = Gravity.TOP
             } else {
                 isSingleLine = true
             }
