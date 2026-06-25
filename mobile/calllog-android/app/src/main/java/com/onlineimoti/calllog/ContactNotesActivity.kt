@@ -178,11 +178,15 @@ class ContactNotesActivity : Activity() {
             setBackgroundColor(ContextCompat.getColor(this@ContactNotesActivity, R.color.calllog_bg))
         }
 
-        root.addView(headerRow())
-        root.addView(phaseUi.phaseBar(phone, phaseControlsVisible) {
+        val header = headerRow()
+        val phases = phaseUi.phaseBar(phone, phaseControlsVisible) {
             phaseSyncController.syncCurrent(phone)
             render()
-        })
+        }
+        // Header child 0 is the icon row and child 1 is the phone/name row.
+        // Insert the four negotiation phases between them.
+        header.addView(phases, 1)
+        root.addView(header)
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
