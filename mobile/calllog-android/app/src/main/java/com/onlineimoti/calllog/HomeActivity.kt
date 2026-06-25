@@ -7,7 +7,6 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
-import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -31,6 +30,27 @@ class HomeActivity : AppCompatActivity() {
             binding = binding,
             startTemporaryNoteRefresh = ::startTemporaryNoteRefresh,
             isUnfilteredHome = { activePhoneFilter.isBlank() && activeSearchQuery.isBlank() },
+        )
+    }
+    private val navigationController by lazy {
+        HomeNavigationController(
+            activity = this,
+            binding = binding,
+            currentFilter = { activePhoneFilter },
+            setFilter = { activePhoneFilter = it },
+            filterKey = HomeCallPageLoader::noteKey,
+            onFilterChanged = {
+                pageIndex = 0
+                filteredFullLogController.invalidate()
+                renderCalls()
+            },
+            onOpenSystemHistory = {
+                startActivity(
+                    Intent(this, SystemCallHistoryActivity::class.java)
+                        .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL),
+                )
+            },
+            onOpenSettings = homeActions::openSettings,
         )
     }
     private val searchUiController by lazy { HomeSearchUiController(this, binding) }
@@ -61,7 +81,7 @@ class HomeActivity : AppCompatActivity() {
             openContactNotesScreen = homeActions::openContactNotesScreen,
             openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
             openDialer = homeActions::openDialer,
-            togglePhoneFilter = ::togglePhoneFilter,
+            togglePhoneFilter = navigationController::toggleFilter,
         )
     }
     private val filteredFullLogController by lazy {
@@ -78,18 +98,16 @@ class HomeActivity : AppCompatActivity() {
     }
     private var pageIndex = 0
     private var currentCalls: List<PhoneCallRecord> = emptyList()
-    private var noteRefreshUntilMs = 0L
     private var activePhoneFilter: String = ""
     private var activeSearchQuery: String = ""
-
-    private val noteRefreshRunnable = object : Runnable {
-        override fun run() {
-            if (System.currentTimeMillis() > noteRefreshUntilMs) return
-            // The full log was invalidated once when the note changed. Do not repeatedly
-            // trigger background history reloads while the popup is closing.
-            renderCalls()
-            handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
-        }
+    private val screenRefreshController by lazy {
+        HomeScreenRefreshController(
+            handler = handler,
+            windowMs = NOTE_REFRESH_WINDOW_MS,
+            intervalMs = NOTE_REFRESH_INTERVAL_MS,
+            onStart = filteredFullLogController::invalidate,
+            onRefresh = ::renderCalls,
+        )
     }
     private val searchRunnable = Runnable {
         activeSearchQuery = binding.searchInput.text?.toString().orEmpty()
@@ -105,8 +123,8 @@ class HomeActivity : AppCompatActivity() {
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         searchUiController.updateButtonIcon()
 
-        binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
-        binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
+        binding.settingsButton.setOnClickListener { navigationController.showOverflowMenu() }
+        binding.clearFilterButton.setOnClickListener { navigationController.clearFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
         binding.searchButton.setOnClickListener { searchUiController.toggle(::clearSearch) }
         binding.clearSearchButton.setOnClickListener { clearSearch() }
@@ -119,7 +137,7 @@ class HomeActivity : AppCompatActivity() {
             }
         })
         binding.previousCallsButton.setOnClickListener {
-            if (isFilteredFullLogMode()) {
+            if (navigationController.isFilterOnly(activeSearchQuery)) {
                 filteredFullLogController.previousPage()
             } else if (pageIndex > 0) {
                 pageIndex -= 1
@@ -127,7 +145,7 @@ class HomeActivity : AppCompatActivity() {
             }
         }
         binding.nextCallsButton.setOnClickListener {
-            if (isFilteredFullLogMode()) {
+            if (navigationController.isFilterOnly(activeSearchQuery)) {
                 filteredFullLogController.nextPage()
             } else if (currentCalls.size >= pageSize()) {
                 pageIndex += 1
@@ -161,7 +179,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (::binding.isInitialized) noteSavedReceiver.unregister()
-        handler.removeCallbacks(noteRefreshRunnable)
+        screenRefreshController.cancel()
         handler.removeCallbacks(searchRunnable)
         super.onPause()
     }
@@ -270,50 +288,6 @@ class HomeActivity : AppCompatActivity() {
         homeStatusRenderer.updatePhoneFilterStyle(activePhoneFilter)
     }
 
-    private fun togglePhoneFilter(number: String) {
-        val key = HomeCallPageLoader.noteKey(number)
-        activePhoneFilter = if (activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key) "" else number
-        pageIndex = 0
-        filteredFullLogController.invalidate()
-        renderCalls()
-    }
-
-    private fun clearPhoneFilter() {
-        if (activePhoneFilter.isBlank()) return
-        activePhoneFilter = ""
-        pageIndex = 0
-        filteredFullLogController.invalidate()
-        renderCalls()
-    }
-
-    private fun openDefaultCallLog() {
-        startActivity(
-            Intent(this, SystemCallHistoryActivity::class.java)
-                .putExtra(SystemCallHistoryActivity.EXTRA_MODE, SystemCallHistoryActivity.MODE_GENERAL),
-        )
-    }
-
-    private fun showHomeOverflowMenu() {
-        PopupMenu(this, binding.settingsButton).apply {
-            menu.add(0, MENU_PHONE_CALL_LOG, 0, getString(R.string.home_overflow_phone_log))
-            menu.add(0, MENU_SETTINGS, 1, getString(R.string.home_overflow_settings))
-            setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    MENU_PHONE_CALL_LOG -> {
-                        openDefaultCallLog()
-                        true
-                    }
-                    MENU_SETTINGS -> {
-                        homeActions.openSettings()
-                        true
-                    }
-                    else -> false
-                }
-            }
-            show()
-        }
-    }
-
     private fun clearSearch() {
         handler.removeCallbacks(searchRunnable)
         binding.searchInput.setText("")
@@ -323,17 +297,10 @@ class HomeActivity : AppCompatActivity() {
         searchUiController.updateButtonIcon()
     }
 
-    private fun isFilteredFullLogMode(): Boolean {
-        return activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
-    }
-
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     private fun startTemporaryNoteRefresh() {
-        filteredFullLogController.invalidate()
-        noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
-        handler.removeCallbacks(noteRefreshRunnable)
-        handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
+        screenRefreshController.start()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -341,8 +308,6 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
-        private const val MENU_PHONE_CALL_LOG = 1
-        private const val MENU_SETTINGS = 2
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
         private const val NOTE_REFRESH_INTERVAL_MS = 400L
         private const val SEARCH_DEBOUNCE_MS = 250L
