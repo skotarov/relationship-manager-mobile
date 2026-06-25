@@ -9,10 +9,13 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
-import java.util.concurrent.Executors
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 class CallStateReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: android.content.Intent) {
+    override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
 
         val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
@@ -73,7 +76,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_LOADING)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, number)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, subtitle)
+                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, subtitle),
         )
     }
 
@@ -88,10 +91,10 @@ class CallStateReceiver : BroadcastReceiver() {
 
     private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
         val pendingResult = goAsync()
-        EXECUTOR.execute {
+        executeBounded(pendingResult) {
             try {
                 val config = ConfigStore.load(context)
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@executeBounded
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number)
                 val title = displayName.ifNullOrBlank { number }
                 val lookupContext = CallReportLookupContext(
@@ -100,73 +103,48 @@ class CallStateReceiver : BroadcastReceiver() {
                 )
 
                 CallReportRuntime.ensureNotificationChannel(context)
-
                 if (!remoteReady(config)) {
                     LookupPopupPresenter.show(
                         context = context,
-                        result = LookupResult(
-                            title = title,
-                            subtitle = number,
-                            lines = emptyList(),
-                            openFormUrl = "",
-                        ),
+                        result = LookupResult(title, number, emptyList(), ""),
                         fullscreen = fullscreen,
                         phone = number,
                         direction = direction,
                     )
-                    return@execute
+                    return@executeBounded
                 }
 
                 LookupPopupPresenter.show(
                     context = context,
-                    result = LookupResult(
-                        title = title,
-                        subtitle = "Зарежда се информация от Call Report…",
-                        lines = emptyList(),
-                        openFormUrl = "",
-                    ),
+                    result = LookupResult(title, "Зарежда се информация от Call Report…", emptyList(), ""),
                     fullscreen = fullscreen,
                     phone = number,
                     direction = direction,
                 )
-
                 val result = CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
                     if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
                 }
-                LookupPopupPresenter.show(
-                    context = context,
-                    result = result,
-                    fullscreen = false,
-                    phone = number,
-                    direction = direction,
-                )
+                LookupPopupPresenter.show(context, result, fullscreen = false, phone = number, direction = direction)
             } catch (_: Throwable) {
                 CallReportRuntime.ensureNotificationChannel(context)
                 LookupPopupPresenter.show(
                     context = context,
-                    result = LookupResult(
-                        title = number,
-                        subtitle = number,
-                        lines = emptyList(),
-                        openFormUrl = "",
-                    ),
+                    result = LookupResult(number, number, emptyList(), ""),
                     fullscreen = fullscreen,
                     phone = number,
                     direction = direction,
                 )
-            } finally {
-                pendingResult.finish()
             }
         }
     }
 
     private fun showPostCallPrompt(context: Context, number: String, direction: String) {
         val pendingResult = goAsync()
-        EXECUTOR.execute {
+        executeBounded(pendingResult) {
             try {
                 val config = ConfigStore.load(context)
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@execute
-                if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) return@execute
+                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@executeBounded
+                if (config.postCallEndAction == ConfigStore.POST_CALL_END_ACTION_NOTHING) return@executeBounded
 
                 if (!remoteReady(config)) {
                     if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)) {
@@ -180,7 +158,7 @@ class CallStateReceiver : BroadcastReceiver() {
                     } else {
                         routeLocalPostCall(context, number, direction, config)
                     }
-                    return@execute
+                    return@executeBounded
                 }
 
                 val lookupContext = CallReportSyncEventFactory.latestPhoneCallContext(context, number, direction)
@@ -190,23 +168,14 @@ class CallStateReceiver : BroadcastReceiver() {
                     "access_token" to config.accessToken,
                 )
                 fallbackParams.putAll(lookupContext.asQueryParameters())
-                val fallbackFormUrl = buildEndpoint(
-                    baseUrl = config.baseUrl,
-                    path = config.formPath,
-                    params = fallbackParams,
-                )
+                val fallbackFormUrl = buildEndpoint(config.baseUrl, config.formPath, fallbackParams)
                 val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
                 val result = runCatching {
                     CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
                         if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
                     }
                 }.getOrElse {
-                    LookupResult(
-                        title = displayName.ifBlank { "Бележка след разговора" },
-                        subtitle = number,
-                        lines = emptyList(),
-                        openFormUrl = fallbackFormUrl,
-                    )
+                    LookupResult(displayName.ifBlank { "Бележка след разговора" }, number, emptyList(), fallbackFormUrl)
                 }
                 CallReportRuntime.showPostCallPromptNotification(
                     context = context,
@@ -220,9 +189,25 @@ class CallStateReceiver : BroadcastReceiver() {
                 if (config.postCallEndAction != ConfigStore.POST_CALL_END_ACTION_NOTHING) {
                     routeLocalPostCall(context, number, direction, config)
                 }
-            } finally {
-                pendingResult.finish()
             }
+        }
+    }
+
+    /**
+     * Prevents a bad/slow server from retaining an unbounded list of BroadcastReceiver tasks.
+     * A rejected new lookup is deliberately skipped; older accepted work is allowed to finish.
+     */
+    private fun executeBounded(pendingResult: PendingResult, block: () -> Unit) {
+        try {
+            EXECUTOR.execute {
+                try {
+                    block()
+                } finally {
+                    pendingResult.finish()
+                }
+            }
+        } catch (_: RejectedExecutionException) {
+            pendingResult.finish()
         }
     }
 
@@ -271,7 +256,15 @@ class CallStateReceiver : BroadcastReceiver() {
         }
     }
 
-    companion object {
-        private val EXECUTOR = Executors.newSingleThreadExecutor()
+    private companion object {
+        const val MAX_PENDING_LOOKUPS = 12
+        val EXECUTOR = ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            ArrayBlockingQueue(MAX_PENDING_LOOKUPS),
+            ThreadPoolExecutor.AbortPolicy(),
+        )
     }
 }
