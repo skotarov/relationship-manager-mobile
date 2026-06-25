@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.animation.ObjectAnimator
 import android.app.Service
 import android.content.Intent
-import android.graphics.Color
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -25,12 +24,12 @@ class PostCallOverlayService : Service() {
             callAt = { state.callAt },
             durationSeconds = { state.durationSeconds },
             actionIssuedAt = { state.actionIssuedAt },
-            callDirectionColor = ::callDirectionColor,
+            callDirectionColor = ::postCallDirectionColor,
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showGeneralNoteEditor = ::showGeneralNoteEditor,
-            openCalendarEvent = ::openCalendarEvent,
+            openCalendarEvent = calendarActions::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
             pendingCallNote = { state.pendingCallNote },
             setPendingCallNote = { state.pendingCallNote = it },
@@ -49,7 +48,7 @@ class PostCallOverlayService : Service() {
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
             showNoteEditor = ::showNoteEditor,
-            openCalendarEvent = ::openCalendarEvent,
+            openCalendarEvent = calendarActions::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
             pendingGeneralNote = { state.pendingGeneralNote },
             setPendingGeneralNote = { state.pendingGeneralNote = it },
@@ -217,10 +216,6 @@ class PostCallOverlayService : Service() {
         generalNoteEditor.show()
     }
 
-    private fun openCalendarEvent(displayName: String) {
-        calendarActions.openCalendarEvent(displayName)
-    }
-
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs)
     }
@@ -233,14 +228,6 @@ class PostCallOverlayService : Service() {
         onTimeout: () -> Unit,
     ) {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs, onTimeout)
-    }
-
-    private fun callDirectionColor(directionValue: String): Int {
-        return when (directionValue) {
-            "out" -> Color.rgb(34, 197, 94)
-            "in" -> Color.rgb(59, 130, 246)
-            else -> Color.rgb(107, 114, 128)
-        }
     }
 
     private fun openContactNotesScreen() {
