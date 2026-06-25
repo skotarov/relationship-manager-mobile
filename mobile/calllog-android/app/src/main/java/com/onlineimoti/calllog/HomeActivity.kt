@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -38,6 +37,7 @@ class HomeActivity : AppCompatActivity() {
         )
     }
     private val searchUiController by lazy { HomeSearchUiController(this, binding) }
+    private val homeStatusRenderer by lazy { HomeStatusRenderer(this, binding, ::dp) }
     private val searchController by lazy {
         HomeSearchController(
             context = this,
@@ -287,73 +287,25 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderEmptyState() {
-        binding.fullLogProgress.visibility = View.GONE
-        binding.homeStatusText.text = when {
-            activeSearchQuery.isNotBlank() -> getString(R.string.dynamic_home_no_search_results, activeSearchQuery.trim())
-            activePhoneFilter.isNotBlank() && pageIndex == 0 -> getString(R.string.dynamic_home_filter_no_calls_or_sms, activePhoneFilter)
-            pageIndex == 0 -> getString(R.string.dynamic_home_no_calls)
-            else -> getString(R.string.dynamic_home_no_more_calls)
-        }
-        updatePhoneFilterStatusStyle()
-        binding.previousCallsButton.isEnabled = pageIndex > 0
-        binding.nextCallsButton.isEnabled = false
-        binding.pageText.text = getString(R.string.dynamic_home_page, pageIndex + 1)
-        binding.paginationContainer.visibility = View.VISIBLE
+        homeStatusRenderer.renderEmptyState(
+            searchQuery = activeSearchQuery,
+            phoneFilter = activePhoneFilter,
+            pageIndex = pageIndex,
+        )
     }
 
     private fun renderStatusAndPagination(pageSize: Int) {
-        val startNumber = pageIndex * pageSize + 1
-        val endNumber = pageIndex * pageSize + currentCalls.size
-        binding.homeStatusText.text = when {
-            activeSearchQuery.isNotBlank() && activePhoneFilter.isNotBlank() -> getString(
-                R.string.dynamic_home_status_filter_search,
-                activePhoneFilter,
-                activeSearchQuery.trim(),
-                startNumber,
-                endNumber,
-            )
-            activeSearchQuery.isNotBlank() -> getString(
-                R.string.dynamic_home_status_search,
-                activeSearchQuery.trim(),
-                startNumber,
-                endNumber,
-            )
-            activePhoneFilter.isNotBlank() -> getString(
-                R.string.dynamic_home_status_filter,
-                activePhoneFilter,
-                startNumber,
-                endNumber,
-            )
-            else -> getString(R.string.dynamic_home_status_calls, startNumber, endNumber)
-        }
-        updatePhoneFilterStatusStyle()
-        binding.previousCallsButton.isEnabled = pageIndex > 0
-        binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
-        binding.pageText.text = getString(R.string.dynamic_home_page, pageIndex + 1)
-        binding.paginationContainer.visibility = View.VISIBLE
+        homeStatusRenderer.renderStatusAndPagination(
+            pageSize = pageSize,
+            callCount = currentCalls.size,
+            searchQuery = activeSearchQuery,
+            phoneFilter = activePhoneFilter,
+            pageIndex = pageIndex,
+        )
     }
 
     private fun updatePhoneFilterStatusStyle() {
-        val isPhoneFiltered = activePhoneFilter.isNotBlank()
-        binding.filteredDialButton.visibility = if (isPhoneFiltered) View.VISIBLE else View.GONE
-        if (isPhoneFiltered) {
-            binding.filteredStatusContainer.background = homeRoundedRect(
-                color = Color.rgb(255, 237, 213),
-                radius = dp(12),
-                strokeColor = Color.rgb(251, 146, 60),
-                strokeWidth = dp(1),
-            )
-            binding.filteredStatusContainer.setPadding(dp(10), dp(2), dp(4), dp(2))
-            binding.homeStatusText.background = null
-            binding.homeStatusText.setTextColor(Color.rgb(154, 52, 18))
-            binding.homeStatusText.setPadding(0, dp(4), 0, dp(4))
-        } else {
-            binding.filteredStatusContainer.background = null
-            binding.filteredStatusContainer.setPadding(0, 0, 0, 0)
-            binding.homeStatusText.background = null
-            binding.homeStatusText.setTextColor(Color.rgb(71, 85, 105))
-            binding.homeStatusText.setPadding(0, 0, 0, 0)
-        }
+        homeStatusRenderer.updatePhoneFilterStyle(activePhoneFilter)
     }
 
     private fun togglePhoneFilter(number: String) {
