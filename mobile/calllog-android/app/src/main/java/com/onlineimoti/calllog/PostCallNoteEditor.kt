@@ -100,11 +100,8 @@ internal class PostCallNoteEditor(
         val callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
             val noteText = callNoteInput.text?.toString().orEmpty()
-            if (saveCurrent(noteText)) {
-                openCalendarEvent(titleText)
-            } else {
-                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
-            }
+            if (saveCurrent(noteText)) openCalendarEvent(titleText)
+            else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
         })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
         card.addView(titleRow)
@@ -112,7 +109,7 @@ internal class PostCallNoteEditor(
         if (callAtValue > 0L) card.addView(callInfoRow(directionValue, callAtValue, durationValue))
         form.addTopicFieldTo(card)
         card.addView(callNoteInput)
-        card.addView(actionRow(callNoteInput, saveCurrent, showGeneralNoteEditor, openContactNotesScreen, stopOverlay))
+        card.addView(actionRow(callNoteInput, ::saveCurrent, showGeneralNoteEditor, openContactNotesScreen, stopOverlay))
 
         addDraggableOverlay(ui.shadowScroll(card), true, ui.dp(135), 0L)
         callNoteInput.requestFocus()
