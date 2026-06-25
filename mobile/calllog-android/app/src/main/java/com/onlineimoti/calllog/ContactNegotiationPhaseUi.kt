@@ -14,7 +14,17 @@ internal class ContactNegotiationPhaseUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
 ) {
-    fun phaseBar(phone: String, onChanged: () -> Unit): LinearLayout {
+    fun phaseBar(phone: String, showControls: Boolean, onChanged: () -> Unit): LinearLayout {
+        if (!showControls) {
+            return LinearLayout(activity).apply {
+                visibility = View.GONE
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                )
+            }
+        }
+
         reconcileWithServer(phone, onChanged)
         val selectedPhase = ContactNegotiationPhaseStore.selectedPhase(activity, phone)
         return LinearLayout(activity).apply {
