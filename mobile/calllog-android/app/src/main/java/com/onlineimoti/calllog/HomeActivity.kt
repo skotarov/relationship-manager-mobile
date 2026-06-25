@@ -1,16 +1,13 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
-import android.widget.LinearLayout
 import android.widget.PopupMenu
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -38,6 +35,7 @@ class HomeActivity : AppCompatActivity() {
     }
     private val searchUiController by lazy { HomeSearchUiController(this, binding) }
     private val homeStatusRenderer by lazy { HomeStatusRenderer(this, binding, ::dp) }
+    private val homeSummaryViewRenderer by lazy { HomeSummaryViewRenderer(this, binding, ::dp) }
     private val searchController by lazy {
         HomeSearchController(
             context = this,
@@ -238,10 +236,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderFilteredContactSummary() {
-        val container = binding.filteredContactSummaryContainer
-        container.removeAllViews()
         if (activePhoneFilter.isBlank()) {
-            container.visibility = View.GONE
+            homeSummaryViewRenderer.render("", "")
             return
         }
         val name = ContactGroupFilter.resolveDisplayName(this, activePhoneFilter)
@@ -249,41 +245,7 @@ class HomeActivity : AppCompatActivity() {
             .takeIf { HomeCallPageLoader.noteKey(it) != HomeCallPageLoader.noteKey(activePhoneFilter) }
             .orEmpty()
         val note = ContactNoteReader.generalNoteForPhone(this, activePhoneFilter).orEmpty()
-        if (name.isBlank() && note.isBlank()) {
-            container.visibility = View.GONE
-            return
-        }
-        container.visibility = View.VISIBLE
-        if (name.isNotBlank()) {
-            container.addView(TextView(this).apply {
-                text = name
-                setTextColor(getColor(R.color.calllog_text))
-                textSize = 18f
-                setTypeface(typeface, Typeface.BOLD)
-                setPadding(dp(4), dp(2), dp(4), dp(4))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { bottomMargin = dp(4) }
-            })
-        }
-        if (note.isNotBlank()) {
-            val colors = NoteUiStyle.General
-            container.addView(TextView(this).apply {
-                text = note
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-                compoundDrawablePadding = dp(5)
-                setTextColor(colors.text)
-                textSize = 13f
-                maxLines = 4
-                setPadding(dp(10), dp(7), dp(10), dp(7))
-                background = homeRoundedRect(colors.background, dp(10), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                )
-            })
-        }
+        homeSummaryViewRenderer.render(name, note)
     }
 
     private fun renderEmptyState() {
