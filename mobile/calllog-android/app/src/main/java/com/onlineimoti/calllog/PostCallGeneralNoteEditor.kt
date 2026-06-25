@@ -95,7 +95,7 @@ internal class PostCallGeneralNoteEditor(
         card.addView(titleRow)
         form.addTopicFieldTo(card)
         card.addView(generalNoteInput)
-        card.addView(actionRow(generalNoteInput, saveCurrent, showNoteEditor, openContactNotesScreen, stopOverlay))
+        card.addView(actionRow(generalNoteInput, ::saveCurrent, showNoteEditor, openContactNotesScreen, stopOverlay))
 
         addDraggableOverlay(ui.shadowScroll(card), true, ui.dp(135), 0L)
         generalNoteInput.requestFocus()
