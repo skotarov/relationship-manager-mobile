@@ -139,7 +139,13 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun saveCurrentNote(noteText: String, topicCompanyId: String): NoteSaveOutcome {
-        val result = ContactNoteFormWorkflow.save(this, draft(), noteText, topicCompanyId)
+        val result = ContactNoteFormWorkflow.save(
+            context = this,
+            draft = draft(),
+            noteText = noteText,
+            topicCompanyId = topicCompanyId,
+            localOnlyFallback = topicState.loadError.isNotBlank(),
+        )
         if (!result.saved) return NoteSaveOutcome(saved = false)
         if (!result.writeResult.savedAsGeneralNote) {
             direction = result.writeResult.target.direction
