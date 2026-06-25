@@ -57,6 +57,15 @@ class ContactNotesActivity : Activity() {
     private val externalActions by lazy { ContactNotesExternalActions(this) }
     private val headerUi by lazy { ContactNotesHeaderUi(this, ::dp) }
     private val phaseUi by lazy { ContactNegotiationPhaseUi(this, ::dp) }
+    private val phaseSyncController by lazy {
+        ContactNegotiationPhaseSyncController(
+            context = applicationContext,
+            mainHandler = mainHandler,
+            onStateChanged = {
+                if (!isFinishing && !isDestroyed) render()
+            },
+        )
+    }
     private val historyController by lazy {
         CallReportMergedHistoryController(
             activity = this,
@@ -115,6 +124,7 @@ class ContactNotesActivity : Activity() {
         historyController.refreshLocal(phone)
         // In local mode this only clears previous server state; it does not start a request.
         historyController.refreshServer(phone)
+        phaseSyncController.refresh(phone)
         render()
         scheduleContactNameRefresh()
     }
@@ -132,6 +142,7 @@ class ContactNotesActivity : Activity() {
 
     override fun onDestroy() {
         historyController.release()
+        phaseSyncController.release()
         crmSyncExecutor.shutdownNow()
         mainHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
@@ -167,7 +178,10 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        root.addView(phaseUi.phaseBar(phone) { render() })
+        root.addView(phaseUi.phaseBar(phone) {
+            phaseSyncController.syncCurrent(phone)
+            render()
+        })
         if (config.showRmDebugBox) root.addView(rmDebugBlock())
         sectionsUi.addGeneralNote(root, phone) { externalActions.openGeneralNotePopup(phone, titleText) }
         PendingCallNoteStore.reconcilePendingForPhone(this, phone)
