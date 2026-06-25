@@ -15,20 +15,6 @@ internal class CallReportHistoryRowsUi(
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
-    fun addServerErrorBelowContactName(root: LinearLayout, remoteEnabled: Boolean, errorText: String) {
-        if (!remoteEnabled || errorText.isBlank()) return
-        root.addView(TextView(activity).apply {
-            text = errorText
-            textSize = 12.5f
-            setTextColor(Color.rgb(185, 28, 28))
-            setPadding(dp(2), 0, dp(2), dp(8))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
-        }, minOf(1, root.childCount))
-    }
-
     fun addSection(
         root: LinearLayout,
         phone: String,
