@@ -1,6 +1,6 @@
 package com.onlineimoti.calllog
 
-import android.app.Activity
+import android.content.Context
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -17,18 +17,18 @@ internal data class ContactNoteTopicState(
 
 internal object ContactNoteTopicSelector {
     fun bind(
-        activity: Activity,
+        context: Context,
         spinner: Spinner,
         state: ContactNoteTopicState,
         onSelected: (String) -> Unit,
     ) {
         val labels = when {
             state.loading -> listOf("Зареждане на теми…")
-            state.loadError.isNotBlank() -> listOf(activity.getString(R.string.note_topics_unavailable_local_only))
+            state.loadError.isNotBlank() -> listOf(context.getString(R.string.note_topics_unavailable_local_only))
             state.companies.isEmpty() -> listOf("Няма налични теми")
             else -> listOf("Избери повод/тема") + state.companies.map { it.name }
         }
-        val adapter = ArrayAdapter(activity, android.R.layout.simple_spinner_item, labels).apply {
+        val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, labels).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
         spinner.adapter = adapter
