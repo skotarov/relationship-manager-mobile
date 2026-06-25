@@ -136,4 +136,10 @@
     <string name="contact_not_found">Contact not found</string>
     <string name="contacts_app_not_found">No contacts app found</string>
     <string name="dial_handler_label">Relationship Manager</string>
+
+    <string name="note_company_for_sync">Company for server sync</string>
+    <string name="note_company_required">Choose a company for the note.</string>
+    <string name="note_server_sync_will_be_enabled">After saving, this unknown number will be enabled for server sync.</string>
+    <string name="note_server_sync_enabled">The note is saved and this number is enabled for server sync.</string>
+    <string name="note_server_sync_activation_failed">The note is saved, but server sync could not be enabled. Check Contacts permission.</string>
 </resources>
