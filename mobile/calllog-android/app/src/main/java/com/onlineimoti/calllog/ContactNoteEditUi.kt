@@ -36,6 +36,8 @@ internal class ContactNoteEditUi(
     private val saveAndOpenCalendar: (String) -> Unit,
     private val close: () -> Unit,
 ) {
+    private val topicFieldUi by lazy { ContactNoteTopicFieldUi(activity, ::dp) }
+
     fun buildContent(): ScrollView {
         val input = noteInput()
         val root = LinearLayout(activity).apply {
@@ -137,27 +139,11 @@ internal class ContactNoteEditUi(
         }
     }
 
-    private fun topicRow(current: ContactNoteEditUiState): LinearLayout? {
-        if (!current.topic.visible) return null
-        val spinner = Spinner(activity)
-        ContactNoteTopicSelector.bind(activity, spinner, current.topic, onTopicSelected)
-        onTopicSpinnerReady(spinner)
-
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(12), 0, 0)
-            addView(TextView(activity).apply {
-                text = activity.getString(R.string.note_company_for_sync)
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(55, 65, 81))
-            })
-            addView(spinner, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) })
-        }
-    }
+    private fun topicRow(current: ContactNoteEditUiState): LinearLayout? = topicFieldUi.create(
+        state = current.topic,
+        onSelected = onTopicSelected,
+        onSpinnerReady = onTopicSpinnerReady,
+    )
 
     private fun noteInput(): EditText {
         val current = state()
