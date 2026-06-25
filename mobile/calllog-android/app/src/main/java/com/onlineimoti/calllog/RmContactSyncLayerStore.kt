@@ -34,6 +34,10 @@ internal object RmContactSyncLayerStore {
         return true
     }
 
+    fun isEnabled(context: Context, phone: String): Boolean {
+        return groupNameForCurrentRules(context, phone) == RmCloudSyncLabelStore.GROUP_NAME
+    }
+
     fun refreshNoteIfEnabled(context: Context, phone: String, title: String = "") {
         val appContext = context.applicationContext
         val normalizedPhone = PhoneNormalizer.normalize(phone)
