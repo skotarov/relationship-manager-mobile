@@ -154,10 +154,24 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun saveCurrentNote(noteText: String, topicCompanyId: String): Boolean {
-        val result = if (isGeneralNote) {
-            CallNoteWriter.writeGeneral(this, phone, noteText, topicCompanyId)
-        } else {
-            CallNoteWriter.writeCallOrGeneral(
+        val result = when {
+            topicCompanyId.isNotBlank() && isGeneralNote -> {
+                CallNoteTopicWriter.writeGeneral(this, phone, noteText, topicCompanyId)
+            }
+            topicCompanyId.isNotBlank() -> {
+                CallNoteTopicWriter.writeCallOrGeneral(
+                    context = this,
+                    phone = phone,
+                    text = noteText,
+                    direction = direction,
+                    callAt = callAt,
+                    durationSeconds = durationSeconds,
+                    actionIssuedAt = actionIssuedAt,
+                    companyId = topicCompanyId,
+                )
+            }
+            isGeneralNote -> CallNoteWriter.writeGeneral(this, phone, noteText)
+            else -> CallNoteWriter.writeCallOrGeneral(
                 this,
                 phone,
                 noteText,
@@ -165,7 +179,6 @@ class ContactNoteEditActivity : Activity() {
                 callAt,
                 durationSeconds,
                 actionIssuedAt,
-                topicCompanyId,
             )
         }
         if (result.saved) {
