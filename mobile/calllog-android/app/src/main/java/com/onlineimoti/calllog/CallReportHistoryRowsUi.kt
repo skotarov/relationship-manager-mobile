@@ -115,7 +115,7 @@ internal class CallReportHistoryRowsUi(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
             addView(TextView(activity).apply {
-                text = "+ Добави бележка към последния разговор"
+                text = "+ Добави"
                 textSize = 14.5f
                 setTextColor(NoteUiStyle.General.mutedText)
             })
