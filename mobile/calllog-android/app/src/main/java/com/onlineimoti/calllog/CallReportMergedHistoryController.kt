@@ -105,6 +105,7 @@ internal class CallReportMergedHistoryController(
             serverLoading = serverLoading,
             openFilteredLog = openFilteredLog,
             onEditCallNote = onEditCallNote,
+            onPageChanged = rerender,
         )
     }
 
