@@ -1,0 +1,6 @@
+<resources>
+    <string name="contact_phase_1">Фаза 1</string>
+    <string name="contact_phase_2">Фаза 2</string>
+    <string name="contact_phase_3">Фаза 3</string>
+    <string name="contact_phase_4">Фаза 4</string>
+</resources>
