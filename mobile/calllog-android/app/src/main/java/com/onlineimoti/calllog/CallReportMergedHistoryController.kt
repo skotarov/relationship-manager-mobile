@@ -69,8 +69,8 @@ internal class CallReportMergedHistoryController(
                     serverHistory = it
                     loadError = ""
                     ServerRecordIndex.markConfirmed(activity, it.events.map { event -> event.clientEventId })
-                }.onFailure {
-                    loadError = "Сървърните бележки и SMS не са заредени"
+                }.onFailure { error ->
+                    loadError = serverErrorText(error)
                 }
                 rerender()
             }
@@ -106,6 +106,7 @@ internal class CallReportMergedHistoryController(
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
+        addServerErrorBelowContactName(root, remoteEnabled)
         val historyEvents = if (remoteEnabled) {
             serverHistory.events.filter { event ->
                 event.communicationType.equals("sms", ignoreCase = true) ||
@@ -143,6 +144,65 @@ internal class CallReportMergedHistoryController(
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
+    }
+
+    private fun addServerErrorBelowContactName(root: LinearLayout, remoteEnabled: Boolean) {
+        if (!remoteEnabled || loadError.isBlank()) return
+        root.addView(TextView(activity).apply {
+            text = loadError
+            textSize = 12.5f
+            setTextColor(Color.rgb(185, 28, 28))
+            setPadding(dp(2), 0, dp(2), dp(8))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        }, minOf(1, root.childCount))
+    }
+
+    private fun serverErrorText(error: Throwable): String {
+        val message = error.message.orEmpty().trim()
+        val httpStatus = Regex("\\bHTTP\\s+(\\d{3})\\b", RegexOption.IGNORE_CASE)
+            .find(message)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+        if (httpStatus != null) {
+            return when (httpStatus) {
+                400 -> "Сървър: невалидна заявка (400)"
+                401 -> "Сървър: невалиден access token (401)"
+                403 -> "Сървър: достъпът е отказан (403)"
+                404 -> "Сървър: history_lookup.php не е намерен (404)"
+                408 -> "Сървър: изтече времето за изчакване (408)"
+                429 -> "Сървър: твърде много заявки (429)"
+                in 500..599 -> "Сървър: вътрешна грешка ($httpStatus)"
+                else -> "Сървър: HTTP $httpStatus"
+            }
+        }
+
+        val rootCause = rootCause(error)
+        return when (rootCause) {
+            is java.net.UnknownHostException -> "Сървър: адресът не е открит"
+            is java.net.ConnectException -> "Сървър: няма връзка със сървъра"
+            is java.net.SocketTimeoutException -> "Сървър: изтече времето за изчакване"
+            is org.json.JSONException -> "Сървър: невалиден JSON отговор"
+            else -> {
+                val safeMessage = message.replace(Regex("\\s+"), " ").take(120)
+                if (safeMessage.isBlank() || safeMessage.equals("History lookup failed", ignoreCase = true)) {
+                    "Сървър: неуспешно зареждане на историята"
+                } else {
+                    "Сървър: $safeMessage"
+                }
+            }
+        }
+    }
+
+    private fun rootCause(error: Throwable): Throwable {
+        var current = error
+        while (current.cause != null && current.cause !== current) {
+            current = current.cause!!
+        }
+        return current
     }
 
     private fun latestCallWithoutNote(): PhoneCallRecord? {
@@ -334,7 +394,6 @@ internal class CallReportMergedHistoryController(
         when {
             localLoading -> container.addView(status("Зареждам SMS и бележки…"))
             remoteEnabled && serverLoading -> container.addView(status("Добавям сървърни бележки и SMS…"))
-            remoteEnabled && loadError.isNotBlank() -> container.addView(status(loadError))
             rows.isEmpty() && latestCallWithoutNote() == null -> container.addView(status("Няма SMS или бележки за този номер"))
         }
     }
