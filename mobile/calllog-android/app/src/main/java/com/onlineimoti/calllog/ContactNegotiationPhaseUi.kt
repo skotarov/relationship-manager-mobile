@@ -68,7 +68,6 @@ internal class ContactNegotiationPhaseUi(
             setOnClickListener {
                 ContactNegotiationPhaseStore.togglePhase(activity, phone, phase.number)
                 onChanged()
-                reconcileWithServer(phone, onChanged)
             }
         }
     }
