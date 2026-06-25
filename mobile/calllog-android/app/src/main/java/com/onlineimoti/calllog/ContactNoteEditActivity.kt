@@ -5,7 +5,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.view.WindowManager
+import android.widget.Spinner
 import android.widget.Toast
+import java.util.concurrent.Executors
 
 class ContactNoteEditActivity : Activity() {
     private var phone: String = ""
@@ -15,6 +17,9 @@ class ContactNoteEditActivity : Activity() {
     private var durationSeconds: Long = 0L
     private var actionIssuedAt: Long = 0L
     private var isGeneralNote = false
+    private var topicState = ContactNoteTopicState(visible = false)
+    private var topicSpinner: Spinner? = null
+    private val topicExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -45,16 +50,27 @@ class ContactNoteEditActivity : Activity() {
         durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
         actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
+        topicState = initialTopicState()
 
         setContentView(
             ContactNoteEditUi(
                 activity = this,
                 state = ::uiState,
+                onTopicSelected = { selectedCompanyId ->
+                    topicState = topicState.copy(selectedCompanyId = selectedCompanyId)
+                },
+                onTopicSpinnerReady = { spinner -> topicSpinner = spinner },
                 saveAndClose = ::saveAndClose,
                 saveAndOpenCalendar = ::saveAndOpenCalendar,
                 close = { finish() },
             ).buildContent(),
         )
+        if (topicState.visible) loadTopicCompanies()
+    }
+
+    override fun onDestroy() {
+        topicExecutor.shutdownNow()
+        super.onDestroy()
     }
 
     private fun uiState(): ContactNoteEditUiState {
@@ -65,11 +81,51 @@ class ContactNoteEditActivity : Activity() {
             callAt = callAt,
             durationSeconds = durationSeconds,
             isGeneralNote = isGeneralNote,
+            topic = topicState,
         )
     }
 
+    private fun initialTopicState(): ContactNoteTopicState {
+        val visible = shouldShowTopicSelector()
+        return ContactNoteTopicState(visible = visible, loading = visible)
+    }
+
+    private fun shouldShowTopicSelector(): Boolean {
+        if (!CallReportRemoteAccess.isReady(ConfigStore.load(this))) return false
+        if (CrmContactSyncStore.isEnabled(this, phone)) return true
+        // A number without a real Android contact is an unknown lead and may be
+        // classified directly from its first note.
+        return !ContactNotesExternalActions(this).hasDefaultContact(phone)
+    }
+
+    private fun loadTopicCompanies() {
+        topicExecutor.execute {
+            val companies = runCatching {
+                CallReportTopicCompaniesClient.fetch(ConfigStore.load(applicationContext))
+            }.getOrDefault(emptyList())
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed || !topicState.visible) return@runOnUiThread
+                val selectedCompanyId = topicState.selectedCompanyId.takeIf { selected ->
+                    companies.any { it.id == selected }
+                } ?: companies.singleOrNull()?.id.orEmpty()
+                topicState = topicState.copy(
+                    loading = false,
+                    companies = companies,
+                    selectedCompanyId = selectedCompanyId,
+                )
+                topicSpinner?.let { spinner ->
+                    ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
+                        topicState = topicState.copy(selectedCompanyId = selected)
+                    }
+                }
+            }
+        }
+    }
+
     private fun saveAndClose(noteText: String) {
-        val saved = saveCurrentNote(noteText)
+        val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
+        val saved = saveCurrentNote(noteText, topicCompanyId)
         Toast.makeText(
             this,
             getString(if (saved) R.string.dynamic_note_saved else R.string.dynamic_note_save_failed),
@@ -79,7 +135,8 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun saveAndOpenCalendar(noteText: String) {
-        val saved = saveCurrentNote(noteText)
+        val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
+        val saved = saveCurrentNote(noteText, topicCompanyId)
         if (!saved) {
             Toast.makeText(this, getString(R.string.dynamic_note_save_failed), Toast.LENGTH_SHORT).show()
             return
@@ -87,11 +144,29 @@ class ContactNoteEditActivity : Activity() {
         openCalendarEvent(noteText)
     }
 
-    private fun saveCurrentNote(noteText: String): Boolean {
+    private fun selectedTopicCompanyIdOrNull(): String? {
+        if (!topicState.visible) return ""
+        if (topicState.loading || topicState.selectedCompanyId.isBlank()) {
+            Toast.makeText(this, "Избери тема / фирма за бележката.", Toast.LENGTH_SHORT).show()
+            return null
+        }
+        return topicState.selectedCompanyId
+    }
+
+    private fun saveCurrentNote(noteText: String, topicCompanyId: String): Boolean {
         val result = if (isGeneralNote) {
-            CallNoteWriter.writeGeneral(this, phone, noteText)
+            CallNoteWriter.writeGeneral(this, phone, noteText, topicCompanyId)
         } else {
-            CallNoteWriter.writeCallOrGeneral(this, phone, noteText, direction, callAt, durationSeconds, actionIssuedAt)
+            CallNoteWriter.writeCallOrGeneral(
+                this,
+                phone,
+                noteText,
+                direction,
+                callAt,
+                durationSeconds,
+                actionIssuedAt,
+                topicCompanyId,
+            )
         }
         if (result.saved) {
             if (!result.savedAsGeneralNote) {
