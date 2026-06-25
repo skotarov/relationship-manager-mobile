@@ -64,6 +64,11 @@ class ContactNotesHeaderUi(
                 if (showCrmSyncButton) {
                     addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
                 }
+                addView(iconButton(
+                    R.drawable.ic_calendar_event,
+                    activity.getString(R.string.dynamic_action_calendar),
+                    openCalendarEvent,
+                ))
                 addView(View(activity).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
                 })
@@ -81,9 +86,6 @@ class ContactNotesHeaderUi(
                         )
                     })
                 }
-                addView(iconButton(R.drawable.ic_calendar_event, activity.getString(R.string.dynamic_action_calendar), openCalendarEvent).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
-                })
             })
 
             addView(LinearLayout(activity).apply {
