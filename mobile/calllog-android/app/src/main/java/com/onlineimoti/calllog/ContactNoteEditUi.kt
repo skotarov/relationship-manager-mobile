@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 
 internal data class ContactNoteEditUiState(
@@ -22,11 +23,14 @@ internal data class ContactNoteEditUiState(
     val callAt: Long,
     val durationSeconds: Long,
     val isGeneralNote: Boolean,
+    val topic: ContactNoteTopicState,
 )
 
 internal class ContactNoteEditUi(
     private val activity: Activity,
     private val state: () -> ContactNoteEditUiState,
+    private val onTopicSelected: (String) -> Unit,
+    private val onTopicSpinnerReady: (Spinner) -> Unit,
     private val saveAndClose: (String) -> Unit,
     private val saveAndOpenCalendar: (String) -> Unit,
     private val close: () -> Unit,
@@ -49,6 +53,7 @@ internal class ContactNoteEditUi(
         val current = state()
         if (!current.isGeneralNote && current.callAt > 0L) card.addView(callInfoRow(current))
         card.addView(crmModeRow(current))
+        topicRow(current)?.let(card::addView)
         card.addView(input)
         card.addView(actionRow(input))
         root.addView(card)
@@ -121,6 +126,28 @@ internal class ContactNoteEditUi(
             textSize = 12.5f
             setTextColor(if (enabled) Color.rgb(20, 83, 45) else Color.rgb(107, 114, 128))
             setPadding(0, dp(10), 0, 0)
+        }
+    }
+
+    private fun topicRow(current: ContactNoteEditUiState): LinearLayout? {
+        if (!current.topic.visible) return null
+        val spinner = Spinner(activity)
+        ContactNoteTopicSelector.bind(activity, spinner, current.topic, onTopicSelected)
+        onTopicSpinnerReady(spinner)
+
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(12), 0, 0)
+            addView(TextView(activity).apply {
+                text = "Тема / фирма"
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(55, 65, 81))
+            })
+            addView(spinner, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(5) })
         }
     }
 
