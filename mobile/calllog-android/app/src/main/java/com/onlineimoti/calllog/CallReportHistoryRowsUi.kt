@@ -15,6 +15,8 @@ internal class CallReportHistoryRowsUi(
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
+    private val paginationUi by lazy { CallReportHistoryPaginationUi(activity, dp, roundedRect) }
+
     fun addSection(
         root: LinearLayout,
         phone: String,
@@ -28,6 +30,7 @@ internal class CallReportHistoryRowsUi(
         serverLoading: Boolean,
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
+        onPageChanged: () -> Unit,
     ) {
         val rows = CallReportHistoryMerge.merge(
             context = activity,
@@ -38,6 +41,7 @@ internal class CallReportHistoryRowsUi(
             localNotes = localNotes,
             serverEvents = if (remoteEnabled) serverEvents else emptyList(),
         )
+        val page = paginationUi.currentPage(rows)
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(8), dp(14), dp(12))
@@ -50,7 +54,8 @@ internal class CallReportHistoryRowsUi(
             latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
                 addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
             }
-            rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled)) }
+            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled)) }
+            paginationUi.addNavigation(this, page, onPageChanged)
             addStatus(
                 container = this,
                 rows = rows,
