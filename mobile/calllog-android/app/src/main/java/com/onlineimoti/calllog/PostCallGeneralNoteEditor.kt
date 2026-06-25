@@ -27,7 +27,7 @@ internal class PostCallGeneralNoteEditor(
     private val openContactNotesScreen: () -> Unit,
     private val pendingGeneralNote: () -> String?,
     private val setPendingGeneralNote: (String) -> Unit,
-    private val savePendingNoteChangesBeforeHistory: () -> Boolean,
+    @Suppress("unused") private val savePendingNoteChangesBeforeHistory: () -> Boolean,
     private val notifyNotesChanged: () -> Unit,
     private val stopOverlay: () -> Unit,
 ) {
@@ -39,7 +39,16 @@ internal class PostCallGeneralNoteEditor(
         val phoneValue = phone()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Основна бележка" } }
+        val draft = ContactNoteFormDraft(phone = phoneValue, title = titleText, isGeneralNote = true)
+        val form = OverlayContactNoteFormController(service, handler, ui::dp, draft)
         val generalNote = pendingGeneralNote() ?: ContactNoteReader.generalNoteForPhone(service, phoneValue)
+
+        fun saveCurrent(noteText: String): Boolean {
+            setPendingGeneralNote(noteText)
+            val result = form.save(noteText) ?: return false
+            if (result.saved) notifyNotesChanged()
+            return result.saved
+        }
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -76,11 +85,7 @@ internal class PostCallGeneralNoteEditor(
         })
         val generalNoteInput = ui.noteEditText(generalNote, "Основна бележка към контакта/номера", 4, ui.dp(12))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
-            val noteText = generalNoteInput.text?.toString().orEmpty()
-            setPendingGeneralNote(noteText)
-            val saved = saveGeneralNote(phoneValue, noteText)
-            if (saved) {
-                notifyNotesChanged()
+            if (saveCurrent(generalNoteInput.text?.toString().orEmpty())) {
                 openCalendarEvent(titleText)
             } else {
                 Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
@@ -88,48 +93,47 @@ internal class PostCallGeneralNoteEditor(
         })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
         card.addView(titleRow)
-
+        form.addTopicFieldTo(card)
         card.addView(generalNoteInput)
-
-        val actions = LinearLayout(service).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-            setPadding(0, ui.dp(12), 0, 0)
-        }
-        actions.addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") {
-            setPendingGeneralNote(generalNoteInput.text?.toString().orEmpty())
-            if (savePendingNoteChangesBeforeHistory()) {
-                showNoteEditor()
-            } else {
-                Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
-            }
-        })
-        actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
-        actions.addView(ui.secondaryTextAction("История") {
-            setPendingGeneralNote(generalNoteInput.text?.toString().orEmpty())
-            if (savePendingNoteChangesBeforeHistory()) {
-                openContactNotesScreen()
-            } else {
-                Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
-            }
-        })
-        actions.addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
-        actions.addView(ui.textAction("Запази") {
-            val saved = saveGeneralNote(phoneValue, generalNoteInput.text?.toString().orEmpty())
-            if (saved) notifyNotesChanged()
-            Toast.makeText(service, if (saved) "Основната бележка е записана" else "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
-            stopOverlay()
-        })
-        card.addView(actions)
+        card.addView(actionRow(generalNoteInput, saveCurrent, showNoteEditor, openContactNotesScreen, stopOverlay))
 
         addDraggableOverlay(ui.shadowScroll(card), true, ui.dp(135), 0L)
         generalNoteInput.requestFocus()
         handler.postDelayed({
-            (service.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(generalNoteInput, InputMethodManager.SHOW_IMPLICIT)
+            (service.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                ?.showSoftInput(generalNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
     }
 
-    private fun saveGeneralNote(phoneNumber: String, noteText: String): Boolean {
-        return CallNoteWriter.writeGeneral(service, phoneNumber, noteText).saved
+    private fun actionRow(
+        input: TextView,
+        saveCurrent: (String) -> Boolean,
+        showCallNote: () -> Unit,
+        openHistory: () -> Unit,
+        close: () -> Unit,
+    ): LinearLayout {
+        return LinearLayout(service).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            setPadding(0, ui.dp(12), 0, 0)
+            addView(ui.secondaryIconAction(R.drawable.ic_chat_note, "Бележка") {
+                if (saveCurrent(input.text?.toString().orEmpty())) showCallNote()
+                else Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+            })
+            addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
+            addView(ui.secondaryTextAction("История") {
+                if (saveCurrent(input.text?.toString().orEmpty())) openHistory()
+                else Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+            })
+            addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
+            addView(ui.textAction("Запази") {
+                if (saveCurrent(input.text?.toString().orEmpty())) {
+                    Toast.makeText(service, "Основната бележка е записана", Toast.LENGTH_SHORT).show()
+                    close()
+                } else {
+                    Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
+                }
+            })
+        }
     }
 }
