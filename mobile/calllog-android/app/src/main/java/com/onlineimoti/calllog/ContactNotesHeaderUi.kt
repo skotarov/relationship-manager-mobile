@@ -17,6 +17,7 @@ import android.view.animation.RotateAnimation
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 
@@ -36,6 +37,7 @@ class ContactNotesHeaderUi(
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
         openDefaultContact: () -> Unit,
+        openRmContact: () -> Unit,
         toggleCrmSync: () -> Unit,
         openRmCallLog: () -> Unit,
         openRmCallLogFiltered: () -> Unit,
@@ -67,7 +69,7 @@ class ContactNotesHeaderUi(
                 })
                 if (phone.isNotBlank()) {
                     if (contactExists) {
-                        addView(iconButton(R.drawable.ic_contact_person, contactDescription, openDefaultContact))
+                        addView(contactMenuButton(contactDescription, openDefaultContact, openRmContact))
                     }
                     addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
                     addView(iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
@@ -284,6 +286,37 @@ class ContactNotesHeaderUi(
         }
     }
 
+    private fun contactMenuButton(
+        description: String,
+        openDefaultContact: () -> Unit,
+        openRmContact: () -> Unit,
+    ): ImageButton {
+        val button = ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_contact_person)
+            contentDescription = description
+            background = null
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = ImageView.ScaleType.CENTER
+            setPadding(dp(6), dp(6), dp(6), dp(6))
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+        }
+        button.setOnClickListener {
+            PopupMenu(activity, button).apply {
+                menu.add(0, MENU_PHONE_CONTACT, 0, "Тел. контакт")
+                menu.add(0, MENU_RM_CONTACT, 1, "RM контакт")
+                setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        MENU_PHONE_CONTACT -> openDefaultContact()
+                        MENU_RM_CONTACT -> openRmContact()
+                    }
+                    true
+                }
+                show()
+            }
+        }
+        return button
+    }
+
     private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
         return ImageButton(activity).apply {
             setImageResource(drawableRes)
@@ -301,5 +334,10 @@ class ContactNotesHeaderUi(
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private companion object {
+        const val MENU_PHONE_CONTACT = 1
+        const val MENU_RM_CONTACT = 2
     }
 }
