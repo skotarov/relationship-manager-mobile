@@ -39,19 +39,12 @@ class ContactNoteEditActivity : Activity() {
             return
         }
 
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
-
-        phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
-        titleText = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty().ifBlank {
-            phone.ifBlank { getString(R.string.dynamic_note_default_title) }
-        }
-        direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
-        callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
-        durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
-        actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
-        isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
-        topicState = initialTopicState()
-
+        window.setSoftInputMode(
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE,
+        )
+        readDraftFromIntent()
+        topicState = ContactNoteFormWorkflow.initialTopicState(this, draft())
         setContentView(
             ContactNoteEditUi(
                 activity = this,
@@ -73,68 +66,54 @@ class ContactNoteEditActivity : Activity() {
         super.onDestroy()
     }
 
-    private fun uiState(): ContactNoteEditUiState {
-        return ContactNoteEditUiState(
-            phone = phone,
-            titleText = titleText,
-            direction = direction,
-            callAt = callAt,
-            durationSeconds = durationSeconds,
-            isGeneralNote = isGeneralNote,
-            topic = topicState,
-            willEnableServerSync = shouldAutoEnableServerSyncForUnknown() && topicState.loadError.isBlank(),
-        )
+    private fun readDraftFromIntent() {
+        phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
+        titleText = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty().ifBlank {
+            phone.ifBlank { getString(R.string.dynamic_note_default_title) }
+        }
+        direction = intent.getStringExtra(PostCallOverlayService.EXTRA_DIRECTION).orEmpty()
+        callAt = intent.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
+        durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
+        actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
+        isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
     }
 
-    private fun initialTopicState(): ContactNoteTopicState {
-        val visible = shouldShowTopicSelector()
-        return ContactNoteTopicState(visible = visible, loading = visible)
-    }
+    private fun draft(): ContactNoteFormDraft = ContactNoteFormDraft(
+        phone = phone,
+        title = titleText,
+        direction = direction,
+        callAt = callAt,
+        durationSeconds = durationSeconds,
+        actionIssuedAt = actionIssuedAt,
+        isGeneralNote = isGeneralNote,
+    )
 
-    private fun shouldShowTopicSelector(): Boolean {
-        if (!CallReportRemoteAccess.isReady(ConfigStore.load(this))) return false
-        return CrmContactSyncStore.isEnabled(this, phone) || shouldAutoEnableServerSyncForUnknown()
-    }
-
-    /**
-     * A number without a real Android contact becomes an RM/server-sync contact
-     * once the user deliberately saves a non-empty note under a selected firm.
-     */
-    private fun shouldAutoEnableServerSyncForUnknown(): Boolean {
-        if (!CallReportRemoteAccess.isReady(ConfigStore.load(this))) return false
-        if (CrmContactSyncStore.isEnabled(this, phone)) return false
-        return !ContactNotesExternalActions(this).hasDefaultContact(phone)
-    }
+    private fun uiState(): ContactNoteEditUiState = ContactNoteEditUiState(
+        phone = phone,
+        titleText = titleText,
+        direction = direction,
+        callAt = callAt,
+        durationSeconds = durationSeconds,
+        isGeneralNote = isGeneralNote,
+        topic = topicState,
+        willEnableServerSync = ContactNoteFormWorkflow.willEnableServerSync(this, draft(), topicState),
+    )
 
     private fun loadTopicCompanies() {
+        val initialState = topicState
         topicExecutor.execute {
-            val result = runCatching {
-                CallReportTopicCompaniesClient.fetch(ConfigStore.load(applicationContext))
-            }
-            val companies = result.getOrDefault(emptyList())
-            val loadError = result.exceptionOrNull()?.let { "topic_request_failed" }.orEmpty()
-
+            val loadedState = ContactNoteFormWorkflow.loadTopics(applicationContext, initialState)
             runOnUiThread {
                 if (isFinishing || isDestroyed || !topicState.visible) return@runOnUiThread
-                val selectedCompanyId = if (loadError.isBlank()) {
-                    topicState.selectedCompanyId.takeIf { selected ->
-                        companies.any { it.id == selected }
-                    } ?: companies.singleOrNull()?.id.orEmpty()
-                } else {
-                    ""
-                }
-                topicState = topicState.copy(
-                    loading = false,
-                    companies = companies,
-                    selectedCompanyId = selectedCompanyId,
-                    loadError = loadError,
-                )
-                topicSpinner?.let { spinner ->
-                    ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
-                        topicState = topicState.copy(selectedCompanyId = selected)
-                    }
-                }
+                topicState = loadedState
+                topicSpinner?.let(::bindTopicSpinner)
             }
+        }
+    }
+
+    private fun bindTopicSpinner(spinner: Spinner) {
+        ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
+            topicState = topicState.copy(selectedCompanyId = selected)
         }
     }
 
@@ -149,76 +128,29 @@ class ContactNoteEditActivity : Activity() {
         val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
         val outcome = saveCurrentNote(noteText, topicCompanyId)
         showSaveOutcome(outcome)
-        if (!outcome.saved) return
-        openCalendarEvent(noteText)
+        if (outcome.saved) openCalendarEvent(noteText)
     }
 
     private fun selectedTopicCompanyIdOrNull(): String? {
-        if (!topicState.visible) return ""
-        // A failed topic request must never prevent the user from keeping a local note.
-        if (topicState.loadError.isNotBlank()) return ""
-        if (topicState.loading || topicState.selectedCompanyId.isBlank()) {
+        return ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState) ?: run {
             Toast.makeText(this, getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
-            return null
+            null
         }
-        return topicState.selectedCompanyId
     }
 
     private fun saveCurrentNote(noteText: String, topicCompanyId: String): NoteSaveOutcome {
-        val activateUnknownSync = noteText.trim().isNotBlank() &&
-            topicCompanyId.isNotBlank() &&
-            shouldAutoEnableServerSyncForUnknown()
-        val result = when {
-            topicCompanyId.isNotBlank() && isGeneralNote -> {
-                CallNoteTopicWriter.writeGeneral(this, phone, noteText, topicCompanyId)
-            }
-            topicCompanyId.isNotBlank() -> {
-                CallNoteTopicWriter.writeCallOrGeneral(
-                    context = this,
-                    phone = phone,
-                    text = noteText,
-                    direction = direction,
-                    callAt = callAt,
-                    durationSeconds = durationSeconds,
-                    actionIssuedAt = actionIssuedAt,
-                    companyId = topicCompanyId,
-                )
-            }
-            isGeneralNote -> CallNoteWriter.writeGeneral(this, phone, noteText)
-            else -> CallNoteWriter.writeCallOrGeneral(
-                this,
-                phone,
-                noteText,
-                direction,
-                callAt,
-                durationSeconds,
-                actionIssuedAt,
-            )
-        }
+        val result = ContactNoteFormWorkflow.save(this, draft(), noteText, topicCompanyId)
         if (!result.saved) return NoteSaveOutcome(saved = false)
-
-        val syncEnabled = if (activateUnknownSync) {
-            RmContactSyncLayerStore.setEnabled(
-                context = applicationContext,
-                phone = phone,
-                title = titleText,
-                enabled = true,
-                enqueueExistingNotes = false,
-            )
-        } else {
-            false
-        }
-
-        if (!result.savedAsGeneralNote) {
-            direction = result.target.direction
-            callAt = result.target.callAt
-            durationSeconds = result.target.durationSeconds
+        if (!result.writeResult.savedAsGeneralNote) {
+            direction = result.writeResult.target.direction
+            callAt = result.writeResult.target.callAt
+            durationSeconds = result.writeResult.target.durationSeconds
         }
         sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
         return NoteSaveOutcome(
             saved = true,
-            serverSyncActivationAttempted = activateUnknownSync,
-            serverSyncEnabled = syncEnabled,
+            serverSyncActivationAttempted = result.serverSyncActivationAttempted,
+            serverSyncEnabled = result.serverSyncEnabled,
         )
     }
 
@@ -260,9 +192,7 @@ class ContactNoteEditActivity : Activity() {
             putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
             putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
         }
-        runCatching {
-            startActivity(intent)
-        }.onFailure {
+        runCatching { startActivity(intent) }.onFailure {
             Toast.makeText(this, getString(R.string.dynamic_calendar_app_not_found), Toast.LENGTH_SHORT).show()
         }
     }
