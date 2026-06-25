@@ -171,6 +171,7 @@ class ContactNotesActivity : Activity() {
 
     private fun buildContent(): ScrollView {
         val config = ConfigStore.load(this)
+        val phaseControlsVisible = RmContactSyncLayerStore.isEnabled(this, phone)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
@@ -178,7 +179,7 @@ class ContactNotesActivity : Activity() {
         }
 
         root.addView(headerRow())
-        root.addView(phaseUi.phaseBar(phone) {
+        root.addView(phaseUi.phaseBar(phone, phaseControlsVisible) {
             phaseSyncController.syncCurrent(phone)
             render()
         })
