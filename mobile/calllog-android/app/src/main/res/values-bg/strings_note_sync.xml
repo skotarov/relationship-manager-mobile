@@ -1,0 +1,7 @@
+<resources>
+    <string name="note_company_for_sync">Фирма за синхрона</string>
+    <string name="note_company_required">Избери фирма за бележката.</string>
+    <string name="note_server_sync_will_be_enabled">След записа този непознат номер ще се включи за синхрон със сървъра.</string>
+    <string name="note_server_sync_enabled">Бележката е записана и номерът е включен за синхрон със сървъра.</string>
+    <string name="note_server_sync_activation_failed">Бележката е записана, но синхронът не се включи. Провери разрешението за контакти.</string>
+</resources>
