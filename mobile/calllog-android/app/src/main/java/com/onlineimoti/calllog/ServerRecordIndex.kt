@@ -5,21 +5,36 @@ import org.json.JSONArray
 
 /**
  * Persistent local index of records that the Call Report server has acknowledged.
- * The data survives disabling Server, but server indicators are hidden until Server is enabled again.
+ *
+ * It is only a UI/sync optimisation: source SMS, call logs and notes remain in
+ * Android/the local note store. The index is intentionally bounded so a device
+ * that runs the app for months cannot accumulate an ever-growing JSON blob.
  */
 internal object ServerRecordIndex {
     private const val PREFS = "callreport_server_record_index"
     private const val KEY_CONFIRMED_IDS = "confirmed_client_event_ids_v1"
     private const val KEY_CONFIRMATION_VERSION = "confirmation_version"
+    private const val MAX_CONFIRMED_IDS = 5_000
     private val lock = Any()
 
     fun markConfirmed(context: Context, clientEventIds: Collection<String>) {
-        val ids = clientEventIds.map { it.trim() }.filter { it.isNotBlank() }
+        val ids = clientEventIds.map { it.trim() }.filter { it.isNotBlank() }.distinct()
         if (ids.isEmpty()) return
         synchronized(lock) {
-            val known = readLocked(context).toMutableSet()
+            val known = readLocked(context)
             val changed = known.addAll(ids)
-            writeLocked(context, known, changed)
+            writeLocked(context, trimToLimit(known), changed)
+        }
+    }
+
+    /** Removes excess legacy/current IDs even when the next sync batch is empty. */
+    fun prune(context: Context) {
+        synchronized(lock) {
+            val known = readLocked(context)
+            val trimmed = trimToLimit(known)
+            if (trimmed.size != known.size) {
+                writeLocked(context, trimmed, changed = true)
+            }
         }
     }
 
@@ -31,7 +46,7 @@ internal object ServerRecordIndex {
         val id = clientEventId.trim()
         if (id.isBlank()) return
         synchronized(lock) {
-            val known = readLocked(context).toMutableSet()
+            val known = readLocked(context)
             val changed = known.remove(id)
             writeLocked(context, known, changed)
         }
@@ -102,9 +117,17 @@ internal object ServerRecordIndex {
         }
     }
 
+    private fun trimToLimit(ids: LinkedHashSet<String>): LinkedHashSet<String> {
+        if (ids.size <= MAX_CONFIRMED_IDS) return ids
+        val kept = LinkedHashSet<String>(MAX_CONFIRMED_IDS)
+        ids.toList().takeLast(MAX_CONFIRMED_IDS).forEach(kept::add)
+        return kept
+    }
+
     private fun writeLocked(context: Context, ids: Set<String>, changed: Boolean) {
         val array = JSONArray().apply {
-            ids.sorted().forEach { value -> put(value) }
+            // Preserve insertion order so trimToLimit keeps the newest confirmations.
+            ids.forEach { value -> put(value) }
         }
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val editor = prefs.edit().putString(KEY_CONFIRMED_IDS, array.toString())
