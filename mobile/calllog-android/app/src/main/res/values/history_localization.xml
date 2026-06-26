@@ -1,0 +1,17 @@
+<resources>
+    <string name="history_notes_and_sms">Notes and SMS</string>
+    <string name="history_phone_contact">Phone contact</string>
+    <string name="history_rm_contact">RM contact</string>
+    <string name="history_add_note">+ Add</string>
+    <string name="history_pending_server_sync">Waiting for server sync</string>
+    <string name="history_sync_not_confirmed">Sync not confirmed: %1$s</string>
+    <string name="history_newer_server_version">Newer version on the server</string>
+    <string name="history_recorded_by">Recorded by: %1$s</string>
+    <string name="history_type_note">Note</string>
+    <string name="history_type_phone">Phone</string>
+    <string name="history_loading_notes_sms">Loading SMS and notes…</string>
+    <string name="history_loading_server_notes_sms">Loading server notes and SMS…</string>
+    <string name="history_no_notes_or_sms">No SMS or notes for this number</string>
+    <string name="history_direction_incoming">incoming</string>
+    <string name="history_direction_outgoing">outgoing</string>
+</resources>
