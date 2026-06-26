@@ -1,6 +1,7 @@
 <resources>
     <string name="settings_backup_code_required">Въведи 4 цифри</string>
     <string name="settings_overlay_controlled_by_permissions">Popup-ите над други приложения се включват и изключват от Приложение → Разрешения.</string>
+    <string name="settings_notes_storage_controlled_by_permissions">Достъпът до общата файлова система за бележките се включва и изключва от Приложение → Разрешения.</string>
     <string name="settings_sms_theme_title">SMS тема</string>
     <string name="settings_sms_theme_description">Създава Xiaomi/HyperOS тема само за иконата на системното SMS приложение. Не добавя втора икона и не променя тапет, шрифт или други приложения.</string>
     <string name="settings_sms_theme_install">Инсталирай SMS тема</string>
@@ -16,6 +17,7 @@
 
     <string name="settings_debug_show_history_box">Показвай debug прозореца в История</string>
     <string name="settings_debug_show_history_box_description">Когато е изключено, RM debug блокът няма да се показва над бележките.</string>
+    <string name="settings_contacts_sync_notifications">Показвай известие при регистрация/синхронизация на контактите</string>
     <string name="server_test_section_title">Тест на сървъра</string>
     <string name="server_test_section_description">Използва текущите Base URL, Access token и пътища от Server settings. Тестовият номер и посоката са отгоре.</string>
     <string name="server_test_all_safe">Тествай всички безопасни функции</string>
