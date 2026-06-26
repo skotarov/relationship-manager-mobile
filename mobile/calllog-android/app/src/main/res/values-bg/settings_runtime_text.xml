@@ -14,6 +14,22 @@
     <string name="settings_fullscreen_enabled">Popup-ът на цял екран е включен.</string>
     <string name="permission_row_status">%1$s: %2$s</string>
 
+    <string name="settings_debug_show_history_box">Показвай debug прозореца в История</string>
+    <string name="settings_debug_show_history_box_description">Когато е изключено, RM debug блокът няма да се показва над бележките.</string>
+    <string name="server_test_section_title">Тест на сървъра</string>
+    <string name="server_test_section_description">Използва текущите Base URL, Access token и пътища от Server settings. Тестовият номер и посоката са отгоре.</string>
+    <string name="server_test_all_safe">Тествай всички безопасни функции</string>
+    <string name="server_test_notes">Бележки</string>
+    <string name="server_test_properties">Обяви</string>
+    <string name="server_test_webview_pages">Страници във WebView</string>
+    <string name="server_test_open_form_button">Отвори form.php</string>
+    <string name="server_test_open_history_button">Отвори history.php</string>
+    <string name="server_test_allow_writes">Разреши тестови записи на сървъра (sync и submit)</string>
+    <string name="server_test_allow_writes_description">При включване двата теста създават или обновяват ясно означени [TEST] записи към тестовия номер.</string>
+    <string name="server_test_sync_button">Тест sync.php</string>
+    <string name="server_test_submit_button">Тест submit.php</string>
+    <string name="server_test_no_run">Няма изпълнен тест.</string>
+
     <string name="server_test_server">Сървър</string>
     <string name="server_test_progress">Тествам %1$s…</string>
     <string name="server_test_enable_write_records">Включи „Разреши тестови записи на сървъра“.</string>
