@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Тест на сървъра"
+        android:text="@string/server_test_section_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
@@ -19,7 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Използва текущите Base URL, Access token и пътища от Server settings. Тестовият номер и посоката са отгоре."
+        android:text="@string/server_test_section_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
@@ -28,7 +28,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="Тествай всички безопасни функции" />
+        android:text="@string/server_test_all_safe" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -57,7 +57,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Бележки" />
+            android:text="@string/server_test_notes" />
     </LinearLayout>
 
     <LinearLayout
@@ -79,14 +79,14 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Обяви" />
+            android:text="@string/server_test_properties" />
     </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:text="Страници във WebView"
+        android:text="@string/server_test_webview_pages"
         android:textColor="@color/calllog_text"
         android:textSize="14sp"
         android:textStyle="bold" />
@@ -102,7 +102,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Отвори form.php" />
+            android:text="@string/server_test_open_form_button" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testServerHistoryButton"
@@ -110,7 +110,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Отвори history.php" />
+            android:text="@string/server_test_open_history_button" />
     </LinearLayout>
 
     <CheckBox
@@ -118,13 +118,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:text="Разреши тестови записи на сървъра (sync и submit)" />
+        android:text="@string/server_test_allow_writes" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="При включване двата теста създават или обновяват ясно означени [TEST] записи към тестовия номер."
+        android:text="@string/server_test_allow_writes_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="12sp" />
 
@@ -139,7 +139,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Тест sync.php" />
+            android:text="@string/server_test_sync_button" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/testServerSubmitButton"
@@ -147,7 +147,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Тест submit.php" />
+            android:text="@string/server_test_submit_button" />
     </LinearLayout>
 
     <TextView
@@ -158,7 +158,7 @@
         android:background="@drawable/bg_server_test_results"
         android:fontFamily="monospace"
         android:padding="10dp"
-        android:text="Няма изпълнен тест."
+        android:text="@string/server_test_no_run"
         android:textColor="@color/calllog_muted_text"
         android:textIsSelectable="true"
         android:textSize="12sp" />
