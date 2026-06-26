@@ -25,7 +25,7 @@ internal class ContactNoteTopicFieldUi(
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(12), 0, 0)
             addView(TextView(context).apply {
-                text = context.getString(R.string.note_company_for_sync)
+                text = "Повод:"
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(55, 65, 81))
