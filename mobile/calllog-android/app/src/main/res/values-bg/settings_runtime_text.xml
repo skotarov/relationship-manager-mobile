@@ -1,0 +1,32 @@
+<resources>
+    <string name="settings_backup_code_required">Въведи 4 цифри</string>
+    <string name="settings_overlay_controlled_by_permissions">Popup-ите над други приложения се включват и изключват от Приложение → Разрешения.</string>
+    <string name="settings_sms_theme_title">SMS тема</string>
+    <string name="settings_sms_theme_description">Създава Xiaomi/HyperOS тема само за иконата на системното SMS приложение. Не добавя втора икона и не променя тапет, шрифт или други приложения.</string>
+    <string name="settings_sms_theme_install">Инсталирай SMS тема</string>
+
+    <string name="settings_local_notes_disabled">Локалните бележки са изключени. Старите бележки не са изтрити.</string>
+    <string name="settings_public_notes_enabled">Публичното записване на бележки е включено.</string>
+    <string name="settings_private_notes_enabled">Частното съхранение на бележките е включено.</string>
+    <string name="settings_overlay_disabled">Popup-ите над други приложения са изключени.</string>
+    <string name="settings_screening_disabled">Филтрирането на обажданията е изключено в приложението.</string>
+    <string name="settings_fullscreen_disabled">Popup-ът на цял екран е изключен в приложението.</string>
+    <string name="settings_fullscreen_enabled">Popup-ът на цял екран е включен.</string>
+    <string name="permission_row_status">%1$s: %2$s</string>
+
+    <string name="server_test_server">Сървър</string>
+    <string name="server_test_progress">Тествам %1$s…</string>
+    <string name="server_test_enable_write_records">Включи „Разреши тестови записи на сървъра“.</string>
+    <string name="server_test_open_form">Отварям form.php с текущите server настройки.</string>
+    <string name="server_test_open_history">Отварям history.php с текущите server настройки.</string>
+    <string name="server_test_summary">Тест на сървъра: %1$d успешни, %2$d неуспешни.</string>
+    <string name="server_test_enable_server">Включи „Сървър“ в Server settings.</string>
+    <string name="server_test_missing_base_url">Липсва Base URL.</string>
+    <string name="server_test_missing_access_token">Липсва Access token.</string>
+    <string name="server_test_missing_phone">Въведи тестов телефон.</string>
+    <string name="server_test_failed">Неуспешен тест</string>
+    <string name="server_test_skipped_writes">пропуснат — тестовите записи не са разрешени</string>
+    <string name="server_test_sync_write_label">sync.php (тестов запис)</string>
+    <string name="server_test_submit_write_label">submit.php (тестова бележка)</string>
+    <string name="server_test_record_confirmed">HTTP %1$s · записът е потвърден · %2$s</string>
+</resources>
