@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
@@ -23,7 +24,14 @@ internal class ContactNoteTopicFieldUi(
         onSpinnerReady(spinner)
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(12), 0, 0)
+            background = roundedTopicSectionBackground()
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(12)
+            }
             addView(TextView(context).apply {
                 text = "Повод:"
                 textSize = 13f
@@ -35,5 +43,12 @@ internal class ContactNoteTopicFieldUi(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(5) })
         }
+    }
+
+    private fun roundedTopicSectionBackground(): GradientDrawable = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = dp(12).toFloat()
+        setColor(Color.WHITE)
+        setStroke(dp(1), Color.rgb(209, 213, 219))
     }
 }
