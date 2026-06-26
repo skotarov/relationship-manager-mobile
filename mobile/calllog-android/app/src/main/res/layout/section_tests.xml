@@ -10,13 +10,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="Показвай debug прозореца в История" />
+        android:text="@string/settings_debug_show_history_box" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Когато е изключено, RM debug блокът няма да се показва над бележките."
+        android:text="@string/settings_debug_show_history_box_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
