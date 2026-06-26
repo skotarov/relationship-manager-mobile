@@ -26,7 +26,7 @@ internal object ContactNoteTopicSelector {
             state.loading -> listOf("Зареждане на теми…")
             state.loadError.isNotBlank() -> listOf(context.getString(R.string.note_topics_unavailable_local_only))
             state.companies.isEmpty() -> listOf("Няма налични теми")
-            else -> listOf("Избери повод/тема") + state.companies.map { it.name }
+            else -> listOf("Избери") + state.companies.map { it.name }
         }
         val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, labels).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
