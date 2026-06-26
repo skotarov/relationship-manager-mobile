@@ -135,6 +135,9 @@ internal object ContactNoteFormWorkflow {
 
     private fun shouldShowTopicSelector(context: Context, draft: ContactNoteFormDraft): Boolean {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))) return false
+        // Main notes are scoped to one firm whenever a server is configured.
+        // Call notes retain the previous contact-sync behavior.
+        if (draft.isGeneralNote) return true
         return CrmContactSyncStore.isEnabled(context, draft.phone) || shouldAutoEnableServerSync(context, draft)
     }
 
