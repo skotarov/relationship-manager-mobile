@@ -2,7 +2,7 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 
-/** Saves the local note and queues one server record for the user-selected company topic. */
+/** Saves a note only under the user-selected company topic. */
 internal object CallNoteTopicWriter {
     fun writeGeneral(
         context: Context,
@@ -10,13 +10,13 @@ internal object CallNoteTopicWriter {
         text: String,
         companyId: String,
     ): CallNoteWriteResult {
-        val saved = NotePersistence.saveOrDeleteGeneralNote(context, phone, text)
+        // A main note selected under a company is not the phone's ordinary local
+        // note. Keeping it separately prevents one company's value overwriting
+        // the value displayed for another company.
+        val saved = CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, text)
         val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
         if (!saved) return result
 
-        if (CrmContactSyncStore.isEnabled(context, phone)) {
-            RmLayerContactDataSyncer.sync(context, phone, noteOverride = text)
-        }
         CallReportTopicNoteOutbox.enqueueGeneral(context, phone, text, companyId)
         return result
     }
