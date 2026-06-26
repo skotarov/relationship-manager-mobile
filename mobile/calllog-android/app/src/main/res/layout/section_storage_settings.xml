@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Достъпът до общата файлова система за бележките се включва и изключва от Приложение → Разрешения."
+        android:text="@string/settings_notes_storage_controlled_by_permissions"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
