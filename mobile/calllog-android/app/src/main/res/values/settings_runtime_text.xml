@@ -14,6 +14,22 @@
     <string name="settings_fullscreen_enabled">Full-screen popup is enabled.</string>
     <string name="permission_row_status">%1$s: %2$s</string>
 
+    <string name="settings_debug_show_history_box">Show the debug panel in History</string>
+    <string name="settings_debug_show_history_box_description">When disabled, the RM debug block is not shown above the notes.</string>
+    <string name="server_test_section_title">Server test</string>
+    <string name="server_test_section_description">Uses the current Base URL, Access token and paths from Server settings. The test number and direction are set above.</string>
+    <string name="server_test_all_safe">Test all safe functions</string>
+    <string name="server_test_notes">Notes</string>
+    <string name="server_test_properties">Properties</string>
+    <string name="server_test_webview_pages">WebView pages</string>
+    <string name="server_test_open_form_button">Open form.php</string>
+    <string name="server_test_open_history_button">Open history.php</string>
+    <string name="server_test_allow_writes">Allow test records on the server (sync and submit)</string>
+    <string name="server_test_allow_writes_description">When enabled, the two tests create or update clearly marked [TEST] records for the test number.</string>
+    <string name="server_test_sync_button">Test sync.php</string>
+    <string name="server_test_submit_button">Test submit.php</string>
+    <string name="server_test_no_run">No test has been run.</string>
+
     <string name="server_test_server">Server</string>
     <string name="server_test_progress">Testing %1$s…</string>
     <string name="server_test_enable_write_records">Enable “Allow test records on the server”.</string>
