@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="SMS тема"
+        android:text="@string/settings_sms_theme_title"
         android:textColor="@color/calllog_text"
         android:textSize="15sp"
         android:textStyle="bold"
@@ -35,7 +35,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
-        android:text="Създава Xiaomi/HyperOS тема само за иконата на системното SMS приложение. Не добавя втора икона и не променя тапет, шрифт или други приложения."
+        android:text="@string/settings_sms_theme_description"
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp"
         android:visibility="gone" />
@@ -46,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="Инсталирай SMS тема"
+        android:text="@string/settings_sms_theme_install"
         android:visibility="gone" />
 
     <CheckBox
