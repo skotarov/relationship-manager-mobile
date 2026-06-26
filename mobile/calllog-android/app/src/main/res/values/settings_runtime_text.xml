@@ -1,6 +1,7 @@
 <resources>
     <string name="settings_backup_code_required">Enter 4 digits</string>
     <string name="settings_overlay_controlled_by_permissions">Display-over-other-apps popups are enabled and disabled in Application → Permissions.</string>
+    <string name="settings_notes_storage_controlled_by_permissions">Access to shared file storage for notes is enabled and disabled in Application → Permissions.</string>
     <string name="settings_sms_theme_title">SMS theme</string>
     <string name="settings_sms_theme_description">Creates a Xiaomi/HyperOS theme only for the system SMS app icon. It does not add a second icon or change the wallpaper, font, or other apps.</string>
     <string name="settings_sms_theme_install">Install SMS theme</string>
@@ -16,6 +17,7 @@
 
     <string name="settings_debug_show_history_box">Show the debug panel in History</string>
     <string name="settings_debug_show_history_box_description">When disabled, the RM debug block is not shown above the notes.</string>
+    <string name="settings_contacts_sync_notifications">Show a notification while registering or syncing contacts</string>
     <string name="server_test_section_title">Server test</string>
     <string name="server_test_section_description">Uses the current Base URL, Access token and paths from Server settings. The test number and direction are set above.</string>
     <string name="server_test_all_safe">Test all safe functions</string>
