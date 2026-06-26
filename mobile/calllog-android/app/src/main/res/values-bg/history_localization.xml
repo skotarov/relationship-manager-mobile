@@ -1,0 +1,17 @@
+<resources>
+    <string name="history_notes_and_sms">Бележки и SMS</string>
+    <string name="history_phone_contact">Тел. контакт</string>
+    <string name="history_rm_contact">RM контакт</string>
+    <string name="history_add_note">+ Добави</string>
+    <string name="history_pending_server_sync">Чака сървърна синхронизация</string>
+    <string name="history_sync_not_confirmed">Синхронизацията не е потвърдена: %1$s</string>
+    <string name="history_newer_server_version">По-нова версия на сървъра</string>
+    <string name="history_recorded_by">Записал: %1$s</string>
+    <string name="history_type_note">Бележка</string>
+    <string name="history_type_phone">Телефон</string>
+    <string name="history_loading_notes_sms">Зареждам SMS и бележки…</string>
+    <string name="history_loading_server_notes_sms">Добавям сървърни бележки и SMS…</string>
+    <string name="history_no_notes_or_sms">Няма SMS или бележки за този номер</string>
+    <string name="history_direction_incoming">входящ</string>
+    <string name="history_direction_outgoing">изходящ</string>
+</resources>
