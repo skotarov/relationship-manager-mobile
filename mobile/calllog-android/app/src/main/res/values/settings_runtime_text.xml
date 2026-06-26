@@ -1,0 +1,32 @@
+<resources>
+    <string name="settings_backup_code_required">Enter 4 digits</string>
+    <string name="settings_overlay_controlled_by_permissions">Display-over-other-apps popups are enabled and disabled in Application → Permissions.</string>
+    <string name="settings_sms_theme_title">SMS theme</string>
+    <string name="settings_sms_theme_description">Creates a Xiaomi/HyperOS theme only for the system SMS app icon. It does not add a second icon or change the wallpaper, font, or other apps.</string>
+    <string name="settings_sms_theme_install">Install SMS theme</string>
+
+    <string name="settings_local_notes_disabled">Local notes are disabled. Existing notes were not deleted.</string>
+    <string name="settings_public_notes_enabled">Shared notes storage is enabled.</string>
+    <string name="settings_private_notes_enabled">Private notes storage is enabled.</string>
+    <string name="settings_overlay_disabled">Display-over-other-apps popups are disabled.</string>
+    <string name="settings_screening_disabled">Call screening is disabled in the app.</string>
+    <string name="settings_fullscreen_disabled">Full-screen popup is disabled in the app.</string>
+    <string name="settings_fullscreen_enabled">Full-screen popup is enabled.</string>
+    <string name="permission_row_status">%1$s: %2$s</string>
+
+    <string name="server_test_server">Server</string>
+    <string name="server_test_progress">Testing %1$s…</string>
+    <string name="server_test_enable_write_records">Enable “Allow test records on the server”.</string>
+    <string name="server_test_open_form">Opening form.php with the current server settings.</string>
+    <string name="server_test_open_history">Opening history.php with the current server settings.</string>
+    <string name="server_test_summary">Server test: %1$d passed, %2$d failed.</string>
+    <string name="server_test_enable_server">Enable “Server” in Server settings.</string>
+    <string name="server_test_missing_base_url">Base URL is missing.</string>
+    <string name="server_test_missing_access_token">Access token is missing.</string>
+    <string name="server_test_missing_phone">Enter a test phone number.</string>
+    <string name="server_test_failed">Test failed</string>
+    <string name="server_test_skipped_writes">skipped — test records are not enabled</string>
+    <string name="server_test_sync_write_label">sync.php (test record)</string>
+    <string name="server_test_submit_write_label">submit.php (test note)</string>
+    <string name="server_test_record_confirmed">HTTP %1$s · record confirmed · %2$s</string>
+</resources>
