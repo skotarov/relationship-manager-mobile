@@ -37,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:checked="false"
-        android:text="Показвай notification при регистрация/синхронизация на контактите" />
+        android:text="@string/settings_contacts_sync_notifications" />
 
     <LinearLayout
         android:id="@+id/contactLinkBulkActionsGroup"
