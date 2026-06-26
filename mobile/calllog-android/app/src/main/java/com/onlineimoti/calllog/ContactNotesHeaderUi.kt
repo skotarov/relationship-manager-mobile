@@ -304,8 +304,8 @@ class ContactNotesHeaderUi(
         }
         button.setOnClickListener {
             PopupMenu(activity, button).apply {
-                menu.add(0, MENU_PHONE_CONTACT, 0, "Тел. контакт")
-                menu.add(0, MENU_RM_CONTACT, 1, "RM контакт")
+                menu.add(0, MENU_PHONE_CONTACT, 0, activity.getString(R.string.history_phone_contact))
+                menu.add(0, MENU_RM_CONTACT, 1, activity.getString(R.string.history_rm_contact))
                 setOnMenuItemClickListener { item ->
                     when (item.itemId) {
                         MENU_PHONE_CONTACT -> openDefaultContact()
