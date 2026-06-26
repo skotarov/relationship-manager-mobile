@@ -79,7 +79,7 @@ internal class MainSettingsNavigationController(
         val input = binding.remoteSettingsSection.serverBackupCodeInput
         val code = input.text?.toString().orEmpty()
         if (code.length == 4 && code.all(Char::isDigit)) return code
-        input.error = "Въведи 4 цифри"
+        input.error = activity.getString(R.string.settings_backup_code_required)
         return null
     }
 
