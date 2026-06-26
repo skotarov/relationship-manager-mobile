@@ -26,6 +26,11 @@ internal object ServerDebugTestActions {
     private const val READ_TIMEOUT_MS = 8_000
     private const val API_ROOT = "/broker/callreport"
 
+    private data class WriteTestCompany(
+        val id: String,
+        val name: String,
+    )
+
     fun runAll(
         context: Context,
         config: AppConfig,
@@ -61,17 +66,7 @@ internal object ServerDebugTestActions {
             config = config,
             label = "lookup.php",
             path = config.lookupPath,
-            params = linkedMapOf(
-                "phone" to phone,
-                "direction" to direction,
-                "history_limit" to "3",
-                "communication_type" to "phone",
-                "status" to "answered",
-                "contact_name" to "Android server test",
-                "call_at" to System.currentTimeMillis().toString(),
-                "duration" to "0",
-                "client_event_id" to debugEventId(contextId(config), "lookup"),
-            ),
+            params = lookupContext(config, phone, direction, "lookup"),
         )
     }
 
@@ -121,49 +116,63 @@ internal object ServerDebugTestActions {
     }
 
     fun testSync(context: Context, config: AppConfig, phone: String, direction: String): ServerDebugTestResult {
-        val clientEventId = debugEventId(CallReportInstallationId.get(context), "sync")
-        val event = JSONObject().apply {
-            put("client_event_id", clientEventId)
-            put("communication_type", "phone")
-            put("direction", direction)
-            put("status", "answered")
-            put("phone", phone)
-            put("contact_name", "Android debug test")
-            put("occurred_at_ms", System.currentTimeMillis())
-            put("duration_seconds", 0)
-            put("source", JSONObject().apply {
-                put("channel", "android_debug")
-                put("device_id", CallReportInstallationId.get(context))
-                put("provider_row_id", "debug-sync")
-                put("app_version", BuildConfig.VERSION_NAME)
-            })
+        return runProbe("sync.php (тестов запис)") {
+            val company = resolveWriteTestCompany(config, phone, direction)
+            val clientEventId = debugEventId(CallReportInstallationId.get(context), "sync")
+            val event = JSONObject().apply {
+                put("client_event_id", clientEventId)
+                put("company_id", company.id)
+                put("communication_type", "phone")
+                put("direction", direction)
+                put("status", "answered")
+                put("phone", phone)
+                put("contact_name", "Android debug test")
+                put("occurred_at_ms", System.currentTimeMillis())
+                put("duration_seconds", 0)
+                put("source", JSONObject().apply {
+                    put("channel", "android_debug")
+                    put("device_id", CallReportInstallationId.get(context))
+                    put("provider_row_id", "debug-sync")
+                    put("app_version", BuildConfig.VERSION_NAME)
+                })
+            }
+            val response = request(
+                config = config,
+                method = "POST",
+                path = "$API_ROOT/sync.php",
+                jsonBody = JSONObject().apply {
+                    put("schema_version", 1)
+                    put("events", JSONArray().put(event))
+                }.toString(),
+            )
+            val json = JSONObject(response.body)
+            require(json.optBoolean("ok", false)) { json.optString("error", "ok=false") }
+            "HTTP ${response.code} · записът е потвърден · ${company.name}"
         }
-        return jsonPost(
-            config = config,
-            label = "sync.php (тестов запис)",
-            path = "$API_ROOT/sync.php",
-            body = JSONObject().apply {
-                put("schema_version", 1)
-                put("events", JSONArray().put(event))
-            },
-        )
     }
 
     fun testSubmit(context: Context, config: AppConfig, phone: String, direction: String): ServerDebugTestResult {
-        val clientEventId = debugEventId(CallReportInstallationId.get(context), "submit")
-        val params = linkedMapOf(
-            "format" to "json",
-            "phone" to phone,
-            "direction" to direction,
-            "communication_type" to "phone",
-            "status" to "answered",
-            "contact_name" to "Android debug test",
-            "call_at" to System.currentTimeMillis().toString(),
-            "duration" to "0",
-            "client_event_id" to clientEventId,
-            "notes" to "[TEST] Запис от Debug › Тест на сървъра. Може да се изтрие.",
-        )
-        return formPost(config, "submit.php (тестова бележка)", "$API_ROOT/submit.php", params)
+        return runProbe("submit.php (тестова бележка)") {
+            val company = resolveWriteTestCompany(config, phone, direction)
+            val clientEventId = debugEventId(CallReportInstallationId.get(context), "submit")
+            val params = linkedMapOf(
+                "format" to "json",
+                "company_id" to company.id,
+                "phone" to phone,
+                "direction" to direction,
+                "communication_type" to "phone",
+                "status" to "answered",
+                "contact_name" to "Android debug test",
+                "call_at" to System.currentTimeMillis().toString(),
+                "duration" to "0",
+                "client_event_id" to clientEventId,
+                "notes" to "[TEST] Запис от Debug › Тест на сървъра. Може да се изтрие.",
+            )
+            val response = formRequest(config, "$API_ROOT/submit.php", params)
+            val json = JSONObject(response.body)
+            require(json.optBoolean("ok", false)) { json.optString("error", "ok=false") }
+            "HTTP ${response.code} · записът е потвърден · ${company.name}"
+        }
     }
 
     fun buildFormUrl(context: Context, config: AppConfig, phone: String, direction: String): String {
@@ -189,6 +198,61 @@ internal object ServerDebugTestActions {
             phone.isBlank() -> ServerDebugTestResult("Сървър", false, "липсва тестов телефон")
             else -> null
         }
+    }
+
+    private fun lookupContext(
+        config: AppConfig,
+        phone: String,
+        direction: String,
+        operation: String,
+    ): LinkedHashMap<String, String> = linkedMapOf(
+        "phone" to phone,
+        "direction" to direction,
+        "history_limit" to "3",
+        "communication_type" to "phone",
+        "status" to "answered",
+        "contact_name" to "Android server test",
+        "call_at" to System.currentTimeMillis().toString(),
+        "duration" to "0",
+        "client_event_id" to debugEventId(contextId(config), operation),
+    )
+
+    private fun resolveWriteTestCompany(
+        config: AppConfig,
+        phone: String,
+        direction: String,
+    ): WriteTestCompany {
+        val response = request(
+            config = config,
+            method = "GET",
+            path = config.lookupPath,
+            params = lookupContext(config, phone, direction, "write-company"),
+        )
+        val json = JSONObject(response.body)
+        require(json.optBoolean("ok", false)) { json.optString("error", "lookup.php върна ok=false") }
+
+        val primaryCompany = json.optJSONObject("company")
+        val primaryId = primaryCompany?.optString("id").orEmpty().trim()
+        if (primaryId.isNotBlank()) {
+            return WriteTestCompany(
+                id = primaryId,
+                name = primaryCompany?.optString("name").orEmpty().trim().ifBlank { primaryId },
+            )
+        }
+
+        val companies = json.optJSONArray("companies")
+        for (index in 0 until (companies?.length() ?: 0)) {
+            val company = companies?.optJSONObject(index) ?: continue
+            val id = company.optString("id").trim()
+            if (id.isNotBlank()) {
+                return WriteTestCompany(
+                    id = id,
+                    name = company.optString("name").trim().ifBlank { id },
+                )
+            }
+        }
+
+        throw IllegalStateException("lookup.php не върна достъпна фирма за тестовия запис.")
     }
 
     private fun jsonGet(
@@ -226,20 +290,28 @@ internal object ServerDebugTestActions {
         params: Map<String, String>,
     ): ServerDebugTestResult {
         return runProbe(label) {
-            val encoded = params.entries.joinToString("&") { (key, value) ->
-                "${Uri.encode(key)}=${Uri.encode(value)}"
-            }
-            val response = request(
-                config = config,
-                method = "POST",
-                path = path,
-                rawBody = encoded,
-                contentType = "application/x-www-form-urlencoded; charset=utf-8",
-            )
+            val response = formRequest(config, path, params)
             val json = JSONObject(response.body)
             require(json.optBoolean("ok", false)) { json.optString("error", "ok=false") }
             "HTTP ${response.code} · записът е потвърден"
         }
+    }
+
+    private fun formRequest(
+        config: AppConfig,
+        path: String,
+        params: Map<String, String>,
+    ): ProbeResponse {
+        val encoded = params.entries.joinToString("&") { (key, value) ->
+            "${Uri.encode(key)}=${Uri.encode(value)}"
+        }
+        return request(
+            config = config,
+            method = "POST",
+            path = path,
+            rawBody = encoded,
+            contentType = "application/x-www-form-urlencoded; charset=utf-8",
+        )
     }
 
     private fun htmlGet(
