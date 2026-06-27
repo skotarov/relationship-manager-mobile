@@ -122,6 +122,7 @@ internal class ContactNotesRestoredController(
             phone = phone,
             openFilteredLog = { openRmCallLog(true) },
             onEditCallNote = ::openCallNoteEditor,
+            onEditSms = ::openSmsCompanyEditor,
         )
         CrmHistoryTextLocalizer.apply(activity, root)
         activity.setContentView(ScrollView(activity).apply {
@@ -182,6 +183,25 @@ internal class ContactNotesRestoredController(
             callAt = note.callAt,
             durationSeconds = note.durationSeconds,
             companyId = note.companyId,
+        )
+    }
+
+    private fun openSmsCompanyEditor(sms: SmsMessageRecord, companyId: String) {
+        val config = ConfigStore.load(activity)
+        if (!CallReportRemoteAccess.isReady(config)) {
+            Toast.makeText(activity, "За SMS фирма включи и настрой Server", Toast.LENGTH_SHORT).show()
+            return
+        }
+        SmsCompanyAssignmentDialog(activity, ::dp, ::roundedRect).show(
+            phone = phone,
+            title = titleText,
+            sms = sms,
+            initialCompanyId = companyId,
+            onSaved = {
+                historyController.refreshLocal(phone)
+                historyController.refreshServer(phone)
+                render()
+            },
         )
     }
 
