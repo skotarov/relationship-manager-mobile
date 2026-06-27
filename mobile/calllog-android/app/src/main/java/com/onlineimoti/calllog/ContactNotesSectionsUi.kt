@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.app.Activity
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -19,13 +20,14 @@ internal class ContactNotesSectionsUi(
         companyNotes: List<CallReportCompanyMainNote>,
         useCompanyScope: Boolean,
         onEditCompany: (String) -> Unit,
+        companyPhaseBar: (() -> View)? = null,
     ) {
         val section = sectionContainer()
         root.addView(section)
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         renderLocalGeneralNote(section, phone, onEditCompany)
         if (useCompanyScope && ContactServerCompanyScope.isAvailable(activity, phone)) {
-            renderCompanyGeneralNotes(section, companyNotes, onEditCompany)
+            renderCompanyGeneralNotes(section, companyNotes, onEditCompany, companyPhaseBar)
         }
     }
 
@@ -33,18 +35,25 @@ internal class ContactNotesSectionsUi(
         section: LinearLayout,
         companyNotes: List<CallReportCompanyMainNote>,
         onEditCompany: (String) -> Unit,
+        companyPhaseBar: (() -> View)?,
     ) {
-        companyNotes.forEach { companyNote ->
+        companyNotes.forEachIndexed { index, companyNote ->
             section.addView(companyNameLabel(companyNote.companyName))
-            section.addView(
-                cards.generalNoteCard(
-                    textValue = companyNote.note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
-                    muted = companyNote.note.isBlank(),
-                    serverConfirmed = companyNote.confirmedByServer,
-                    syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
-                    onClick = { onEditCompany(companyNote.companyId) },
-                )
+            val noteCard = cards.generalNoteCard(
+                textValue = companyNote.note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
+                muted = companyNote.note.isBlank(),
+                serverConfirmed = companyNote.confirmedByServer,
+                syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
+                onClick = { onEditCompany(companyNote.companyId) },
             )
+            val isLastCompany = index == companyNotes.lastIndex
+            if (isLastCompany && companyPhaseBar != null) {
+                (noteCard.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(2)
+            }
+            section.addView(noteCard)
+            // The phase belongs to the phone contact, not to a specific company.
+            // Show it once, immediately under the final server-company note and never under Local.
+            if (isLastCompany) companyPhaseBar?.invoke()?.let(section::addView)
         }
     }
 
