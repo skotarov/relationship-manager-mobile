@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
 import java.util.concurrent.Executors
@@ -20,6 +21,11 @@ class ContactNoteEditActivity : Activity() {
     private var preferredCompanyId = ""
     private var topicState = ContactNoteTopicState(visible = false)
     private var topicSpinner: Spinner? = null
+    private var noteInput: EditText? = null
+    private var serverScopeTexts: Map<String, String>? = null
+    private var serverScopeTextLoading = false
+    private var displayedScopeId = ""
+    private var displayedScopeText = ""
     private val topicExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,8 +61,13 @@ class ContactNoteEditActivity : Activity() {
             ContactNoteEditUi(
                 activity = this,
                 state = ::uiState,
-                onTopicSelected = { selectedCompanyId ->
+                onTopicSelected = { selectedCompanyId, input ->
                     topicState = topicState.copy(selectedCompanyId = selectedCompanyId)
+                    refreshTextForScope(selectedCompanyId, input)
+                },
+                onNoteInputReady = { input ->
+                    noteInput = input
+                    refreshTextForScope(topicState.selectedCompanyId, input)
                 },
                 onTopicSpinnerReady = { spinner -> topicSpinner = spinner },
                 saveAndClose = ::saveAndClose,
@@ -126,6 +137,7 @@ class ContactNoteEditActivity : Activity() {
                     else -> loadedState
                 }
                 topicSpinner?.let(::bindTopicSpinner)
+                noteInput?.let { input -> refreshTextForScope(topicState.selectedCompanyId, input) }
             }
         }
     }
@@ -133,7 +145,57 @@ class ContactNoteEditActivity : Activity() {
     private fun bindTopicSpinner(spinner: Spinner) {
         ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
             topicState = topicState.copy(selectedCompanyId = selected)
+            noteInput?.let { input -> refreshTextForScope(selected, input) }
         }
+    }
+
+    private fun refreshTextForScope(companyId: String, input: EditText) {
+        val safeCompanyId = companyId.ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+        val value = ContactNoteScopeTextResolver.textFor(
+            companyId = safeCompanyId,
+            draft = draft(),
+            serverTexts = serverScopeTexts,
+            context = this,
+        )
+        replaceInputText(input, safeCompanyId, value)
+        if (safeCompanyId != ContactNoteTopicState.LOCAL_COMPANY_ID && serverScopeTexts == null) {
+            loadServerScopeTexts()
+        }
+    }
+
+    private fun loadServerScopeTexts() {
+        if (serverScopeTextLoading) return
+        serverScopeTextLoading = true
+        topicExecutor.execute {
+            val values = runCatching {
+                ContactNoteScopeTextResolver.loadServerTexts(applicationContext, draft())
+            }.getOrNull()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                serverScopeTextLoading = false
+                if (values == null) return@runOnUiThread
+                serverScopeTexts = values
+                val input = noteInput ?: return@runOnUiThread
+                val selectedCompanyId = topicState.selectedCompanyId
+                if (
+                    selectedCompanyId.isNotBlank() &&
+                    selectedCompanyId != ContactNoteTopicState.LOCAL_COMPANY_ID &&
+                    displayedScopeId == selectedCompanyId &&
+                    input.text?.toString().orEmpty() == displayedScopeText
+                ) {
+                    refreshTextForScope(selectedCompanyId, input)
+                }
+            }
+        }
+    }
+
+    private fun replaceInputText(input: EditText, companyId: String, value: String) {
+        if (input.text?.toString().orEmpty() != value) {
+            input.setText(value)
+            input.setSelection(input.text?.length ?: 0)
+        }
+        displayedScopeId = companyId
+        displayedScopeText = value
     }
 
     private fun saveAndClose(noteText: String) {
