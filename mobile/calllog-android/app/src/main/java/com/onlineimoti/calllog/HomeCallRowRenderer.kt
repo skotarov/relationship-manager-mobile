@@ -35,7 +35,7 @@ internal class HomeCallRowRenderer(
         call: PhoneCallRecord,
         displayName: String,
         contactNote: String? = null,
-        companyGeneralNoteLabels: List<HomeCompanyScopeLabel> = emptyList(),
+        companyGeneralNoteLabels: List<HomeCompanyScopeLabel>? = null,
         callNote: String? = null,
         highlightQuery: String = "",
         showContactIdentity: Boolean = true,
@@ -114,7 +114,7 @@ internal class HomeCallRowRenderer(
                 setPadding(0, dp(4), 0, 0)
             })
         }
-        if (showGeneralContactNote && companyGeneralNoteLabels.isNotEmpty()) {
+        if (showGeneralContactNote && !companyGeneralNoteLabels.isNullOrEmpty()) {
             textColumn.addView(companyScopeChipsUi.create(companyGeneralNoteLabels))
         }
         if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
