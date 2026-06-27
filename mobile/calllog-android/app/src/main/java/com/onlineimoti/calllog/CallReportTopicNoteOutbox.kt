@@ -76,7 +76,9 @@ internal object CallReportTopicNoteOutbox {
         val stableId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
         if (stableId.isBlank()) return false
         return enqueue(appContext, CallReportQueuedTopicNote(
-            clientEventId = "${CallReportInstallationId.get(appContext)}:topic:call:$stableId:$target",
+            // The company is deliberately not part of the id. It is a movable
+            // assignment of one conversation, not another copy of that note.
+            clientEventId = ServerRecordIndex.callNoteEventId(appContext, stableId),
             companyId = target,
             phone = phone,
             direction = direction,
