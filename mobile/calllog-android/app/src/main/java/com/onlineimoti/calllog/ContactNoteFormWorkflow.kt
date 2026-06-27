@@ -31,13 +31,13 @@ internal data class ContactNoteFormSaveResult(
 internal object ContactNoteFormWorkflow {
     fun initialTopicState(context: Context, draft: ContactNoteFormDraft): ContactNoteTopicState {
         val visible = shouldShowTopicSelector(context, draft)
-        val generalLocalOnly = visible && draft.isGeneralNote && !CrmContactSyncStore.isEnabled(context, draft.phone)
+        val localOnly = visible && !CrmContactSyncStore.isEnabled(context, draft.phone)
         return ContactNoteTopicState(
             visible = visible,
-            loading = visible && !generalLocalOnly,
-            selectedCompanyId = if (visible && draft.isGeneralNote) ContactNoteTopicState.LOCAL_COMPANY_ID else "",
-            includeLocalOption = visible && draft.isGeneralNote,
-            localOnly = generalLocalOnly,
+            loading = visible && !localOnly,
+            selectedCompanyId = if (visible) ContactNoteTopicState.LOCAL_COMPANY_ID else "",
+            includeLocalOption = visible,
+            localOnly = localOnly,
         )
     }
 
@@ -97,8 +97,8 @@ internal object ContactNoteFormWorkflow {
         localOnlyFallback: Boolean = false,
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
-        val isLocalMainNote = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID
-        val serverCompanyId = if (isLocalMainNote) "" else topicCompanyId
+        val isLocalSelection = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID
+        val serverCompanyId = if (isLocalSelection) "" else topicCompanyId
         val activateUnknownSync = noteText.trim().isNotBlank() &&
             serverCompanyId.isNotBlank() &&
             shouldAutoEnableServerSync(appContext, draft)
@@ -123,7 +123,7 @@ internal object ContactNoteFormWorkflow {
                     context = appContext,
                     phone = draft.phone,
                     text = noteText,
-                    syncToCrm = !localOnlyFallback && !isLocalMainNote,
+                    syncToCrm = !localOnlyFallback && !isLocalSelection,
                 )
             }
             else -> CallNoteWriter.writeCallOrGeneral(
@@ -134,7 +134,7 @@ internal object ContactNoteFormWorkflow {
                 callAt = draft.callAt,
                 durationSeconds = draft.durationSeconds,
                 actionIssuedAt = draft.actionIssuedAt,
-                syncToCrm = !localOnlyFallback,
+                syncToCrm = !localOnlyFallback && !isLocalSelection,
             )
         }
         if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult, localOnlyFallback = localOnlyFallback)
@@ -160,9 +160,8 @@ internal object ContactNoteFormWorkflow {
 
     private fun shouldShowTopicSelector(context: Context, draft: ContactNoteFormDraft): Boolean {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))) return false
-        // Main notes always show Local first. Server companies appear only for CRM contacts.
-        if (draft.isGeneralNote) return true
-        return CrmContactSyncStore.isEnabled(context, draft.phone) || shouldAutoEnableServerSync(context, draft)
+        // All note forms use the same local-first company selector.
+        return true
     }
 
     private fun shouldAutoEnableServerSync(context: Context, draft: ContactNoteFormDraft): Boolean {
