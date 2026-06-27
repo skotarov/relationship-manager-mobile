@@ -18,11 +18,11 @@ internal class HomeCompanyScopeChipsUi(
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
-    fun create(labels: List<HomeCompanyScopeLabel>): HorizontalScrollView {
+    fun create(labels: List<HomeCompanyScopeLabel>?): HorizontalScrollView {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
         }
-        labels.forEachIndexed { index, label ->
+        labels.orEmpty().forEachIndexed { index, label ->
             row.addView(chip(label), LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
