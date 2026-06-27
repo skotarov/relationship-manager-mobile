@@ -12,12 +12,19 @@ import java.util.Locale
 data class PhoneCallRecord(
     val number: String,
     val name: String,
+    /** Broad direction, used by server sync and text labels. */
     val direction: String,
     val startedAt: Long,
     val durationSeconds: Long,
     val smsBody: String = "",
     /** Android CallLog/SMS provider row ID. Empty only for synthetic search rows. */
     val providerId: String = "",
+    /**
+     * Exact Android [CallLog.Calls.TYPE] value. Direction alone is insufficient:
+     * MISSED, REJECTED and BLOCKED are all incoming, but need different icons.
+     * Zero is reserved for synthetic/non-provider rows.
+     */
+    val callType: Int = 0,
 ) {
     val displayName: String
         get() = name.ifBlank { number }
@@ -151,6 +158,7 @@ object PhoneCallReader {
                             startedAt = startedAt,
                             durationSeconds = duration,
                             providerId = providerId,
+                            callType = type,
                         ),
                     )
                 }
