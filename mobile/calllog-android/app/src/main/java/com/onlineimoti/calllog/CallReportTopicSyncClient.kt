@@ -40,8 +40,10 @@ internal object CallReportTopicSyncClient {
             return response.optJSONArray("results")?.let { results ->
                 buildSet {
                     for (index in 0 until results.length()) {
-                        results.optJSONObject(index)?.optString("client_event_id")?.trim()
-                            ?.takeIf { it.isNotBlank() }?.let(::add)
+                        val item = results.optJSONObject(index) ?: continue
+                        if (!item.optBoolean("stored", false)) continue
+                        item.optString("client_event_id").trim()
+                            .takeIf { it.isNotBlank() }?.let(::add)
                     }
                 }
             }.orEmpty()
