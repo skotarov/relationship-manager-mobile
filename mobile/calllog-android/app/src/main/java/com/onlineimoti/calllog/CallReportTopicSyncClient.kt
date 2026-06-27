@@ -53,7 +53,7 @@ internal object CallReportTopicSyncClient {
     private fun CallReportTopicSyncEvent.toJson(): JSONObject = JSONObject().apply {
         put("client_event_id", clientEventId)
         put("company_id", companyId)
-        put("communication_type", "note")
+        put("communication_type", communicationType)
         put("direction", direction)
         put("status", "")
         put("phone", phone)
@@ -81,4 +81,5 @@ internal data class CallReportTopicSyncEvent(
     val contactName: String,
     val deviceId: String,
     val appVersion: String,
+    val communicationType: String = "note",
 )
