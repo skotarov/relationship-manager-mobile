@@ -17,15 +17,15 @@ internal class ContactNotesSectionsUi(
         root: LinearLayout,
         phone: String,
         companyNotes: List<CallReportCompanyMainNote>,
-        useCompanyScope: Boolean,
+        showCompanyNotes: Boolean,
         onEditCompany: (String) -> Unit,
     ) {
         val section = sectionContainer()
         root.addView(section)
-        if (useCompanyScope) {
+        section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
+        renderLocalGeneralNote(section, phone, onEditCompany)
+        if (showCompanyNotes) {
             renderCompanyGeneralNotes(section, companyNotes, onEditCompany)
-        } else {
-            renderLocalGeneralNote(section, phone, onEditCompany)
         }
     }
 
@@ -34,7 +34,6 @@ internal class ContactNotesSectionsUi(
         companyNotes: List<CallReportCompanyMainNote>,
         onEditCompany: (String) -> Unit,
     ) {
-        section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         companyNotes.forEach { companyNote ->
             section.addView(companyNameLabel(companyNote.companyName))
             section.addView(
@@ -65,14 +64,14 @@ internal class ContactNotesSectionsUi(
             failure.isNotBlank() -> "Синхронизацията не е потвърдена: $failure"
             else -> "Чака сървърна синхронизация"
         }
-        section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
+        section.addView(companyNameLabel(activity.getString(R.string.note_local_company)))
         section.addView(
             cards.generalNoteCard(
                 textValue = generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                 muted = generalNote.isBlank(),
                 serverConfirmed = generalNote.isNotBlank() && serverConfirmed,
                 syncStatusText = syncStatusText,
-                onClick = { onEditCompany("") },
+                onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
             )
         )
     }
