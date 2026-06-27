@@ -114,6 +114,7 @@ internal object CallReportHistoryMerge {
             val expectedId = ServerRecordIndex.callNoteEventId(context, clientNoteId)
             val localConfirmed = expectedId.isNotBlank() && ServerRecordIndex.isConfirmed(context, expectedId)
             val match = serverByClientId[expectedId]
+                ?: legacyTopicCallMatch(serverEvents, usedServerIndexes, phone, clientNoteId, note.direction, note.callAt)
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
             val foreignAuthor = isOtherBrokerAuthor(match, principal)
             val serverNewer = match != null && note.savedAt > 0L && match.updatedAtMs > note.savedAt && match.note != note.note
@@ -177,6 +178,28 @@ internal object CallReportHistoryMerge {
             return !authorName.equals(currentName, ignoreCase = true)
         }
         return false
+    }
+
+    /** Recognises notes saved by the previous topic-per-company Android format. */
+    private fun legacyTopicCallMatch(
+        events: List<CallReportHistoryEvent>,
+        usedIndexes: Set<Int>,
+        phone: String,
+        stableCallId: String,
+        direction: String,
+        callAt: Long,
+    ): CallReportHistoryEvent? {
+        if (stableCallId.isBlank()) return null
+        val marker = ":topic:call:$stableCallId:"
+        return events.firstOrNull { event ->
+            val index = events.indexOf(event)
+            index !in usedIndexes &&
+                event.communicationType.equals("note", ignoreCase = true) &&
+                HomeCallPageLoader.noteKey(event.phone) == HomeCallPageLoader.noteKey(phone) &&
+                event.clientEventId.contains(marker) &&
+                (direction.isBlank() || event.direction.isBlank() || event.direction == direction) &&
+                (callAt <= 0L || event.occurredAtMs == callAt)
+        }
     }
 
     private fun fallbackMatch(
