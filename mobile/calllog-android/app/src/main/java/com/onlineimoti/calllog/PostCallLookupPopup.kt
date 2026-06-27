@@ -32,27 +32,15 @@ internal class PostCallLookupPopup(
         val requestId = ++activeRequestId
         val phoneValue = phone()
         val titleValue = title()
-        val localRows = LocalCallStatsProvider.buildPopupInfoRows(service, phoneValue)
-        render(
-            requestId = requestId,
-            phoneValue = phoneValue,
-            titleValue = titleValue,
-            localRows = localRows,
-            remoteRows = emptyList(),
-        )
-        loadRemoteRows(requestId, phoneValue, titleValue, localRows)
+        render(requestId, phoneValue, titleValue, emptyList())
+        loadRemoteRows(requestId, phoneValue, titleValue)
     }
 
     /**
      * Unknown numbers are eligible for the lookup. Known phone contacts are only
      * queried when CRM is on. The network task never delays the first popup.
      */
-    private fun loadRemoteRows(
-        requestId: Long,
-        phoneValue: String,
-        titleValue: String,
-        localRows: List<String>,
-    ) {
+    private fun loadRemoteRows(requestId: Long, phoneValue: String, titleValue: String) {
         Thread {
             val remoteRows = runCatching {
                 PostCallLookupRemoteRows.load(service.applicationContext, phoneValue)
@@ -61,13 +49,7 @@ internal class PostCallLookupPopup(
 
             handler.post {
                 if (requestId != activeRequestId || phoneValue != phone()) return@post
-                render(
-                    requestId = requestId,
-                    phoneValue = phoneValue,
-                    titleValue = titleValue,
-                    localRows = localRows,
-                    remoteRows = remoteRows,
-                )
+                render(requestId, phoneValue, titleValue, remoteRows)
             }
         }.start()
     }
@@ -76,29 +58,19 @@ internal class PostCallLookupPopup(
         requestId: Long,
         phoneValue: String,
         titleValue: String,
-        localRows: List<String>,
         remoteRows: List<PostCallLookupRemoteRow>,
     ) {
         removeOverlay()
         setWindowManager(service.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
 
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
-        val titleText = when {
+        val identity = when {
             displayName.isNotBlank() && phoneValue.isNotBlank() -> "$displayName • $phoneValue"
             displayName.isNotBlank() -> displayName
             titleValue.isNotBlank() && titleValue != phoneValue -> "$titleValue • $phoneValue"
             else -> phoneValue.ifBlank { titleValue.ifBlank { "Call Report" } }
         }
-        val headerRow = localRows.firstOrNull { row -> !isNoteRow(row) }
-        val headerText = headerRow.orEmpty().ifBlank {
-            service.getString(R.string.overlay_no_previous_call)
-        }
-        val localNoteRows = localRows.filter(::isNoteRow)
-        val visibleLocalRows = localNoteRows.filterNot { localRow ->
-            remoteRows.any { remoteRow ->
-                noteTextFromLocalRow(localRow).equals(remoteRow.note, ignoreCase = true)
-            }
-        }
+        val content = PostCallLookupDisplayRows.build(service, phoneValue, identity, remoteRows)
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -114,7 +86,7 @@ internal class PostCallLookupPopup(
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         contentColumn.addView(TextView(service).apply {
-            text = headerText
+            text = content.header
             textSize = 17f
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 1
@@ -122,18 +94,8 @@ internal class PostCallLookupPopup(
             setTextColor(Color.rgb(17, 24, 39))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
-        contentColumn.addView(TextView(service).apply {
-            text = titleText
-            textSize = 14f
-            setTextColor(Color.rgb(75, 85, 99))
-            setPadding(0, ui.dp(3), 0, 0)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        })
-
-        if (visibleLocalRows.isNotEmpty() || remoteRows.isNotEmpty()) {
-            contentColumn.addView(buildDataColumn(visibleLocalRows, remoteRows))
+        if (content.rows.isNotEmpty()) {
+            contentColumn.addView(buildDataColumn(content.rows))
         }
         contentRow.addView(contentColumn)
         contentRow.addView(ui.noteRightAction { showNoteEditor() })
@@ -146,43 +108,19 @@ internal class PostCallLookupPopup(
         }
     }
 
-    private fun buildDataColumn(
-        localRows: List<String>,
-        remoteRows: List<PostCallLookupRemoteRow>,
-    ): LinearLayout {
+    private fun buildDataColumn(rows: List<PostCallLookupDisplayRow>): LinearLayout {
         return LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, ui.dp(6), 0, 0)
-            var position = 0
-            localRows.forEach { line ->
-                addView(localNoteRow(line, position))
-                position += 1
-            }
-            remoteRows.forEach { row ->
-                addView(remoteNoteRow(row, position))
-                position += 1
-            }
+            rows.forEachIndexed { index, row -> addView(displayRow(row, index)) }
         }
     }
 
-    private fun localNoteRow(line: String, position: Int): View {
+    private fun displayRow(row: PostCallLookupDisplayRow, position: Int): View {
         val topMargin = if (position == 0) 0 else ui.dp(6)
-        return when {
-            line.startsWith(ICON_GENERAL_NOTE) -> {
-                ui.generalNotePreviewRow(line.removePrefix(ICON_GENERAL_NOTE).trim(), topMargin)
-            }
-            line.startsWith(ICON_CALL_NOTE) -> {
-                ui.notePreviewRow(
-                    noteText = line.removePrefix(ICON_CALL_NOTE).trim(),
-                    textColor = NoteUiStyle.Call.text,
-                    backgroundColor = NoteUiStyle.Call.background,
-                    strokeColor = NoteUiStyle.Call.border,
-                    topMargin = topMargin,
-                    iconRes = R.drawable.ic_chat_note,
-                )
-            }
-            else -> TextView(service).apply {
-                text = line
+        return when (row.kind) {
+            PostCallLookupDisplayRow.Kind.IDENTITY -> TextView(service).apply {
+                text = row.text
                 textSize = 14f
                 setTextColor(Color.rgb(75, 85, 99))
                 setPadding(0, topMargin, 0, 0)
@@ -190,17 +128,9 @@ internal class PostCallLookupPopup(
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
-        }
-    }
-
-    private fun remoteNoteRow(row: PostCallLookupRemoteRow, position: Int): View {
-        val companyLabel = row.companyName.ifBlank { "Сървър" }
-        val text = "$companyLabel · ${row.note}"
-        val topMargin = if (position == 0) 0 else ui.dp(6)
-        return when (row.kind) {
-            PostCallLookupRemoteRow.Kind.GENERAL_NOTE -> ui.generalNotePreviewRow(text, topMargin)
-            PostCallLookupRemoteRow.Kind.CALL_NOTE -> ui.notePreviewRow(
-                noteText = text,
+            PostCallLookupDisplayRow.Kind.GENERAL_NOTE -> ui.generalNotePreviewRow(row.text, topMargin)
+            PostCallLookupDisplayRow.Kind.CALL_NOTE -> ui.notePreviewRow(
+                noteText = row.text,
                 textColor = NoteUiStyle.Call.text,
                 backgroundColor = NoteUiStyle.Call.background,
                 strokeColor = NoteUiStyle.Call.border,
@@ -208,19 +138,5 @@ internal class PostCallLookupPopup(
                 iconRes = R.drawable.ic_chat_note,
             )
         }
-    }
-
-    private fun isNoteRow(value: String): Boolean =
-        value.startsWith(ICON_GENERAL_NOTE) || value.startsWith(ICON_CALL_NOTE)
-
-    private fun noteTextFromLocalRow(value: String): String = value
-        .removePrefix(ICON_GENERAL_NOTE)
-        .removePrefix(ICON_CALL_NOTE)
-        .trim()
-        .replace(Regex("\\s+"), " ")
-
-    private companion object {
-        const val ICON_GENERAL_NOTE = "☰"
-        const val ICON_CALL_NOTE = "💬"
     }
 }
