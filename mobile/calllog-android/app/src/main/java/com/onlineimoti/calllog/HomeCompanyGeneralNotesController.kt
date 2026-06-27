@@ -27,7 +27,7 @@ internal class HomeCompanyGeneralNotesController(
             .map { it.number }
             .filter { HomeCallPageLoader.noteKey(it).isNotBlank() }
             .distinctBy { HomeCallPageLoader.noteKey(it) }
-            .take(20)
+            .take(50)
         val nextSignature = listOf(
             config.remoteEnabled.toString(),
             config.baseUrl,
@@ -47,7 +47,9 @@ internal class HomeCompanyGeneralNotesController(
 
         val currentGeneration = generation.incrementAndGet()
         executor.execute {
-            val labels = runCatching { HomeCompanyGeneralNoteLabels.fetch(config, phones) }.getOrDefault(emptyMap())
+            val labels = runCatching {
+                HomeCompanyGeneralNoteLabels.fetch(context.applicationContext, config, phones)
+            }.getOrDefault(emptyMap())
             handler.post {
                 if (currentGeneration != generation.get()) return@post
                 labelsByPhoneKey = labels
