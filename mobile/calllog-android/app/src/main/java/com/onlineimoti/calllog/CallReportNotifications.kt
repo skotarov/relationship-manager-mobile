@@ -9,6 +9,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 internal object CallReportNotifications {
     private const val CHANNEL_ID = "callreport_lookup"
@@ -18,6 +20,8 @@ internal object CallReportNotifications {
     private const val LEGACY_LOOKUP_SHADE_NOTIFICATION_ID = 2004
     private const val POST_CALL_NOTIFICATION_ID = 2002
     private const val BRAND_BLUE = 0xFF0A84FF.toInt()
+    private val lookupRenderTokens = ConcurrentHashMap<Int, Long>()
+    private val lookupRenderSequence = AtomicLong()
 
     fun ensureNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -67,11 +71,41 @@ internal object CallReportNotifications {
         phone: String = "",
         direction: String = "",
     ) {
-        showLookupNotificationInternal(context, result, fullscreen, phone, direction, CHANNEL_ID, LOOKUP_NOTIFICATION_ID, NotificationCompat.PRIORITY_HIGH, true, true)
+        val renderToken = beginLookupRender(LOOKUP_NOTIFICATION_ID)
+        showLookupNotificationInternal(
+            context = context,
+            result = result,
+            fullscreen = fullscreen,
+            phone = phone,
+            direction = direction,
+            channelId = CHANNEL_ID,
+            notificationId = LOOKUP_NOTIFICATION_ID,
+            priority = NotificationCompat.PRIORITY_HIGH,
+            markPopup = true,
+            alertAgain = true,
+            renderToken = renderToken,
+            remoteRows = emptyList(),
+            requestRemoteRows = true,
+        )
     }
 
     fun showLookupShadeNotification(context: Context, result: LookupResult, phone: String = "", direction: String = "") {
-        showLookupNotificationInternal(context, result, false, phone, direction, PASSIVE_CHANNEL_ID, LOOKUP_NOTIFICATION_ID, NotificationCompat.PRIORITY_LOW, false, false)
+        val renderToken = beginLookupRender(LOOKUP_NOTIFICATION_ID)
+        showLookupNotificationInternal(
+            context = context,
+            result = result,
+            fullscreen = false,
+            phone = phone,
+            direction = direction,
+            channelId = PASSIVE_CHANNEL_ID,
+            notificationId = LOOKUP_NOTIFICATION_ID,
+            priority = NotificationCompat.PRIORITY_LOW,
+            markPopup = false,
+            alertAgain = false,
+            renderToken = renderToken,
+            remoteRows = emptyList(),
+            requestRemoteRows = true,
+        )
     }
 
     fun showImmediatePostCallPrompt(
@@ -177,6 +211,9 @@ internal object CallReportNotifications {
         priority: Int,
         markPopup: Boolean,
         alertAgain: Boolean,
+        renderToken: Long,
+        remoteRows: List<PostCallLookupRemoteRow>,
+        requestRemoteRows: Boolean,
     ) {
         ensureNotificationChannel(context)
         NotificationManagerCompat.from(context).apply {
@@ -190,7 +227,7 @@ internal object CallReportNotifications {
         val resolvedDirection = direction.ifBlank { latestCall?.direction.orEmpty() }
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val unknownContactTitle = context.getString(R.string.notification_unknown_contact)
-        val notificationTitle = when {
+        val notificationIdentity = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
             displayName.isNotBlank() -> displayName
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
@@ -199,28 +236,21 @@ internal object CallReportNotifications {
         }
 
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, actionIssuedAt = actionIssuedAt)
-        val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationTitle)
+        val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationIdentity)
         val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, 0L, 0L, actionIssuedAt)
-        val notificationRows = LocalCallStatsProvider.buildPopupInfoRows(context, phone)
-        val firstCallInfoRow = notificationRows.firstOrNull().orEmpty()
-        val displayTitle = firstCallInfoRow.ifBlank { notificationTitle }
-        val displayRows = when {
-            firstCallInfoRow.isNotBlank() -> listOf(notificationTitle) + notificationRows.drop(1)
-            notificationRows.isNotEmpty() -> notificationRows
-            else -> listOf(fallbackLookupRow(context, result, resolvedDirection))
-        }
-        val rowsText = displayRows.joinToString("\n")
-        val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(displayTitle)
-        displayRows.forEach { inboxStyle.addLine(it) }
-        val customView = SystemLookupNotificationView.build(context, displayTitle, displayRows, editIntent, allNotesIntent)
+        val content = PostCallLookupDisplayRows.build(context, phone, notificationIdentity, remoteRows)
+        val expandedRows = content.rows.map(PostCallLookupDisplayRow::plainText)
+        val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(content.header)
+        expandedRows.forEach(inboxStyle::addLine)
+        val customView = SystemLookupNotificationView.build(context, content, editIntent, allNotesIntent)
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_transparent)
             .setColor(BRAND_BLUE)
             .setColorized(true)
-            .setLargeIcon(SystemPopupLargeIcon.bitmap(context, phone, notificationRows.isNotEmpty()))
-            .setContentTitle(displayTitle)
-            .setContentText(rowsText.ifBlank { displayTitle })
+            .setLargeIcon(SystemPopupLargeIcon.bitmap(context, phone, content.rows.isNotEmpty()))
+            .setContentTitle(content.header)
+            .setContentText(expandedRows.joinToString("\n").ifBlank { content.header })
             .setPriority(priority)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(false)
@@ -238,15 +268,57 @@ internal object CallReportNotifications {
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+
+        if (requestRemoteRows && PostCallLookupRemoteRows.shouldLookup(context, phone)) {
+            refreshRemoteRowsAsync(
+                context = context.applicationContext,
+                result = result,
+                phone = phone,
+                direction = direction,
+                channelId = channelId,
+                notificationId = notificationId,
+                priority = priority,
+                renderToken = renderToken,
+            )
+        }
     }
 
-    private fun fallbackLookupRow(context: Context, result: LookupResult, direction: String): String {
-        return result.subtitle.ifBlank {
-            when (direction) {
-                "out" -> context.getString(R.string.notification_outgoing_call)
-                "in" -> context.getString(R.string.notification_incoming_call)
-                else -> context.getString(R.string.notification_call)
-            }
-        }
+    private fun refreshRemoteRowsAsync(
+        context: Context,
+        result: LookupResult,
+        phone: String,
+        direction: String,
+        channelId: String,
+        notificationId: Int,
+        priority: Int,
+        renderToken: Long,
+    ) {
+        Thread {
+            val remoteRows = runCatching {
+                PostCallLookupRemoteRows.load(context, phone)
+            }.getOrDefault(emptyList())
+            if (remoteRows.isEmpty() || lookupRenderTokens[notificationId] != renderToken) return@Thread
+            showLookupNotificationInternal(
+                context = context,
+                result = result,
+                fullscreen = false,
+                phone = phone,
+                direction = direction,
+                channelId = channelId,
+                notificationId = notificationId,
+                priority = priority,
+                markPopup = false,
+                alertAgain = false,
+                renderToken = renderToken,
+                remoteRows = remoteRows,
+                requestRemoteRows = false,
+            )
+        }.start()
+    }
+
+    private fun beginLookupRender(notificationId: Int): Long {
+        val token = lookupRenderSequence.incrementAndGet()
+        lookupRenderTokens[notificationId] = token
+        return token
     }
 }
