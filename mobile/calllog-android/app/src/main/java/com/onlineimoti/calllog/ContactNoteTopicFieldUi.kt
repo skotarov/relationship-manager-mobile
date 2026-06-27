@@ -19,10 +19,9 @@ internal class ContactNoteTopicFieldUi(
         onSpinnerReady: (Spinner) -> Unit,
     ): LinearLayout? {
         if (!state.visible) return null
-        val spinner = Spinner(context)
-        ContactNoteTopicSelector.bind(context, spinner, state, onSelected)
-        onSpinnerReady(spinner)
-        return LinearLayout(context).apply {
+
+        val field = LinearLayout(context).apply {
+            tag = FIELD_TAG
             orientation = LinearLayout.VERTICAL
             background = roundedTopicSectionBackground()
             setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -32,17 +31,24 @@ internal class ContactNoteTopicFieldUi(
             ).apply {
                 topMargin = dp(12)
             }
-            addView(TextView(context).apply {
-                text = "Повод:"
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(55, 65, 81))
-            })
-            addView(spinner, LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) })
         }
+        val spinner = Spinner(context)
+        field.addView(TextView(context).apply {
+            text = "Повод:"
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(55, 65, 81))
+        })
+        field.addView(spinner, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(5) })
+
+        // Bind only after the spinner has a tagged parent, so the shared selector
+        // can update the validation border immediately on every choice.
+        ContactNoteTopicSelector.bind(context, spinner, state, onSelected)
+        onSpinnerReady(spinner)
+        return field
     }
 
     private fun roundedTopicSectionBackground(): GradientDrawable = GradientDrawable().apply {
@@ -50,5 +56,9 @@ internal class ContactNoteTopicFieldUi(
         cornerRadius = dp(12).toFloat()
         setColor(Color.WHITE)
         setStroke(dp(1), Color.rgb(209, 213, 219))
+    }
+
+    companion object {
+        const val FIELD_TAG = "callreport_topic_field"
     }
 }
