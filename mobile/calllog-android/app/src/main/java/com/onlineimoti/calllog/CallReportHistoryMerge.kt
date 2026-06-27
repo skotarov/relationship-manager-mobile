@@ -99,7 +99,9 @@ internal object CallReportHistoryMerge {
                 text = sms.body,
                 localSms = sms,
                 serverEvent = match,
-                companyId = match?.companyId.orEmpty(),
+                companyId = match?.companyId.orEmpty().ifBlank {
+                    SmsCompanyAssignmentStore.companyIdFor(context, phone, sms.providerId)
+                },
                 locallyConfirmedOnServer = localConfirmed,
                 authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
