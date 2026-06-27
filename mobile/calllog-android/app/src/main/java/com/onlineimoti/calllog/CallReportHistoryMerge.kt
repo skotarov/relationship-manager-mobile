@@ -17,6 +17,8 @@ internal data class CallReportHistoryRow(
     val localSms: SmsMessageRecord? = null,
     val localNote: ContactCallNote? = null,
     val serverEvent: CallReportHistoryEvent? = null,
+    /** Selected company/case of this concrete conversation. */
+    val companyId: String = "",
     /** Persisted acknowledgement from a prior successful sync; independent of current lookup. */
     val locallyConfirmedOnServer: Boolean = false,
     val serverNewer: Boolean = false,
@@ -73,6 +75,7 @@ internal object CallReportHistoryMerge {
                 durationSeconds = call.durationSeconds.takeIf { it > 0L } ?: match?.durationSeconds.orEmpty(),
                 localCall = call,
                 serverEvent = match,
+                companyId = match?.companyId.orEmpty(),
                 locallyConfirmedOnServer = localConfirmed,
                 authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
@@ -96,6 +99,7 @@ internal object CallReportHistoryMerge {
                 text = sms.body,
                 localSms = sms,
                 serverEvent = match,
+                companyId = match?.companyId.orEmpty(),
                 locallyConfirmedOnServer = localConfirmed,
                 authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
@@ -120,6 +124,7 @@ internal object CallReportHistoryMerge {
                 text = if (serverNewer) match?.note.orEmpty() else note.note,
                 localNote = note,
                 serverEvent = match,
+                companyId = match?.companyId.orEmpty().ifBlank { note.companyId },
                 locallyConfirmedOnServer = localConfirmed,
                 serverNewer = serverNewer,
                 editable = !foreignAuthor,
@@ -144,6 +149,7 @@ internal object CallReportHistoryMerge {
                 durationSeconds = event.durationSeconds,
                 text = event.note,
                 serverEvent = event,
+                companyId = event.companyId,
                 editable = false,
                 authorIsOtherBroker = isOtherBrokerAuthor(event, principal),
             )
