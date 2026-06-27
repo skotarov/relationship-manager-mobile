@@ -136,6 +136,23 @@ internal object ContactNoteFormWorkflow {
         }
         if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult, localOnlyFallback = localOnlyFallback)
 
+        // Selecting Local for a concrete call note removes its previous server
+        // firm assignment. Main notes remain independent per company.
+        if (isLocalSelection && !draft.isGeneralNote && writeResult.target.hasCall) {
+            CallReportTopicNoteOutbox.enqueueUnassignCall(
+                context = appContext,
+                phone = draft.phone,
+                direction = writeResult.target.direction,
+                callAt = writeResult.target.callAt,
+                durationSeconds = writeResult.target.durationSeconds,
+                clientNoteId = LocalNotesFileStore.clientNoteIdForCall(
+                    draft.phone,
+                    writeResult.target.callAt,
+                    writeResult.target.direction,
+                ),
+            )
+        }
+
         val syncEnabled = if (activateUnknownSync) {
             RmContactSyncLayerStore.setEnabled(
                 context = appContext,
