@@ -7,9 +7,15 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
+internal data class CallReportHistoryCompany(
+    val id: String,
+    val name: String,
+)
+
 internal data class CallReportHistoryPrincipal(
     val brokerId: String = "",
     val brokerName: String = "",
+    val companies: List<CallReportHistoryCompany> = emptyList(),
 )
 
 internal data class CallReportHistoryEvent(
@@ -27,6 +33,7 @@ internal data class CallReportHistoryEvent(
     val updatedAtMs: Long = 0L,
     val authorBrokerId: String = "",
     val authorBrokerName: String = "",
+    val companyId: String = "",
 )
 
 internal data class CallReportHistoryLookupResult(
@@ -89,6 +96,7 @@ internal object CallReportHistoryLookupClient {
         if (!event.communicationType.equals("note", ignoreCase = true)) return false
         if (phoneKey(event.phone) != requestedPhoneKey) return false
         return event.clientEventId.contains(":note:general:") ||
+            event.clientEventId.contains(":topic:general:") ||
             (event.direction.isBlank() && event.durationSeconds <= 0L)
     }
 
@@ -96,9 +104,21 @@ internal object CallReportHistoryLookupClient {
 
     private fun parse(json: JSONObject): CallReportHistoryLookupResult {
         val principalJson = json.optJSONObject("principal") ?: json.optJSONObject("authenticated_principal")
+        val companies = buildList {
+            val source = principalJson?.optJSONArray("companies")
+            if (source != null) {
+                for (index in 0 until source.length()) {
+                    val item = source.optJSONObject(index) ?: continue
+                    val id = item.optString("id").trim()
+                    if (id.isBlank()) continue
+                    add(CallReportHistoryCompany(id, item.optString("name").trim().ifBlank { id }))
+                }
+            }
+        }.distinctBy { it.id }.sortedBy { it.name.lowercase() }
         val principal = CallReportHistoryPrincipal(
             brokerId = principalJson?.optString("broker_id").orEmpty().trim(),
             brokerName = principalJson?.optString("broker_name").orEmpty().trim(),
+            companies = companies,
         )
         val events = buildList {
             val items = json.optJSONArray("history_items") ?: json.optJSONArray("items")
@@ -120,6 +140,7 @@ internal object CallReportHistoryLookupClient {
                         updatedAtMs = item.number("updated_at_ms", "updated_at"),
                         authorBrokerId = item.text("author_broker_id", "created_by_broker_id", "note_author_broker_id"),
                         authorBrokerName = item.text("author_broker_name", "created_by_broker_name", "note_author_broker_name", "author"),
+                        companyId = item.text("company_id"),
                     )
                     if (event.phone.isNotBlank() && event.occurredAtMs > 0L) add(event)
                 }
