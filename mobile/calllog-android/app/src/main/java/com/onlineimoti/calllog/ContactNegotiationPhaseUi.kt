@@ -7,13 +7,18 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Compact color-only controls for the contact's mutually exclusive negotiation phase. */
+/** Compact color-only controls for one company's negotiation phase. */
 internal class ContactNegotiationPhaseUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
 ) {
-    fun phaseBar(phone: String, showControls: Boolean, onChanged: () -> Unit): LinearLayout {
-        if (!showControls) {
+    fun phaseBar(
+        phone: String,
+        companyId: String,
+        showControls: Boolean,
+        onChanged: () -> Unit,
+    ): LinearLayout {
+        if (!showControls || companyId.isBlank()) {
             return LinearLayout(activity).apply {
                 visibility = View.GONE
                 layoutParams = LinearLayout.LayoutParams(
@@ -23,17 +28,16 @@ internal class ContactNegotiationPhaseUi(
             }
         }
 
-        reconcileWithServer(phone, onChanged)
-        val selectedPhase = ContactNegotiationPhaseStore.selectedPhase(activity, phone)
+        reconcileWithServer(phone, companyId, onChanged)
+        val selectedPhase = CompanyNegotiationPhaseStore.selectedPhase(activity, phone, companyId)
         val phases = phaseDefinitions()
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = rectangle(COLOR_BORDER)
+            background = rectangle(COLOR_INACTIVE)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(BAR_HEIGHT_DP),
             ).apply {
-                // It sits immediately under the server company note card.
                 topMargin = 0
                 bottomMargin = dp(8)
             }
@@ -42,6 +46,7 @@ internal class ContactNegotiationPhaseUi(
                 addView(
                     phaseButton(
                         phone = phone,
+                        companyId = companyId,
                         phase = phase,
                         selected = selectedPhase == phase.number,
                         onChanged = onChanged,
@@ -60,27 +65,27 @@ internal class ContactNegotiationPhaseUi(
 
     private fun phaseButton(
         phone: String,
+        companyId: String,
         phase: PhaseDefinition,
         selected: Boolean,
         onChanged: () -> Unit,
     ): TextView {
         return TextView(activity).apply {
-            // The label remains available to accessibility services but is not visible.
             text = ""
             contentDescription = activity.getString(phase.labelRes)
-            background = rectangle(if (selected) phase.activeColor else faded(phase.activeColor))
+            background = rectangle(if (selected) phase.activeColor else COLOR_INACTIVE)
             isClickable = true
             isFocusable = true
             isSelected = selected
             setOnClickListener {
-                ContactNegotiationPhaseStore.togglePhase(activity, phone, phase.number)
+                CompanyNegotiationPhaseStore.togglePhase(activity, phone, companyId, phase.number)
                 onChanged()
             }
         }
     }
 
-    private fun reconcileWithServer(phone: String, onChanged: () -> Unit) {
-        ContactNegotiationPhaseSyncDispatcher.synchronize(activity, phone) { changed ->
+    private fun reconcileWithServer(phone: String, companyId: String, onChanged: () -> Unit) {
+        CompanyNegotiationPhaseSyncDispatcher.synchronize(activity, phone, companyId) { changed ->
             if (changed && !activity.isFinishing && !activity.isDestroyed) onChanged()
         }
     }
@@ -98,13 +103,6 @@ internal class ContactNegotiationPhaseUi(
         setColor(color)
     }
 
-    private fun faded(color: Int): Int = Color.argb(
-        INACTIVE_ALPHA,
-        Color.red(color),
-        Color.green(color),
-        Color.blue(color),
-    )
-
     private data class PhaseDefinition(
         val number: Int,
         val labelRes: Int,
@@ -112,11 +110,9 @@ internal class ContactNegotiationPhaseUi(
     )
 
     private companion object {
-        // Previous bar was 42dp. This is three times thinner.
         const val BAR_HEIGHT_DP = 14
-        const val INACTIVE_ALPHA = 72
         val COLOR_SURFACE: Int = Color.WHITE
-        val COLOR_BORDER: Int = Color.rgb(203, 213, 225)
+        val COLOR_INACTIVE: Int = Color.rgb(203, 213, 225)
         val COLOR_GREEN: Int = Color.rgb(22, 163, 74)
         val COLOR_BLUE: Int = Color.rgb(37, 99, 235)
         val COLOR_YELLOW: Int = Color.rgb(250, 204, 21)
