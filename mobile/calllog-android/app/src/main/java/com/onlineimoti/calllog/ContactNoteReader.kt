@@ -13,6 +13,8 @@ data class ContactCallNote(
     val direction: String,
     val durationSeconds: Long,
     val clientNoteId: String = "",
+    /** Selected server company for this single conversation; blank means local-only. */
+    val companyId: String = "",
 )
 
 object ContactNoteReader {
@@ -46,6 +48,7 @@ object ContactNoteReader {
         direction: String = "",
         callAt: Long = 0L,
         durationSeconds: Long = 0L,
+        companyId: String = "",
     ): Boolean {
         if (phoneNumber.isBlank() || note.isBlank()) return false
         val hasContact = findContactId(context, phoneNumber) != null
@@ -57,6 +60,7 @@ object ContactNoteReader {
             callAt = callAt,
             durationSeconds = durationSeconds,
             isUnknownContact = !hasContact,
+            companyId = companyId,
         )
     }
 
