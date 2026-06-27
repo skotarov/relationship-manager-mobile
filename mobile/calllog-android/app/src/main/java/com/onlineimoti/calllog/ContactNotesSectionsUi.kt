@@ -54,23 +54,13 @@ internal class ContactNotesSectionsUi(
         onEditCompany: (String) -> Unit,
     ) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
-        val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
-        val waitingForCurrentVersion = remoteEnabled && CallReportNoteOutbox.isGeneralPending(activity, phone)
-        val failure = if (remoteEnabled) CallReportNoteOutbox.lastFailure(activity) else ""
-        val serverConfirmed = ServerRecordIndex.isGeneralNoteConfirmed(activity, phone) ||
-            (remoteEnabled && CallReportHistoryLookupClient.hasGeneralNoteOnServer(phone))
-        val syncStatusText = when {
-            !remoteEnabled || generalNote.isBlank() || !waitingForCurrentVersion -> ""
-            failure.isNotBlank() -> "Синхронизацията не е потвърдена: $failure"
-            else -> "Чака сървърна синхронизация"
-        }
         section.addView(companyNameLabel(activity.getString(R.string.note_local_company)))
         section.addView(
             cards.generalNoteCard(
                 textValue = generalNote.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                 muted = generalNote.isBlank(),
-                serverConfirmed = generalNote.isNotBlank() && serverConfirmed,
-                syncStatusText = syncStatusText,
+                serverConfirmed = false,
+                syncStatusText = "",
                 onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
             )
         )
