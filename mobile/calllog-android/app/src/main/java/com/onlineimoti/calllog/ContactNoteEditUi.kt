@@ -25,6 +25,8 @@ internal data class ContactNoteEditUiState(
     val isGeneralNote: Boolean,
     val topic: ContactNoteTopicState,
     val willEnableServerSync: Boolean = false,
+    /** Present when editing a server-only call note that has no local mirror yet. */
+    val initialNoteText: String = "",
 )
 
 internal class ContactNoteEditUi(
@@ -150,10 +152,15 @@ internal class ContactNoteEditUi(
     private fun noteInput(): EditText {
         val current = state()
         val colors = if (current.isGeneralNote) NoteUiStyle.General else NoteUiStyle.Call
-        val value = if (current.isGeneralNote) {
+        val storedValue = if (current.isGeneralNote) {
             ContactNoteReader.generalNoteForPhone(activity, current.phone)
         } else {
             ContactNoteReader.callNoteForPhone(activity, current.phone, current.callAt, current.direction)
+        }
+        val value = if (!current.isGeneralNote && current.initialNoteText.isNotBlank()) {
+            current.initialNoteText
+        } else {
+            storedValue
         }
         return EditText(activity).apply {
             setText(value)
