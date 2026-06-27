@@ -20,6 +20,7 @@ internal data class CallReportQueuedTopicNote(
     val contactName: String,
     val updatedAtMs: Long,
     val communicationType: String = "note",
+    val clearCompanyAssignment: Boolean = false,
 ) {
     fun toSyncEvent(context: Context) = CallReportTopicSyncEvent(
         clientEventId = clientEventId,
@@ -33,6 +34,7 @@ internal data class CallReportQueuedTopicNote(
         deviceId = CallReportInstallationId.get(context),
         appVersion = BuildConfig.VERSION_NAME,
         communicationType = communicationType,
+        clearCompanyAssignment = clearCompanyAssignment,
     )
 }
 
@@ -89,6 +91,33 @@ internal object CallReportTopicNoteOutbox {
             note = note.trim(),
             contactName = contactName(appContext, phone),
             updatedAtMs = System.currentTimeMillis(),
+        ))
+    }
+
+    /** Makes a conversation local-only and removes every server company copy. */
+    fun enqueueUnassignCall(
+        context: Context,
+        phone: String,
+        direction: String,
+        callAt: Long,
+        durationSeconds: Long,
+        clientNoteId: String = "",
+    ): Boolean {
+        val appContext = context.applicationContext
+        if (phoneKey(phone).isBlank() || callAt <= 0L) return false
+        val stableId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
+        if (stableId.isBlank()) return false
+        return enqueue(appContext, CallReportQueuedTopicNote(
+            clientEventId = ServerRecordIndex.callNoteEventId(appContext, stableId),
+            companyId = "",
+            phone = phone,
+            direction = direction,
+            occurredAtMs = callAt,
+            durationSeconds = durationSeconds.coerceAtLeast(0L),
+            note = "",
+            contactName = contactName(appContext, phone),
+            updatedAtMs = System.currentTimeMillis(),
+            clearCompanyAssignment = true,
         ))
     }
 
@@ -176,13 +205,15 @@ internal object CallReportTopicNoteOutbox {
         put("contact_name", contactName)
         put("updated_at_ms", updatedAtMs)
         put("communication_type", communicationType)
+        put("clear_company_assignment", clearCompanyAssignment)
     }
 
     private fun JSONObject.toOperation(): CallReportQueuedTopicNote? {
         val id = optString("client_event_id").trim()
         val companyId = optString("company_id").trim()
         val phone = optString("phone").trim()
-        if (id.isBlank() || companyId.isBlank() || phoneKey(phone).isBlank()) return null
+        val clearCompanyAssignment = optBoolean("clear_company_assignment", false)
+        if (id.isBlank() || phoneKey(phone).isBlank() || (!clearCompanyAssignment && companyId.isBlank())) return null
         return CallReportQueuedTopicNote(
             clientEventId = id,
             companyId = companyId,
@@ -194,6 +225,7 @@ internal object CallReportTopicNoteOutbox {
             contactName = optString("contact_name").trim(),
             updatedAtMs = optLong("updated_at_ms", 0L).takeIf { it > 0L } ?: System.currentTimeMillis(),
             communicationType = optString("communication_type", "note").trim().ifBlank { "note" },
+            clearCompanyAssignment = clearCompanyAssignment,
         )
     }
 
