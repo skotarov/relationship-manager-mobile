@@ -35,17 +35,17 @@ internal object ContactNoteScopeTextResolver {
 
         return if (draft.isGeneralNote) {
             val notes = CallReportCompanyGeneralNotesClient.fetch(appContext, config, draft.phone)
-            buildMap {
-                notes.forEach { companyNote ->
-                    put(companyNote.companyId, companyNote.note)
-                    CallReportCompanyGeneralNoteStore.saveOrDelete(
-                        appContext,
-                        draft.phone,
-                        companyNote.companyId,
-                        companyNote.note,
-                    )
-                }
+            val notesByCompany = linkedMapOf<String, String>()
+            notes.forEach { companyNote ->
+                notesByCompany[companyNote.companyId] = companyNote.note
+                CallReportCompanyGeneralNoteStore.saveOrDelete(
+                    appContext,
+                    draft.phone,
+                    companyNote.companyId,
+                    companyNote.note,
+                )
             }
+            notesByCompany
         } else {
             val history = CallReportHistoryLookupClient.lookup(config, draft.phone)
             val phoneKey = HomeCallPageLoader.noteKey(draft.phone)
