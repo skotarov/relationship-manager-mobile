@@ -63,11 +63,13 @@ class ContactNoteEditActivity : Activity() {
                 state = ::uiState,
                 onTopicSelected = { selectedCompanyId, input ->
                     topicState = topicState.copy(selectedCompanyId = selectedCompanyId)
-                    refreshTextForScope(selectedCompanyId, input)
+                    // General notes are per company. A call note is one record that
+                    // can be moved to a different company, so preserve its text.
+                    if (isGeneralNote) refreshTextForScope(selectedCompanyId, input)
                 },
                 onNoteInputReady = { input ->
                     noteInput = input
-                    refreshTextForScope(topicState.selectedCompanyId, input)
+                    if (isGeneralNote) refreshTextForScope(topicState.selectedCompanyId, input)
                 },
                 onTopicSpinnerReady = { spinner -> topicSpinner = spinner },
                 saveAndClose = ::saveAndClose,
@@ -93,11 +95,7 @@ class ContactNoteEditActivity : Activity() {
         durationSeconds = intent.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
         actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
-        preferredCompanyId = if (isGeneralNote) {
-            intent.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
-        } else {
-            ""
-        }
+        preferredCompanyId = intent.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
     }
 
     private fun draft(): ContactNoteFormDraft = ContactNoteFormDraft(
@@ -137,7 +135,7 @@ class ContactNoteEditActivity : Activity() {
                     else -> loadedState
                 }
                 topicSpinner?.let(::bindTopicSpinner)
-                noteInput?.let { input -> refreshTextForScope(topicState.selectedCompanyId, input) }
+                if (isGeneralNote) noteInput?.let { input -> refreshTextForScope(topicState.selectedCompanyId, input) }
             }
         }
     }
@@ -145,7 +143,7 @@ class ContactNoteEditActivity : Activity() {
     private fun bindTopicSpinner(spinner: Spinner) {
         ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
             topicState = topicState.copy(selectedCompanyId = selected)
-            noteInput?.let { input -> refreshTextForScope(selected, input) }
+            if (isGeneralNote) noteInput?.let { input -> refreshTextForScope(selected, input) }
         }
     }
 
