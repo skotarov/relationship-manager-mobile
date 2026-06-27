@@ -24,7 +24,7 @@ internal class ContactNotesSectionsUi(
         root.addView(section)
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         renderLocalGeneralNote(section, phone, onEditCompany)
-        if (useCompanyScope && CrmContactSyncStore.isEnabled(activity, phone)) {
+        if (useCompanyScope && ContactServerCompanyScope.isAvailable(activity, phone)) {
             renderCompanyGeneralNotes(section, companyNotes, onEditCompany)
         }
     }
