@@ -134,16 +134,14 @@ internal class ContactNotesRestoredController(
     private fun setCrmSyncEnabled(enabled: Boolean) {
         if (crmSyncBusy || phone.isBlank() || !ConfigStore.load(activity).remoteEnabled) return
         val requestedPhone = phone
-        val requestedTitle = titleText
         crmSyncBusy = true
         render()
 
         crmSyncExecutor.execute {
             val updated = runCatching {
-                RmContactSyncLayerStore.setEnabled(
+                RmContactSyncLayerStore.setCloudSyncWithoutRmLayer(
                     context = activity.applicationContext,
                     phone = requestedPhone,
-                    title = requestedTitle,
                     enabled = enabled,
                 )
             }.getOrDefault(false)
