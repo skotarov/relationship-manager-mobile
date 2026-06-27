@@ -29,6 +29,7 @@ internal class ContactNotesRestoredController(
 
     private val externalActions by lazy { ContactNotesExternalActions(activity) }
     private val headerUi by lazy { ContactNotesHeaderUi(activity, ::dp) }
+    private val phaseUi by lazy { ContactNegotiationPhaseUi(activity, ::dp) }
     private val historyController by lazy {
         CallReportMergedHistoryController(
             activity = activity,
@@ -73,6 +74,8 @@ internal class ContactNotesRestoredController(
 
     private fun render() {
         val config = ConfigStore.load(activity)
+        val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
+        val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
@@ -84,7 +87,7 @@ internal class ContactNotesRestoredController(
             contactExists = externalActions.hasDefaultContact(phone),
             showRmCallLogButton = true,
             showCrmSyncButton = config.remoteEnabled,
-            crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone),
+            crmSyncEnabled = crmSyncEnabled,
             crmSyncBusy = crmSyncBusy,
             goBack = { activity.finish() },
             openDialer = { externalActions.openDialer(phone) },
@@ -97,6 +100,11 @@ internal class ContactNotesRestoredController(
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
+        root.addView(phaseUi.phaseBar(phone, phaseControlsVisible) {
+            // The phase UI persists the selected value locally; recreating it triggers
+            // the existing background reconciliation with history_lookup.php.
+            render()
+        })
         sectionsUi.addGeneralNote(
             root = root,
             phone = phone,
