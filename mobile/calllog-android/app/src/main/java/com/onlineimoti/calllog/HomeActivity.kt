@@ -28,6 +28,7 @@ class HomeActivity : AppCompatActivity() {
     private val noteSavedReceiver by lazy {
         HomeNoteSavedReceiverController(this) {
             filteredFullLogController.invalidate()
+            companyGeneralNotesController.invalidate()
             renderCalls()
         }
     }
@@ -54,6 +55,11 @@ class HomeActivity : AppCompatActivity() {
             renderEmptyState = ::renderEmptyState,
             applyRenderData = ::applyRenderData,
         )
+    }
+    private val companyGeneralNotesController by lazy {
+        HomeCompanyGeneralNotesController(this, handler) {
+            if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
+        }
     }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
@@ -146,6 +152,7 @@ class HomeActivity : AppCompatActivity() {
         activeSearchQuery = ""
         pageIndex = 0
         filteredFullLogController.invalidate()
+        companyGeneralNotesController.invalidate()
         if (::binding.isInitialized) {
             binding.searchInput.setText("")
             renderCalls()
@@ -157,6 +164,7 @@ class HomeActivity : AppCompatActivity() {
         if (!::binding.isInitialized) return
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
+        companyGeneralNotesController.invalidate()
         // Keep the already loaded filtered timeline cached. A real note save broadcasts
         // ACTION_CONTACT_NOTE_SAVED and invalidates it explicitly.
         renderCalls()
@@ -172,6 +180,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
         searchExecutor.shutdownNow()
+        companyGeneralNotesController.release()
         filteredFullLogController.release()
         contactsSyncPreparer.release()
         super.onDestroy()
@@ -220,6 +229,11 @@ class HomeActivity : AppCompatActivity() {
         binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
         val isPhoneFiltered = activePhoneFilter.isNotBlank()
+        val companyLabelsByNumber = if (isPhoneFiltered) {
+            emptyMap()
+        } else {
+            companyGeneralNotesController.labelsFor(renderData.calls)
+        }
         renderData.calls.forEach { call ->
             val key = HomeCallPageLoader.noteKey(call.number)
             val displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName }
@@ -228,6 +242,7 @@ class HomeActivity : AppCompatActivity() {
                     call = call,
                     displayName = displayName,
                     contactNote = if (isPhoneFiltered) null else renderData.contactNotesByNumber[key],
+                    companyGeneralNoteLabels = if (isPhoneFiltered) null else companyLabelsByNumber[key],
                     callNote = ContactNoteReader.callNoteForPhone(this, call.number, call.startedAt, call.direction),
                     highlightQuery = activeSearchQuery,
                     showContactIdentity = !isPhoneFiltered,
@@ -236,6 +251,7 @@ class HomeActivity : AppCompatActivity() {
                 ),
             )
         }
+        if (!isPhoneFiltered) companyGeneralNotesController.refresh(renderData.calls)
     }
 
     private fun renderFilteredContactSummary() {
@@ -441,6 +457,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun startTemporaryNoteRefresh() {
         filteredFullLogController.invalidate()
+        companyGeneralNotesController.invalidate()
         noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
         handler.removeCallbacks(noteRefreshRunnable)
         handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
