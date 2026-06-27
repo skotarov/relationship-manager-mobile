@@ -73,6 +73,9 @@ internal object SystemLookupNotificationView {
             PostCallLookupDisplayRow.Kind.CALL_NOTE -> {
                 bindIconRow(remoteViews, iconId, textId, R.drawable.ic_chat_note, row.text)
             }
+            PostCallLookupDisplayRow.Kind.SERVER_INFO -> {
+                bindIconRow(remoteViews, iconId, textId, R.drawable.ic_system_call_log, row.text)
+            }
         }
     }
 
