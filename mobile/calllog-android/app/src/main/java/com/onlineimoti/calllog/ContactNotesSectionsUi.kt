@@ -17,14 +17,14 @@ internal class ContactNotesSectionsUi(
         root: LinearLayout,
         phone: String,
         companyNotes: List<CallReportCompanyMainNote>,
-        showCompanyNotes: Boolean,
+        useCompanyScope: Boolean,
         onEditCompany: (String) -> Unit,
     ) {
         val section = sectionContainer()
         root.addView(section)
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         renderLocalGeneralNote(section, phone, onEditCompany)
-        if (showCompanyNotes) {
+        if (useCompanyScope && CrmContactSyncStore.isEnabled(activity, phone)) {
             renderCompanyGeneralNotes(section, companyNotes, onEditCompany)
         }
     }
