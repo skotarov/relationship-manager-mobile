@@ -29,11 +29,11 @@ internal class OverlayContactNoteFormController(
             state = topicState,
             onSelected = { selected ->
                 topicState = topicState.copy(selectedCompanyId = selected)
-                refreshTextForScope(selected)
+                if (draft.isGeneralNote) refreshTextForScope(selected)
             },
             onSpinnerReady = { spinner -> topicSpinner = spinner },
         )?.let(container::addView)
-        refreshTextForScope(topicState.selectedCompanyId)
+        if (draft.isGeneralNote) refreshTextForScope(topicState.selectedCompanyId)
         if (topicState.visible) loadTopics()
     }
 
@@ -60,10 +60,10 @@ internal class OverlayContactNoteFormController(
                 topicSpinner?.let { spinner ->
                     ContactNoteTopicSelector.bind(service, spinner, topicState) { selected ->
                         topicState = topicState.copy(selectedCompanyId = selected)
-                        refreshTextForScope(selected)
+                        if (draft.isGeneralNote) refreshTextForScope(selected)
                     }
                 }
-                refreshTextForScope(topicState.selectedCompanyId)
+                if (draft.isGeneralNote) refreshTextForScope(topicState.selectedCompanyId)
             }
         }.start()
     }
