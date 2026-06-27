@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.Dialog
 import android.graphics.Color
 import android.provider.ContactsContract
@@ -35,6 +36,7 @@ internal class RmContactFormDialog(
             return
         }
 
+        val hasExistingRmContact = CrmContactAccountStore.findCallReportRawContactId(activity, normalizedPhone) > 0L
         val initial = RmContactFormStore.read(activity, normalizedPhone, fallbackTitle)
         val dialog = Dialog(activity).apply {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -105,6 +107,11 @@ internal class RmContactFormDialog(
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(12), 0, 0)
         }
+        val deleteButton = Button(activity).apply {
+            text = "Изтрий"
+            isAllCaps = false
+            setTextColor(Color.rgb(185, 28, 28))
+        }
         val cancelButton = Button(activity).apply {
             text = "Откажи"
             isAllCaps = false
@@ -114,6 +121,7 @@ internal class RmContactFormDialog(
             text = "Запази"
             isAllCaps = false
         }
+        if (hasExistingRmContact) actions.addView(deleteButton)
         actions.addView(cancelButton)
         actions.addView(saveButton)
         root.addView(
@@ -123,6 +131,37 @@ internal class RmContactFormDialog(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ),
         )
+
+        deleteButton.setOnClickListener {
+            AlertDialog.Builder(activity)
+                .setTitle("Изтриване на RM контакт")
+                .setMessage("Ще бъде изтрит само контактът в RM слоя. Обикновеният телефонен контакт няма да бъде променен. CRM синхронизацията за този номер ще бъде изключена.")
+                .setNegativeButton("Откажи", null)
+                .setPositiveButton("Изтрий") { _, _ ->
+                    deleteButton.isEnabled = false
+                    deleteButton.text = "Изтрива…"
+                    saveButton.isEnabled = false
+                    cancelButton.isEnabled = false
+                    Thread {
+                        val deleted = RmContactSyncLayerStore.deleteRmContact(activity.applicationContext, normalizedPhone)
+                        activity.runOnUiThread {
+                            if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
+                            if (deleted) {
+                                Toast.makeText(activity, "RM контактът е изтрит.", Toast.LENGTH_SHORT).show()
+                                dialog.dismiss()
+                                onSaved()
+                            } else {
+                                Toast.makeText(activity, "RM контактът не беше изтрит.", Toast.LENGTH_SHORT).show()
+                                deleteButton.isEnabled = true
+                                deleteButton.text = "Изтрий"
+                                saveButton.isEnabled = true
+                                cancelButton.isEnabled = true
+                            }
+                        }
+                    }.start()
+                }
+                .show()
+        }
 
         saveButton.setOnClickListener {
             val values = RmContactFormValues(
@@ -139,6 +178,7 @@ internal class RmContactFormDialog(
 
             saveButton.isEnabled = false
             saveButton.text = "Записва…"
+            if (hasExistingRmContact) deleteButton.isEnabled = false
             Thread {
                 val saved = save(normalizedPhone, values)
                 activity.runOnUiThread {
@@ -151,6 +191,7 @@ internal class RmContactFormDialog(
                         Toast.makeText(activity, "RM контактът не беше записан.", Toast.LENGTH_SHORT).show()
                         saveButton.isEnabled = true
                         saveButton.text = "Запази"
+                        if (hasExistingRmContact) deleteButton.isEnabled = true
                     }
                 }
             }.start()
