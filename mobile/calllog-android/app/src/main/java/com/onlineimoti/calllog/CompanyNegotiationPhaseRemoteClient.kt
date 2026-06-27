@@ -9,7 +9,7 @@ import java.net.URL
 
 /** HTTP client for a negotiation phase scoped to one company and one phone. */
 internal object CompanyNegotiationPhaseRemoteClient {
-    private const val PATH = "/broker/callreport/contact_phase.php"
+    private const val PATH = "/broker/callreport/company_phase.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
