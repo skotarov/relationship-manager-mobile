@@ -180,19 +180,27 @@ internal class CallReportHistoryRowsUi(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
             when {
-                !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable -> {
+                !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.editable -> {
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
-                        val local = row.localNote
+                        val source = row.localNote ?: ContactCallNote(
+                            note = row.text,
+                            callAt = row.timeMs,
+                            savedAt = row.serverEvent?.updatedAtMs ?: row.timeMs,
+                            direction = row.direction,
+                            durationSeconds = row.durationSeconds,
+                            clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, row.timeMs, row.direction),
+                            companyId = row.companyId,
+                        )
                         val editableNote = if (remoteEnabled && row.serverNewer) {
-                            local.copy(
+                            source.copy(
                                 note = row.text,
-                                savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
-                                companyId = row.companyId.ifBlank { local.companyId },
+                                savedAt = maxOf(source.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
+                                companyId = row.companyId.ifBlank { source.companyId },
                             )
                         } else {
-                            local.copy(companyId = row.companyId.ifBlank { local.companyId })
+                            source.copy(companyId = row.companyId.ifBlank { source.companyId })
                         }
                         onEditCallNote(editableNote)
                     }
