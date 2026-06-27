@@ -45,9 +45,12 @@ class ContactNoteEditActivity : Activity() {
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE,
         )
         readDraftFromIntent()
-        topicState = ContactNoteFormWorkflow.initialTopicState(this, draft()).copy(
-            selectedCompanyId = preferredCompanyId,
-        )
+        val initialTopicState = ContactNoteFormWorkflow.initialTopicState(this, draft())
+        topicState = if (preferredCompanyId.isNotBlank()) {
+            initialTopicState.copy(selectedCompanyId = preferredCompanyId)
+        } else {
+            initialTopicState
+        }
         setContentView(
             ContactNoteEditUi(
                 activity = this,
@@ -113,13 +116,14 @@ class ContactNoteEditActivity : Activity() {
             val loadedState = ContactNoteFormWorkflow.loadTopics(applicationContext, initialState)
             runOnUiThread {
                 if (isFinishing || isDestroyed || !topicState.visible) return@runOnUiThread
-                topicState = if (
-                    preferredCompanyId.isNotBlank() &&
-                    loadedState.companies.any { company -> company.id == preferredCompanyId }
-                ) {
-                    loadedState.copy(selectedCompanyId = preferredCompanyId)
-                } else {
-                    loadedState
+                topicState = when {
+                    preferredCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID -> {
+                        loadedState.copy(selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID)
+                    }
+                    preferredCompanyId.isNotBlank() && loadedState.companies.any { company -> company.id == preferredCompanyId } -> {
+                        loadedState.copy(selectedCompanyId = preferredCompanyId)
+                    }
+                    else -> loadedState
                 }
                 topicSpinner?.let(::bindTopicSpinner)
             }
