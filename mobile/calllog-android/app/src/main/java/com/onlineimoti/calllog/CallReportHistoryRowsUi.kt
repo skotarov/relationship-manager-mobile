@@ -30,6 +30,7 @@ internal class CallReportHistoryRowsUi(
         serverLoading: Boolean,
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
+        onEditSms: (SmsMessageRecord, String) -> Unit,
         onPageChanged: () -> Unit,
     ) {
         val rows = CallReportHistoryMerge.merge(
@@ -55,7 +56,7 @@ internal class CallReportHistoryRowsUi(
             latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
                 addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
             }
-            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled, companyNames)) }
+            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, onEditSms, remoteEnabled, companyNames)) }
             paginationUi.addNavigation(this, page, onPageChanged)
             addStatus(
                 container = this,
@@ -155,6 +156,7 @@ internal class CallReportHistoryRowsUi(
         phone: String,
         row: CallReportHistoryRow,
         onEditCallNote: (ContactCallNote) -> Unit,
+        onEditSms: (SmsMessageRecord, String) -> Unit,
         remoteEnabled: Boolean,
         companyNames: Map<String, String>,
     ): LinearLayout {
@@ -177,21 +179,28 @@ internal class CallReportHistoryRowsUi(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
-            if (!foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable) {
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    val local = row.localNote
-                    val editableNote = if (remoteEnabled && row.serverNewer) {
-                        local.copy(
-                            note = row.text,
-                            savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
-                            companyId = row.companyId.ifBlank { local.companyId },
-                        )
-                    } else {
-                        local.copy(companyId = row.companyId.ifBlank { local.companyId })
+            when {
+                !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.localNote != null && row.editable -> {
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        val local = row.localNote
+                        val editableNote = if (remoteEnabled && row.serverNewer) {
+                            local.copy(
+                                note = row.text,
+                                savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
+                                companyId = row.companyId.ifBlank { local.companyId },
+                            )
+                        } else {
+                            local.copy(companyId = row.companyId.ifBlank { local.companyId })
+                        }
+                        onEditCallNote(editableNote)
                     }
-                    onEditCallNote(editableNote)
+                }
+                !foreignRecord && row.kind == CallReportHistoryRowKind.SMS && row.localSms != null -> {
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { onEditSms(row.localSms, row.companyId) }
                 }
             }
             addView(metaView(row, serverConfirmed))
