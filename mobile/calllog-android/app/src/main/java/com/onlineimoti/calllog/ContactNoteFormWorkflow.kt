@@ -31,21 +31,40 @@ internal data class ContactNoteFormSaveResult(
 internal object ContactNoteFormWorkflow {
     fun initialTopicState(context: Context, draft: ContactNoteFormDraft): ContactNoteTopicState {
         val visible = shouldShowTopicSelector(context, draft)
-        return ContactNoteTopicState(visible = visible, loading = visible)
+        val generalLocalOnly = visible && draft.isGeneralNote && !CrmContactSyncStore.isEnabled(context, draft.phone)
+        return ContactNoteTopicState(
+            visible = visible,
+            loading = visible && !generalLocalOnly,
+            selectedCompanyId = if (visible && draft.isGeneralNote) ContactNoteTopicState.LOCAL_COMPANY_ID else "",
+            includeLocalOption = visible && draft.isGeneralNote,
+            localOnly = generalLocalOnly,
+        )
     }
 
     fun loadTopics(context: Context, previous: ContactNoteTopicState): ContactNoteTopicState {
         if (!previous.visible) return previous
+        if (previous.localOnly) {
+            return previous.copy(
+                loading = false,
+                companies = emptyList(),
+                selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID,
+                loadError = "",
+            )
+        }
+
         val result = runCatching {
             CallReportTopicCompaniesClient.fetch(ConfigStore.load(context.applicationContext))
         }
         val companies = result.getOrDefault(emptyList())
         val loadFailed = result.isFailure
-        val selectedCompanyId = if (loadFailed) {
-            ""
-        } else {
-            previous.selectedCompanyId.takeIf { selected -> companies.any { it.id == selected } }
-                ?: companies.singleOrNull()?.id.orEmpty()
+        val selectedCompanyId = when {
+            previous.includeLocalOption && previous.selectedCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID -> {
+                ContactNoteTopicState.LOCAL_COMPANY_ID
+            }
+            loadFailed && previous.includeLocalOption -> ContactNoteTopicState.LOCAL_COMPANY_ID
+            loadFailed -> ""
+            else -> previous.selectedCompanyId.takeIf { selected -> companies.any { it.id == selected } }
+                ?: if (previous.includeLocalOption) ContactNoteTopicState.LOCAL_COMPANY_ID else companies.singleOrNull()?.id.orEmpty()
         }
         return previous.copy(
             loading = false,
@@ -55,15 +74,19 @@ internal object ContactNoteFormWorkflow {
         )
     }
 
-    /** Returns null only when a normally available topic selector still needs a selection. */
+    /** Returns null only when a normally available server-company selector still needs a selection. */
     fun selectedTopicOrLocalFallback(state: ContactNoteTopicState): String? {
+        if (state.selectedCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID) {
+            return ContactNoteTopicState.LOCAL_COMPANY_ID
+        }
         if (!state.visible || state.loadError.isNotBlank()) return ""
         if (state.loading || state.selectedCompanyId.isBlank()) return null
         return state.selectedCompanyId
     }
 
     fun willEnableServerSync(context: Context, draft: ContactNoteFormDraft, state: ContactNoteTopicState): Boolean {
-        return state.loadError.isBlank() && shouldAutoEnableServerSync(context, draft)
+        return state.selectedCompanyId != ContactNoteTopicState.LOCAL_COMPANY_ID &&
+            state.loadError.isBlank() && shouldAutoEnableServerSync(context, draft)
     }
 
     fun save(
@@ -74,14 +97,16 @@ internal object ContactNoteFormWorkflow {
         localOnlyFallback: Boolean = false,
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
+        val isLocalMainNote = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID
+        val serverCompanyId = if (isLocalMainNote) "" else topicCompanyId
         val activateUnknownSync = noteText.trim().isNotBlank() &&
-            topicCompanyId.isNotBlank() &&
+            serverCompanyId.isNotBlank() &&
             shouldAutoEnableServerSync(appContext, draft)
         val writeResult = when {
-            topicCompanyId.isNotBlank() && draft.isGeneralNote -> {
-                CallNoteTopicWriter.writeGeneral(appContext, draft.phone, noteText, topicCompanyId)
+            serverCompanyId.isNotBlank() && draft.isGeneralNote -> {
+                CallNoteTopicWriter.writeGeneral(appContext, draft.phone, noteText, serverCompanyId)
             }
-            topicCompanyId.isNotBlank() -> {
+            serverCompanyId.isNotBlank() -> {
                 CallNoteTopicWriter.writeCallOrGeneral(
                     context = appContext,
                     phone = draft.phone,
@@ -90,7 +115,7 @@ internal object ContactNoteFormWorkflow {
                     callAt = draft.callAt,
                     durationSeconds = draft.durationSeconds,
                     actionIssuedAt = draft.actionIssuedAt,
-                    companyId = topicCompanyId,
+                    companyId = serverCompanyId,
                 )
             }
             draft.isGeneralNote -> {
@@ -98,7 +123,7 @@ internal object ContactNoteFormWorkflow {
                     context = appContext,
                     phone = draft.phone,
                     text = noteText,
-                    syncToCrm = !localOnlyFallback,
+                    syncToCrm = !localOnlyFallback && !isLocalMainNote,
                 )
             }
             else -> CallNoteWriter.writeCallOrGeneral(
@@ -135,8 +160,7 @@ internal object ContactNoteFormWorkflow {
 
     private fun shouldShowTopicSelector(context: Context, draft: ContactNoteFormDraft): Boolean {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))) return false
-        // Main notes are scoped to one firm whenever a server is configured.
-        // Call notes retain the previous contact-sync behavior.
+        // Main notes always show Local first. Server companies appear only for CRM contacts.
         if (draft.isGeneralNote) return true
         return CrmContactSyncStore.isEnabled(context, draft.phone) || shouldAutoEnableServerSync(context, draft)
     }
