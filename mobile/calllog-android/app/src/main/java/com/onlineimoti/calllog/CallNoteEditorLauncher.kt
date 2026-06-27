@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 
 internal object CallNoteEditorLauncher {
+    const val EXTRA_INITIAL_NOTE_TEXT = "initial_note_text"
+
     fun editorIntent(
         context: Context,
         mode: String,
@@ -14,6 +16,7 @@ internal object CallNoteEditorLauncher {
         durationSeconds: Long = 0L,
         actionIssuedAt: Long = 0L,
         companyId: String = "",
+        initialNoteText: String = "",
     ): Intent {
         return ExternalLaunchNavigation.apply(
             Intent(context, ContactNoteEditActivity::class.java)
@@ -25,6 +28,7 @@ internal object CallNoteEditorLauncher {
                 .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
                 .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
                 .putExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID, companyId)
+                .putExtra(EXTRA_INITIAL_NOTE_TEXT, initialNoteText)
         )
     }
 
@@ -38,8 +42,22 @@ internal object CallNoteEditorLauncher {
         durationSeconds: Long = 0L,
         actionIssuedAt: Long = 0L,
         companyId: String = "",
+        initialNoteText: String = "",
     ) {
-        context.startActivity(editorIntent(context, mode, phone, title, direction, callAt, durationSeconds, actionIssuedAt, companyId))
+        context.startActivity(
+            editorIntent(
+                context,
+                mode,
+                phone,
+                title,
+                direction,
+                callAt,
+                durationSeconds,
+                actionIssuedAt,
+                companyId,
+                initialNoteText,
+            )
+        )
     }
 
     fun historyIntent(context: Context, phone: String, title: String): Intent {
