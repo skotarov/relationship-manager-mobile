@@ -100,17 +100,23 @@ internal class ContactNotesRestoredController(
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
-        root.addView(phaseUi.phaseBar(phone, phaseControlsVisible) {
-            // The phase UI persists the selected value locally; recreating it triggers
-            // the existing background reconciliation with history_lookup.php.
-            render()
-        })
         sectionsUi.addGeneralNote(
             root = root,
             phone = phone,
             companyNotes = historyController.companyMainNotes(phone),
             useCompanyScope = historyController.hasCompanyMainNoteScope(),
             onEditCompany = ::openGeneralNoteEditor,
+            companyPhaseBar = if (phaseControlsVisible) {
+                {
+                    phaseUi.phaseBar(phone, true) {
+                        // The phase UI persists the selected value locally; recreating it triggers
+                        // the existing background reconciliation with history_lookup.php.
+                        render()
+                    }
+                }
+            } else {
+                null
+            },
         )
         PendingCallNoteStore.reconcilePendingForPhone(activity, phone)
         historyController.addSection(
