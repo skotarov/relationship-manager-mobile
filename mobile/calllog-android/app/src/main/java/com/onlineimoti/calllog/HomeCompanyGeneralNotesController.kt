@@ -5,7 +5,7 @@ import android.os.Handler
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Refreshes Home company-note labels without delaying the call-log rows. */
+/** Refreshes Home company-note and phase labels without delaying the call-log rows. */
 internal class HomeCompanyGeneralNotesController(
     private val context: Context,
     private val handler: Handler,
@@ -14,9 +14,9 @@ internal class HomeCompanyGeneralNotesController(
     private val executor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
     private var requestSignature = ""
-    private var labelsByPhoneKey: Map<String, String> = emptyMap()
+    private var labelsByPhoneKey: Map<String, List<HomeCompanyScopeLabel>> = emptyMap()
 
-    fun labelsFor(calls: List<PhoneCallRecord>): Map<String, String> {
+    fun labelsFor(calls: List<PhoneCallRecord>): Map<String, List<HomeCompanyScopeLabel>> {
         val keys = calls.map { HomeCallPageLoader.noteKey(it.number) }.filter { it.isNotBlank() }.toSet()
         return labelsByPhoneKey.filterKeys { it in keys }
     }
@@ -27,7 +27,7 @@ internal class HomeCompanyGeneralNotesController(
             .map { it.number }
             .filter { HomeCallPageLoader.noteKey(it).isNotBlank() }
             .distinctBy { HomeCallPageLoader.noteKey(it) }
-            .take(50)
+            .take(20)
         val nextSignature = listOf(
             config.remoteEnabled.toString(),
             config.baseUrl,
