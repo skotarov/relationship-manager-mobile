@@ -39,8 +39,8 @@ internal class ContactNotesRestoredController(
             rerender = ::render,
         )
     }
-    private val sectionsUi by lazy {
-        ContactNotesSectionsUi(
+    private val generalNoteSectionUi by lazy {
+        CompanyScopedGeneralNoteSectionUi(
             activity = activity,
             headerUi = headerUi,
             cards = ContactNotesCards(activity, ::dp, ::roundedRect, headerUi::directionArrowLabel),
@@ -100,17 +100,15 @@ internal class ContactNotesRestoredController(
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
-        sectionsUi.addGeneralNote(
+        generalNoteSectionUi.add(
             root = root,
             phone = phone,
             companyNotes = historyController.companyMainNotes(phone),
-            useCompanyScope = historyController.hasCompanyMainNoteScope(),
+            showCompanyNotes = historyController.hasCompanyMainNoteScope(),
             onEditCompany = ::openGeneralNoteEditor,
-            companyPhaseBar = if (phaseControlsVisible) {
-                {
-                    phaseUi.phaseBar(phone, true) {
-                        // The phase UI persists the selected value locally; recreating it triggers
-                        // the existing background reconciliation with history_lookup.php.
+            phaseBarForCompany = if (phaseControlsVisible) {
+                { companyId ->
+                    phaseUi.phaseBar(phone, companyId, true) {
                         render()
                     }
                 }
