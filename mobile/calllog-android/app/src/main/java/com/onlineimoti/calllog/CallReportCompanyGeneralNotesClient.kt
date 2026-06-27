@@ -57,13 +57,14 @@ internal object CallReportCompanyGeneralNotesClient {
         if (items != null) {
             for (index in 0 until items.length()) {
                 val item = items.optJSONObject(index) ?: continue
-                if (!item.optString("communication_type").equals("note", ignoreCase = true)) continue
-                if (phoneKey(item.optString("phone")) != phoneKey) continue
-                val direction = item.optString("direction").trim()
-                val duration = item.optLong("duration_seconds", item.optLong("duration", 0L))
                 val clientId = item.optString("client_event_id").trim()
-                if (direction.isNotBlank() || duration > 0L) continue
-                if (clientId.isNotBlank() && !clientId.contains(":general:")) continue
+                val isGeneralNote = clientId.contains(":topic:general:") ||
+                    clientId.contains(":note:general:") ||
+                    (item.optString("communication_type").equals("note", ignoreCase = true) &&
+                        item.optString("direction").trim().isBlank() &&
+                        item.optLong("duration_seconds", item.optLong("duration", 0L)) <= 0L)
+                if (!isGeneralNote) continue
+                if (phoneKey(item.optString("phone")) != phoneKey) continue
 
                 val companyId = item.optString("company_id").trim()
                 if (companyId.isBlank()) continue
@@ -76,13 +77,13 @@ internal object CallReportCompanyGeneralNotesClient {
             }
         }
 
-        val hasPendingTopicNote = CallReportTopicNoteOutbox.hasPending(context)
         return companies.entries
             .map { (companyId, companyName) ->
                 val remote = latestByCompany[companyId]
                 val cached = CallReportCompanyGeneralNoteStore.noteFor(context, phone, companyId)
+                val pending = CallReportCompanyGeneralNotePending.isPending(context, phone, companyId)
                 val note = when {
-                    hasPendingTopicNote -> cached
+                    pending && cached.isNotBlank() -> cached
                     remote != null -> remote.note
                     else -> cached
                 }
@@ -91,8 +92,8 @@ internal object CallReportCompanyGeneralNotesClient {
                     companyName = companyName,
                     note = note,
                     updatedAtMs = remote?.updatedAtMs ?: 0L,
-                    confirmedByServer = remote != null && !hasPendingTopicNote && remote.note.isNotBlank(),
-                    pending = hasPendingTopicNote,
+                    confirmedByServer = remote != null && !pending && remote.note.isNotBlank(),
+                    pending = pending,
                 )
             }
             .sortedBy { it.companyName.lowercase() }
