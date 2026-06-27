@@ -6,7 +6,9 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 /**
  * Presentation controller for [ContactNotesActivity]. Server data is read from the
@@ -18,7 +20,9 @@ internal class ContactNotesRestoredController(
 ) {
     private var phone: String = ""
     private var titleText: String = ""
+    private var crmSyncBusy = false
     private val handler = Handler(Looper.getMainLooper())
+    private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
         if (!activity.isFinishing && !activity.isDestroyed) historyController.refreshServer(phone)
     }
@@ -63,10 +67,12 @@ internal class ContactNotesRestoredController(
 
     fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        crmSyncExecutor.shutdownNow()
         historyController.release()
     }
 
     private fun render() {
+        val config = ConfigStore.load(activity)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
@@ -77,15 +83,17 @@ internal class ContactNotesRestoredController(
             phone = phone,
             contactExists = externalActions.hasDefaultContact(phone),
             showRmCallLogButton = true,
-            showCrmSyncButton = false,
-            crmSyncEnabled = false,
-            crmSyncBusy = false,
+            showCrmSyncButton = config.remoteEnabled,
+            crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone),
+            crmSyncBusy = crmSyncBusy,
             goBack = { activity.finish() },
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
             openRmContact = { openRmContactForm() },
-            toggleCrmSync = {},
+            toggleCrmSync = {
+                setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone))
+            },
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
@@ -108,6 +116,39 @@ internal class ContactNotesRestoredController(
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
         })
+    }
+
+    private fun setCrmSyncEnabled(enabled: Boolean) {
+        if (crmSyncBusy || phone.isBlank() || !ConfigStore.load(activity).remoteEnabled) return
+        val requestedPhone = phone
+        val requestedTitle = titleText
+        crmSyncBusy = true
+        render()
+
+        crmSyncExecutor.execute {
+            val updated = runCatching {
+                RmContactSyncLayerStore.setEnabled(
+                    context = activity.applicationContext,
+                    phone = requestedPhone,
+                    title = requestedTitle,
+                    enabled = enabled,
+                )
+            }.getOrDefault(false)
+
+            handler.post {
+                if (activity.isFinishing || activity.isDestroyed) return@post
+                crmSyncBusy = false
+                val message = when {
+                    updated && enabled -> activity.getString(R.string.dynamic_crm_sync_turned_on)
+                    updated -> activity.getString(R.string.dynamic_crm_sync_turned_off)
+                    enabled -> activity.getString(R.string.dynamic_crm_sync_create_failed)
+                    else -> activity.getString(R.string.dynamic_crm_sync_clear_failed)
+                }
+                Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+                historyController.refreshServer(phone)
+                render()
+            }
+        }
     }
 
     private fun openGeneralNoteEditor(companyId: String = "") {
