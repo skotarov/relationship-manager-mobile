@@ -231,7 +231,7 @@ internal object CallReportNotifications {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
             displayName.isNotBlank() -> displayName
             result.title.isNotBlank() && result.title != phone -> "${result.title} • $phone"
-            phone.isNotBlank() -> unknownContactTitle
+            phone.isNotBlank() -> phone
             else -> result.title.ifBlank { unknownContactTitle }
         }
 
@@ -239,9 +239,9 @@ internal object CallReportNotifications {
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationIdentity)
         val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, 0L, 0L, actionIssuedAt)
         val content = PostCallLookupDisplayRows.build(context, phone, notificationIdentity, remoteRows)
-        val expandedRows = content.rows.map(PostCallLookupDisplayRow::plainText)
+        val expandedRows = content.rows.map { row -> row.plainText() }
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(content.header)
-        expandedRows.forEach(inboxStyle::addLine)
+        expandedRows.forEach { row -> inboxStyle.addLine(row) }
         val customView = SystemLookupNotificationView.build(context, content, editIntent, allNotesIntent)
 
         val builder = NotificationCompat.Builder(context, channelId)
