@@ -143,6 +143,7 @@ internal object CallReportHistoryMerge {
                 "note" -> CallReportHistoryRowKind.NOTE
                 else -> CallReportHistoryRowKind.PHONE
             }
+            val foreignAuthor = isOtherBrokerAuthor(event, principal)
             rows += CallReportHistoryRow(
                 kind = kind,
                 timeMs = event.occurredAtMs.takeIf { it > 0L } ?: event.updatedAtMs,
@@ -153,8 +154,8 @@ internal object CallReportHistoryMerge {
                 text = event.note,
                 serverEvent = event,
                 companyId = event.companyId,
-                editable = false,
-                authorIsOtherBroker = isOtherBrokerAuthor(event, principal),
+                editable = kind == CallReportHistoryRowKind.NOTE && isConversationNote(event) && !foreignAuthor,
+                authorIsOtherBroker = foreignAuthor,
             )
         }
 
@@ -180,6 +181,14 @@ internal object CallReportHistoryMerge {
         return false
     }
 
+    private fun isConversationNote(event: CallReportHistoryEvent): Boolean {
+        return event.communicationType.equals("note", ignoreCase = true) && (
+            event.clientEventId.contains(":call:") ||
+                event.direction.isNotBlank() ||
+                event.durationSeconds > 0L
+            )
+    }
+
     /** Recognises notes saved by the previous topic-per-company Android format. */
     private fun legacyTopicCallMatch(
         events: List<CallReportHistoryEvent>,
@@ -191,15 +200,16 @@ internal object CallReportHistoryMerge {
     ): CallReportHistoryEvent? {
         if (stableCallId.isBlank()) return null
         val marker = ":topic:call:$stableCallId:"
-        return events.firstOrNull { event ->
-            val index = events.indexOf(event)
-            index !in usedIndexes &&
-                event.communicationType.equals("note", ignoreCase = true) &&
-                HomeCallPageLoader.noteKey(event.phone) == HomeCallPageLoader.noteKey(phone) &&
-                event.clientEventId.contains(marker) &&
-                (direction.isBlank() || event.direction.isBlank() || event.direction == direction) &&
-                (callAt <= 0L || event.occurredAtMs == callAt)
+        events.forEachIndexed { index, event ->
+            if (index in usedIndexes) return@forEachIndexed
+            if (!event.communicationType.equals("note", ignoreCase = true)) return@forEachIndexed
+            if (HomeCallPageLoader.noteKey(event.phone) != HomeCallPageLoader.noteKey(phone)) return@forEachIndexed
+            if (!event.clientEventId.contains(marker)) return@forEachIndexed
+            if (direction.isNotBlank() && event.direction.isNotBlank() && event.direction != direction) return@forEachIndexed
+            if (callAt > 0L && event.occurredAtMs != callAt) return@forEachIndexed
+            return event
         }
+        return null
     }
 
     private fun fallbackMatch(
