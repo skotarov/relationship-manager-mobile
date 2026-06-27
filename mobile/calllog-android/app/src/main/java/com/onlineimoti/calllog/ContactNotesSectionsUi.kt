@@ -18,21 +18,21 @@ internal class ContactNotesSectionsUi(
         phone: String,
         companyNotes: List<CallReportCompanyMainNote>,
         useCompanyScope: Boolean,
-        onEdit: () -> Unit,
+        onEditCompany: (String) -> Unit,
     ) {
         val section = sectionContainer()
         root.addView(section)
         if (useCompanyScope) {
-            renderCompanyGeneralNotes(section, companyNotes, onEdit)
+            renderCompanyGeneralNotes(section, companyNotes, onEditCompany)
         } else {
-            renderLocalGeneralNote(section, phone, onEdit)
+            renderLocalGeneralNote(section, phone, onEditCompany)
         }
     }
 
     private fun renderCompanyGeneralNotes(
         section: LinearLayout,
         companyNotes: List<CallReportCompanyMainNote>,
-        onEdit: () -> Unit,
+        onEditCompany: (String) -> Unit,
     ) {
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         companyNotes.forEach { companyNote ->
@@ -43,13 +43,17 @@ internal class ContactNotesSectionsUi(
                     muted = companyNote.note.isBlank(),
                     serverConfirmed = companyNote.confirmedByServer,
                     syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
-                    onClick = onEdit,
+                    onClick = { onEditCompany(companyNote.companyId) },
                 )
             )
         }
     }
 
-    private fun renderLocalGeneralNote(section: LinearLayout, phone: String, onEdit: () -> Unit) {
+    private fun renderLocalGeneralNote(
+        section: LinearLayout,
+        phone: String,
+        onEditCompany: (String) -> Unit,
+    ) {
         val generalNote = ContactNoteReader.generalNoteForPhone(activity, phone)
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
         val waitingForCurrentVersion = remoteEnabled && CallReportNoteOutbox.isGeneralPending(activity, phone)
@@ -68,7 +72,7 @@ internal class ContactNotesSectionsUi(
                 muted = generalNote.isBlank(),
                 serverConfirmed = generalNote.isNotBlank() && serverConfirmed,
                 syncStatusText = syncStatusText,
-                onClick = onEdit,
+                onClick = { onEditCompany("") },
             )
         )
     }
