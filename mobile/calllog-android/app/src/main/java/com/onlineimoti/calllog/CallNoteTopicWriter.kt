@@ -43,6 +43,7 @@ internal object CallNoteTopicWriter {
             direction = target.direction,
             callAt = target.callAt,
             durationSeconds = target.durationSeconds,
+            companyId = companyId,
         )
         val result = CallNoteWriteResult(saved, false, target)
         if (!saved) return result
