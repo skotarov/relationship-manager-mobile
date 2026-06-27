@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -14,7 +15,6 @@ import android.widget.TextView
 internal class PostCallLookupPopup(
     private val service: Service,
     private val ui: PostCallOverlayUi,
-    private val handler: Handler,
     private val phone: () -> String,
     private val title: () -> String,
     private val setWindowManager: (WindowManager) -> Unit,
@@ -24,6 +24,7 @@ internal class PostCallLookupPopup(
     private val showBubbleAfterLookup: () -> Unit,
     private val timeoutMs: Long,
 ) {
+    private val handler = Handler(Looper.getMainLooper())
     /** Invalidates late lookup responses after the overlay was replaced or timed out. */
     private var activeRequestId = 0L
 
