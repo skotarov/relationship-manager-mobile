@@ -57,7 +57,7 @@ internal object CallReportHistoryLookupClient {
     fun lookupMany(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
         if (!isReady(config)) return CallReportHistoryLookupResult()
         val requestedPhones = phones
-            .map(String::trim)
+            .map { it.trim() }
             .filter { phoneKey(it).isNotBlank() }
             .distinctBy(::phoneKey)
             .take(50)
