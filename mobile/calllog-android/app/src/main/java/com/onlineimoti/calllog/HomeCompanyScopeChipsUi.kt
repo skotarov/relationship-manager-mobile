@@ -96,7 +96,7 @@ internal class HomeCompanyScopeChipsUi(
 
     private val GrayChipColors = ChipColors(
         background = Color.rgb(241, 245, 249),
-        border = Color.rgb(203, 213, 225),
+        border = Color.TRANSPARENT,
         text = Color.rgb(71, 85, 105),
     )
 }
