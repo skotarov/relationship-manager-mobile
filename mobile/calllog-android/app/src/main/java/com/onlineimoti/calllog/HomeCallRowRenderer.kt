@@ -27,11 +27,15 @@ internal class HomeCallRowRenderer(
     private val openDialer: (String) -> Unit = {},
     private val togglePhoneFilter: (String) -> Unit = {},
 ) {
+    private val companyScopeChipsUi by lazy {
+        HomeCompanyScopeChipsUi(activity, dp, roundedRect)
+    }
+
     fun compactCallRow(
         call: PhoneCallRecord,
         displayName: String,
         contactNote: String? = null,
-        companyGeneralNoteLabels: String? = null,
+        companyGeneralNoteLabels: List<HomeCompanyScopeLabel> = emptyList(),
         callNote: String? = null,
         highlightQuery: String = "",
         showContactIdentity: Boolean = true,
@@ -110,22 +114,8 @@ internal class HomeCallRowRenderer(
                 setPadding(0, dp(4), 0, 0)
             })
         }
-        if (showGeneralContactNote && !companyGeneralNoteLabels.isNullOrBlank()) {
-            val colors = NoteUiStyle.General
-            textColumn.addView(TextView(activity).apply {
-                text = highlightedText(companyGeneralNoteLabels, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-                compoundDrawablePadding = dp(4)
-                setTextColor(colors.text)
-                textSize = 12.5f
-                maxLines = 2
-                setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(5) }
-            })
+        if (showGeneralContactNote && companyGeneralNoteLabels.isNotEmpty()) {
+            textColumn.addView(companyScopeChipsUi.create(companyGeneralNoteLabels))
         }
         if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
