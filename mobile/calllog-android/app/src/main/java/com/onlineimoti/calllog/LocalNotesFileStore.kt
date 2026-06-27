@@ -16,12 +16,14 @@ object LocalNotesFileStore {
     fun canUsePublicFolder(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
     fun isEnabled(context: Context): Boolean = ConfigStore.load(context).useLocalNotesStorage
     fun shouldUsePublicFolder(context: Context): Boolean = ConfigStore.load(context).usePublicNotesFolder
-    fun canUseConfiguredFolder(context: Context): Boolean = isEnabled(context) && (!shouldUsePublicFolder(context) || canUsePublicFolder())
+    /** The public preference is opportunistic: lack of permission falls back to app-private storage. */
+    fun usesPublicFolder(context: Context): Boolean = shouldUsePublicFolder(context) && canUsePublicFolder()
+    fun canUseConfiguredFolder(context: Context): Boolean = isEnabled(context)
     fun publicRootPath(): String = publicRoot().absolutePath
     fun privateRootPath(context: Context): String = privateRoot(context).absolutePath
     fun activeRootPath(context: Context): String = when {
         !isEnabled(context) -> "изключено"
-        shouldUsePublicFolder(context) -> publicRootPath()
+        usesPublicFolder(context) -> publicRootPath()
         else -> privateRootPath(context)
     }
 
@@ -184,9 +186,7 @@ object LocalNotesFileStore {
         return direction.isBlank() || rowDirection.isBlank() || rowDirection == direction || exactTimestampWins(callAt)
     }
 
-    private fun exactTimestampWins(callAt: Long): Boolean {
-        return callAt > 0L
-    }
+    private fun exactTimestampWins(callAt: Long): Boolean = callAt > 0L
 
     private fun writeUnknownLatestProfile(context: Context, phoneNumber: String, phoneKey: String, latestNote: String, updatedAt: Long) {
         val file = profileFile(context, phoneKey, createDirs = true)
@@ -206,7 +206,7 @@ object LocalNotesFileStore {
 
     private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = phoneKey.filter { it.isDigit() }
-        val root = if (shouldUsePublicFolder(context)) publicRoot() else privateRoot(context)
+        val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
         val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
