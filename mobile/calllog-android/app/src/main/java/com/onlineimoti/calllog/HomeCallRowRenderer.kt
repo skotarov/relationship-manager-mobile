@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.provider.CallLog
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
@@ -258,10 +259,20 @@ internal class HomeCallRowRenderer(
         }
     }
 
-    private fun callStatusIcon(call: PhoneCallRecord): Int = when {
-        call.direction == "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_rejected
-        call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
-        call.direction == "out" -> R.drawable.ic_call_outgoing
-        else -> R.drawable.ic_call_incoming
+    private fun callStatusIcon(call: PhoneCallRecord): Int = when (call.callType) {
+        CallLog.Calls.MISSED_TYPE,
+        CallLog.Calls.VOICEMAIL_TYPE -> R.drawable.ic_call_missed
+        CallLog.Calls.REJECTED_TYPE,
+        CallLog.Calls.BLOCKED_TYPE -> R.drawable.ic_call_rejected
+        CallLog.Calls.OUTGOING_TYPE -> R.drawable.ic_call_outgoing
+        CallLog.Calls.INCOMING_TYPE -> R.drawable.ic_call_incoming
+        // A synthetic or legacy row has no provider status. Preserve the prior
+        // duration-based fallback only for those records.
+        else -> when {
+            call.direction == "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_rejected
+            call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
+            call.direction == "out" -> R.drawable.ic_call_outgoing
+            else -> R.drawable.ic_call_incoming
+        }
     }
 }
