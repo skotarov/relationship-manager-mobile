@@ -54,7 +54,7 @@ internal object CallReportTopicSyncClient {
 
     private fun CallReportTopicSyncEvent.toJson(): JSONObject = JSONObject().apply {
         put("client_event_id", clientEventId)
-        put("company_id", companyId)
+        if (companyId.isNotBlank()) put("company_id", companyId)
         put("communication_type", communicationType)
         put("direction", direction)
         put("status", "")
@@ -63,6 +63,7 @@ internal object CallReportTopicSyncClient {
         put("occurred_at_ms", occurredAtMs)
         put("duration_seconds", durationSeconds)
         put("note", note)
+        if (clearCompanyAssignment) put("clear_company_assignment", true)
         put("source", JSONObject().apply {
             put("channel", "android")
             put("device_id", deviceId)
@@ -84,4 +85,5 @@ internal data class CallReportTopicSyncEvent(
     val deviceId: String,
     val appVersion: String,
     val communicationType: String = "note",
+    val clearCompanyAssignment: Boolean = false,
 )
