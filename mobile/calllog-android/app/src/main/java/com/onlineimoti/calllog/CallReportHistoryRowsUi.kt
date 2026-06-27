@@ -41,6 +41,7 @@ internal class CallReportHistoryRowsUi(
             localNotes = localNotes,
             serverEvents = if (remoteEnabled) serverEvents else emptyList(),
         )
+        val companyNames = principal.companies.associate { it.id to it.name }
         val page = paginationUi.currentPage(rows)
         root.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -54,7 +55,7 @@ internal class CallReportHistoryRowsUi(
             latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
                 addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
             }
-            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled)) }
+            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, remoteEnabled, companyNames)) }
             paginationUi.addNavigation(this, page, onPageChanged)
             addStatus(
                 container = this,
@@ -155,6 +156,7 @@ internal class CallReportHistoryRowsUi(
         row: CallReportHistoryRow,
         onEditCallNote: (ContactCallNote) -> Unit,
         remoteEnabled: Boolean,
+        companyNames: Map<String, String>,
     ): LinearLayout {
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val serverConfirmed = isServerConfirmed(phone, row)
@@ -180,20 +182,41 @@ internal class CallReportHistoryRowsUi(
                 isFocusable = true
                 setOnClickListener {
                     val local = row.localNote
-                    onEditCallNote(
-                        if (remoteEnabled && row.serverNewer) {
-                            local.copy(note = row.text, savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L))
-                        } else {
-                            local
-                        },
-                    )
+                    val editableNote = if (remoteEnabled && row.serverNewer) {
+                        local.copy(
+                            note = row.text,
+                            savedAt = maxOf(local.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
+                            companyId = row.companyId.ifBlank { local.companyId },
+                        )
+                    } else {
+                        local.copy(companyId = row.companyId.ifBlank { local.companyId })
+                    }
+                    onEditCallNote(editableNote)
                 }
             }
             addView(metaView(row, serverConfirmed))
+            companyLabel(row.companyId, companyNames)?.let(::addView)
             if (row.text.isNotBlank()) addView(noteText(row.text, colors.third))
             if (pendingNote && !serverConfirmed) addView(pendingSyncText())
             if (!foreignRecord && remoteEnabled && row.serverNewer) addView(serverNewerText())
             if (row.authorIsOtherBroker && row.authorName.isNotBlank()) addView(authorText(row.authorName))
+        }
+    }
+
+    private fun companyLabel(companyId: String, companyNames: Map<String, String>): TextView? {
+        val id = companyId.trim()
+        if (id.isBlank()) return null
+        val name = companyNames[id].orEmpty().ifBlank { id }
+        return TextView(activity).apply {
+            text = name
+            textSize = 11.5f
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(dp(7), dp(3), dp(7), dp(3))
+            background = roundedRect(Color.rgb(241, 245, 249), dp(8), Color.TRANSPARENT, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6) }
         }
     }
 
