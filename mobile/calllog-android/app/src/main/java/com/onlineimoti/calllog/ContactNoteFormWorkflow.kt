@@ -1,9 +1,6 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
 
 /**
  * Shared business flow for every note editor, whether it is full-screen or an
@@ -31,7 +28,7 @@ internal data class ContactNoteFormSaveResult(
 internal object ContactNoteFormWorkflow {
     fun initialTopicState(context: Context, draft: ContactNoteFormDraft): ContactNoteTopicState {
         val visible = shouldShowTopicSelector(context, draft)
-        val localOnly = visible && !CrmContactSyncStore.isEnabled(context, draft.phone)
+        val localOnly = visible && !ContactServerCompanyScope.isAvailable(context, draft.phone)
         return ContactNoteTopicState(
             visible = visible,
             loading = visible && !localOnly,
@@ -167,11 +164,7 @@ internal object ContactNoteFormWorkflow {
     private fun shouldAutoEnableServerSync(context: Context, draft: ContactNoteFormDraft): Boolean {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))) return false
         if (CrmContactSyncStore.isEnabled(context, draft.phone)) return false
-        if (draft.phone.isBlank()) return false
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            return true
-        }
-        return RmRealContactLookup.findContactId(context, draft.phone) <= 0L
+        return ContactServerCompanyScope.isUnknownNumber(context, draft.phone)
     }
 
     private const val TOPIC_REQUEST_FAILED = "topic_request_failed"
