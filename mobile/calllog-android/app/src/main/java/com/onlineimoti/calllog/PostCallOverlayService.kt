@@ -64,6 +64,7 @@ class PostCallOverlayService : Service() {
             ui = ui,
             phone = { state.phone },
             title = { state.title },
+            lookupLines = { state.lines },
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
