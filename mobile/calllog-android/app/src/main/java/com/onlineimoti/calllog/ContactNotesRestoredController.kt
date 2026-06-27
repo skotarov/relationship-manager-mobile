@@ -183,6 +183,7 @@ internal class ContactNotesRestoredController(
             callAt = note.callAt,
             durationSeconds = note.durationSeconds,
             companyId = note.companyId,
+            initialNoteText = note.note,
         )
     }
 
