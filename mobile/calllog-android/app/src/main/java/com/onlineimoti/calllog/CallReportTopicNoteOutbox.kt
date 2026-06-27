@@ -19,6 +19,7 @@ internal data class CallReportQueuedTopicNote(
     val note: String,
     val contactName: String,
     val updatedAtMs: Long,
+    val communicationType: String = "note",
 ) {
     fun toSyncEvent(context: Context) = CallReportTopicSyncEvent(
         clientEventId = clientEventId,
@@ -31,10 +32,11 @@ internal data class CallReportQueuedTopicNote(
         contactName = contactName,
         deviceId = CallReportInstallationId.get(context),
         appVersion = BuildConfig.VERSION_NAME,
+        communicationType = communicationType,
     )
 }
 
-/** Durable queue for notes explicitly classified under one company topic. */
+/** Durable queue for a note or SMS explicitly classified under one company topic. */
 internal object CallReportTopicNoteOutbox {
     private const val PREFS = "callreport_topic_note_outbox"
     private const val KEY_OPERATIONS = "operations_v1"
@@ -87,6 +89,30 @@ internal object CallReportTopicNoteOutbox {
             note = note.trim(),
             contactName = contactName(appContext, phone),
             updatedAtMs = System.currentTimeMillis(),
+        ))
+    }
+
+    fun enqueueSms(
+        context: Context,
+        phone: String,
+        sms: SmsMessageRecord,
+        companyId: String,
+    ): Boolean {
+        val appContext = context.applicationContext
+        val target = companyId.trim()
+        val providerId = sms.providerId.trim()
+        if (target.isBlank() || providerId.isBlank() || phoneKey(phone).isBlank() || sms.timestampMs <= 0L) return false
+        return enqueue(appContext, CallReportQueuedTopicNote(
+            clientEventId = ServerRecordIndex.communicationEventId(appContext, "sms", providerId),
+            companyId = target,
+            phone = phone,
+            direction = if (sms.isOutgoing) "out" else "in",
+            occurredAtMs = sms.timestampMs,
+            durationSeconds = 0L,
+            note = sms.body.trim(),
+            contactName = contactName(appContext, phone),
+            updatedAtMs = System.currentTimeMillis(),
+            communicationType = "sms",
         ))
     }
 
@@ -149,6 +175,7 @@ internal object CallReportTopicNoteOutbox {
         put("note", note)
         put("contact_name", contactName)
         put("updated_at_ms", updatedAtMs)
+        put("communication_type", communicationType)
     }
 
     private fun JSONObject.toOperation(): CallReportQueuedTopicNote? {
@@ -166,6 +193,7 @@ internal object CallReportTopicNoteOutbox {
             note = optString("note"),
             contactName = optString("contact_name").trim(),
             updatedAtMs = optLong("updated_at_ms", 0L).takeIf { it > 0L } ?: System.currentTimeMillis(),
+            communicationType = optString("communication_type", "note").trim().ifBlank { "note" },
         )
     }
 
