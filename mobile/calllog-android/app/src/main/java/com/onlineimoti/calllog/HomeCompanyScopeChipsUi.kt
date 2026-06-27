@@ -4,7 +4,9 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableString
+import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -30,7 +32,7 @@ internal class HomeCompanyScopeChipsUi(
         }
         return HorizontalScrollView(activity).apply {
             isHorizontalScrollBarEnabled = false
-            overScrollMode = HorizontalScrollView.OVER_SCROLL_NEVER
+            overScrollMode = View.OVER_SCROLL_NEVER
             addView(row)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -41,7 +43,15 @@ internal class HomeCompanyScopeChipsUi(
 
     private fun chip(label: HomeCompanyScopeLabel): TextView {
         val hasPhase = label.phase in 1..4
-        val colors = if (label.hasGeneralNote) NoteUiStyle.General else GrayChipColors
+        val colors = if (label.hasGeneralNote) {
+            ChipColors(
+                background = NoteUiStyle.General.background,
+                border = NoteUiStyle.General.border,
+                text = NoteUiStyle.General.text,
+            )
+        } else {
+            GrayChipColors
+        }
         val textValue = buildString {
             append("[ ")
             if (hasPhase) append("● ")
@@ -55,7 +65,7 @@ internal class HomeCompanyScopeChipsUi(
                     ForegroundColorSpan(phaseColor(label.phase)),
                     dotIndex,
                     dotIndex + 1,
-                    SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
             }
         }
@@ -78,9 +88,15 @@ internal class HomeCompanyScopeChipsUi(
         else -> GrayChipColors.text
     }
 
-    private object GrayChipColors {
-        val background: Int = Color.rgb(241, 245, 249)
-        val border: Int = Color.rgb(203, 213, 225)
-        val text: Int = Color.rgb(71, 85, 105)
-    }
+    private data class ChipColors(
+        val background: Int,
+        val border: Int,
+        val text: Int,
+    )
+
+    private val GrayChipColors = ChipColors(
+        background = Color.rgb(241, 245, 249),
+        border = Color.rgb(203, 213, 225),
+        text = Color.rgb(71, 85, 105),
+    )
 }
