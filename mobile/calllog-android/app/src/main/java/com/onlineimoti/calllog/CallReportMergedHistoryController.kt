@@ -127,6 +127,7 @@ internal class CallReportMergedHistoryController(
         phone: String,
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
+        onEditSms: (SmsMessageRecord, String) -> Unit,
     ) {
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
         addServerErrorBelowContactName(root, remoteEnabled)
@@ -143,6 +144,7 @@ internal class CallReportMergedHistoryController(
             serverLoading = serverLoading,
             openFilteredLog = openFilteredLog,
             onEditCallNote = onEditCallNote,
+            onEditSms = onEditSms,
             onPageChanged = rerender,
         )
     }
