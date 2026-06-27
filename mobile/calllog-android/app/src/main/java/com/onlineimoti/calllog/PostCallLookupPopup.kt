@@ -17,6 +17,7 @@ internal class PostCallLookupPopup(
     private val ui: PostCallOverlayUi,
     private val phone: () -> String,
     private val title: () -> String,
+    private val lookupLines: () -> List<String>,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
     private val addDraggableOverlay: (View, Boolean, Int, Long, () -> Unit) -> Unit,
@@ -70,7 +71,13 @@ internal class PostCallLookupPopup(
             titleValue.isNotBlank() && titleValue != phoneValue -> "$titleValue • $phoneValue"
             else -> phoneValue.ifBlank { titleValue.ifBlank { "Call Report" } }
         }
-        val content = PostCallLookupDisplayRows.build(service, phoneValue, identity, remoteRows)
+        val content = PostCallLookupDisplayRows.build(
+            context = service,
+            phone = phoneValue,
+            identity = identity,
+            remoteRows = remoteRows,
+            lookupServerLines = lookupLines(),
+        )
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -137,6 +144,17 @@ internal class PostCallLookupPopup(
                 topMargin = topMargin,
                 iconRes = R.drawable.ic_chat_note,
             )
+            PostCallLookupDisplayRow.Kind.SERVER_INFO -> TextView(service).apply {
+                text = row.text
+                textSize = 13.5f
+                setTextColor(Color.rgb(75, 85, 99))
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_system_call_log, 0, 0, 0)
+                compoundDrawablePadding = ui.dp(5)
+                setPadding(0, topMargin, 0, 0)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
         }
     }
 }
