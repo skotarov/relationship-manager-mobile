@@ -238,7 +238,13 @@ internal object CallReportNotifications {
         val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, actionIssuedAt = actionIssuedAt)
         val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationIdentity)
         val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, 0L, 0L, actionIssuedAt)
-        val content = PostCallLookupDisplayRows.build(context, phone, notificationIdentity, remoteRows)
+        val content = PostCallLookupDisplayRows.build(
+            context = context,
+            phone = phone,
+            identity = notificationIdentity,
+            remoteRows = remoteRows,
+            lookupServerLines = result.lines,
+        )
         val expandedRows = content.rows.map { row -> row.plainText() }
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(content.header)
         expandedRows.forEach { row -> inboxStyle.addLine(row) }
