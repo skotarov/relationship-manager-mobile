@@ -93,7 +93,7 @@ internal class PostCallGeneralNoteEditor(
         })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
         card.addView(titleRow)
-        form.addTopicFieldTo(card)
+        form.addTopicFieldTo(card, generalNoteInput)
         card.addView(generalNoteInput)
         card.addView(actionRow(generalNoteInput, ::saveCurrent, showNoteEditor, openContactNotesScreen, stopOverlay))
 
