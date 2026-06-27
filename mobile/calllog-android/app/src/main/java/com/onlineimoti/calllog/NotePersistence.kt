@@ -27,6 +27,7 @@ internal object NotePersistence {
         direction: String = "",
         callAt: Long = 0L,
         durationSeconds: Long = 0L,
+        companyId: String = "",
     ): Boolean {
         val trimmed = note.trim()
         if (trimmed.isNotBlank()) {
@@ -37,6 +38,7 @@ internal object NotePersistence {
                 direction = direction,
                 callAt = callAt,
                 durationSeconds = durationSeconds,
+                companyId = companyId,
             )
         }
         return deleteCallNote(context, phoneNumber, callAt, direction)
