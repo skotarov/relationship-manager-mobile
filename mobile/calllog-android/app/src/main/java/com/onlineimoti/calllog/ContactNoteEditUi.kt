@@ -158,14 +158,10 @@ internal class ContactNoteEditUi(
         return EditText(activity).apply {
             setText(value)
             setSelection(text?.length ?: 0)
-            hint = activity.getString(
-                if (current.isGeneralNote) R.string.dynamic_note_general_hint else R.string.dynamic_note_call_hint,
-            )
             minLines = if (current.isGeneralNote) 4 else 3
             maxLines = 8
             textSize = 16f
             setTextColor(colors.text)
-            setHintTextColor(colors.metaText)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             setSingleLine(false)
             gravity = Gravity.TOP or Gravity.START
