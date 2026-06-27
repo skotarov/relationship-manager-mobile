@@ -30,7 +30,8 @@ internal data class ContactNoteEditUiState(
 internal class ContactNoteEditUi(
     private val activity: Activity,
     private val state: () -> ContactNoteEditUiState,
-    private val onTopicSelected: (String) -> Unit,
+    private val onTopicSelected: (String, EditText) -> Unit,
+    private val onNoteInputReady: (EditText) -> Unit,
     private val onTopicSpinnerReady: (Spinner) -> Unit,
     private val saveAndClose: (String) -> Unit,
     private val saveAndOpenCalendar: (String) -> Unit,
@@ -40,6 +41,7 @@ internal class ContactNoteEditUi(
 
     fun buildContent(): ScrollView {
         val input = noteInput()
+        onNoteInputReady(input)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(18))
@@ -56,7 +58,7 @@ internal class ContactNoteEditUi(
         val current = state()
         if (!current.isGeneralNote && current.callAt > 0L) card.addView(callInfoRow(current))
         card.addView(crmModeRow(current))
-        topicRow(current)?.let(card::addView)
+        topicRow(current, input)?.let(card::addView)
         card.addView(input)
         card.addView(actionRow(input))
         root.addView(card)
@@ -139,9 +141,9 @@ internal class ContactNoteEditUi(
         }
     }
 
-    private fun topicRow(current: ContactNoteEditUiState): LinearLayout? = topicFieldUi.create(
+    private fun topicRow(current: ContactNoteEditUiState, input: EditText): LinearLayout? = topicFieldUi.create(
         state = current.topic,
-        onSelected = onTopicSelected,
+        onSelected = { companyId -> onTopicSelected(companyId, input) },
         onSpinnerReady = onTopicSpinnerReady,
     )
 
