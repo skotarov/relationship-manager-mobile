@@ -24,6 +24,7 @@ internal class CallReportMergedHistoryController(
     private var started = false
     private var localLoading = false
     private var serverLoading = false
+    private var serverLoaded = false
     private var latestLocalCall: PhoneCallRecord? = null
     private var localSms: List<SmsMessageRecord> = emptyList()
     private var localNotes: List<ContactCallNote> = emptyList()
@@ -56,7 +57,10 @@ internal class CallReportMergedHistoryController(
                     return@post
                 }
                 serverLoading = false
-                result.onSuccess(::acceptServerHistory).onFailure { loadError = serverErrorText(it) }
+                result.onSuccess(::acceptServerHistory).onFailure {
+                    serverLoaded = false
+                    loadError = serverErrorText(it)
+                }
                 rerender()
             }
         }
@@ -81,6 +85,40 @@ internal class CallReportMergedHistoryController(
                 localLoading = false
                 rerender()
             }
+        }
+    }
+
+    fun hasCompanyMainNoteScope(): Boolean = serverLoaded && serverHistory.principal.companies.isNotEmpty()
+
+    fun companyMainNotes(phone: String): List<CallReportCompanyMainNote> {
+        if (!hasCompanyMainNoteScope() || phone.isBlank()) return emptyList()
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        val latestByCompany = mutableMapOf<String, CallReportHistoryEvent>()
+        serverHistory.events.forEach { event ->
+            if (!event.communicationType.equals("note", ignoreCase = true)) return@forEach
+            if (event.companyId.isBlank() || HomeCallPageLoader.noteKey(event.phone) != phoneKey) return@forEach
+            if (event.direction.isNotBlank() || event.durationSeconds > 0L) return@forEach
+            if (event.clientEventId.isNotBlank() && !event.clientEventId.contains(":general:")) return@forEach
+            val current = latestByCompany[event.companyId]
+            if (current == null || event.updatedAtMs >= current.updatedAtMs) latestByCompany[event.companyId] = event
+        }
+        return serverHistory.principal.companies.map { company ->
+            val remote = latestByCompany[company.id]
+            val pending = CallReportCompanyGeneralNotePending.isPending(activity, phone, company.id)
+            val cached = CallReportCompanyGeneralNoteStore.noteFor(activity, phone, company.id)
+            val note = when {
+                pending && cached.isNotBlank() -> cached
+                remote != null -> remote.note
+                else -> cached
+            }
+            CallReportCompanyMainNote(
+                companyId = company.id,
+                companyName = company.name,
+                note = note,
+                updatedAtMs = remote?.updatedAtMs ?: 0L,
+                confirmedByServer = remote != null && !pending && remote.note.isNotBlank(),
+                pending = pending,
+            )
         }
     }
 
@@ -129,9 +167,10 @@ internal class CallReportMergedHistoryController(
     }
 
     private fun clearServerStateAndRerenderIfNeeded() {
-        val hadServerState = serverLoading || serverHistory.events.isNotEmpty() ||
+        val hadServerState = serverLoading || serverLoaded || serverHistory.events.isNotEmpty() ||
             serverHistory.principal != CallReportHistoryPrincipal() || loadError.isNotBlank()
         serverLoading = false
+        serverLoaded = false
         serverHistory = CallReportHistoryLookupResult()
         loadError = ""
         if (hadServerState) rerender()
@@ -139,6 +178,7 @@ internal class CallReportMergedHistoryController(
 
     private fun acceptServerHistory(history: CallReportHistoryLookupResult) {
         serverHistory = history
+        serverLoaded = true
         loadError = ""
         ServerRecordIndex.markConfirmed(activity, history.events.map { it.clientEventId })
     }
