@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -46,27 +47,22 @@ internal object CallReportHistoryLookupClient {
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(config: AppConfig, phone: String): CallReportHistoryLookupResult {
-        if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank() || phone.isBlank()) {
-            return CallReportHistoryLookupResult()
+        if (!isReady(config) || phone.isBlank()) return CallReportHistoryLookupResult()
+        return request(config, listOf(phone)).also { result ->
+            updateGeneralNoteServerPresence(phone, result.events)
         }
-        val url = buildEndpoint(config.baseUrl, PATH, linkedMapOf("phone" to phone, "limit" to "200"))
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
-            if (status !in 200..299) throw IllegalStateException("HTTP $status")
-            val json = JSONObject(body)
-            if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
-            return parse(json).also { result -> updateGeneralNoteServerPresence(phone, result.events) }
-        } finally {
-            connection.disconnect()
-        }
+    }
+
+    /** One request for up to 50 phones; used by Home to avoid serial per-row lookups. */
+    fun lookupMany(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
+        if (!isReady(config)) return CallReportHistoryLookupResult()
+        val requestedPhones = phones
+            .map(String::trim)
+            .filter { phoneKey(it).isNotBlank() }
+            .distinctBy(::phoneKey)
+            .take(50)
+        if (requestedPhones.isEmpty()) return CallReportHistoryLookupResult()
+        return request(config, requestedPhones)
     }
 
     /** Server presence of the main contact note, independent of this installation's client_event_id. */
@@ -82,6 +78,45 @@ internal object CallReportHistoryLookupClient {
         }
     }
 
+    private fun request(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
+        val singlePhone = phones.singleOrNull()
+        val url = if (singlePhone != null) {
+            buildEndpoint(config.baseUrl, PATH, linkedMapOf("phone" to singlePhone, "limit" to "200"))
+        } else {
+            buildEndpoint(config.baseUrl, PATH, linkedMapOf("limit" to "200"))
+        }
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = if (singlePhone != null) "GET" else "POST"
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            if (singlePhone == null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                val payload = JSONObject().apply {
+                    put("phones", JSONArray().apply { phones.forEach(::put) })
+                }.toString()
+                connection.outputStream.use { output ->
+                    output.write(payload.toByteArray(Charsets.UTF_8))
+                }
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
+            if (status !in 200..299) throw IllegalStateException("HTTP $status")
+            val json = JSONObject(body)
+            if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
+            return parse(json)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun isReady(config: AppConfig): Boolean =
+        config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
+
     private fun updateGeneralNoteServerPresence(phone: String, events: List<CallReportHistoryEvent>) {
         val key = phoneKey(phone)
         if (key.isBlank()) return
@@ -93,11 +128,11 @@ internal object CallReportHistoryLookupClient {
     }
 
     private fun isGeneralNoteEvent(event: CallReportHistoryEvent, requestedPhoneKey: String): Boolean {
-        if (!event.communicationType.equals("note", ignoreCase = true)) return false
         if (phoneKey(event.phone) != requestedPhoneKey) return false
         return event.clientEventId.contains(":note:general:") ||
             event.clientEventId.contains(":topic:general:") ||
-            (event.direction.isBlank() && event.durationSeconds <= 0L)
+            (event.communicationType.equals("note", ignoreCase = true) &&
+                event.direction.isBlank() && event.durationSeconds <= 0L)
     }
 
     private fun phoneKey(phone: String): String = HomeCallPageLoader.noteKey(phone)
