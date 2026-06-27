@@ -94,7 +94,7 @@ internal class ContactNotesRestoredController(
             phone = phone,
             companyNotes = historyController.companyMainNotes(phone),
             useCompanyScope = historyController.hasCompanyMainNoteScope(),
-            onEdit = ::openGeneralNoteEditor,
+            onEditCompany = ::openGeneralNoteEditor,
         )
         PendingCallNoteStore.reconcilePendingForPhone(activity, phone)
         historyController.addSection(
@@ -110,12 +110,12 @@ internal class ContactNotesRestoredController(
         })
     }
 
-    private fun openGeneralNoteEditor() {
-        CallNoteEditorLauncher.startEditor(
+    private fun openGeneralNoteEditor(companyId: String = "") {
+        CompanyMainNoteEditorLauncher.start(
             context = activity,
-            mode = PostCallOverlayService.MODE_GENERAL_NOTE,
             phone = phone,
             title = titleText,
+            companyId = companyId,
         )
     }
 
