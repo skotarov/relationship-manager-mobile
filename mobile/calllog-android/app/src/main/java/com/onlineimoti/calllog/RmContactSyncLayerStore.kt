@@ -50,6 +50,28 @@ internal object RmContactSyncLayerStore {
     }
 
     /**
+     * Changes only the CRM/server-sync switch. It never creates, updates or deletes
+     * the RM raw contact layer. Use this for the CRM button in the contact header.
+     */
+    fun setCloudSyncWithoutRmLayer(context: Context, phone: String, enabled: Boolean): Boolean {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return false
+
+        CrmContactSyncStore.setEnabled(appContext, normalizedPhone, enabled)
+        if (enabled) {
+            // The generic server worker reads the enabled flag directly; it has no
+            // dependency on an Android RM raw contact.
+            CallReportNoteOutbox.enqueueCurrentLocalNotes(appContext, normalizedPhone)
+            CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "crm_toggle_without_rm_layer")
+        } else {
+            // Do not send pending local changes once CRM has been switched off.
+            CallReportNoteOutbox.removeForPhone(appContext, normalizedPhone)
+        }
+        return true
+    }
+
+    /**
      * Deletes only this app's RM raw contact for the number. A normal Android
      * contact is never touched. Cloud Sync is disabled first, otherwise a later
      * sync could recreate the deleted RM layer.
