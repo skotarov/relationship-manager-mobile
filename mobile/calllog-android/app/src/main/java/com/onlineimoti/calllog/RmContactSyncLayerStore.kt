@@ -49,6 +49,22 @@ internal object RmContactSyncLayerStore {
         return true
     }
 
+    /**
+     * Deletes only this app's RM raw contact for the number. A normal Android
+     * contact is never touched. Cloud Sync is disabled first, otherwise a later
+     * sync could recreate the deleted RM layer.
+     */
+    fun deleteRmContact(context: Context, phone: String): Boolean {
+        val appContext = context.applicationContext
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank() || !RmContactPermissions.canReadAndWriteContacts(appContext)) return false
+
+        CrmContactSyncStore.setEnabled(appContext, normalizedPhone, false)
+        CallReportNoteOutbox.removeForPhone(appContext, normalizedPhone)
+        RmCloudSyncLabelStore.removeFromRmAndVisibleContacts(appContext, normalizedPhone)
+        return deleteRmLayer(appContext, normalizedPhone)
+    }
+
     fun isEnabled(context: Context, phone: String): Boolean {
         return groupNameForCurrentRules(context, phone) == RmCloudSyncLabelStore.GROUP_NAME
     }
