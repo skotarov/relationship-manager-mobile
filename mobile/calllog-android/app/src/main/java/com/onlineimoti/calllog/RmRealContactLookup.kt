@@ -71,8 +71,15 @@ internal object RmRealContactLookup {
         }.getOrNull()
     }
 
+    /**
+     * PhoneLookup returns an aggregate Contacts row. The aggregate may include the RM
+     * raw contact plus another raw contact with a different number, so only accept a
+     * non-RM raw contact that itself contains the queried number.
+     */
     private fun findByPhoneLookup(context: Context, phone: String): Long {
         if (phone.isBlank()) return 0L
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return 0L
         val contactId = runCatching {
             context.contentResolver.query(
                 ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phone).build(),
@@ -82,7 +89,7 @@ internal object RmRealContactLookup {
                 null,
             )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
-        return realRawForContactId(context, contactId)
+        return realRawForContactPhone(context, contactId, normalizedPhone)
     }
 
     private fun findByScanningPhoneRows(context: Context, normalizedPhone: String): Long {
@@ -110,21 +117,32 @@ internal object RmRealContactLookup {
         }.getOrDefault(0L)
     }
 
-    private fun realRawForContactId(context: Context, contactId: Long): Long {
-        if (contactId <= 0L) return 0L
+    private fun realRawForContactPhone(context: Context, contactId: Long, normalizedPhone: String): Long {
+        if (contactId <= 0L || normalizedPhone.isBlank()) return 0L
         return runCatching {
             context.contentResolver.query(
-                ContactsContract.RawContacts.CONTENT_URI,
-                arrayOf(ContactsContract.RawContacts._ID, ContactsContract.RawContacts.ACCOUNT_TYPE),
-                "${ContactsContract.RawContacts.CONTACT_ID}=? AND ${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(contactId.toString()),
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.Data.RAW_CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ),
+                "${ContactsContract.Data.CONTACT_ID}=? AND " +
+                    "${ContactsContract.Data.MIMETYPE}=? AND " +
+                    "(${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR " +
+                    "${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?) AND " +
+                    "${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(
+                    contactId.toString(),
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+                    CallReportContactIntegration.ACCOUNT_TYPE,
+                ),
                 null,
             )?.use { cursor ->
                 var found = 0L
                 while (cursor.moveToNext() && found <= 0L) {
-                    val rawId = cursor.getLongOrZero(ContactsContract.RawContacts._ID)
-                    val accountType = cursor.getStringOrEmpty(ContactsContract.RawContacts.ACCOUNT_TYPE)
-                    if (rawId > 0L && accountType != CallReportContactIntegration.ACCOUNT_TYPE) found = rawId
+                    val rawId = cursor.getLongOrZero(ContactsContract.Data.RAW_CONTACT_ID)
+                    val rowPhone = cursor.getStringOrEmpty(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    if (rawId > 0L && samePhone(rowPhone, normalizedPhone)) found = rawId
                 }
                 found
             } ?: 0L
