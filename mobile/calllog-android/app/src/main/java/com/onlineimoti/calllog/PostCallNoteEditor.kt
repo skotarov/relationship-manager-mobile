@@ -107,7 +107,7 @@ internal class PostCallNoteEditor(
         card.addView(titleRow)
 
         if (callAtValue > 0L) card.addView(callInfoRow(directionValue, callAtValue, durationValue))
-        form.addTopicFieldTo(card)
+        form.addTopicFieldTo(card, callNoteInput)
         card.addView(callNoteInput)
         card.addView(actionRow(callNoteInput, ::saveCurrent, showGeneralNoteEditor, openContactNotesScreen, stopOverlay))
 
