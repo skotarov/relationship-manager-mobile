@@ -17,6 +17,13 @@ internal object HomeCompanyGeneralNoteLabels {
             .take(50)
         if (requestedPhones.isEmpty()) return emptyMap()
 
+        // Company scopes are meaningful only after CRM has been enabled for this contact.
+        val crmPhoneKeys = requestedPhones
+            .filter { CrmContactSyncStore.isEnabled(context, it) }
+            .map { HomeCallPageLoader.noteKey(it) }
+            .toSet()
+        if (crmPhoneKeys.isEmpty()) return emptyMap()
+
         val result = CallReportHistoryLookupClient.lookupMany(config, requestedPhones)
         val companiesById = result.principal.companies.associate { it.id to it.name }
         val namesByPhone = linkedMapOf<String, LinkedHashSet<String>>()
@@ -24,7 +31,7 @@ internal object HomeCompanyGeneralNoteLabels {
         for (event in result.events) {
             if (event.note.isBlank() || event.companyId.isBlank()) continue
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
-            if (phoneKey.isBlank()) continue
+            if (phoneKey.isBlank() || phoneKey !in crmPhoneKeys) continue
 
             // Topic general notes have a stable event id. The fallback preserves
             // compatibility with earlier server records that have no such id.
@@ -42,6 +49,7 @@ internal object HomeCompanyGeneralNoteLabels {
         // topic outbox has completed its server round trip.
         for (phone in requestedPhones) {
             val phoneKey = HomeCallPageLoader.noteKey(phone)
+            if (phoneKey !in crmPhoneKeys) continue
             for (company in result.principal.companies) {
                 if (CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id).isNotBlank()) {
                     namesByPhone.getOrPut(phoneKey) { linkedSetOf() }.add(company.name)
