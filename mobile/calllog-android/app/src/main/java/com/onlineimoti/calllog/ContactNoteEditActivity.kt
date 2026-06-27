@@ -19,6 +19,7 @@ class ContactNoteEditActivity : Activity() {
     private var actionIssuedAt: Long = 0L
     private var isGeneralNote = false
     private var preferredCompanyId = ""
+    private var initialNoteText = ""
     private var topicState = ContactNoteTopicState(visible = false)
     private var topicSpinner: Spinner? = null
     private var noteInput: EditText? = null
@@ -96,6 +97,7 @@ class ContactNoteEditActivity : Activity() {
         actionIssuedAt = intent.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
         preferredCompanyId = intent.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
+        initialNoteText = if (isGeneralNote) "" else intent.getStringExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT).orEmpty()
     }
 
     private fun draft(): ContactNoteFormDraft = ContactNoteFormDraft(
@@ -117,6 +119,7 @@ class ContactNoteEditActivity : Activity() {
         isGeneralNote = isGeneralNote,
         topic = topicState,
         willEnableServerSync = ContactNoteFormWorkflow.willEnableServerSync(this, draft(), topicState),
+        initialNoteText = initialNoteText,
     )
 
     private fun loadTopicCompanies() {
@@ -288,7 +291,7 @@ class ContactNoteEditActivity : Activity() {
         val serverSyncEnabled: Boolean = false,
     )
 
-    companion object {
+    private companion object {
         const val EXTRA_SHOW_NUMBER_KEYPAD = "show_number_keypad"
         const val EXTRA_NUMBER = "number"
     }
