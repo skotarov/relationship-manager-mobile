@@ -113,7 +113,14 @@ class ContactNoteEditActivity : Activity() {
             val loadedState = ContactNoteFormWorkflow.loadTopics(applicationContext, initialState)
             runOnUiThread {
                 if (isFinishing || isDestroyed || !topicState.visible) return@runOnUiThread
-                topicState = loadedState
+                topicState = if (
+                    preferredCompanyId.isNotBlank() &&
+                    loadedState.companies.any { company -> company.id == preferredCompanyId }
+                ) {
+                    loadedState.copy(selectedCompanyId = preferredCompanyId)
+                } else {
+                    loadedState
+                }
                 topicSpinner?.let(::bindTopicSpinner)
             }
         }
