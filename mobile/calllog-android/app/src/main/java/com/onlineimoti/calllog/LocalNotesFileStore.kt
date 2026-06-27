@@ -59,6 +59,20 @@ object LocalNotesFileStore {
         }.getOrDefault("")
     }
 
+    fun companyIdForCall(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || callAt <= 0L || !canUseConfiguredFolder(context)) return ""
+        val file = callLogFile(context, phoneKey, createDirs = false)
+        if (!file.exists()) return ""
+        return runCatching {
+            file.readLines().asReversed().firstNotNullOfOrNull { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@firstNotNullOfOrNull null
+                if (!sameCall(json, callAt, direction)) return@firstNotNullOfOrNull null
+                json.optString("company_id").trim().takeIf { it.isNotBlank() }
+            }.orEmpty()
+        }.getOrDefault("")
+    }
+
     fun clientNoteIdForCall(phoneNumber: String, callAt: Long, direction: String = ""): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
         if (phoneKey.isBlank()) return ""
@@ -90,6 +104,7 @@ object LocalNotesFileStore {
                     direction = direction,
                     durationSeconds = json.optLong("duration", 0L),
                     clientNoteId = clientNoteId,
+                    companyId = json.optString("company_id").trim(),
                 )
             }.sortedByDescending { note -> note.callAt.takeIf { it > 0L } ?: note.savedAt }
         }.getOrDefault(emptyList())
@@ -130,6 +145,7 @@ object LocalNotesFileStore {
         callAt: Long = 0L,
         durationSeconds: Long = 0L,
         isUnknownContact: Boolean = false,
+        companyId: String = "",
     ): Boolean {
         val phoneKey = phoneNumber.normalizePhoneKey()
         val trimmedNote = note.trim()
@@ -137,7 +153,7 @@ object LocalNotesFileStore {
         return runCatching {
             val now = System.currentTimeMillis()
             val record = JSONObject().apply {
-                put("v", 1)
+                put("v", 2)
                 put("type", "call_note")
                 put("id", clientNoteIdForCall(phoneNumber, callAt.takeIf { it > 0L } ?: now, direction))
                 put("at", now)
@@ -146,6 +162,7 @@ object LocalNotesFileStore {
                 if (direction.isNotBlank()) put("direction", direction)
                 if (callAt > 0L) put("call_at", callAt)
                 if (durationSeconds > 0L) put("duration", durationSeconds)
+                if (companyId.trim().isNotBlank()) put("company_id", companyId.trim())
                 put("note", trimmedNote)
             }
             val file = callLogFile(context, phoneKey, createDirs = true)
