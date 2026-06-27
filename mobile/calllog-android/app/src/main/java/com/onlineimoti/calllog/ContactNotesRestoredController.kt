@@ -1,11 +1,11 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 /**
@@ -18,6 +18,10 @@ internal class ContactNotesRestoredController(
 ) {
     private var phone: String = ""
     private var titleText: String = ""
+    private val handler = Handler(Looper.getMainLooper())
+    private val delayedServerRefresh = Runnable {
+        if (!activity.isFinishing && !activity.isDestroyed) historyController.refreshServer(phone)
+    }
 
     private val externalActions by lazy { ContactNotesExternalActions(activity) }
     private val headerUi by lazy { ContactNotesHeaderUi(activity, ::dp) }
@@ -52,15 +56,17 @@ internal class ContactNotesRestoredController(
     fun onResume() {
         historyController.refreshLocal(phone)
         historyController.refreshServer(phone)
+        handler.removeCallbacks(delayedServerRefresh)
+        handler.postDelayed(delayedServerRefresh, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
         render()
     }
 
     fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         historyController.release()
     }
 
     private fun render() {
-        val config = ConfigStore.load(activity)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(18), dp(16), dp(24))
@@ -153,4 +159,8 @@ internal class ContactNotesRestoredController(
     }
 
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val SERVER_CONFIRMATION_REFRESH_DELAY_MS = 1_500L
+    }
 }
