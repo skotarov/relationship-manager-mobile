@@ -112,21 +112,18 @@ internal class PostCallOverlayUi(private val context: Context) {
     fun callNoteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
         return noteEditText(value, hintText, minLineCount, topMargin).apply {
             setTextColor(NoteUiStyle.Call.text)
-            setHintTextColor(NoteUiStyle.Call.metaText)
             background = roundedRect(NoteUiStyle.Call.background, dp(12), NoteUiStyle.Call.border, dp(1))
         }
     }
 
-    fun noteEditText(value: String, hintText: String, minLineCount: Int, topMargin: Int): EditText {
+    fun noteEditText(value: String, @Suppress("UNUSED_PARAMETER") hintText: String, minLineCount: Int, topMargin: Int): EditText {
         val colors = NoteUiStyle.General
         return EditText(context).apply {
             setText(value)
-            hint = hintText
             minLines = minLineCount
             maxLines = 5
             textSize = 16f
             setTextColor(colors.text)
-            setHintTextColor(colors.metaText)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             setSingleLine(false)
             gravity = Gravity.TOP or Gravity.START
