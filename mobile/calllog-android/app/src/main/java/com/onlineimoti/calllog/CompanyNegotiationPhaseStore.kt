@@ -14,7 +14,7 @@ internal object CompanyNegotiationPhaseStore {
     fun state(context: Context, phone: String, companyId: String): ContactNegotiationPhaseState {
         val key = key(phone, companyId) ?: return ContactNegotiationPhaseState()
         val prefs = prefs(context)
-        if (!prefs.contains(KEY_PHASE_PREFIX + key) && !prefs.contains(KEY_UPDATED_AT_PREFIX + key)) {
+        if (!hasSavedState(context, phone, companyId)) {
             return ContactNegotiationPhaseStore.state(context, phone)
         }
         val phase = normalize(prefs.getInt(KEY_PHASE_PREFIX + key, ContactNegotiationPhaseStore.NONE))
@@ -22,6 +22,12 @@ internal object CompanyNegotiationPhaseStore {
         val updatedAt = if (phase != ContactNegotiationPhaseStore.NONE && storedAt == 0L) System.currentTimeMillis() else storedAt
         if (updatedAt != storedAt) prefs.edit().putLong(KEY_UPDATED_AT_PREFIX + key, updatedAt).apply()
         return ContactNegotiationPhaseState(phase, updatedAt)
+    }
+
+    fun hasSavedState(context: Context, phone: String, companyId: String): Boolean {
+        val key = key(phone, companyId) ?: return false
+        val prefs = prefs(context)
+        return prefs.contains(KEY_PHASE_PREFIX + key) || prefs.contains(KEY_UPDATED_AT_PREFIX + key)
     }
 
     fun selectedPhase(context: Context, phone: String, companyId: String): Int = state(context, phone, companyId).phase
@@ -43,6 +49,13 @@ internal object CompanyNegotiationPhaseStore {
             phase = normalize(server.phase),
             updatedAtMs = server.updatedAtMs.coerceAtLeast(0L),
         )
+        val hasCompanyState = hasSavedState(context, phone, companyId)
+        if (!hasCompanyState) {
+            // A real server value belongs to this company and must override the
+            // old phone-wide fallback. A missing server value keeps the fallback visible.
+            return if (normalized.updatedAtMs > 0L) save(context, phone, companyId, normalized) else state(context, phone, companyId)
+        }
+
         val local = state(context, phone, companyId)
         if (normalized.updatedAtMs == 0L || normalized.updatedAtMs < local.updatedAtMs) return local
         return save(context, phone, companyId, normalized)
