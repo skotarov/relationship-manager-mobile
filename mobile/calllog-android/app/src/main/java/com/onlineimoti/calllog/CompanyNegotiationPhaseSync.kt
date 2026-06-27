@@ -13,9 +13,10 @@ internal object CompanyNegotiationPhaseSync {
             !CallReportRemoteAccess.isReady(config)
         ) return false
 
+        val hasCompanyState = CompanyNegotiationPhaseStore.hasSavedState(appContext, phone, companyId)
         val before = CompanyNegotiationPhaseStore.state(appContext, phone, companyId)
         val server = CompanyNegotiationPhaseRemoteClient.fetch(config, phone, companyId)
-        val resolved = if (before.updatedAtMs > server.updatedAtMs) {
+        val resolved = if (hasCompanyState && before.updatedAtMs > server.updatedAtMs) {
             CompanyNegotiationPhaseRemoteClient.update(config, phone, companyId, before)
         } else {
             server
