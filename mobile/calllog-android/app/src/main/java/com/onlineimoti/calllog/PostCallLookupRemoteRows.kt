@@ -19,12 +19,17 @@ internal data class PostCallLookupRemoteRow(
  */
 internal object PostCallLookupRemoteRows {
     private const val MAX_GENERAL_NOTES = 3
+    private const val LEGACY_SERVER_LABEL = "Сървър"
 
     fun shouldLookup(context: Context, phone: String): Boolean {
         if (phone.isBlank()) return false
         val config = ConfigStore.load(context.applicationContext)
-        return CallReportRemoteAccess.isReady(config) &&
-            ContactServerCompanyScope.isAvailable(context.applicationContext, phone)
+        // Unknown real contacts always look up the server. Existing contacts do
+        // so only after the user has explicitly enabled CRM for that number.
+        return CallReportRemoteAccess.isReady(config) && (
+            ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone) ||
+                CrmContactSyncStore.isEnabled(context.applicationContext, phone)
+            )
     }
 
     fun load(context: Context, phone: String): List<PostCallLookupRemoteRow> {
@@ -41,19 +46,21 @@ internal object PostCallLookupRemoteRows {
         val phoneKey = HomeCallPageLoader.noteKey(phone)
         if (phoneKey.isBlank()) return emptyList()
         val companyNames = history.principal.companies.associate { company -> company.id to company.name }
+        // Old Call Report history often stores a conversation as type "phone"
+        // with its text in note/notes. Do not discard it simply because it is
+        // not a newer dedicated type="note" event.
         val relevantNotes = history.events.filter { event ->
-            event.communicationType.equals("note", ignoreCase = true) &&
-                event.note.trim().isNotBlank() &&
-                event.companyId.isNotBlank() &&
+            event.note.trim().isNotBlank() &&
                 HomeCallPageLoader.noteKey(event.phone) == phoneKey
         }
         if (relevantNotes.isEmpty()) return emptyList()
 
         val latestMainNoteByCompany = mutableMapOf<String, CallReportHistoryEvent>()
         relevantNotes.filter(::isMainNote).forEach { event ->
-            val current = latestMainNoteByCompany[event.companyId]
+            val scopeKey = event.companyId.ifBlank { LEGACY_SERVER_LABEL }
+            val current = latestMainNoteByCompany[scopeKey]
             if (current == null || eventTimestamp(event) >= eventTimestamp(current)) {
-                latestMainNoteByCompany[event.companyId] = event
+                latestMainNoteByCompany[scopeKey] = event
             }
         }
 
@@ -92,13 +99,18 @@ internal object PostCallLookupRemoteRows {
         if (event.clientEventId.contains(":topic:general:") || event.clientEventId.contains(":note:general:")) {
             return true
         }
-        return event.direction.isBlank() && event.durationSeconds <= 0L
+        // Do not classify a legacy phone row with no direction/duration as a
+        // main note. It is still a concrete conversation record.
+        return event.communicationType.equals("note", ignoreCase = true) &&
+            event.direction.isBlank() && event.durationSeconds <= 0L
     }
 
     private fun companyNameFor(
         event: CallReportHistoryEvent,
         companyNames: Map<String, String>,
-    ): String = companyNames[event.companyId].orEmpty().ifBlank { event.companyId }
+    ): String = companyNames[event.companyId].orEmpty().ifBlank {
+        event.companyId.ifBlank { LEGACY_SERVER_LABEL }
+    }
 
     private fun eventTimestamp(event: CallReportHistoryEvent): Long = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs)
 
