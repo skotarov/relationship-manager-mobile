@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -27,7 +26,6 @@ internal object PermissionStatusRenderer {
         val notesState = notesState(config)
         val overlayState = state(config.useOverlayPopups, Settings.canDrawOverlays(activity))
         val screeningState = state(config.useCallScreening, MainPermissionChecks.hasCallScreeningRole(activity))
-        val fullScreenState = state(config.useFullScreenPopup, canUseFullScreen(activity))
 
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.overlayPermissionWarningText.visibility = if (overlayState == State.MISSING) View.VISIBLE else View.GONE
@@ -56,10 +54,7 @@ internal object PermissionStatusRenderer {
         runtime(activity.getString(R.string.permission_label_contacts_write), Manifest.permission.WRITE_CONTACTS)
 
         rows += Row(
-            label = activity.getString(
-                if (config.usePublicNotesFolder) R.string.permission_label_public_notes_storage
-                else R.string.permission_label_private_notes_storage,
-            ),
+            label = activity.getString(R.string.permission_label_private_notes_storage),
             state = notesState,
             enable = { setNotesStorage(activity, binding, true) },
             disable = { setNotesStorage(activity, binding, false) },
@@ -75,12 +70,6 @@ internal object PermissionStatusRenderer {
             state = screeningState,
             enable = { setScreening(activity, binding, true) },
             disable = { setScreening(activity, binding, false) },
-        )
-        rows += Row(
-            label = activity.getString(R.string.permission_label_fullscreen_popup),
-            state = fullScreenState,
-            enable = { setFullScreenPopup(activity, binding, true) },
-            disable = { setFullScreenPopup(activity, binding, false) },
         )
 
         val summary = binding.permissionsSection.permissionsSummaryText
@@ -99,13 +88,10 @@ internal object PermissionStatusRenderer {
     private fun setNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
         save(activity) { it.copy(useLocalNotesStorage = enabled) }
         refresh(activity, binding)
-        val config = ConfigStore.load(activity)
-        when {
-            !enabled -> toast(activity, activity.getString(R.string.settings_local_notes_disabled))
-            config.usePublicNotesFolder && !LocalNotesFileStore.canUsePublicFolder() -> activity.requestPublicNotesStoragePermissionFromSummary()
-            config.usePublicNotesFolder -> toast(activity, activity.getString(R.string.settings_public_notes_enabled))
-            else -> toast(activity, activity.getString(R.string.settings_private_notes_enabled))
-        }
+        toast(
+            activity,
+            activity.getString(if (enabled) R.string.settings_private_notes_enabled else R.string.settings_local_notes_disabled),
+        )
     }
 
     private fun setOverlay(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
@@ -120,18 +106,6 @@ internal object PermissionStatusRenderer {
         refresh(activity, binding)
         if (enabled) activity.requestCallScreeningPermissionFromSummary()
         else toast(activity, activity.getString(R.string.settings_screening_disabled))
-    }
-
-    private fun setFullScreenPopup(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
-        save(activity) { it.copy(useFullScreenPopup = enabled) }
-        refresh(activity, binding)
-        if (!enabled) {
-            toast(activity, activity.getString(R.string.settings_fullscreen_disabled))
-        } else if (!canUseFullScreen(activity)) {
-            activity.requestFullScreenIntentPermissionFromSummary()
-        } else {
-            toast(activity, activity.getString(R.string.settings_fullscreen_enabled))
-        }
     }
 
     private fun save(activity: MainActivity, update: (AppConfig) -> AppConfig) {
@@ -178,11 +152,7 @@ internal object PermissionStatusRenderer {
         }
     }
 
-    private fun notesState(config: AppConfig): State = when {
-        !config.useLocalNotesStorage -> State.DISABLED
-        config.usePublicNotesFolder && !LocalNotesFileStore.canUsePublicFolder() -> State.MISSING
-        else -> State.ACTIVE
-    }
+    private fun notesState(config: AppConfig): State = if (config.useLocalNotesStorage) State.ACTIVE else State.DISABLED
 
     private fun state(enabled: Boolean, granted: Boolean): State = when {
         !enabled -> State.DISABLED
@@ -192,11 +162,6 @@ internal object PermissionStatusRenderer {
 
     private fun has(activity: MainActivity, permission: String): Boolean =
         ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED
-
-    private fun canUseFullScreen(activity: MainActivity): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
-        return activity.getSystemService(NotificationManager::class.java)?.canUseFullScreenIntent() == true
-    }
 
     private fun openAppPermissions(activity: MainActivity) {
         activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
