@@ -35,7 +35,7 @@ data class AppConfig(
 )
 
 object ConfigStore {
-    private const val PREFS = "callreport_prefs"
+    private const val PREFS = "relationship_manager_prefs"
     private const val KEY_REMOTE_ENABLED = "remote_enabled"
     private const val KEY_BASE_URL = "base_url"
     private const val KEY_ACCESS_TOKEN = "access_token"
@@ -62,10 +62,11 @@ object ConfigStore {
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
 
-    const val DEFAULT_BASE_URL = "https://onlineimoti.com"
-    const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
-    const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
-    const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
+    /** Empty by default: free mode works locally and does not connect to a server. */
+    const val DEFAULT_BASE_URL = ""
+    const val DEFAULT_LOOKUP_PATH = "/relationship-manager/api/lookup.php"
+    const val DEFAULT_FORM_PATH = "/relationship-manager/api/form.php"
+    const val DEFAULT_HISTORY_PATH = "/relationship-manager/api/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
     const val DEFAULT_HOME_CALL_PAGE_SIZE = 20
     const val MIN_HOME_CALL_PAGE_SIZE = 5
@@ -128,7 +129,7 @@ object ConfigStore {
     fun save(context: Context, config: AppConfig) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(KEY_REMOTE_ENABLED, config.remoteEnabled)
+            .putBoolean(KEY_REMOTE_ENABLED, config.remoteEnabled && normalizeBaseUrl(config.baseUrl).isNotBlank())
             .putString(KEY_BASE_URL, normalizeBaseUrl(config.baseUrl))
             .putString(KEY_ACCESS_TOKEN, config.accessToken.trim())
             .putString(KEY_CONTACT_GROUPS, config.contactGroups.trim())
@@ -169,10 +170,11 @@ object ConfigStore {
 
     private fun normalizeBaseUrl(value: String): String {
         val candidate = value.trim().trimEnd('/')
+        if (candidate.isBlank()) return ""
         return when {
             candidate.startsWith("https://", ignoreCase = true) -> candidate
             BuildConfig.DEBUG && candidate.startsWith("http://", ignoreCase = true) -> candidate
-            else -> DEFAULT_BASE_URL
+            else -> ""
         }
     }
 
