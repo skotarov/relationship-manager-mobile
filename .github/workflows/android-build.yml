@@ -14,7 +14,7 @@ on:
       - mobile/calllog-android/**
 
 jobs:
-  build-debug:
+  build-internal:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,7 +44,7 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install fixed debug keystore
+      - name: Install internal signing key
         run: |
           mkdir -p "$HOME/.android"
           base64 -d debug-signing/callreport-debug.keystore.base64 > "$HOME/.android/debug.keystore"
@@ -144,28 +144,28 @@ jobs:
             "$AAPT2" compile -o "$output_dir" "$resource_file"
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
-      - name: Lint debug build
+      - name: Lint internal build
         run: gradle --no-daemon --console=plain :app:lintDebug
 
-      - name: Build debug APK
+      - name: Build Relationship Manager APK
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:assembleDebug 2>&1 | tee /tmp/callreport-gradle.log
+          gradle --no-daemon --console=plain :app:assembleDebug 2>&1 | tee /tmp/relationship-manager-gradle.log
           gradle_status=${PIPESTATUS[0]}
 
           if [ "$gradle_status" -ne 0 ]; then
             echo
             echo "========== ТОЧНИ ГРЕШКИ ОТ КОМПИЛАЦИЯТА =========="
-            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/callreport-gradle.log || true
+            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-gradle.log || true
             echo "========== КРАЙ НА ГРЕШКИТЕ =========="
             exit "$gradle_status"
           fi
 
-      - name: Upload debug APK artifact
+      - name: Upload Relationship Manager APK
         uses: actions/upload-artifact@v4
         with:
-          name: relationship-manager-debug-apk
-          path: mobile/calllog-android/app/build/outputs/apk/debug/relationship-manager-debug.apk
+          name: relationship-manager-apk
+          path: mobile/calllog-android/app/build/outputs/apk/debug/relationship-manager.apk
           if-no-files-found: error
