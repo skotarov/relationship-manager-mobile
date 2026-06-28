@@ -1,44 +1,41 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
-import android.net.Uri
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.nio.charset.StandardCharsets
+import java.io.File
 
 /**
- * Reads and writes the PIN-encrypted cloud settings archive through Android's
- * Storage Access Framework. This works without broad storage permission and
- * can restore archives previously saved in Documents or Downloads.
+ * Stores the PIN-encrypted cloud settings archive in the same protected
+ * app-private .callreport root used by local notes. No storage permission or
+ * document picker is required.
  */
 internal object ServerSettingsArchiveFile {
-    fun save(context: Context, uri: Uri, config: AppConfig, code: String): Result<String> {
+    private const val FILE_NAME = "callreport-server-settings.json"
+
+    fun path(context: Context): String = archiveFile(context).absolutePath
+
+    fun save(context: Context, config: AppConfig, code: String): Result<String> {
         return runCatching {
-            val encryptedJson = ServerSettingsBackupStore.createEncryptedJson(config, code)
-            val output = context.contentResolver.openOutputStream(uri, "wt")
-                ?: error("Не може да се отвори избраният файл за запис.")
-            OutputStreamWriter(output, StandardCharsets.UTF_8).use { writer ->
-                writer.write(encryptedJson)
-            }
-            displayName(uri)
+            val target = archiveFile(context)
+            target.parentFile?.mkdirs()
+            target.writeText(ServerSettingsBackupStore.createEncryptedJson(config, code))
+            target.absolutePath
         }
     }
 
-    fun restore(context: Context, uri: Uri, currentConfig: AppConfig, code: String): ServerSettingsBackupStore.RestoreResult {
+    fun restore(context: Context, currentConfig: AppConfig, code: String): ServerSettingsBackupStore.RestoreResult {
         return runCatching {
-            val input = context.contentResolver.openInputStream(uri)
-                ?: error("Не може да се отвори избраният архивен файл.")
-            val content = InputStreamReader(input, StandardCharsets.UTF_8).use { reader -> reader.readText() }
-            ServerSettingsBackupStore.restoreEncryptedJson(currentConfig, content, code)
+            val file = archiveFile(context)
+            if (!file.exists()) {
+                error("Архивният файл не е намерен в локалната папка за бележки: ${file.absolutePath}")
+            }
+            ServerSettingsBackupStore.restoreEncryptedJson(currentConfig, file.readText(), code)
         }.getOrElse { error ->
             ServerSettingsBackupStore.RestoreResult.Failed(error.message.orEmpty())
         }
     }
 
-    private fun displayName(uri: Uri): String {
-        return uri.lastPathSegment
-            ?.substringAfterLast('/')
-            ?.takeIf { it.isNotBlank() }
-            ?: ServerSettingsBackupStore.suggestedFileName()
-    }
+    private fun archiveFile(context: Context): File = File(
+        LocalNotesFileStore.appPrivateRoot(context),
+        FILE_NAME,
+    )
 }
