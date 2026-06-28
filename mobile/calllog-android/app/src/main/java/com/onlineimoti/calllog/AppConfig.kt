@@ -64,9 +64,9 @@ object ConfigStore {
 
     /** Empty by default: free mode works locally and does not connect to a server. */
     const val DEFAULT_BASE_URL = ""
-    const val DEFAULT_LOOKUP_PATH = "/relationship-manager/api/lookup.php"
-    const val DEFAULT_FORM_PATH = "/relationship-manager/api/form.php"
-    const val DEFAULT_HISTORY_PATH = "/relationship-manager/api/history.php"
+    const val DEFAULT_LOOKUP_PATH = "/relationship-manager/lookup.php"
+    const val DEFAULT_FORM_PATH = "/relationship-manager/form.php"
+    const val DEFAULT_HISTORY_PATH = "/relationship-manager/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
     const val DEFAULT_HOME_CALL_PAGE_SIZE = 20
     const val MIN_HOME_CALL_PAGE_SIZE = 5
@@ -179,9 +179,18 @@ object ConfigStore {
     }
 
     private fun normalizePath(path: String, defaultPath: String): String {
-        val trimmed = path.trim()
+        val trimmed = migrateLegacyServerPath(path.trim())
         if (trimmed.isBlank()) return defaultPath
         return if (trimmed.startsWith('/')) trimmed else "/$trimmed"
+    }
+
+    private fun migrateLegacyServerPath(path: String): String {
+        val trimmed = path.trim()
+        if (trimmed == "/broker/callreport") return "/relationship-manager"
+        if (trimmed.startsWith("/broker/callreport/")) {
+            return "/relationship-manager/" + trimmed.removePrefix("/broker/callreport/")
+        }
+        return trimmed
     }
 
     private fun normalizePostCallEndAction(value: String): String {

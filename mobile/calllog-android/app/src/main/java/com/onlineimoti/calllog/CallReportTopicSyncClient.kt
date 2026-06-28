@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 internal object CallReportTopicSyncClient {
-    private const val PATH = "/broker/callreport/sync.php"
+    private const val PATH = "/relationship-manager/sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 

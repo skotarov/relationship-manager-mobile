@@ -13,7 +13,7 @@ internal data class CallReportTopicCompany(
 )
 
 internal object CallReportTopicCompaniesClient {
-    private const val PATH = "/broker/callreport/topic_companies.php"
+    private const val PATH = "/relationship-manager/topic_companies.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 

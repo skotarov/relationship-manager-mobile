@@ -63,7 +63,7 @@
                 android:layout_height="wrap_content"
                 android:background="@android:color/transparent"
                 android:inputType="textUri"
-                android:text="/broker/callreport/lookup.php" />
+                android:text="/relationship-manager/lookup.php" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -79,7 +79,7 @@
                 android:layout_height="wrap_content"
                 android:background="@android:color/transparent"
                 android:inputType="textUri"
-                android:text="/broker/callreport/form.php" />
+                android:text="/relationship-manager/form.php" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -95,7 +95,7 @@
                 android:layout_height="wrap_content"
                 android:background="@android:color/transparent"
                 android:inputType="textUri"
-                android:text="/broker/callreport/history.php" />
+                android:text="/relationship-manager/history.php" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout

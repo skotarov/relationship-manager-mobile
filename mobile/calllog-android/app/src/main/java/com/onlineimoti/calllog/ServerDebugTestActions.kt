@@ -24,7 +24,7 @@ internal data class ServerDebugTestResult(
 internal object ServerDebugTestActions {
     private const val CONNECT_TIMEOUT_MS = 8_000
     private const val READ_TIMEOUT_MS = 8_000
-    private const val API_ROOT = "/broker/callreport"
+    private const val API_ROOT = "/relationship-manager"
 
     private data class WriteTestCompany(
         val id: String,
