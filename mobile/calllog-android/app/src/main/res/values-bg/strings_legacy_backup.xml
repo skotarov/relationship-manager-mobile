@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="server_settings_backup_saved">Настройките за cloud са запазени. Резервно копие: %1$s</string>
+    <string name="server_settings_backup_restored">Настройките за cloud са възстановени от %1$s.</string>
+    <string name="server_settings_backup_not_found">Няма намерени запазени настройки за cloud в %1$s.</string>
+    <string name="server_settings_backup_failed">Неуспешно четене или записване на резервното копие на cloud настройките: %1$s</string>
+    <string name="server_settings_backup_storage_permission">Cloud настройките са запазени в Relationship Manager. Разреши достъп до файловете, за да се пази резервно копие след преинсталиране в %1$s.</string>
+    <string name="sms_launcher_label">Съобщения</string>
+</resources>
