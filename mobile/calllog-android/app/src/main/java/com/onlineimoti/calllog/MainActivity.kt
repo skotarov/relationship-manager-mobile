@@ -178,10 +178,7 @@ class MainActivity : AppCompatActivity() {
             }
             quickEndButton.setOnClickListener {
                 saveConfig()
-                testEndButton@ {
-                    saveConfig()
-                    testEndPopup()
-                }
+                testEndPopup()
             }
         }
     }
