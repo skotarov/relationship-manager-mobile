@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!--
-      Internal distribution only. These permissions and handlers are intentionally
-      absent from the Play build. Telephony is optional so Android lint does not
-      treat the SMS permissions as a ChromeOS hardware requirement.
+      Internal distribution permissions and handlers. Shared Documents access is
+      optional: without it local notes stay in the app-private folder.
     -->
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
+
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
