@@ -1,34 +1,59 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
+import android.os.Build
+import android.os.Environment
 import org.json.JSONObject
 import java.io.File
 import java.io.RandomAccessFile
 
+/**
+ * Local notes use one root only: Documents/.callreport whenever shared storage
+ * access exists; otherwise the private .callreport folder of this app.
+ * Server notes are not handled here.
+ */
 object LocalNotesFileStore {
     private const val ROOT_DIR = ".callreport"
     private const val NOTES_DIR = "notes"
     private const val CALL_LOG_FILE = "calllog.notes"
     private const val PROFILE_FILE = "profile.json"
 
-    /** Public shared storage is intentionally disabled in the Play build. */
-    fun canUsePublicFolder(): Boolean = false
+    fun canUsePublicFolder(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+
     fun isEnabled(context: Context): Boolean = ConfigStore.load(context).useLocalNotesStorage
-    fun shouldUsePublicFolder(context: Context): Boolean = false
-    fun usesPublicFolder(context: Context): Boolean = false
+
+    /** The active location depends only on Android shared-storage access. */
+    fun shouldUsePublicFolder(context: Context): Boolean = canUsePublicFolder()
+
+    fun usesPublicFolder(context: Context): Boolean = isEnabled(context) && canUsePublicFolder()
+
     fun canUseConfiguredFolder(context: Context): Boolean = isEnabled(context)
-    fun publicRootPath(): String = "app-private storage"
+
+    fun publicRootPath(): String = publicRoot().absolutePath
+
     fun privateRootPath(context: Context): String = privateRoot(context).absolutePath
-    fun activeRootPath(context: Context): String = if (isEnabled(context)) privateRootPath(context) else "изключено"
 
-    /**
-     * The protected app-private root used by local notes and other local encrypted
-     * app data such as the cloud-settings backup. This is not public/shared storage.
-     */
+    fun activeRootPath(context: Context): String = when {
+        !isEnabled(context) -> "изключено"
+        usesPublicFolder(context) -> publicRootPath()
+        else -> privateRootPath(context)
+    }
+
+    /** Copies local note files to Documents/.callreport after shared access is granted. */
+    fun migratePrivateToPublic(context: Context): Boolean {
+        if (!isEnabled(context) || !canUsePublicFolder()) return false
+        val source = privateRoot(context)
+        if (!source.exists()) return true
+        val target = publicRoot()
+        return runCatching {
+            copyDirectory(source, target)
+            true
+        }.getOrDefault(false)
+    }
+
+    /** Used only for app-private files that are not local notes. */
     internal fun appPrivateRoot(context: Context): File = privateRoot(context)
-
-    /** Retained for compatibility with older callers; public storage migration is no longer supported. */
-    fun migratePrivateToPublic(context: Context): Boolean = false
 
     fun latestNoteForPhone(context: Context, phoneNumber: String): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
@@ -172,7 +197,24 @@ object LocalNotesFileStore {
         }.getOrDefault(false)
     }
 
+    private fun copyDirectory(source: File, target: File) {
+        if (source.isDirectory) {
+            target.mkdirs()
+            source.listFiles().orEmpty().forEach { child ->
+                copyDirectory(child, File(target, child.name))
+            }
+        } else if (!target.exists() || source.lastModified() > target.lastModified()) {
+            target.parentFile?.mkdirs()
+            source.copyTo(target, overwrite = true)
+        }
+    }
+
     private fun privateRoot(context: Context): File = File(context.filesDir, ROOT_DIR)
+
+    private fun publicRoot(): File = File(
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+        ROOT_DIR,
+    )
 
     private fun sameCall(json: JSONObject, callAt: Long, direction: String): Boolean {
         if (callAt <= 0L) return false
@@ -198,11 +240,13 @@ object LocalNotesFileStore {
     }
 
     private fun callLogFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), CALL_LOG_FILE)
+
     private fun profileFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), PROFILE_FILE)
 
     private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = phoneKey.filter { it.isDigit() }
-        val dir = File(File(File(privateRoot(context), NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
+        val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
+        val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
     }
