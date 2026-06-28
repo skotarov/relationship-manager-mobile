@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -21,7 +22,7 @@ class CallReportTileService : TileService() {
 
     private fun updateTileState() {
         qsTile?.apply {
-            label = "Call Report"
+            label = "Relationship Manager"
             icon = Icon.createWithResource(this@CallReportTileService, R.drawable.ic_qs_callreport)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 subtitle = "Отвори"
@@ -31,6 +32,7 @@ class CallReportTileService : TileService() {
         }
     }
 
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun openCallReport() {
         val intent = Intent(this, HomeActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
