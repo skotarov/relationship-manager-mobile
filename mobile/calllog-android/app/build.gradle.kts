@@ -46,11 +46,12 @@ fun ensureFixedDebugKeystore(): File {
 }
 
 android {
+    // Source packages remain unchanged for this release; the public Play package is generic.
     namespace = "com.onlineimoti.calllog"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.onlineimoti.calllog"
+        applicationId = "com.relationshipmanager.app"
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode
@@ -100,9 +101,9 @@ android {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             output.outputFileName = if (buildType.name == "release") {
-                "onlineimoti-crm-release.apk"
+                "relationship-manager-release.apk"
             } else {
-                "onlineimoti-crm-debug.apk"
+                "relationship-manager-debug.apk"
             }
         }
     }
