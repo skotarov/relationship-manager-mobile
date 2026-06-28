@@ -57,6 +57,7 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             requestPermissionLauncher = singlePermissionLauncher,
             callScreeningRoleLauncher = callScreeningRoleLauncher,
+            storageSettingsLauncher = storageSettingsLauncher,
             overlaySettingsLauncher = overlaySettingsLauncher,
             hasPermission = ::hasPermission,
             disableOverlayPopups = ::disableOverlayPopups,
@@ -72,6 +73,10 @@ class MainActivity : AppCompatActivity() {
 
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onCallScreeningResult()
+    }
+
+    private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        permissionFlowController.onStorageSettingsResult()
     }
 
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -110,6 +115,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        syncPrivateNotesToSharedStorageWhenAvailable()
         CallReportRuntime.ensureNotificationChannel(this)
         hydrateFields()
         refreshPermissionSummary()
@@ -139,6 +145,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        syncPrivateNotesToSharedStorageWhenAvailable()
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
@@ -185,6 +192,15 @@ class MainActivity : AppCompatActivity() {
 
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
         permissionFlowController.requestAppPermissionOrOpenSettings(permission, label)
+    }
+
+    internal fun requestSharedNotesStoragePermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestSharedNotesStoragePermission()
+    }
+
+    internal fun openSharedNotesStorageSettingsFromSummary() {
+        permissionFlowController.openSharedNotesStorageSettings()
     }
 
     internal fun requestOverlayPermissionFromSummary() {
@@ -247,6 +263,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun syncPrivateNotesToSharedStorageWhenAvailable() {
+        if (LocalNotesFileStore.canUsePublicFolder()) {
+            LocalNotesFileStore.migratePrivateToPublic(this)
+        }
     }
 
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
