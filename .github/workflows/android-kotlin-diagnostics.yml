@@ -1,0 +1,68 @@
+name: Android Kotlin Diagnostics
+
+on:
+  pull_request:
+    paths:
+      - mobile/calllog-android/**
+      - .github/workflows/android-kotlin-diagnostics.yml
+  workflow_dispatch:
+
+jobs:
+  kotlin-compile-diagnostics:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/calllog-android
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Compile Kotlin and capture diagnostics
+        id: compile
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew :app:compileDebugKotlin --stacktrace --info 2>&1 | tee "$RUNNER_TEMP/kotlin-compile.log"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Publish concise compiler errors
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Kotlin compiler diagnostics"
+            echo '```text'
+            grep -E '(^e: |error: |Unresolved reference|Type mismatch|No value passed|Cannot access|Expecting )' "$RUNNER_TEMP/kotlin-compile.log" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload full Kotlin diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-compile-diagnostics
+          path: ${{ runner.temp }}/kotlin-compile.log
+          if-no-files-found: error
+
+      - name: Fail when Kotlin compilation failed
+        if: steps.compile.outcome == 'failure'
+        run: exit 1
