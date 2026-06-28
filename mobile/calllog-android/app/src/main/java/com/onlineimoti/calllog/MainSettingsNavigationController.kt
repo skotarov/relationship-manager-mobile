@@ -1,6 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.net.Uri
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -9,8 +8,6 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 internal class MainSettingsNavigationController(
     private val activity: AppCompatActivity,
     private val binding: ActivityMainBinding,
-    private val requestCreateServerSettingsArchive: (String) -> Unit,
-    private val requestRestoreServerSettingsArchive: (String) -> Unit,
 ) {
     private var selectedSection: SettingsSection? = null
 
@@ -54,41 +51,34 @@ internal class MainSettingsNavigationController(
         scrollTop()
     }
 
-    fun saveServerSettingsArchiveToUri(uri: Uri, code: String) {
-        ServerSettingsArchiveFile.save(activity, uri, ConfigStore.load(activity), code)
-            .onSuccess { fileName ->
+    private fun saveServerSettingsArchive() {
+        val code = archiveCode() ?: return
+        val config = MainSettingsConfigUi.read(binding)
+        ConfigStore.save(activity, config)
+
+        ServerSettingsArchiveFile.save(activity, ConfigStore.load(activity), code)
+            .onSuccess { path ->
                 binding.remoteSettingsSection.serverBackupCodeInput.text?.clear()
-                setStatus(activity.getString(R.string.server_settings_backup_saved, fileName))
+                setStatus(activity.getString(R.string.server_settings_backup_saved, path))
             }
             .onFailure { error ->
                 setStatus(activity.getString(R.string.server_settings_backup_failed, error.message.orEmpty()))
             }
     }
 
-    fun restoreServerSettingsArchiveFromUri(uri: Uri, code: String) {
-        when (val result = ServerSettingsArchiveFile.restore(activity, uri, ConfigStore.load(activity), code)) {
+    private fun restoreServerSettingsArchive() {
+        val code = archiveCode() ?: return
+        when (val result = ServerSettingsArchiveFile.restore(activity, ConfigStore.load(activity), code)) {
             is ServerSettingsBackupStore.RestoreResult.Restored -> {
                 ConfigStore.save(activity, result.config)
                 MainSettingsConfigUi.hydrateServerSettings(binding, result.config)
                 binding.remoteSettingsSection.serverBackupCodeInput.text?.clear()
-                setStatus(activity.getString(R.string.server_settings_backup_restored, fileName(uri)))
+                setStatus(activity.getString(R.string.server_settings_backup_restored, ServerSettingsArchiveFile.path(activity)))
             }
             is ServerSettingsBackupStore.RestoreResult.Failed -> {
                 setStatus(activity.getString(R.string.server_settings_backup_failed, result.message))
             }
         }
-    }
-
-    private fun saveServerSettingsArchive() {
-        val code = archiveCode() ?: return
-        val config = MainSettingsConfigUi.read(binding)
-        ConfigStore.save(activity, config)
-        requestCreateServerSettingsArchive(code)
-    }
-
-    private fun restoreServerSettingsArchive() {
-        val code = archiveCode() ?: return
-        requestRestoreServerSettingsArchive(code)
     }
 
     private fun archiveCode(): String? {
@@ -97,13 +87,6 @@ internal class MainSettingsNavigationController(
         if (code.length == 4 && code.all(Char::isDigit)) return code
         input.error = activity.getString(R.string.settings_backup_code_required)
         return null
-    }
-
-    private fun fileName(uri: Uri): String {
-        return uri.lastPathSegment
-            ?.substringAfterLast('/')
-            ?.takeIf { it.isNotBlank() }
-            ?: ServerSettingsBackupStore.suggestedFileName()
     }
 
     private fun setStatus(message: String) {
