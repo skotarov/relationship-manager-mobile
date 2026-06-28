@@ -112,20 +112,6 @@ internal class MainPermissionFlowController(
                     activity.getString(R.string.permission_label_call_log),
                 )
             }
-            !hasPermission(Manifest.permission.READ_CONTACTS) -> {
-                requestRuntimePermission(
-                    Manifest.permission.READ_CONTACTS,
-                    activity.getString(R.string.permission_flow_request_contacts_read),
-                    activity.getString(R.string.permission_label_contacts_read),
-                )
-            }
-            !hasPermission(Manifest.permission.WRITE_CONTACTS) -> {
-                requestRuntimePermission(
-                    Manifest.permission.WRITE_CONTACTS,
-                    activity.getString(R.string.permission_flow_request_contacts_write),
-                    activity.getString(R.string.permission_label_contacts_write),
-                )
-            }
             else -> finishFlowWithSuccess()
         }
     }
