@@ -89,7 +89,7 @@ android {
 
     buildTypes {
         debug {
-            // No applicationIdSuffix: this must update the earlier internal debug build.
+            // No applicationIdSuffix: this must update the earlier internal build.
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
@@ -109,7 +109,7 @@ android {
             output.outputFileName = if (buildType.name == "release") {
                 "relationship-manager-release.apk"
             } else {
-                "relationship-manager-debug.apk"
+                "relationship-manager.apk"
             }
         }
     }
