@@ -46,12 +46,8 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             requestPermissionLauncher = singlePermissionLauncher,
             callScreeningRoleLauncher = callScreeningRoleLauncher,
-            storageSettingsLauncher = storageSettingsLauncher,
             overlaySettingsLauncher = overlaySettingsLauncher,
-            fullscreenIntentSettingsLauncher = fullscreenIntentSettingsLauncher,
             hasPermission = ::hasPermission,
-            canUsePublicNotesFolder = ::canUsePublicNotesFolder,
-            disablePublicNotesFolder = ::disablePublicNotesFolder,
             disableOverlayPopups = ::disableOverlayPopups,
             disableCallScreening = ::disableCallScreening,
             refreshPermissionSummary = ::refreshPermissionSummary,
@@ -67,16 +63,8 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.onCallScreeningResult()
     }
 
-    private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        permissionFlowController.onStorageSettingsResult()
-    }
-
     private val overlaySettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onOverlaySettingsResult()
-    }
-
-    private val fullscreenIntentSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        permissionFlowController.onFullscreenIntentSettingsResult()
     }
 
     private val createArchiveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -164,11 +152,6 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.requestAppPermissionOrOpenSettings(permission, label)
     }
 
-    internal fun requestPublicNotesStoragePermissionFromSummary() {
-        saveConfig()
-        permissionFlowController.requestPublicNotesStoragePermission()
-    }
-
     internal fun requestOverlayPermissionFromSummary() {
         saveConfig()
         permissionFlowController.requestOverlayPermissionIfNeeded()
@@ -177,10 +160,6 @@ class MainActivity : AppCompatActivity() {
     internal fun requestCallScreeningPermissionFromSummary() {
         saveConfig()
         permissionFlowController.requestCallScreeningRoleIfNeeded()
-    }
-
-    internal fun requestFullScreenIntentPermissionFromSummary() {
-        permissionFlowController.requestFullScreenIntentPermissionIfNeeded()
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -221,8 +200,6 @@ class MainActivity : AppCompatActivity() {
         return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun canUsePublicNotesFolder(): Boolean = LocalNotesFileStore.canUsePublicFolder()
-    private fun disablePublicNotesFolder() = MainStorageSettings.disablePublicNotesFolder(this)
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
     private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
     private fun refreshPermissionSummary() {
