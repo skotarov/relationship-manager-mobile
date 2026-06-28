@@ -1,0 +1,6 @@
+# Copy this file to play-signing.properties. The real file is ignored by Git.
+# storeFile may be an absolute path or a path relative to mobile/calllog-android/.
+storeFile=/absolute/path/to/onlineimoti-play-upload.jks
+storeSecret=CHANGE_ME
+keyAlias=onlineimoti-play-upload
+keySecret=CHANGE_ME
