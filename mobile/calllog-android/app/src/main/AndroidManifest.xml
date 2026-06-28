@@ -48,12 +48,15 @@
         <service
             android:name=".CallReportTileService"
             android:exported="true"
-            android:icon="@drawable/ic_quick_settings_tile"
+            android:icon="@drawable/ic_qs_callreport"
             android:label="@string/app_identity"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="false" />
         </service>
         <service
             android:name=".PostCallOverlayService"
