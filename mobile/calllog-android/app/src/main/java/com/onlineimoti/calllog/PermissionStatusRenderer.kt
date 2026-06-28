@@ -24,6 +24,7 @@ internal object PermissionStatusRenderer {
         val config = ConfigStore.load(activity)
         val popup = binding.popupSettingsSection
         val notesState = notesState(config)
+        val sharedNotesState = if (LocalNotesFileStore.canUsePublicFolder()) State.ACTIVE else State.DISABLED
         val overlayState = state(config.useOverlayPopups, Settings.canDrawOverlays(activity))
         val screeningState = state(config.useCallScreening, MainPermissionChecks.hasCallScreeningRole(activity))
 
@@ -54,10 +55,20 @@ internal object PermissionStatusRenderer {
         runtime(activity.getString(R.string.permission_label_contacts_write), Manifest.permission.WRITE_CONTACTS)
 
         rows += Row(
-            label = activity.getString(R.string.permission_label_private_notes_storage),
+            label = when {
+                !config.useLocalNotesStorage -> "Локални бележки"
+                LocalNotesFileStore.canUsePublicFolder() -> "Локални бележки: Documents/.callreport"
+                else -> "Локални бележки: лична папка на приложението"
+            },
             state = notesState,
             enable = { setNotesStorage(activity, binding, true) },
             disable = { setNotesStorage(activity, binding, false) },
+        )
+        rows += Row(
+            label = "Достъп до Documents за локални бележки",
+            state = sharedNotesState,
+            enable = { activity.requestSharedNotesStoragePermissionFromSummary() },
+            disable = { activity.openSharedNotesStorageSettingsFromSummary() },
         )
         rows += Row(
             label = activity.getString(R.string.permission_label_overlay),
@@ -88,10 +99,12 @@ internal object PermissionStatusRenderer {
     private fun setNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
         save(activity) { it.copy(useLocalNotesStorage = enabled) }
         refresh(activity, binding)
-        toast(
-            activity,
-            activity.getString(if (enabled) R.string.settings_private_notes_enabled else R.string.settings_local_notes_disabled),
-        )
+        val message = when {
+            !enabled -> activity.getString(R.string.settings_local_notes_disabled)
+            LocalNotesFileStore.canUsePublicFolder() -> "Локалните бележки се пазят в Documents/.callreport."
+            else -> "Локалните бележки се пазят в личната папка на приложението."
+        }
+        toast(activity, message)
     }
 
     private fun setOverlay(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
