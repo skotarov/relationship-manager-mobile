@@ -169,7 +169,9 @@ internal class SmsComposeDialog(
                 if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@post
                 result.onSuccess { outcome ->
                     subscriptionChooser.rememberSuccessfulSubscriptionId(subscriptionId)
-                    activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED))
+                    activity.sendBroadcast(
+                        Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(activity.packageName),
+                    )
                     Toast.makeText(
                         activity,
                         activity.getString(if (outcome.historySaved) R.string.dynamic_sms_sent else R.string.dynamic_sms_sent_refresh),
