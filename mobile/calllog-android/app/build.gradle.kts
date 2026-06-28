@@ -27,7 +27,9 @@ val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .asFile
 val playSigningFile = rootProject.file("play-signing.properties")
 val playSigning = Properties().apply {
-    if (playSigningFile.isFile) playSigningFile.inputStream().use(::load)
+    if (playSigningFile.isFile) {
+        playSigningFile.inputStream().use { input -> load(input) }
+    }
 }
 val hasPlaySigning = listOf("storeFile", "storeSecret", "keyAlias", "keySecret")
     .all { key -> playSigning.getProperty(key).orEmpty().isNotBlank() }
