@@ -21,6 +21,12 @@ object LocalNotesFileStore {
     fun privateRootPath(context: Context): String = privateRoot(context).absolutePath
     fun activeRootPath(context: Context): String = if (isEnabled(context)) privateRootPath(context) else "изключено"
 
+    /**
+     * The protected app-private root used by local notes and other local encrypted
+     * app data such as the cloud-settings backup. This is not public/shared storage.
+     */
+    internal fun appPrivateRoot(context: Context): File = privateRoot(context)
+
     /** Retained for compatibility with older callers; public storage migration is no longer supported. */
     fun migratePrivateToPublic(context: Context): Boolean = false
 
