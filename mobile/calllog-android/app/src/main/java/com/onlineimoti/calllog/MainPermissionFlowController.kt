@@ -13,6 +13,7 @@ internal class MainPermissionFlowController(
     private val activity: MainActivity,
     private val requestPermissionLauncher: ActivityResultLauncher<String>,
     private val callScreeningRoleLauncher: ActivityResultLauncher<Intent>,
+    private val storageSettingsLauncher: ActivityResultLauncher<Intent>,
     private val overlaySettingsLauncher: ActivityResultLauncher<Intent>,
     private val hasPermission: (String) -> Boolean,
     private val disableOverlayPopups: () -> Unit,
@@ -54,12 +55,48 @@ internal class MainPermissionFlowController(
         }
     }
 
+    /** Shared Documents is optional. Without it LocalNotesFileStore falls back to private app storage. */
+    fun requestSharedNotesStoragePermission() {
+        isRunning = false
+        if (LocalNotesFileStore.canUsePublicFolder()) {
+            onStorageSettingsResult()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            setStatus("Разреши достъп до общото хранилище. Тогава локалните бележки ще се четат и записват в Documents/.callreport.")
+            storageSettingsLauncher.launch(sharedStorageSettingsIntent())
+        } else {
+            requestRuntimePermission(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                "Разреши достъп до общото хранилище за локалните бележки.",
+                "Общо хранилище",
+            )
+        }
+    }
+
+    fun openSharedNotesStorageSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            storageSettingsLauncher.launch(sharedStorageSettingsIntent())
+        } else {
+            activity.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:${activity.packageName}")
+                },
+            )
+        }
+    }
+
     fun onPermissionResult() {
-        val deniedPermission = lastRequestedRuntimePermission.takeIf { it.isNotBlank() && !hasPermission(it) }
+        val completedPermission = lastRequestedRuntimePermission
+        val deniedPermission = completedPermission.takeIf { it.isNotBlank() && !hasPermission(it) }
         val deniedLabel = lastRequestedRuntimePermissionLabel
         lastRequestedRuntimePermission = ""
         lastRequestedRuntimePermissionLabel = ""
         refreshPermissionSummary()
+        if (completedPermission == Manifest.permission.WRITE_EXTERNAL_STORAGE) {
+            onStorageSettingsResult()
+            return
+        }
         if (deniedPermission != null) {
             isRunning = false
             setStatus(activity.getString(R.string.permission_flow_permission_not_enabled, deniedLabel))
@@ -76,6 +113,18 @@ internal class MainPermissionFlowController(
         }
         isRunning = false
         refreshPermissionSummary()
+    }
+
+    fun onStorageSettingsResult() {
+        val sharedActive = LocalNotesFileStore.canUsePublicFolder()
+        if (sharedActive) {
+            LocalNotesFileStore.migratePrivateToPublic(activity)
+            setStatus("Локалните бележки се четат и записват в Documents/.callreport.")
+        } else {
+            setStatus("Липсва достъп до общото хранилище. Локалните бележки остават в личната папка на приложението.")
+        }
+        refreshPermissionSummary()
+        isRunning = false
     }
 
     fun onOverlaySettingsResult() {
@@ -152,6 +201,12 @@ internal class MainPermissionFlowController(
         requestPermissionLauncher.launch(permission)
     }
 
+    private fun sharedStorageSettingsIntent(): Intent {
+        return Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+            data = Uri.parse("package:${activity.packageName}")
+        }
+    }
+
     private fun reportUnavailableCallScreening() {
         setStatus(activity.getString(R.string.permission_flow_screening_unavailable))
         isRunning = false
@@ -168,6 +223,7 @@ internal class MainPermissionFlowController(
     }
 
     private fun overlayPopupsSelected(): Boolean = ConfigStore.load(activity).useOverlayPopups
+
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
 
     private fun finishFlowWithSuccess() {
