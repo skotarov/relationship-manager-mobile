@@ -16,7 +16,6 @@ class MainActivity : AppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private var suppressAutoSave = false
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
-    private var pendingServerArchiveCode: String? = null
 
     private val contactsCleanupController by lazy {
         MainContactsCleanupController(
@@ -32,8 +31,6 @@ class MainActivity : AppCompatActivity() {
         MainSettingsNavigationController(
             activity = this,
             binding = binding,
-            requestCreateServerSettingsArchive = ::createServerSettingsArchive,
-            requestRestoreServerSettingsArchive = ::restoreServerSettingsArchive,
         )
     }
 
@@ -104,22 +101,6 @@ class MainActivity : AppCompatActivity() {
 
     private val restoreArchiveLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) MainArchiveActions.askRestoreMode(this, uri, ::setStatus)
-    }
-
-    private val createServerSettingsArchiveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        val code = pendingServerArchiveCode
-        pendingServerArchiveCode = null
-        if (uri != null && code != null) {
-            settingsNavigationController.saveServerSettingsArchiveToUri(uri, code)
-        }
-    }
-
-    private val restoreServerSettingsArchiveLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val code = pendingServerArchiveCode
-        pendingServerArchiveCode = null
-        if (uri != null && code != null) {
-            settingsNavigationController.restoreServerSettingsArchiveFromUri(uri, code)
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -214,16 +195,6 @@ class MainActivity : AppCompatActivity() {
     internal fun requestCallScreeningPermissionFromSummary() {
         saveConfig()
         permissionFlowController.requestCallScreeningRoleIfNeeded()
-    }
-
-    private fun createServerSettingsArchive(code: String) {
-        pendingServerArchiveCode = code
-        createServerSettingsArchiveLauncher.launch(ServerSettingsBackupStore.suggestedFileName())
-    }
-
-    private fun restoreServerSettingsArchive(code: String) {
-        pendingServerArchiveCode = code
-        restoreServerSettingsArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
     }
 
     private fun requestDefaultSmsRole() {
