@@ -9,13 +9,16 @@ plugins {
 
 val buildTime = OffsetDateTime.now(ZoneOffset.UTC)
 val buildTimeText = buildTime.toString()
-val timeVersionCode =
-    (buildTime.year % 100) * 10_000_000 +
-        buildTime.dayOfYear * 10_000 +
-        buildTime.hour * 100 +
-        buildTime.minute
-val appVersionCode = 1_000_000_000 + timeVersionCode
-val defaultAccessToken = System.getenv("CALLREPORT_DEFAULT_TOKEN").orEmpty()
+val appVersionCode = providers.gradleProperty("playVersionCode")
+    .orNull
+    ?.toIntOrNull()
+    ?.takeIf { it > 0 }
+    ?: 1
+val appVersionName = providers.gradleProperty("playVersionName")
+    .orNull
+    ?.trim()
+    ?.takeIf { it.isNotBlank() }
+    ?: "1.0.0"
 val fixedDebugKeystoreBase64File = rootProject.file("debug-signing/callreport-debug.keystore.base64")
 val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
@@ -42,11 +45,10 @@ android {
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode
-        versionName = "0.3.$appVersionCode"
+        versionName = appVersionName
         resourceConfigurations += setOf("bg")
 
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
-        buildConfigField("String", "DEFAULT_ACCESS_TOKEN", "\"$defaultAccessToken\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -62,6 +64,8 @@ android {
 
     buildTypes {
         debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
@@ -78,9 +82,9 @@ android {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             output.outputFileName = if (buildType.name == "release") {
-                "relationship-management-release-optimized.apk"
+                "onlineimoti-crm-release.apk"
             } else {
-                "relationship-management-debug.apk"
+                "onlineimoti-crm-debug.apk"
             }
         }
     }
