@@ -1,6 +1,7 @@
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -24,6 +25,12 @@ val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
     .get()
     .asFile
+val playSigningFile = rootProject.file("play-signing.properties")
+val playSigning = Properties().apply {
+    if (playSigningFile.isFile) playSigningFile.inputStream().use(::load)
+}
+val hasPlaySigning = listOf("storeFile", "storeSecret", "keyAlias", "keySecret")
+    .all { key -> playSigning.getProperty(key).orEmpty().isNotBlank() }
 
 fun ensureFixedDebugKeystore(): File {
     require(fixedDebugKeystoreBase64File.isFile) {
@@ -60,6 +67,14 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        create("playRelease") {
+            if (hasPlaySigning) {
+                storeFile = rootProject.file(playSigning.getProperty("storeFile"))
+                storePassword = playSigning.getProperty("storeSecret")
+                keyAlias = playSigning.getProperty("keyAlias")
+                keyPassword = playSigning.getProperty("keySecret")
+            }
+        }
     }
 
     buildTypes {
@@ -69,6 +84,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
+            if (hasPlaySigning) signingConfig = signingConfigs.getByName("playRelease")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
