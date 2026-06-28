@@ -13,9 +13,9 @@ internal class CallReportSyncException(
     val retryable: Boolean,
 ) : IOException(message)
 
-/** HTTP client for the server's POST /broker/callreport/sync.php contract. */
+/** HTTP client for the server's POST /relationship-manager/sync.php contract. */
 internal object CallReportSyncClient {
-    private const val SYNC_PATH = "/broker/callreport/sync.php"
+    private const val SYNC_PATH = "/relationship-manager/sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 

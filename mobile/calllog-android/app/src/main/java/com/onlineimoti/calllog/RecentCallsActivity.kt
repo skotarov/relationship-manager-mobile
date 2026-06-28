@@ -145,7 +145,7 @@ class RecentCallsActivity : AppCompatActivity() {
         val config = ConfigStore.load(this)
         val formUrl = buildEndpoint(
             baseUrl = config.baseUrl,
-            path = "/broker/callreport/form.php",
+            path = "/relationship-manager/form.php",
             params = linkedMapOf(
                 "phone" to call.number,
                 "direction" to call.direction,

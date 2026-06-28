@@ -15,6 +15,6 @@ After a successful workflow run, download the `relationship-management-debug-apk
 
 ## Server-side repository
 
-The PHP/HTML/CSS/JS server-side source for the remote flow under `/broker/callreport/` lives in:
+The PHP/HTML/CSS/JS server-side source for the remote flow under `/relationship-manager/` lives in:
 
 - `skotarov/relationship-manager-server`

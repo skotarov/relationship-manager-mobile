@@ -43,7 +43,7 @@ internal data class CallReportHistoryLookupResult(
 )
 
 internal object CallReportHistoryLookupClient {
-    private const val PATH = "/broker/callreport/history_lookup.php"
+    private const val PATH = "/relationship-manager/history_lookup.php"
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(config: AppConfig, phone: String): CallReportHistoryLookupResult {

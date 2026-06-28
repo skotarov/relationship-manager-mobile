@@ -16,7 +16,7 @@ internal data class CallReportCompanyMainNote(
 )
 
 internal object CallReportCompanyGeneralNotesClient {
-    private const val PATH = "/broker/callreport/history_lookup.php"
+    private const val PATH = "/relationship-manager/history_lookup.php"
 
     fun fetch(context: android.content.Context, config: AppConfig, phone: String): List<CallReportCompanyMainNote> {
         if (!CallReportRemoteAccess.isReady(config) || phone.isBlank()) return emptyList()

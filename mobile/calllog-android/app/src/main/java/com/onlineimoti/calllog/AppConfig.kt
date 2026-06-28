@@ -61,9 +61,9 @@ object ConfigStore {
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
 
-    const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
-    const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
-    const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
+    const val DEFAULT_LOOKUP_PATH = "/relationship-manager/lookup.php"
+    const val DEFAULT_FORM_PATH = "/relationship-manager/form.php"
+    const val DEFAULT_HISTORY_PATH = "/relationship-manager/history.php"
     const val DEFAULT_POST_CALL_TIMEOUT_SECONDS = 10
     const val DEFAULT_HOME_CALL_PAGE_SIZE = 20
     const val MIN_HOME_CALL_PAGE_SIZE = 5
@@ -168,9 +168,18 @@ object ConfigStore {
     private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
 
     private fun normalizePath(path: String, defaultPath: String): String {
-        val trimmed = path.trim()
+        val trimmed = migrateLegacyServerPath(path.trim())
         if (trimmed.isBlank()) return defaultPath
         return if (trimmed.startsWith('/')) trimmed else "/$trimmed"
+    }
+
+    private fun migrateLegacyServerPath(path: String): String {
+        val trimmed = path.trim()
+        if (trimmed == "/broker/callreport") return "/relationship-manager"
+        if (trimmed.startsWith("/broker/callreport/")) {
+            return "/relationship-manager/" + trimmed.removePrefix("/broker/callreport/")
+        }
+        return trimmed
     }
 
     private fun normalizePostCallEndAction(value: String): String {
