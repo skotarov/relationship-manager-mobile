@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.Manifest
 import android.app.role.RoleManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -15,12 +16,24 @@ internal class MainPermissionFlowController(
     private val callScreeningRoleLauncher: ActivityResultLauncher<Intent>,
     private val storageSettingsLauncher: ActivityResultLauncher<Intent>,
     private val overlaySettingsLauncher: ActivityResultLauncher<Intent>,
+    private val requestDefaultSmsRole: () -> Unit,
+    private val requestSmsPermissions: () -> Unit,
+    private val isDefaultSmsApp: () -> Boolean,
+    private val hasSmsPermissions: () -> Boolean,
     private val hasPermission: (String) -> Boolean,
     private val disableOverlayPopups: () -> Unit,
     @Suppress("UNUSED_PARAMETER") private val disableCallScreening: () -> Unit,
     private val refreshPermissionSummary: () -> Unit,
     private val setStatus: (String) -> Unit,
 ) {
+    private companion object {
+        const val PERMISSION_REQUESTS_PREFS = "relationship_manager_permission_requests"
+    }
+
+    private val permissionRequests by lazy {
+        activity.getSharedPreferences(PERMISSION_REQUESTS_PREFS, Context.MODE_PRIVATE)
+    }
+
     private var isRunning = false
     private var lastRequestedRuntimePermission: String = ""
     private var lastRequestedRuntimePermissionLabel: String = ""
@@ -31,6 +44,11 @@ internal class MainPermissionFlowController(
         requestNextStep()
     }
 
+    /**
+     * Shows Android's permission dialog on the first request and after a normal
+     * denial. App settings are opened only after a prior request was denied with
+     * "Don't ask again", when Android cannot show the dialog any more.
+     */
     fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
         isRunning = false
         val localizedLabel = permissionLabel(permission, label)
@@ -39,20 +57,20 @@ internal class MainPermissionFlowController(
             refreshPermissionSummary()
             return
         }
-        if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
+        if (canShowPermissionDialog(permission)) {
             requestRuntimePermission(
                 permission,
                 activity.getString(R.string.permission_flow_request_from_dialog, localizedLabel),
                 localizedLabel,
             )
-        } else {
-            setStatus(activity.getString(R.string.permission_flow_enable_in_settings, localizedLabel))
-            activity.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.parse("package:${activity.packageName}")
-                },
-            )
+            return
         }
+        setStatus(activity.getString(R.string.permission_flow_enable_in_settings, localizedLabel))
+        activity.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${activity.packageName}")
+            },
+        )
     }
 
     /** Shared Documents is optional. Without it LocalNotesFileStore falls back to private app storage. */
@@ -103,6 +121,33 @@ internal class MainPermissionFlowController(
             return
         }
         requestNextStep()
+    }
+
+    /** Called after Android's Default SMS app role chooser closes. */
+    fun onSmsRoleResult() {
+        refreshPermissionSummary()
+        if (!isDefaultSmsApp()) {
+            isRunning = false
+            setStatus(activity.getString(R.string.settings_sms_role_not_changed))
+            return
+        }
+        if (hasSmsPermissions()) {
+            continueAfterSmsSetup()
+            return
+        }
+        setStatus(activity.getString(R.string.permission_flow_request_from_dialog, "SMS"))
+        requestSmsPermissions()
+    }
+
+    /** Called after the Android runtime SMS permissions dialog closes. */
+    fun onSmsPermissionsResult() {
+        refreshPermissionSummary()
+        if (!hasSmsPermissions()) {
+            isRunning = false
+            setStatus(activity.getString(R.string.permission_flow_permission_not_enabled, "SMS"))
+            return
+        }
+        continueAfterSmsSetup()
     }
 
     fun onCallScreeningResult() {
@@ -161,6 +206,17 @@ internal class MainPermissionFlowController(
                     activity.getString(R.string.permission_label_call_log),
                 )
             }
+            !hasPermission(Manifest.permission.READ_CONTACTS) -> {
+                requestRuntimePermission(
+                    Manifest.permission.READ_CONTACTS,
+                    activity.getString(
+                        R.string.permission_flow_request_from_dialog,
+                        activity.getString(R.string.permission_label_contacts_read),
+                    ),
+                    activity.getString(R.string.permission_label_contacts_read),
+                )
+            }
+            BuildConfig.DEBUG && !smsSetupIsComplete() -> requestSmsSetup()
             else -> finishFlowWithSuccess()
         }
     }
@@ -194,11 +250,41 @@ internal class MainPermissionFlowController(
         )
     }
 
+    private fun requestSmsSetup() {
+        if (!isDefaultSmsApp()) {
+            setStatus("Избери Relationship Manager като SMS приложение. След това Android ще поиска SMS разрешенията с обикновен диалог.")
+            requestDefaultSmsRole()
+            return
+        }
+        if (!hasSmsPermissions()) {
+            setStatus(activity.getString(R.string.permission_flow_request_from_dialog, "SMS"))
+            requestSmsPermissions()
+            return
+        }
+        continueAfterSmsSetup()
+    }
+
+    private fun continueAfterSmsSetup() {
+        if (isRunning) {
+            requestNextStep()
+        } else {
+            setStatus(activity.getString(R.string.settings_sms_role_active))
+        }
+    }
+
+    private fun smsSetupIsComplete(): Boolean = isDefaultSmsApp() && hasSmsPermissions()
+
     private fun requestRuntimePermission(permission: String, status: String, label: String) {
+        permissionRequests.edit().putBoolean(permission, true).apply()
         lastRequestedRuntimePermission = permission
         lastRequestedRuntimePermissionLabel = label
         setStatus(status)
         requestPermissionLauncher.launch(permission)
+    }
+
+    private fun canShowPermissionDialog(permission: String): Boolean {
+        return !permissionRequests.getBoolean(permission, false) ||
+            ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
     }
 
     private fun sharedStorageSettingsIntent(): Intent {
