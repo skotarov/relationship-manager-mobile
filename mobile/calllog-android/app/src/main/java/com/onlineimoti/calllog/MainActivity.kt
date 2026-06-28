@@ -59,6 +59,10 @@ class MainActivity : AppCompatActivity() {
             callScreeningRoleLauncher = callScreeningRoleLauncher,
             storageSettingsLauncher = storageSettingsLauncher,
             overlaySettingsLauncher = overlaySettingsLauncher,
+            requestDefaultSmsRole = ::requestDefaultSmsRole,
+            requestSmsPermissions = ::requestSmsPermissions,
+            isDefaultSmsApp = { SmsRoleController.isDefaultSmsApp(this) },
+            hasSmsPermissions = ::hasSmsPermissions,
             hasPermission = ::hasPermission,
             disableOverlayPopups = ::disableOverlayPopups,
             disableCallScreening = ::disableCallScreening,
@@ -80,19 +84,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        val active = SmsRoleController.isDefaultSmsApp(this)
-        if (active) {
-            setStatus(getString(R.string.settings_sms_role_active))
-            requestSmsPermissions()
-        } else {
-            setStatus(getString(R.string.settings_sms_role_not_changed))
-        }
-        refreshPermissionSummary()
+        permissionFlowController.onSmsRoleResult()
         defaultSmsSettingsController.refresh()
     }
 
     private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        refreshPermissionSummary()
+        permissionFlowController.onSmsPermissionsResult()
         defaultSmsSettingsController.refresh()
     }
 
@@ -218,13 +215,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestSmsPermissions() {
-        smsPermissionsLauncher.launch(
-            arrayOf(
-                Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.READ_SMS,
-                Manifest.permission.SEND_SMS,
-            ),
-        )
+        val missingPermissions = arrayOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SEND_SMS,
+        ).filterNot(::hasPermission).toTypedArray()
+        if (missingPermissions.isEmpty()) {
+            permissionFlowController.onSmsPermissionsResult()
+            return
+        }
+        smsPermissionsLauncher.launch(missingPermissions)
+    }
+
+    private fun hasSmsPermissions(): Boolean {
+        return !BuildConfig.DEBUG || arrayOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SEND_SMS,
+        ).all(::hasPermission)
     }
 
     private fun autoSaveSettings(): AppConfig {
