@@ -166,6 +166,6 @@ jobs:
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: onlineimoti-crm-debug-apk
-          path: mobile/calllog-android/app/build/outputs/apk/debug/onlineimoti-crm-debug.apk
+          name: relationship-manager-debug-apk
+          path: mobile/calllog-android/app/build/outputs/apk/debug/relationship-manager-debug.apk
           if-no-files-found: error
