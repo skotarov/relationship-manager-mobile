@@ -29,7 +29,12 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.INTEGRATION) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
-        binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
+        if (BuildConfig.DEBUG) {
+            binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
+        } else {
+            binding.settingsMenuGroup.settingsDebugButton.visibility = View.GONE
+            binding.settingsDebugGroup.root.visibility = View.GONE
+        }
         binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
         binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
     }
@@ -42,6 +47,7 @@ internal class MainSettingsNavigationController(
         binding.settingsDetailHeader.visibility = View.GONE
         binding.quickTestBar.visibility = View.GONE
         allGroupViews().forEach { it.visibility = View.GONE }
+        if (!BuildConfig.DEBUG) binding.settingsDebugGroup.root.visibility = View.GONE
         scrollTop()
     }
 
@@ -89,6 +95,7 @@ internal class MainSettingsNavigationController(
     }
 
     private fun showSection(section: SettingsSection) {
+        if (section == SettingsSection.DEBUG && !BuildConfig.DEBUG) return
         selectedSection = section
         backCallback.isEnabled = true
         binding.settingsMenuGroup.root.visibility = View.GONE
@@ -97,7 +104,7 @@ internal class MainSettingsNavigationController(
         binding.settingsDetailTitle.text = activity.getString(section.titleRes)
         allGroupViews().forEach { it.visibility = View.GONE }
         section.view(binding).visibility = View.VISIBLE
-        binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG) View.VISIBLE else View.GONE
+        binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG && BuildConfig.DEBUG) View.VISIBLE else View.GONE
         scrollTop()
     }
 
