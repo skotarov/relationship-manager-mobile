@@ -2,6 +2,9 @@
 .gradle/
 **/build/
 local.properties
+play-signing.properties
+*.keystore
+*.jks
 captures/
 *.apk
 *.aab
