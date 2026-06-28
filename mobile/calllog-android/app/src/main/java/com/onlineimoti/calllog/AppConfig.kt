@@ -2,8 +2,6 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
 
 data class AppConfig(
     val remoteEnabled: Boolean,
@@ -25,11 +23,14 @@ data class AppConfig(
     val showCrmActionButtons: Boolean,
     val showBulkContactSyncNotifications: Boolean,
     val appLanguage: String,
+    /** Legacy value retained only so existing local preferences can be read safely. */
     val usePublicNotesFolder: Boolean,
     val useCallScreening: Boolean,
     val showRmDebugBox: Boolean,
     val useLocalNotesStorage: Boolean = true,
-    val useFullScreenPopup: Boolean = true,
+    /** Play builds deliberately use notifications/overlay fallback instead of full-screen intent. */
+    val useFullScreenPopup: Boolean = false,
+    /** The public Play build is not an SMS app. */
     val useInternalSmsComposer: Boolean = false,
 )
 
@@ -61,6 +62,7 @@ object ConfigStore {
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
 
+    const val DEFAULT_BASE_URL = "https://onlineimoti.com"
     const val DEFAULT_LOOKUP_PATH = "/broker/callreport/lookup.php"
     const val DEFAULT_FORM_PATH = "/broker/callreport/form.php"
     const val DEFAULT_HISTORY_PATH = "/broker/callreport/history.php"
@@ -84,15 +86,16 @@ object ConfigStore {
     const val DEFAULT_USE_CALL_SCREENING = false
     const val DEFAULT_SHOW_RM_DEBUG_BOX = false
     const val DEFAULT_USE_LOCAL_NOTES_STORAGE = true
-    const val DEFAULT_USE_FULL_SCREEN_POPUP = true
+    const val DEFAULT_USE_FULL_SCREEN_POPUP = false
     const val DEFAULT_USE_INTERNAL_SMS_COMPOSER = false
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         return AppConfig(
             remoteEnabled = prefs.getBoolean(KEY_REMOTE_ENABLED, false),
-            baseUrl = prefs.getString(KEY_BASE_URL, "https://onlineimoti.com")!!.trim(),
-            accessToken = prefs.getString(KEY_ACCESS_TOKEN, BuildConfig.DEFAULT_ACCESS_TOKEN)!!.trim(),
+            baseUrl = normalizeBaseUrl(prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL).orEmpty()),
+            // Never package a production access token in the APK/AAB.
+            accessToken = prefs.getString(KEY_ACCESS_TOKEN, "")!!.trim(),
             contactGroups = prefs.getString(KEY_CONTACT_GROUPS, "")!!.trim(),
             notifyUnknownContacts = prefs.getBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, true),
             notifyKnownContacts = prefs.getBoolean(KEY_NOTIFY_KNOWN_CONTACTS, false),
@@ -112,16 +115,13 @@ object ConfigStore {
                 DEFAULT_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS,
             ),
             appLanguage = normalizeAppLanguage(prefs.getString(KEY_APP_LANGUAGE, DEFAULT_APP_LANGUAGE).orEmpty()),
-            usePublicNotesFolder = if (prefs.contains(KEY_USE_PUBLIC_NOTES_FOLDER)) {
-                prefs.getBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, false)
-            } else {
-                canUsePublicNotesFolderByDefault()
-            },
+            // The Play package only uses app-private storage. Retain the field for older local data models.
+            usePublicNotesFolder = false,
             useCallScreening = prefs.getBoolean(KEY_USE_CALL_SCREENING, DEFAULT_USE_CALL_SCREENING),
             showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
             useLocalNotesStorage = prefs.getBoolean(KEY_USE_LOCAL_NOTES_STORAGE, DEFAULT_USE_LOCAL_NOTES_STORAGE),
-            useFullScreenPopup = prefs.getBoolean(KEY_USE_FULL_SCREEN_POPUP, DEFAULT_USE_FULL_SCREEN_POPUP),
-            useInternalSmsComposer = prefs.getBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, DEFAULT_USE_INTERNAL_SMS_COMPOSER),
+            useFullScreenPopup = false,
+            useInternalSmsComposer = false,
         )
     }
 
@@ -129,7 +129,7 @@ object ConfigStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_REMOTE_ENABLED, config.remoteEnabled)
-            .putString(KEY_BASE_URL, config.baseUrl.trim().trimEnd('/'))
+            .putString(KEY_BASE_URL, normalizeBaseUrl(config.baseUrl))
             .putString(KEY_ACCESS_TOKEN, config.accessToken.trim())
             .putString(KEY_CONTACT_GROUPS, config.contactGroups.trim())
             .putBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, config.notifyUnknownContacts)
@@ -147,12 +147,12 @@ object ConfigStore {
             .putBoolean(KEY_SHOW_CRM_ACTION_BUTTONS, config.showCrmActionButtons)
             .putBoolean(KEY_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS, config.showBulkContactSyncNotifications)
             .putString(KEY_APP_LANGUAGE, normalizeAppLanguage(config.appLanguage))
-            .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, config.usePublicNotesFolder)
+            .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, false)
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
             .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
             .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, config.useLocalNotesStorage)
-            .putBoolean(KEY_USE_FULL_SCREEN_POPUP, config.useFullScreenPopup)
-            .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, config.useInternalSmsComposer)
+            .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
+            .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .apply()
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
@@ -166,6 +166,15 @@ object ConfigStore {
     }
 
     private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
+
+    private fun normalizeBaseUrl(value: String): String {
+        val candidate = value.trim().trimEnd('/')
+        return when {
+            candidate.startsWith("https://", ignoreCase = true) -> candidate
+            BuildConfig.DEBUG && candidate.startsWith("http://", ignoreCase = true) -> candidate
+            else -> DEFAULT_BASE_URL
+        }
+    }
 
     private fun normalizePath(path: String, defaultPath: String): String {
         val trimmed = path.trim()
@@ -194,10 +203,6 @@ object ConfigStore {
             LANGUAGE_EN -> LANGUAGE_EN
             else -> LANGUAGE_SYSTEM
         }
-    }
-
-    private fun canUsePublicNotesFolderByDefault(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
     }
 }
 
