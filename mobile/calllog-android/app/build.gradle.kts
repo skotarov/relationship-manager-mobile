@@ -10,16 +10,22 @@ plugins {
 
 val buildTime = OffsetDateTime.now(ZoneOffset.UTC)
 val buildTimeText = buildTime.toString()
+val generatedVersionCode =
+    1_000_000_000 +
+        (buildTime.year % 100) * 10_000_000 +
+        buildTime.dayOfYear * 10_000 +
+        buildTime.hour * 100 +
+        buildTime.minute
 val appVersionCode = providers.gradleProperty("playVersionCode")
     .orNull
     ?.toIntOrNull()
     ?.takeIf { it > 0 }
-    ?: 1
+    ?: generatedVersionCode
 val appVersionName = providers.gradleProperty("playVersionName")
     .orNull
     ?.trim()
     ?.takeIf { it.isNotBlank() }
-    ?: "1.0.0"
+    ?: "0.3.$appVersionCode"
 val fixedDebugKeystoreBase64File = rootProject.file("debug-signing/callreport-debug.keystore.base64")
 val fixedDebugKeystoreFile = rootProject.layout.buildDirectory
     .file("generated-signing/callreport-debug.keystore")
@@ -46,12 +52,13 @@ fun ensureFixedDebugKeystore(): File {
 }
 
 android {
-    // Source packages remain unchanged for this release; the public Play package is generic.
     namespace = "com.onlineimoti.calllog"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.relationshipmanager.app"
+        // Keep the original identity so existing internal installs receive updates.
+        // Android users see the app label "Relationship Manager", not this technical package ID.
+        applicationId = "com.onlineimoti.calllog"
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode
@@ -82,8 +89,7 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            // No applicationIdSuffix: this must update the earlier internal debug build.
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
