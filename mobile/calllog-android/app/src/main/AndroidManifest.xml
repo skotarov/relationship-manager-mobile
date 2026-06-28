@@ -61,8 +61,21 @@
         <service
             android:name=".PostCallOverlayService"
             android:exported="false" />
+
         <receiver
             android:name=".NotificationDismissReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name=".NoteEditorReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name=".InlineNoteReplyReceiver"
+            android:enabled="true"
+            android:exported="false" />
+        <receiver
+            android:name=".BulkContactsCancelReceiver"
             android:enabled="true"
             android:exported="false" />
         <receiver
@@ -73,6 +86,7 @@
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>
+
         <service
             android:name=".CallScreeningBridgeService"
             android:exported="true"
@@ -81,6 +95,39 @@
                 <action android:name="android.telecom.CallScreeningService" />
             </intent-filter>
         </service>
+
+        <!-- Internal launch targets used by post-call notifications and the end-call bubble. -->
+        <activity
+            android:name=".NoteEditorLaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:theme="@style/Theme.CallLog.TransparentLauncher" />
+        <activity
+            android:name=".SystemCallHistoryActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true" />
+        <activity
+            android:name=".PostCallPromptActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop" />
+        <activity
+            android:name=".ContactNoteEditActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+        <activity
+            android:name=".ContactNotesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".RecentCallsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".WebViewActivity"
+            android:exported="false" />
+
         <activity
             android:name=".ContactShareActivity"
             android:excludeFromRecents="true"
