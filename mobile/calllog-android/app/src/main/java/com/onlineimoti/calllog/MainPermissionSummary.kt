@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -24,24 +23,16 @@ internal object MainPermissionSummary {
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val permissions = binding.permissionsSection
         val popup = binding.popupSettingsSection
-        val storage = binding.storageSettingsSection
         val config = ConfigStore.load(activity)
         val notificationsGranted = hasNotificationPermission(activity)
         val phoneGranted = hasPermission(activity, Manifest.permission.READ_PHONE_STATE)
         val callLogGranted = hasPermission(activity, Manifest.permission.READ_CALL_LOG)
         val contactsGranted = hasPermission(activity, Manifest.permission.READ_CONTACTS)
         val contactsWriteGranted = hasPermission(activity, Manifest.permission.WRITE_CONTACTS)
-        val smsDefault = SmsRoleController.isDefaultSmsApp(activity)
-        val smsReceiveGranted = hasPermission(activity, Manifest.permission.RECEIVE_SMS)
-        val smsReadGranted = hasPermission(activity, Manifest.permission.READ_SMS)
-        val smsSendGranted = hasPermission(activity, Manifest.permission.SEND_SMS)
-        val publicNotesSelected = storage.usePublicNotesFolderCheckBox.isChecked
-        val publicNotesGranted = !publicNotesSelected || LocalNotesFileStore.canUsePublicFolder()
         val overlayGranted = Settings.canDrawOverlays(activity)
         val overlaySelected = config.useOverlayPopups || popup.useOverlayPopupsCheckBox.isChecked
         val callScreeningSelected = permissions.useCallScreeningCheckBox.isChecked
         val callScreeningGranted = MainPermissionChecks.hasCallScreeningRole(activity)
-        val fullscreenGranted = canUseFullScreenIntent(activity)
 
         val rows = buildList {
             add(
@@ -56,7 +47,7 @@ internal object MainPermissionSummary {
                         }
                     },
                     onDisable = { openNotificationSettings(activity) },
-                )
+                ),
             )
             add(
                 PermissionRow(
@@ -64,15 +55,15 @@ internal object MainPermissionSummary {
                     active = phoneGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_PHONE_STATE, "Phone") },
                     onDisable = { openAppPermissionsSettings(activity, "Phone") },
-                )
+                ),
             )
             add(
                 PermissionRow(
-                    label = "Call report log",
+                    label = "Call log",
                     active = callLogGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CALL_LOG, "Call log") },
                     onDisable = { openAppPermissionsSettings(activity, "Call log") },
-                )
+                ),
             )
             add(
                 PermissionRow(
@@ -80,7 +71,7 @@ internal object MainPermissionSummary {
                     active = contactsGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CONTACTS, "Contacts read") },
                     onDisable = { openAppPermissionsSettings(activity, "Contacts read") },
-                )
+                ),
             )
             add(
                 PermissionRow(
@@ -88,19 +79,16 @@ internal object MainPermissionSummary {
                     active = contactsWriteGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.WRITE_CONTACTS, "Contacts write") },
                     onDisable = { openAppPermissionsSettings(activity, "Contacts write") },
-                )
+                ),
             )
             add(
                 PermissionRow(
-                    label = if (publicNotesSelected) "Public notes folder" else "Private notes storage",
-                    active = publicNotesGranted,
-                    onEnable = { activity.requestPublicNotesStoragePermissionFromSummary() },
-                    onDisable = if (publicNotesSelected) {
-                        { disablePublicNotesStorage(activity, binding) }
-                    } else {
-                        null
-                    },
-                )
+                    label = "Private notes storage",
+                    active = config.useLocalNotesStorage,
+                    inactiveLabel = "изключено",
+                    onEnable = { setLocalNotesStorage(activity, binding, true) },
+                    onDisable = { setLocalNotesStorage(activity, binding, false) },
+                ),
             )
             add(
                 PermissionRow(
@@ -109,7 +97,7 @@ internal object MainPermissionSummary {
                     inactiveLabel = if (overlaySelected) "липсва" else "изключено",
                     onEnable = { enableOverlayPopups(activity, binding) },
                     onDisable = { disableOverlayPopups(activity, binding) },
-                )
+                ),
             )
             add(
                 PermissionRow(
@@ -118,53 +106,7 @@ internal object MainPermissionSummary {
                     inactiveLabel = if (callScreeningSelected) "липсва" else "изключено",
                     onEnable = { enableCallScreening(activity, binding) },
                     onDisable = { disableCallScreening(activity, binding) },
-                )
-            )
-            add(
-                PermissionRow(
-                    label = "Default SMS",
-                    active = smsDefault,
-                    onEnable = { activity.requestDefaultSmsRoleFromSummary() },
-                    onDisable = { openDefaultAppsSettings(activity, "Избери друго SMS приложение, за да изключиш Call Report като Default SMS.") },
-                )
-            )
-            if (smsDefault) {
-                add(
-                    PermissionRow(
-                        label = "SMS receive",
-                        active = smsReceiveGranted,
-                        onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.RECEIVE_SMS, "SMS receive") },
-                        onDisable = { openAppPermissionsSettings(activity, "SMS receive") },
-                    )
-                )
-                add(
-                    PermissionRow(
-                        label = "SMS read",
-                        active = smsReadGranted,
-                        onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_SMS, "SMS read") },
-                        onDisable = { openAppPermissionsSettings(activity, "SMS read") },
-                    )
-                )
-                add(
-                    PermissionRow(
-                        label = "SMS send",
-                        active = smsSendGranted,
-                        onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.SEND_SMS, "SMS send") },
-                        onDisable = { openAppPermissionsSettings(activity, "SMS send") },
-                    )
-                )
-            }
-            add(
-                PermissionRow(
-                    label = "Full-screen popup",
-                    active = fullscreenGranted,
-                    onEnable = { activity.requestFullScreenIntentPermissionFromSummary() },
-                    onDisable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        { openFullScreenIntentSettings(activity) }
-                    } else {
-                        null
-                    },
-                )
+                ),
             )
         }
 
@@ -240,7 +182,7 @@ internal object MainPermissionSummary {
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         1f,
                     )
-                }
+                },
             )
 
             when {
@@ -263,6 +205,16 @@ internal object MainPermissionSummary {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { marginStart = dp(activity, 8) }
         }
+    }
+
+    private fun setLocalNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
+        saveCurrentConfig(activity, binding) { it.copy(useLocalNotesStorage = enabled) }
+        refresh(activity, binding)
+        showToast(
+            activity,
+            if (enabled) "Локалните бележки се пазят в частната памет на приложението."
+            else "Локалните бележки са изключени.",
+        )
     }
 
     private fun enableOverlayPopups(activity: MainActivity, binding: ActivityMainBinding) {
@@ -296,14 +248,6 @@ internal object MainPermissionSummary {
             activity,
             "Call screening е изключено в приложението. Избери друго Caller ID / Spam приложение, ако искаш да премахнеш и системната роля.",
         )
-    }
-
-    private fun disablePublicNotesStorage(activity: MainActivity, binding: ActivityMainBinding) {
-        binding.storageSettingsSection.usePublicNotesFolderCheckBox.isChecked = false
-        binding.settingsApplicationGroup.applicationUsePublicNotesFolderCheckBox.isChecked = false
-        saveCurrentConfig(activity, binding) { it.copy(usePublicNotesFolder = false) }
-        refresh(activity, binding)
-        showToast(activity, "Публичната папка е изключена. Новите бележки ще се пазят в частната памет на приложението.")
     }
 
     private fun saveCurrentConfig(
@@ -348,16 +292,6 @@ internal object MainPermissionSummary {
         openSettings(activity, Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS), message)
     }
 
-    private fun openFullScreenIntentSettings(activity: MainActivity) {
-        openSettings(
-            activity,
-            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                data = Uri.parse("package:${activity.packageName}")
-            },
-            "Изключи Full-screen popup от Android системния екран.",
-        )
-    }
-
     private fun openSettings(activity: MainActivity, intent: Intent, message: String) {
         runCatching { activity.startActivity(intent) }
             .onSuccess { showToast(activity, message) }
@@ -377,12 +311,6 @@ internal object MainPermissionSummary {
 
     private fun hasPermission(activity: MainActivity, permission: String): Boolean {
         return ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun canUseFullScreenIntent(activity: MainActivity): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return true
-        val notificationManager = activity.getSystemService(NotificationManager::class.java) ?: return false
-        return notificationManager.canUseFullScreenIntent()
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): android.graphics.drawable.GradientDrawable {
