@@ -13,12 +13,8 @@ internal class MainPermissionFlowController(
     private val activity: MainActivity,
     private val requestPermissionLauncher: ActivityResultLauncher<String>,
     private val callScreeningRoleLauncher: ActivityResultLauncher<Intent>,
-    private val storageSettingsLauncher: ActivityResultLauncher<Intent>,
     private val overlaySettingsLauncher: ActivityResultLauncher<Intent>,
-    private val fullscreenIntentSettingsLauncher: ActivityResultLauncher<Intent>,
     private val hasPermission: (String) -> Boolean,
-    private val canUsePublicNotesFolder: () -> Boolean,
-    private val disablePublicNotesFolder: () -> Unit,
     private val disableOverlayPopups: () -> Unit,
     @Suppress("UNUSED_PARAMETER") private val disableCallScreening: () -> Unit,
     private val refreshPermissionSummary: () -> Unit,
@@ -32,17 +28,6 @@ internal class MainPermissionFlowController(
         if (isRunning) return
         isRunning = true
         requestNextStep()
-    }
-
-    fun requestPublicNotesStoragePermission() {
-        isRunning = false
-        if (!publicNotesFolderSelected()) return
-        if (canUsePublicNotesFolder()) {
-            migratePublicNotesIfPossible()
-            return
-        }
-        setStatus(activity.getString(R.string.permission_flow_public_storage_request, LocalNotesFileStore.publicRootPath()))
-        requestStorageManagerPermissionIfNeeded()
     }
 
     fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
@@ -93,21 +78,6 @@ internal class MainPermissionFlowController(
         refreshPermissionSummary()
     }
 
-    fun onStorageSettingsResult() {
-        if (canUsePublicNotesFolder()) {
-            migratePublicNotesIfPossible()
-            refreshPermissionSummary()
-            requestNextStep()
-            return
-        }
-        if (publicNotesFolderSelected()) {
-            disablePublicNotesFolder()
-            setStatus(activity.getString(R.string.permission_flow_storage_denied))
-        }
-        refreshPermissionSummary()
-        isRunning = false
-    }
-
     fun onOverlaySettingsResult() {
         if (Settings.canDrawOverlays(activity)) {
             setStatus(activity.getString(R.string.permission_flow_overlay_allowed))
@@ -115,12 +85,6 @@ internal class MainPermissionFlowController(
             disableOverlayPopups()
             setStatus(activity.getString(R.string.permission_flow_overlay_denied))
         }
-        refreshPermissionSummary()
-        isRunning = false
-    }
-
-    fun onFullscreenIntentSettingsResult() {
-        if (canUseFullScreenIntent()) setStatus(activity.getString(R.string.permission_flow_fullscreen_allowed))
         refreshPermissionSummary()
         isRunning = false
     }
@@ -162,14 +126,6 @@ internal class MainPermissionFlowController(
                     activity.getString(R.string.permission_label_contacts_write),
                 )
             }
-            publicNotesFolderSelected() && !canUsePublicNotesFolder() -> {
-                setStatus(activity.getString(R.string.permission_flow_public_storage_request, LocalNotesFileStore.publicRootPath()))
-                requestStorageManagerPermissionIfNeeded()
-            }
-            fullScreenPopupSelected() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !canUseFullScreenIntent() -> {
-                setStatus(activity.getString(R.string.permission_flow_request_fullscreen))
-                requestFullScreenIntentPermissionIfNeeded()
-            }
             else -> finishFlowWithSuccess()
         }
     }
@@ -188,18 +144,6 @@ internal class MainPermissionFlowController(
             return
         }
         callScreeningRoleLauncher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
-    }
-
-    fun requestFullScreenIntentPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || canUseFullScreenIntent()) {
-            finishFlowWithoutStatus()
-            return
-        }
-        fullscreenIntentSettingsLauncher.launch(
-            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                data = Uri.parse("package:${activity.packageName}")
-            },
-        )
     }
 
     fun requestOverlayPermissionIfNeeded() {
@@ -222,33 +166,6 @@ internal class MainPermissionFlowController(
         requestPermissionLauncher.launch(permission)
     }
 
-    private fun requestStorageManagerPermissionIfNeeded() {
-        if (!publicNotesFolderSelected() || canUsePublicNotesFolder()) {
-            requestNextStep()
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            storageSettingsLauncher.launch(
-                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:${activity.packageName}")
-                },
-            )
-        } else {
-            requestNextStep()
-        }
-    }
-
-    private fun migratePublicNotesIfPossible() {
-        if (!publicNotesFolderSelected()) return
-        if (!canUsePublicNotesFolder()) return
-        val migrated = LocalNotesFileStore.migratePrivateToPublic(activity)
-        if (migrated) {
-            setStatus(activity.getString(R.string.permission_flow_public_folder_active, LocalNotesFileStore.publicRootPath()))
-        } else {
-            setStatus(activity.getString(R.string.permission_flow_public_folder_migration_failed))
-        }
-    }
-
     private fun reportUnavailableCallScreening() {
         setStatus(activity.getString(R.string.permission_flow_screening_unavailable))
         isRunning = false
@@ -261,21 +178,14 @@ internal class MainPermissionFlowController(
         Manifest.permission.READ_CALL_LOG -> activity.getString(R.string.permission_label_call_log)
         Manifest.permission.READ_CONTACTS -> activity.getString(R.string.permission_label_contacts_read)
         Manifest.permission.WRITE_CONTACTS -> activity.getString(R.string.permission_label_contacts_write)
-        Manifest.permission.RECEIVE_SMS -> activity.getString(R.string.permission_label_sms_receive)
-        Manifest.permission.READ_SMS -> activity.getString(R.string.permission_label_sms_read)
-        Manifest.permission.SEND_SMS -> activity.getString(R.string.permission_label_sms_send)
         else -> fallback
     }
 
-    private fun publicNotesFolderSelected(): Boolean = ConfigStore.load(activity).usePublicNotesFolder
     private fun overlayPopupsSelected(): Boolean = ConfigStore.load(activity).useOverlayPopups
-    private fun fullScreenPopupSelected(): Boolean = ConfigStore.load(activity).useFullScreenPopup
     private fun hasCallScreeningRole(): Boolean = MainPermissionChecks.hasCallScreeningRole(activity)
-    private fun canUseFullScreenIntent(): Boolean = MainPermissionChecks.canUseFullScreenIntent(activity)
 
     private fun finishFlowWithSuccess() {
         isRunning = false
-        if (publicNotesFolderSelected() && canUsePublicNotesFolder()) migratePublicNotesIfPossible()
         setStatus(activity.getString(R.string.permission_flow_success, LocalNotesFileStore.activeRootPath(activity)))
         refreshPermissionSummary()
     }
