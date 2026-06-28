@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -41,6 +42,16 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val defaultSmsSettingsController by lazy {
+        DefaultSmsSettingsController(
+            activity = this,
+            binding = binding,
+            requestDefaultRole = ::requestDefaultSmsRole,
+            requestSmsPermissions = ::requestSmsPermissions,
+            setStatus = ::setStatus,
+        )
+    }
+
     private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
@@ -61,6 +72,23 @@ class MainActivity : AppCompatActivity() {
 
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onCallScreeningResult()
+    }
+
+    private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val active = SmsRoleController.isDefaultSmsApp(this)
+        if (active) {
+            setStatus(getString(R.string.settings_sms_role_active))
+            requestSmsPermissions()
+        } else {
+            setStatus(getString(R.string.settings_sms_role_not_changed))
+        }
+        refreshPermissionSummary()
+        defaultSmsSettingsController.refresh()
+    }
+
+    private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        refreshPermissionSummary()
+        defaultSmsSettingsController.refresh()
     }
 
     private val overlaySettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -88,6 +116,11 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
+        if (BuildConfig.DEBUG) {
+            defaultSmsSettingsController.wire()
+        } else {
+            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
+        }
         wireSettingsActions()
         if (BuildConfig.DEBUG) {
             MainServerTestsController(
@@ -100,6 +133,7 @@ class MainActivity : AppCompatActivity() {
         }
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
+        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
         permissionFlowController.start()
     }
 
@@ -108,6 +142,7 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
+        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
     }
 
     override fun onDestroy() {
@@ -143,7 +178,10 @@ class MainActivity : AppCompatActivity() {
             }
             quickEndButton.setOnClickListener {
                 saveConfig()
-                testEndPopup()
+                testEndButton@ {
+                    saveConfig()
+                    testEndPopup()
+                }
             }
         }
     }
@@ -160,6 +198,20 @@ class MainActivity : AppCompatActivity() {
     internal fun requestCallScreeningPermissionFromSummary() {
         saveConfig()
         permissionFlowController.requestCallScreeningRoleIfNeeded()
+    }
+
+    private fun requestDefaultSmsRole() {
+        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
+    }
+
+    private fun requestSmsPermissions() {
+        smsPermissionsLauncher.launch(
+            arrayOf(
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.SEND_SMS,
+            ),
+        )
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -191,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(
             Intent(this, HomeActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            }
+            },
         )
         finish()
     }
