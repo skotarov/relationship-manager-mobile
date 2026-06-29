@@ -104,6 +104,16 @@ internal class HomeCallRowRenderer(
             maxLines = 1
         })
         if (showContactIdentity) textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+
+        // CRM status belongs on its own lower line. When the server is disabled,
+        // no CRM marker or server-backed company information is rendered.
+        val crmClient = showGeneralContactNote &&
+            CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
+            CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
+        if (crmClient) {
+            textColumn.addView(companyScopeChipsUi.create(companyGeneralNoteLabels, crmClient = true))
+        }
+
         if (call.isSms) {
             textColumn.addView(TextView(activity).apply {
                 val body = call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) }
@@ -114,9 +124,6 @@ internal class HomeCallRowRenderer(
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(0, dp(4), 0, 0)
             })
-        }
-        if (showGeneralContactNote && !companyGeneralNoteLabels.isNullOrEmpty()) {
-            textColumn.addView(companyScopeChipsUi.create(companyGeneralNoteLabels))
         }
         if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
             val colors = NoteUiStyle.General
@@ -193,7 +200,6 @@ internal class HomeCallRowRenderer(
     private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
         val mainTextColor = activity.getColor(R.color.calllog_text)
         val titleValue = displayName.ifBlank { call.number }
-        val syncEnabled = CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -207,14 +213,6 @@ internal class HomeCallRowRenderer(
                 ellipsize = TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             })
-            if (syncEnabled) {
-                addView(ImageView(activity).apply {
-                    setImageResource(R.drawable.ic_cloud_note)
-                    contentDescription = activity.getString(R.string.dynamic_crm_synced_notes)
-                    scaleType = ImageView.ScaleType.FIT_CENTER
-                    layoutParams = LinearLayout.LayoutParams(dp(19), dp(19)).apply { marginStart = dp(5) }
-                })
-            }
         }
     }
 
