@@ -23,13 +23,10 @@ internal object PostCallLookupRemoteRows {
 
     fun shouldLookup(context: Context, phone: String): Boolean {
         if (phone.isBlank()) return false
-        val config = ConfigStore.load(context.applicationContext)
-        // Unknown real contacts always look up the server. Existing contacts do
-        // so only after the user has explicitly enabled CRM for that number.
-        return CallReportRemoteAccess.isReady(config) && (
-            ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone) ||
-                CrmContactSyncStore.isEnabled(context.applicationContext, phone)
-            )
+        // The first caller-information popup is the one place where the most
+        // recent shared note must be visible. Fetch it for every popup whenever
+        // this device is connected to Relationship Manager.
+        return CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))
     }
 
     fun load(context: Context, phone: String): List<PostCallLookupRemoteRow> {
@@ -114,5 +111,5 @@ internal object PostCallLookupRemoteRows {
 
     private fun eventTimestamp(event: CallReportHistoryEvent): Long = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs)
 
-    private fun compact(value: String): String = value.trim().replace(Regex("\\s+"), " ")
+    private fun compact(value: String): String = value.trim().replace(Regex("\s+"), " ")
 }
