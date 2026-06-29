@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableString
 import android.text.Spanned
@@ -12,23 +13,33 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Compact Home chips: yellow when a company note exists, gray when only a phase exists. */
+/** Compact Home row for CRM status and company scopes. */
 internal class HomeCompanyScopeChipsUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
-    fun create(labels: List<HomeCompanyScopeLabel>?): HorizontalScrollView {
+    fun create(
+        labels: List<HomeCompanyScopeLabel>?,
+        crmClient: Boolean,
+    ): HorizontalScrollView {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
         }
-        labels.orEmpty().forEachIndexed { index, label ->
+        var hasPrevious = false
+        if (crmClient) {
+            row.addView(crmLabel())
+            hasPrevious = true
+        }
+        labels.orEmpty().forEach { label ->
             row.addView(chip(label), LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                if (index > 0) marginStart = dp(4)
+                if (hasPrevious) marginStart = dp(6)
             })
+            hasPrevious = true
         }
         return HorizontalScrollView(activity).apply {
             isHorizontalScrollBarEnabled = false
@@ -39,6 +50,15 @@ internal class HomeCompanyScopeChipsUi(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(5) }
         }
+    }
+
+    private fun crmLabel(): TextView = TextView(activity).apply {
+        text = "CRM"
+        textSize = 12f
+        setTypeface(typeface, Typeface.BOLD)
+        setTextColor(Color.rgb(15, 23, 42))
+        setPadding(dp(1), dp(4), dp(1), dp(4))
+        contentDescription = "CRM"
     }
 
     private fun chip(label: HomeCompanyScopeLabel): TextView {
