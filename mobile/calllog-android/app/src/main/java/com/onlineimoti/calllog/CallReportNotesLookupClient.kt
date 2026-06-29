@@ -19,7 +19,7 @@ internal data class CallReportServerNote(
 )
 
 internal object CallReportNotesLookupClient {
-    private const val NOTES_LOOKUP_PATH = "/broker/callreport/notes_lookup.php"
+    private const val NOTES_LOOKUP_PATH = "/relationship-manager/home_notes.php"
     private const val CONNECT_TIMEOUT_MS = 7_000
     private const val READ_TIMEOUT_MS = 7_000
     private const val CACHE_TTL_MS = 2 * 60 * 1000L
