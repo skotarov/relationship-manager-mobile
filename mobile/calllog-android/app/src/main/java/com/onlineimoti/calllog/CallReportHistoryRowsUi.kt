@@ -211,7 +211,7 @@ internal class CallReportHistoryRowsUi(
                     setOnClickListener { onEditSms(row.localSms, row.companyId) }
                 }
             }
-            addView(metaView(row, serverConfirmed))
+            addView(metaView(row))
             companyLabel(row.companyId, companyNames)?.let(::addView)
             if (row.text.isNotBlank()) addView(noteText(row.text, colors.third))
             if (pendingNote && !serverConfirmed) addView(pendingSyncText())
@@ -229,6 +229,11 @@ internal class CallReportHistoryRowsUi(
             textSize = 11.5f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(dp(7), dp(3), dp(7), dp(3))
+            activity.getDrawable(R.drawable.ic_cloud_note)?.apply {
+                setBounds(0, 0, dp(14), dp(14))
+                setCompoundDrawables(this, null, null, null)
+                compoundDrawablePadding = dp(4)
+            }
             background = roundedRect(Color.rgb(241, 245, 249), dp(8), Color.TRANSPARENT, 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -279,7 +284,7 @@ internal class CallReportHistoryRowsUi(
         CallReportHistoryRowKind.PHONE -> false
     }
 
-    private fun metaView(row: CallReportHistoryRow, serverConfirmed: Boolean): TextView {
+    private fun metaView(row: CallReportHistoryRow): TextView {
         val kindText = when (row.kind) {
             CallReportHistoryRowKind.SMS -> "SMS"
             CallReportHistoryRowKind.NOTE -> "Бележка"
@@ -290,10 +295,6 @@ internal class CallReportHistoryRowsUi(
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
             setTextColor(if (row.authorIsOtherBroker) FOREIGN_TEXT else Color.rgb(71, 85, 105))
-            if (serverConfirmed) {
-                setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_cloud_note, 0)
-                compoundDrawablePadding = dp(6)
-            }
         }
     }
 
