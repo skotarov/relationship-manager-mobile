@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">Relationship Management</string>
-    <string name="notification_channel_name">Relationship Management</string>
+    <string name="app_name">Relationship Manager</string>
+    <string name="notification_channel_name">Relationship Manager</string>
     <string name="notification_channel_description">Caller lookup and quick access</string>
 
-    <string name="home_title">RM Call Log</string>
+    <string name="home_title">Relationship Manager</string>
     <string name="home_settings_button">Settings</string>
     <string name="open_default_call_log">Open original phone call log</string>
     <string name="open_default_call_log_short">☎</string>
@@ -25,7 +25,7 @@
     <string name="settings_call_log_section">Call log</string>
     <string name="settings_call_log_overlay_section">Call log overlay button</string>
     <string name="settings_popup_section">Popup behavior</string>
-    <string name="settings_crm_section">Relationship Management contacts</string>
+    <string name="settings_crm_section">Relationship Manager contacts</string>
     <string name="settings_permissions_section">Permissions</string>
     <string name="settings_server_section">CRM server</string>
     <string name="settings_debug_section">Debug / Tests</string>
@@ -45,7 +45,7 @@
     <string name="popup_contact_filter_title">Which contacts trigger popups</string>
     <string name="home_call_page_size_hint">Calls per page</string>
     <string name="home_call_page_size_description">How many phone call log rows to show on the first page and each following page. Allowed range: 5–100.</string>
-    <string name="call_log_overlay_button_enabled">Show the round Call Report button over the system call log</string>
+    <string name="call_log_overlay_button_enabled">Show the round Relationship Manager button over the system call log</string>
     <string name="call_log_overlay_button_description">Shown only while the default phone call log opened from this app is visible. Requires Accessibility and Display over other apps.</string>
     <string name="call_log_overlay_debug_enabled">Show overlay detection debug</string>
     <string name="call_log_overlay_debug_description">When enabled, a small debug label appears below the floating button with the detected target and visible texts.</string>
@@ -55,24 +55,24 @@
     <string name="call_log_overlay_position_top_start">Top left</string>
     <string name="call_log_overlay_position_bottom_end">Bottom right</string>
     <string name="call_log_overlay_position_bottom_start">Bottom left</string>
-    <string name="call_log_overlay_accessibility_label">Call Report button over Call Log</string>
-    <string name="call_log_overlay_accessibility_description">Shows a small Call Report button over the phone call log only while that window is open.</string>
+    <string name="call_log_overlay_accessibility_label">Relationship Manager button over Call Log</string>
+    <string name="call_log_overlay_accessibility_description">Shows a small Relationship Manager button over the phone call log only while that window is open.</string>
     <string name="notify_unknown_contacts">Unknown numbers</string>
     <string name="notify_known_contacts">Known contacts</string>
     <string name="contact_groups_hint">Groups for known contacts</string>
     <string name="contact_groups_description">When Known contacts is enabled: an empty field means all known contacts; a filled field means only contacts from these groups.</string>
 
-    <string name="contact_link_title">Relationship Management linking in Android contacts</string>
+    <string name="contact_link_title">Relationship Manager linking in Android contacts</string>
     <string name="contact_link_show_crm_buttons">Show Contact link button</string>
-    <string name="contact_link_mode_app">As app — show Relationship Management in linked apps</string>
-    <string name="contact_link_mode_contact">As contact — add Relationship Management as a linked contact</string>
+    <string name="contact_link_mode_app">As app — show Relationship Manager in linked apps</string>
+    <string name="contact_link_mode_contact">As contact — add Relationship Manager as a linked contact</string>
     <string name="contact_link_description">The change applies on the next save through Contact link.</string>
     <string name="contact_link_bulk_title">Contacts sync</string>
     <string name="contact_link_register_all_button">Register all</string>
     <string name="contact_link_sync_all_button">Sync RM contacts</string>
     <string name="contact_link_debug_button">Repair RM records</string>
     <string name="contact_link_clean_orphans_button">Clean orphan RM records</string>
-    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relationship Management registrations are skipped and unchanged.</string>
+    <string name="contact_link_bulk_description">Registers only phone links for existing phone contacts. Existing Relationship Manager registrations are skipped and unchanged.</string>
     <string name="contact_link_sync_description">Unified sync: adds missing RM links, updates existing records and cleans orphan RM contacts.</string>
 
     <string name="popup_timeout_hint">Seconds until automatic close after the call</string>
@@ -93,14 +93,14 @@
     <string name="permissions_overlay_button">Allow Display over other apps</string>
     <string name="permissions_call_screening_button">Activate Call screening</string>
     <string name="permissions_fullscreen_button">Allow full-screen popup</string>
-    <string name="permissions_cleanup_contacts_button">Clean all Relationship Management records</string>
+    <string name="permissions_cleanup_contacts_button">Clean all Relationship Manager records</string>
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
     <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as the default Caller ID / spam app.</string>
     <string name="permissions_sms_role_title">SMS app</string>
-    <string name="permissions_sms_role_description">When Relationship Manager is the default SMS app, new SMS messages arrive here first. From the notification, choose whether to stay in Call Report or open the previous SMS app.</string>
+    <string name="permissions_sms_role_description">When Relationship Manager is the default SMS app, new SMS messages arrive here first. From the notification, choose whether to stay in Relationship Manager or open the previous SMS app.</string>
     <string name="permissions_sms_role_button">Set as SMS app</string>
     <string name="permissions_sms_theme_title">SMS icon</string>
-    <string name="permissions_sms_theme_description">The SMS theme installer is no longer used. Call Report now provides its own SMS app icon.</string>
+    <string name="permissions_sms_theme_description">The SMS theme installer is no longer used. Relationship Manager provides its own SMS app icon.</string>
     <string name="permissions_sms_theme_install_button">Update SMS icon</string>
     <string name="permissions_sms_theme_restore_button">Restore saved icon</string>
 
