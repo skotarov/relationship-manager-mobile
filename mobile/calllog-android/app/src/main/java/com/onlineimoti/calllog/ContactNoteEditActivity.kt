@@ -53,10 +53,15 @@ class ContactNoteEditActivity : Activity() {
         )
         readDraftFromIntent()
         val initialTopicState = ContactNoteFormWorkflow.initialTopicState(this, draft())
-        topicState = if (preferredCompanyId.isNotBlank()) {
-            initialTopicState.copy(selectedCompanyId = preferredCompanyId)
-        } else {
-            initialTopicState
+        topicState = when {
+            preferredCompanyId.isNotBlank() -> initialTopicState.copy(selectedCompanyId = preferredCompanyId)
+            // An already saved local call note keeps its present destination when
+            // opened for editing. New CRM/unknown notes deliberately require the
+            // user to select Local or a company.
+            !isGeneralNote && initialNoteText.isNotBlank() && initialTopicState.visible && !initialTopicState.localOnly -> {
+                initialTopicState.copy(selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID)
+            }
+            else -> initialTopicState
         }
         setContentView(
             ContactNoteEditUi(
