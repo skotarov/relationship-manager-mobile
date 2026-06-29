@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">Управление на взаимоотношения</string>
-    <string name="notification_channel_name">Управление на взаимоотношения</string>
+    <string name="app_name">Relationship Manager</string>
+    <string name="notification_channel_name">Relationship Manager</string>
     <string name="notification_channel_description">Проверка на номер и бърз достъп</string>
 
-    <string name="home_title">RM дневник на разговорите</string>
+    <string name="home_title">Relationship Manager</string>
     <string name="home_settings_button">Настройки</string>
     <string name="open_default_call_log">Отвори оригиналния дневник на разговорите</string>
     <string name="open_default_call_log_short">☎</string>
@@ -25,7 +25,7 @@
     <string name="settings_call_log_section">Дневник на разговорите</string>
     <string name="settings_call_log_overlay_section">Плаващ бутон върху дневника на разговорите</string>
     <string name="settings_popup_section">Поведение на popup-ите</string>
-    <string name="settings_crm_section">Контакти в Управление на взаимоотношения</string>
+    <string name="settings_crm_section">Контакти в Relationship Manager</string>
     <string name="settings_permissions_section">Разрешения</string>
     <string name="settings_server_section">CRM сървър</string>
     <string name="settings_debug_section">Отстраняване на грешки / Тестове</string>
@@ -34,7 +34,7 @@
     <string name="language_title">Език</string>
     <string name="language_system">Системен по подразбиране</string>
     <string name="language_bg">Български</string>
-    <string name="language_en">Английски</string>
+    <string name="language_en">English</string>
     <string name="language_description">Променя само езика на приложението. Езикът на телефона остава непроменен.</string>
 
     <string name="storage_title">Съхранение на бележките</string>
@@ -45,7 +45,7 @@
     <string name="popup_contact_filter_title">Кои контакти да задействат popup-и</string>
     <string name="home_call_page_size_hint">Разговори на страница</string>
     <string name="home_call_page_size_description">Колко реда от дневника на телефона да се показват на първата и всяка следваща страница. Позволеният диапазон е 5–100.</string>
-    <string name="call_log_overlay_button_enabled">Показвай кръгъл бутон Call Report върху системния дневник на разговорите</string>
+    <string name="call_log_overlay_button_enabled">Показвай кръгъл бутон Relationship Manager върху системния дневник на разговорите</string>
     <string name="call_log_overlay_button_description">Показва се само докато е видим стандартният дневник на телефона, отворен от това приложение. Изисква Достъпност и Показване над други приложения.</string>
     <string name="call_log_overlay_debug_enabled">Показвай отстраняване на грешки за разпознаването на наслагването</string>
     <string name="call_log_overlay_debug_description">Когато е включено, под плаващия бутон се показва малък служебен текст с разпознатия екран и видимите текстове.</string>
@@ -55,24 +55,24 @@
     <string name="call_log_overlay_position_top_start">Горе вляво</string>
     <string name="call_log_overlay_position_bottom_end">Долу вдясно</string>
     <string name="call_log_overlay_position_bottom_start">Долу вляво</string>
-    <string name="call_log_overlay_accessibility_label">Бутон Call Report върху дневника на разговорите</string>
-    <string name="call_log_overlay_accessibility_description">Показва малък бутон Call Report върху дневника на разговорите на телефона само докато този прозорец е отворен.</string>
+    <string name="call_log_overlay_accessibility_label">Бутон Relationship Manager върху дневника на разговорите</string>
+    <string name="call_log_overlay_accessibility_description">Показва малък бутон Relationship Manager върху дневника на разговорите на телефона само докато този прозорец е отворен.</string>
     <string name="notify_unknown_contacts">Непознати номера</string>
     <string name="notify_known_contacts">Познати контакти</string>
     <string name="contact_groups_hint">Групи за познати контакти</string>
     <string name="contact_groups_description">Когато „Познати контакти“ е включено: празно поле означава всички познати контакти; попълнено поле означава само контактите от тези групи.</string>
 
-    <string name="contact_link_title">Свързване на Управление на взаимоотношения с Android контакти</string>
+    <string name="contact_link_title">Свързване на Relationship Manager с Android контакти</string>
     <string name="contact_link_show_crm_buttons">Показвай бутон „Връзка с контакта“</string>
-    <string name="contact_link_mode_app">Като приложение — показвай Управление на взаимоотношения сред свързаните приложения</string>
-    <string name="contact_link_mode_contact">Като контакт — добавяй Управление на взаимоотношения като свързан контакт</string>
+    <string name="contact_link_mode_app">Като приложение — показвай Relationship Manager сред свързаните приложения</string>
+    <string name="contact_link_mode_contact">Като контакт — добавяй Relationship Manager като свързан контакт</string>
     <string name="contact_link_description">Промяната важи при следващото записване през „Връзка с контакта“.</string>
     <string name="contact_link_bulk_title">Синхронизация на контактите</string>
     <string name="contact_link_register_all_button">Регистрирай всички</string>
     <string name="contact_link_sync_all_button">Синхронизирай RM контактите</string>
     <string name="contact_link_debug_button">Поправи RM записите</string>
     <string name="contact_link_clean_orphans_button">Почисти осиротелите RM записи</string>
-    <string name="contact_link_bulk_description">Регистрира само телефонни връзки за съществуващи телефонни контакти. Вече съществуващите регистрации в Управление на взаимоотношения се пропускат и не се променят.</string>
+    <string name="contact_link_bulk_description">Регистрира само телефонни връзки за съществуващи телефонни контакти. Вече съществуващите регистрации в Relationship Manager се пропускат и не се променят.</string>
     <string name="contact_link_sync_description">Обща синхронизация: добавя липсващи RM връзки, обновява съществуващите записи и почиства осиротелите RM контакти.</string>
 
     <string name="popup_timeout_hint">Секунди до автоматично затваряне след разговора</string>
@@ -93,14 +93,14 @@
     <string name="permissions_overlay_button">Разреши Показване над други приложения</string>
     <string name="permissions_call_screening_button">Активирай филтриране на обажданията</string>
     <string name="permissions_fullscreen_button">Разреши popup на цял екран</string>
-    <string name="permissions_cleanup_contacts_button">Почисти всички записи на Управление на взаимоотношения</string>
+    <string name="permissions_cleanup_contacts_button">Почисти всички записи на Relationship Manager</string>
     <string name="permissions_use_call_screening">Използвай филтриране на обажданията / роля за идентификация на обаждащия се</string>
     <string name="permissions_call_screening_description">Не е задължително. Активирай го само ако popup-ът не се показва навреме при входящи разговори или Android забавя информацията за разговора. Телефонът може да го покаже като приложение по подразбиране за идентификация на обаждащия се / спам.</string>
     <string name="permissions_sms_role_title">SMS приложение</string>
-    <string name="permissions_sms_role_description">Когато Relationship Manager е SMS приложението по подразбиране, новите SMS-и идват първо тук. От известието избираш дали да останеш в Call Report или да отвориш предишното SMS приложение.</string>
+    <string name="permissions_sms_role_description">Когато Relationship Manager е SMS приложението по подразбиране, новите SMS-и идват първо тук. От известието избираш дали да останеш в Relationship Manager или да отвориш предишното SMS приложение.</string>
     <string name="permissions_sms_role_button">Избери като SMS приложение</string>
     <string name="permissions_sms_theme_title">SMS икона</string>
-    <string name="permissions_sms_theme_description">Инсталаторът за SMS тема вече не се използва. Call Report предоставя собствена икона за SMS приложението.</string>
+    <string name="permissions_sms_theme_description">Инсталаторът за SMS тема вече не се използва. Relationship Manager предоставя собствена икона за SMS приложението.</string>
     <string name="permissions_sms_theme_install_button">Обнови SMS иконата</string>
     <string name="permissions_sms_theme_restore_button">Върни запазената икона</string>
 
