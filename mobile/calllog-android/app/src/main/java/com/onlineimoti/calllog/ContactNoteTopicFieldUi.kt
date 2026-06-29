@@ -8,7 +8,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 
-/** Shared topic field used by full-screen and overlay note editors. */
+/** Shared destination field used by full-screen and overlay note editors. */
 internal class ContactNoteTopicFieldUi(
     private val context: Context,
     private val dp: (Int) -> Int,
@@ -34,7 +34,7 @@ internal class ContactNoteTopicFieldUi(
         }
         val spinner = Spinner(context)
         field.addView(TextView(context).apply {
-            text = "Повод:"
+            text = if (state.localOnly) "Бележката се пази само локално:" else "Къде да се запише бележката:"
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(55, 65, 81))
