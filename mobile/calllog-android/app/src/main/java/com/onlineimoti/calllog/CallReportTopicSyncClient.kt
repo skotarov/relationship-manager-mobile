@@ -28,6 +28,8 @@ internal object CallReportTopicSyncClient {
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+            // Retain the legacy header during the transition; the same token is sent.
+            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
 
             val code = connection.responseCode
