@@ -145,7 +145,20 @@ jobs:
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
       - name: Lint internal build
-        run: gradle --no-daemon --console=plain :app:lintDebug
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          gradle --no-daemon --console=plain :app:lintDebug 2>&1 | tee /tmp/relationship-manager-lint.log
+          gradle_status=${PIPESTATUS[0]}
+
+          if [ "$gradle_status" -ne 0 ]; then
+            echo
+            echo "========== ТОЧНИ ГРЕШКИ ОТ LINT / KOTLIN =========="
+            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-lint.log || true
+            echo "========== КРАЙ НА ГРЕШКИТЕ =========="
+            exit "$gradle_status"
+          fi
 
       - name: Build Relationship Manager APK
         shell: bash
