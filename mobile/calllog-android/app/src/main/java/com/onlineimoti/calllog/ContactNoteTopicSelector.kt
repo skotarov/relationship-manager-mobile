@@ -38,11 +38,11 @@ internal object ContactNoteTopicSelector {
         val hasPlaceholder = !state.loading && state.loadError.isBlank() && !state.localOnly && options.isNotEmpty()
         val labels = when {
             state.loading && state.includeLocalOption -> listOf(context.getString(R.string.note_local_company))
-            state.loading -> listOf("Зареждане на теми…")
+            state.loading -> listOf("Зареждане на фирми…")
             state.loadError.isNotBlank() && state.includeLocalOption -> listOf(context.getString(R.string.note_local_company))
             state.loadError.isNotBlank() -> listOf(context.getString(R.string.note_topics_unavailable_local_only))
             state.localOnly -> listOf(context.getString(R.string.note_local_company))
-            options.isEmpty() -> listOf("Няма налични теми")
+            options.isEmpty() -> listOf("Няма налични места за запис")
             hasPlaceholder -> listOf("Избери") + options.map { it.label }
             else -> options.map { it.label }
         }
@@ -50,7 +50,9 @@ internal object ContactNoteTopicSelector {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
         spinner.adapter = adapter
-        spinner.isEnabled = !state.loading && state.loadError.isBlank() && !state.localOnly && state.companies.isNotEmpty()
+        // Local is always a valid explicit destination for an eligible contact,
+        // even if the server has no company records to offer yet.
+        spinner.isEnabled = !state.loading && state.loadError.isBlank() && !state.localOnly && options.isNotEmpty()
 
         val optionIndex = options.indexOfFirst { it.id == state.selectedCompanyId }
         val selectedIndex = when {
