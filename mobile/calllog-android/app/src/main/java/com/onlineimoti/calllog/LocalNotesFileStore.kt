@@ -62,28 +62,23 @@ object LocalNotesFileStore {
         return if (line.isBlank()) "" else runCatching { JSONObject(line).optString("note") }.getOrDefault("").trim()
     }
 
+    /**
+     * The Home Call Log may show a blue note only when it belongs to this exact
+     * call-log row. The latest note for the number belongs to the caller-info
+     * popup, not to an unrelated historical row.
+     */
     fun noteForCall(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
         val phoneKey = phoneNumber.normalizePhoneKey()
-        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return ""
+        if (phoneKey.isBlank() || callAt <= 0L || !canUseConfiguredFolder(context)) return ""
         val file = callLogFile(context, phoneKey, createDirs = false)
         if (!file.exists()) return ""
-
-        val exactNote = if (callAt > 0L) {
-            runCatching {
-                file.readLines().asReversed().firstNotNullOfOrNull { line ->
-                    val json = runCatching { JSONObject(line) }.getOrNull() ?: return@firstNotNullOfOrNull null
-                    if (!sameCall(json, callAt, direction)) return@firstNotNullOfOrNull null
-                    json.optString("note").trim().takeIf { it.isNotBlank() }
-                }.orEmpty()
-            }.getOrDefault("")
-        } else {
-            ""
-        }
-
-        // Android call-log timestamps and the timestamp captured at call end can differ.
-        // On the compact Home list the useful fallback is the last conversation note for
-        // this phone number, so the blue "what we discussed" card never disappears.
-        return exactNote.ifBlank { latestNoteForPhone(context, phoneNumber) }
+        return runCatching {
+            file.readLines().asReversed().firstNotNullOfOrNull { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@firstNotNullOfOrNull null
+                if (!sameCall(json, callAt, direction)) return@firstNotNullOfOrNull null
+                json.optString("note").trim().takeIf { it.isNotBlank() }
+            }.orEmpty()
+        }.getOrDefault("")
     }
 
     fun companyIdForCall(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
