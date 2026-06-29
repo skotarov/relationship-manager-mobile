@@ -9,17 +9,17 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 internal object CallReportTopicSyncClient {
-    private const val PATH = "/broker/callreport/sync.php"
+    private const val PATH = "/relationship-manager/sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
     fun sync(config: AppConfig, events: List<CallReportTopicSyncEvent>): Set<String> {
-        if (events.isEmpty()) return emptySet()
+        if (!CallReportRemoteAccess.isReady(config) || events.isEmpty()) return emptySet()
         val payload = JSONObject().apply {
             put("schema_version", 1)
             put("events", JSONArray().apply { events.forEach { put(it.toJson()) } })
         }
-        val connection = (URL(config.baseUrl.trim().trimEnd('/') + PATH).openConnection() as HttpURLConnection)
+        val connection = URL(config.baseUrl.trim().trimEnd('/') + PATH).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
             connection.connectTimeout = CONNECT_TIMEOUT_MS
@@ -27,7 +27,7 @@ internal object CallReportTopicSyncClient {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
 
             val code = connection.responseCode
