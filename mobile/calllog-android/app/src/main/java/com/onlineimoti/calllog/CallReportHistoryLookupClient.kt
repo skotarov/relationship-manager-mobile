@@ -43,7 +43,7 @@ internal data class CallReportHistoryLookupResult(
 )
 
 internal object CallReportHistoryLookupClient {
-    private const val PATH = "/broker/callreport/history_lookup.php"
+    private const val PATH = "/relationship-manager/history_lookup.php"
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(config: AppConfig, phone: String): CallReportHistoryLookupResult {
@@ -91,7 +91,7 @@ internal object CallReportHistoryLookupClient {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
             if (singlePhone == null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
