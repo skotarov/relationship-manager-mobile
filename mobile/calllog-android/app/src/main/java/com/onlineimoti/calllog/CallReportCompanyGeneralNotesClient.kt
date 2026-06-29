@@ -65,7 +65,7 @@ internal object CallReportCompanyGeneralNotesClient {
         }
 
         val latestByCompany = mutableMapOf<String, RemoteNote>()
-        val phoneKey = phoneKey(phone)
+        val requestedPhoneKey = phoneKey(phone)
         val items = response.optJSONArray("history_items") ?: response.optJSONArray("items")
         if (items != null) {
             for (index in 0 until items.length()) {
@@ -77,7 +77,7 @@ internal object CallReportCompanyGeneralNotesClient {
                         item.optString("direction").trim().isBlank() &&
                         item.optLong("duration_seconds", item.optLong("duration", 0L)) <= 0L)
                 if (!isGeneralNote) continue
-                if (phoneKey(item.optString("phone")) != phoneKey) continue
+                if (phoneKey(item.optString("phone")) != requestedPhoneKey) continue
 
                 val companyId = item.optString("company_id").trim()
                 if (companyId.isBlank()) continue
