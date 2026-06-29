@@ -44,6 +44,7 @@ internal object CallReportTopicCompaniesClient {
 
             val companies = response.optJSONArray("companies") ?: JSONArray().apply {
                 response.optJSONObject("company")?.let { company -> put(company) }
+                if (length() == 0) response.optJSONObject("account")?.let { account -> put(account) }
             }
             return buildList {
                 for (index in 0 until companies.length()) {
