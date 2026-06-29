@@ -30,10 +30,10 @@
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/open_full_log"
-                    android:padding="4dp"
+                    android:contentDescription="@string/settings_back_content_description"
+                    android:padding="8dp"
                     android:scaleType="centerInside"
-                    android:src="@mipmap/ic_launcher" />
+                    android:src="@drawable/ic_settings_back" />
                 <TextView
                     android:id="@+id/settingsMainTitle"
                     android:layout_width="wrap_content"
