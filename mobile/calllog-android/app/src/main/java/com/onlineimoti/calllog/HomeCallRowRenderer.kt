@@ -139,7 +139,18 @@ internal class HomeCallRowRenderer(
             val colors = NoteUiStyle.Call
             textColumn.addView(TextView(activity).apply {
                 text = highlightedText(callNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_chat_note, 0, 0, 0)
+                // A confirmed server record is the canonical shared note. Show a
+                // cloud instead of the local conversation bubble, at the exact
+                // same 18dp bounds so neither source changes the row layout.
+                val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
+                    R.drawable.ic_cloud_note
+                } else {
+                    R.drawable.ic_chat_note
+                }
+                val icon = activity.getDrawable(iconRes)?.apply {
+                    setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
+                }
+                setCompoundDrawables(icon, null, null, null)
                 compoundDrawablePadding = dp(5)
                 setTextColor(colors.text)
                 textSize = 12.5f
@@ -274,5 +285,9 @@ internal class HomeCallRowRenderer(
             call.direction == "out" -> R.drawable.ic_call_outgoing
             else -> R.drawable.ic_call_incoming
         }
+    }
+
+    private companion object {
+        const val NOTE_ICON_SIZE_DP = 18
     }
 }
