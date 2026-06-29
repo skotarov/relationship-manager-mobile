@@ -16,7 +16,7 @@ internal data class CallReportCompanyMainNote(
 )
 
 internal object CallReportCompanyGeneralNotesClient {
-    private const val PATH = "/broker/callreport/history_lookup.php"
+    private const val PATH = "/relationship-manager/history_lookup.php"
 
     fun fetch(context: android.content.Context, config: AppConfig, phone: String): List<CallReportCompanyMainNote> {
         if (!CallReportRemoteAccess.isReady(config) || phone.isBlank()) return emptyList()
@@ -27,6 +27,7 @@ internal object CallReportCompanyGeneralNotesClient {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
             connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
@@ -42,12 +43,24 @@ internal object CallReportCompanyGeneralNotesClient {
 
     private fun parse(context: android.content.Context, phone: String, response: JSONObject): List<CallReportCompanyMainNote> {
         val companies = linkedMapOf<String, String>()
-        val principal = response.optJSONObject("principal")
+        val principal = response.optJSONObject("principal") ?: response.optJSONObject("authenticated_principal")
         principal?.optJSONArray("companies")?.let { source ->
             for (index in 0 until source.length()) {
                 val company = source.optJSONObject(index) ?: continue
                 val id = company.optString("id").trim()
                 if (id.isNotBlank()) companies[id] = company.optString("name").trim().ifBlank { id }
+            }
+        }
+        if (companies.isEmpty()) {
+            response.optJSONObject("company")?.let { company ->
+                val id = company.optString("id").trim()
+                if (id.isNotBlank()) companies[id] = company.optString("name").trim().ifBlank { id }
+            }
+        }
+        if (companies.isEmpty()) {
+            response.optJSONObject("account")?.let { account ->
+                val id = account.optString("id").trim()
+                if (id.isNotBlank()) companies[id] = account.optString("name").trim().ifBlank { id }
             }
         }
 
