@@ -11,7 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Explicit debug probes for the deployed Call Report server contract.
+ * Explicit debug probes for the deployed Relationship Manager server contract.
  * Read-only probes never write. Sync and submit are opt-in because they intentionally
  * create/update a clearly marked deterministic test event for the configured test phone.
  */
@@ -24,7 +24,7 @@ internal data class ServerDebugTestResult(
 internal object ServerDebugTestActions {
     private const val CONNECT_TIMEOUT_MS = 8_000
     private const val READ_TIMEOUT_MS = 8_000
-    private const val API_ROOT = "/broker/callreport"
+    private const val API_ROOT = "/relationship-manager"
 
     private data class WriteTestCompany(
         val id: String,
@@ -65,7 +65,7 @@ internal object ServerDebugTestActions {
         return jsonGet(
             config = config,
             label = "lookup.php",
-            path = config.lookupPath,
+            path = "$API_ROOT/lookup.php",
             params = lookupContext(config, phone, direction, "lookup"),
         )
     }
@@ -73,8 +73,8 @@ internal object ServerDebugTestActions {
     fun testNotesLookup(config: AppConfig, phone: String): ServerDebugTestResult {
         return jsonPost(
             config = config,
-            label = "notes_lookup.php",
-            path = "$API_ROOT/notes_lookup.php",
+            label = "home_notes.php",
+            path = "$API_ROOT/home_notes.php",
             body = JSONObject().put("phones", JSONArray().put(phone)),
         )
     }
@@ -101,7 +101,7 @@ internal object ServerDebugTestActions {
         return htmlGet(
             config = config,
             label = "form.php",
-            path = config.formPath,
+            path = "$API_ROOT/form.php",
             params = formContext(phone, direction),
         )
     }
@@ -110,7 +110,7 @@ internal object ServerDebugTestActions {
         return htmlGet(
             config = config,
             label = "history.php",
-            path = config.historyPath,
+            path = "$API_ROOT/history.php",
             params = linkedMapOf("phone" to phone),
         )
     }
@@ -179,13 +179,13 @@ internal object ServerDebugTestActions {
         val params = formContext(phone, direction).toMutableMap()
         params["access_token"] = config.accessToken
         params["client_event_id"] = debugEventId(CallReportInstallationId.get(context), "form")
-        return buildEndpoint(config.baseUrl, config.formPath, params)
+        return buildEndpoint(config.baseUrl, "$API_ROOT/form.php", params)
     }
 
     fun buildHistoryUrl(config: AppConfig, phone: String): String {
         return buildEndpoint(
             config.baseUrl,
-            config.historyPath,
+            "$API_ROOT/history.php",
             linkedMapOf("phone" to phone, "access_token" to config.accessToken),
         )
     }
@@ -225,7 +225,7 @@ internal object ServerDebugTestActions {
         val response = request(
             config = config,
             method = "GET",
-            path = config.lookupPath,
+            path = "$API_ROOT/lookup.php",
             params = lookupContext(config, phone, direction, "write-company"),
         )
         val json = JSONObject(response.body)
