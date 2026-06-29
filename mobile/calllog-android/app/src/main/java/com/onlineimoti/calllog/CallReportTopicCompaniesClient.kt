@@ -31,6 +31,8 @@ internal object CallReportTopicCompaniesClient {
             connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+            // Retain the legacy header during the transition; the same token is sent.
+            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
 
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
@@ -41,7 +43,7 @@ internal object CallReportTopicCompaniesClient {
             }
 
             val companies = response.optJSONArray("companies") ?: JSONArray().apply {
-                response.optJSONObject("company")?.let(::put)
+                response.optJSONObject("company")?.let { company -> put(company) }
             }
             return buildList {
                 for (index in 0 until companies.length()) {
