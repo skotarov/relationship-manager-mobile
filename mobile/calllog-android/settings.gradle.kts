@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Relation Management"
+rootProject.name = "Relationship Manager"
 include(":app")
