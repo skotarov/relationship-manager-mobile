@@ -111,5 +111,5 @@ internal object PostCallLookupRemoteRows {
 
     private fun eventTimestamp(event: CallReportHistoryEvent): Long = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs)
 
-    private fun compact(value: String): String = value.trim().replace(Regex("\s+"), " ")
+    private fun compact(value: String): String = value.trim().replace(Regex("\\s+"), " ")
 }
