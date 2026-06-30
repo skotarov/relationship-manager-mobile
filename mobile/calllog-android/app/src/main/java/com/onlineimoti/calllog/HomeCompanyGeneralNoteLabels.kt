@@ -27,10 +27,8 @@ internal object HomeCompanyGeneralNoteLabels {
         if (requestedPhones.isEmpty()) return emptyMap()
 
         // CRM contacts and unknown numbers share the server-backed company scope.
-        val scopedPhoneKeys = requestedPhones
-            .filter { ContactServerCompanyScope.isAvailable(context, it) }
-            .map { HomeCallPageLoader.noteKey(it) }
-            .toSet()
+        // Resolve them in one batch, instead of doing a full Contacts lookup per row.
+        val scopedPhoneKeys = HomeCallPageLoader.crmEligiblePhoneKeys(context, requestedPhones)
         if (scopedPhoneKeys.isEmpty()) return emptyMap()
 
         val result = CallReportHistoryLookupClient.lookupMany(config, requestedPhones)
