@@ -1,0 +1,4 @@
+<resources>
+    <string name="server_advanced_settings_show">Show advanced server settings</string>
+    <string name="server_advanced_settings_hide">Hide advanced server settings</string>
+</resources>
