@@ -46,7 +46,7 @@ class HomeActivity : AppCompatActivity() {
     }
     private val companyGeneralNotesController by lazy {
         HomeCompanyGeneralNotesController(this, handler) {
-            if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
+            if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCurrentRowsAfterCompanyLabels()
         }
     }
     private val filteredContactSummaryChipsUi by lazy { HomeCompanyScopeChipsUi(this, ::dp, ::roundedRect) }
@@ -141,9 +141,11 @@ class HomeActivity : AppCompatActivity() {
     private fun renderCalls() {
         val generation = crmGeneration.incrementAndGet()
         val size = pageSize()
+        val loadingCrmRows = isCrmModeEnabled() && activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         binding.previousCallsButton.text = getString(R.string.dynamic_home_previous_calls, size)
         binding.nextCallsButton.text = getString(R.string.dynamic_home_next_calls, size)
-        binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE
+        if (!loadingCrmRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
+        binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
         updateCrmModeBadge(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
@@ -160,8 +162,10 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun renderCrmCallsAsync(pageSize: Int, expectedGeneration: Int) {
-        binding.homeStatusText.text = "Зареждане на CRM разговори…"
-        binding.paginationContainer.visibility = View.GONE
+        if (currentCalls.isEmpty()) {
+            binding.homeStatusText.text = "Зареждане на CRM разговори…"
+            binding.paginationContainer.visibility = View.GONE
+        }
         val requestedPage = pageIndex
         val appContext = applicationContext
         crmExecutor.execute {
@@ -179,6 +183,14 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun applyRenderData(renderData: HomeRenderData, pageSize: Int) {
+        applyRenderData(renderData, pageSize, refreshCompanyLabels = true)
+    }
+
+    private fun applyRenderData(
+        renderData: HomeRenderData,
+        pageSize: Int,
+        refreshCompanyLabels: Boolean,
+    ) {
         currentCalls = renderData.calls
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
@@ -196,7 +208,21 @@ class HomeActivity : AppCompatActivity() {
                 showGeneralContactNote = !phoneFiltered, showQuickActions = !phoneFiltered,
             ))
         }
-        if (!phoneFiltered) companyGeneralNotesController.refresh(renderData.calls)
+        if (!phoneFiltered && refreshCompanyLabels) companyGeneralNotesController.refresh(renderData.calls)
+    }
+
+    private fun renderCurrentRowsAfterCompanyLabels() {
+        if (currentCalls.isEmpty() || activePhoneFilter.isNotBlank()) return
+        val calls = currentCalls
+        applyRenderData(
+            HomeRenderData(
+                calls = calls,
+                contactNotesByNumber = HomeCallPageLoader.contactNotes(this, calls),
+                contactNamesByNumber = HomeCallPageLoader.contactNames(this, calls),
+            ),
+            pageSize(),
+            refreshCompanyLabels = false,
+        )
     }
 
     private fun renderFilteredContactSummary() {
@@ -282,6 +308,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun setCrmMode(enabled: Boolean) {
         if (!HomeCrmModeStore.setEnabled(this, enabled)) return
+        currentCalls = emptyList()
         activePhoneFilter = ""; pageIndex = 0; filteredFullLogController.invalidate(); companyGeneralNotesController.invalidate(); renderCalls()
     }
 
