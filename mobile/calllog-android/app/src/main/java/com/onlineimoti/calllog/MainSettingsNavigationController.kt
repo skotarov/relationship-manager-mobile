@@ -35,8 +35,17 @@ internal class MainSettingsNavigationController(
             binding.settingsMenuGroup.settingsDebugButton.visibility = View.GONE
             binding.settingsDebugGroup.root.visibility = View.GONE
         }
-        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
-        binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
+
+        val remote = binding.remoteSettingsSection
+        remote.toggleAdvancedServerSettingsButton.setOnClickListener {
+            val showAdvanced = remote.advancedServerSettingsGroup.visibility != View.VISIBLE
+            remote.advancedServerSettingsGroup.visibility = if (showAdvanced) View.VISIBLE else View.GONE
+            remote.toggleAdvancedServerSettingsButton.text = activity.getString(
+                if (showAdvanced) R.string.server_advanced_settings_hide else R.string.server_advanced_settings_show,
+            )
+        }
+        remote.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
+        remote.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
     }
 
     fun showMenu() {
