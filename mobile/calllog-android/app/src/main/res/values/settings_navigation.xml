@@ -3,4 +3,10 @@
     <string name="server_advanced_settings_hide">Hide advanced server settings</string>
     <string name="settings_sms_permissions_section_title">SMS app and permissions</string>
     <string name="settings_sms_permissions_section_description">Activate the SMS app role and allow SMS permissions from one place.</string>
+    <string name="translation_editor_title">Edit translations</string>
+    <string name="translation_editor_description">Choose a language, then edit every text key. Changes are saved locally and apply after you tap Apply translations.</string>
+    <string name="translation_editor_key_header">Key</string>
+    <string name="translation_editor_value_header">Translation</string>
+    <string name="translation_editor_apply_button">Apply translations</string>
+    <string name="translation_editor_reset_language_button">Restore selected language defaults</string>
 </resources>
