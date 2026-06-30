@@ -37,28 +37,6 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="@string/settings_language_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <include
-            android:id="@+id/languageSettingsSection"
-            layout="@layout/section_language_settings" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="@string/settings_permissions_section"
-            android:textColor="@color/calllog_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
         <include
             android:id="@+id/permissionsSection"
             layout="@layout/section_permissions" />
