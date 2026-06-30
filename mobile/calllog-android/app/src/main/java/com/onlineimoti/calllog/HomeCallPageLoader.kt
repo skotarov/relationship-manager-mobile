@@ -11,6 +11,11 @@ object HomeCallPageLoader {
     private const val FILTERED_CALL_SCAN_LIMIT = 500
     private const val FILTERED_SMS_SCAN_LIMIT = 150
     private const val CRM_CALL_SCAN_LIMIT = 1_000
+    private const val REAL_CONTACT_CACHE_MS = 30_000L
+
+    private val realContactPhoneKeysLock = Any()
+    private var cachedRealContactPhoneKeys: Set<String> = emptySet()
+    private var realContactPhoneKeysCachedAtMs = 0L
 
     fun calls(
         context: Context,
@@ -44,6 +49,23 @@ object HomeCallPageLoader {
         if (noteKey(phone).isBlank()) return false
         return CrmContactSyncStore.isEnabled(context.applicationContext, phone) ||
             ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone)
+    }
+
+    /**
+     * Resolves CRM eligibility for a whole Home page at once. The explicit CRM set
+     * comes directly from the per-contact CRM switches, then unknown numbers are
+     * added by subtracting normal Android Contacts from the candidate numbers.
+     */
+    fun crmEligiblePhoneKeys(context: Context, phones: Iterable<String>): Set<String> {
+        val candidateKeys = phones.map(::noteKey).filter { it.isNotBlank() }.toSet()
+        if (candidateKeys.isEmpty()) return emptySet()
+
+        val appContext = context.applicationContext
+        val explicitlyCrmKeys = CrmContactSyncStore.enabledPhoneKeys(appContext)
+        val knownRealContactKeys = realContactPhoneKeys(appContext)
+        return candidateKeys.filterTo(linkedSetOf()) { key ->
+            key in explicitlyCrmKeys || key !in knownRealContactKeys
+        }
     }
 
     private fun crmCalls(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
@@ -120,35 +142,42 @@ object HomeCallPageLoader {
         return filtered.page(pageIndex, pageSize)
     }
 
-    /**
-     * The Home page may inspect hundreds of recent calls. Do not use
-     * [ContactServerCompanyScope.isUnknownNumber] once per row: its precise lookup
-     * can scan Contacts for every number. Read real phone-contact keys once, then
-     * preserve the same rule: explicitly CRM or not present among real contacts.
-     */
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
-        val appContext = context.applicationContext
-        val realContactPhoneKeys = realContactPhoneKeys(appContext)
-        val eligibilityByNumber = mutableMapOf<String, Boolean>()
-        return calls.filter { call ->
-            val key = noteKey(call.number)
-            if (key.isBlank()) return@filter false
-            eligibilityByNumber.getOrPut(key) {
-                CrmContactSyncStore.isEnabled(appContext, call.number) || key !in realContactPhoneKeys
-            }
-        }
+        val eligiblePhoneKeys = crmEligiblePhoneKeys(context, calls.asSequence().map { it.number }.asIterable())
+        return calls.filter { call -> noteKey(call.number) in eligiblePhoneKeys }
     }
 
     /**
-     * Query only valid provider columns: first read non-Call-Report raw contact
-     * IDs, then collect phone rows belonging to those IDs. A previous query mixed
-     * RawContacts columns into Data selection and could fail on some providers,
-     * incorrectly treating every call number as unknown.
+     * Known-contact lookup is cached because CRM Home and the company-label loader
+     * both need it. Without READ_CONTACTS the established behavior is to consider
+     * all numbers unknown, so the cache remains empty.
      */
     private fun realContactPhoneKeys(context: Context): Set<String> {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return emptySet()
         }
+
+        val now = System.currentTimeMillis()
+        synchronized(realContactPhoneKeysLock) {
+            if (realContactPhoneKeysCachedAtMs > 0L && now - realContactPhoneKeysCachedAtMs < REAL_CONTACT_CACHE_MS) {
+                return cachedRealContactPhoneKeys
+            }
+        }
+
+        val loaded = loadRealContactPhoneKeys(context)
+        synchronized(realContactPhoneKeysLock) {
+            cachedRealContactPhoneKeys = loaded
+            realContactPhoneKeysCachedAtMs = now
+            return cachedRealContactPhoneKeys
+        }
+    }
+
+    /**
+     * Query only provider-valid columns: collect normal raw contact IDs first,
+     * then collect phone rows belonging to those IDs. The app's own Call Report
+     * contact account is intentionally excluded from the known-contact set.
+     */
+    private fun loadRealContactPhoneKeys(context: Context): Set<String> {
         return runCatching {
             val realRawContactIds = context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
