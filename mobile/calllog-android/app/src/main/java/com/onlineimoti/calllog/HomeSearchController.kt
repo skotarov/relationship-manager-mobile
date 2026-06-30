@@ -16,6 +16,7 @@ internal class HomeSearchController(
     private val pageSize: () -> Int,
     private val activePhoneFilter: () -> String,
     private val activeSearchQuery: () -> String,
+    private val isCrmModeEnabled: () -> Boolean,
     private val pageIndex: () -> Int,
     private val setCurrentCalls: (List<PhoneCallRecord>) -> Unit,
     private val renderEmptyState: () -> Unit,
@@ -36,6 +37,7 @@ internal class HomeSearchController(
 
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
+        val crmMode = isCrmModeEnabled()
         val page = pageIndex()
         binding.homeStatusText.text = context.getString(R.string.dynamic_home_searching, query.trim())
         binding.previousCallsButton.isEnabled = false
@@ -43,7 +45,14 @@ internal class HomeSearchController(
         binding.paginationContainer.visibility = View.VISIBLE
 
         searchExecutor.execute {
-            val calls = HomeCallPageLoader.calls(context, phoneFilter, query, page, currentPageSize)
+            val calls = HomeCallPageLoader.calls(
+                context = context,
+                activePhoneFilter = phoneFilter,
+                searchQuery = query,
+                pageIndex = page,
+                pageSize = currentPageSize,
+                crmMode = crmMode,
+            )
             val renderData = HomeRenderData(
                 calls = calls,
                 contactNotesByNumber = HomeCallPageLoader.contactNotes(context, calls),
@@ -51,7 +60,14 @@ internal class HomeSearchController(
             )
             handler.post {
                 if (generation != searchGeneration.get()) return@post
-                if (query != activeSearchQuery() || phoneFilter != activePhoneFilter() || page != pageIndex()) return@post
+                if (
+                    query != activeSearchQuery() ||
+                    phoneFilter != activePhoneFilter() ||
+                    crmMode != isCrmModeEnabled() ||
+                    page != pageIndex()
+                ) {
+                    return@post
+                }
                 setCurrentCalls(renderData.calls)
                 if (renderData.calls.isEmpty()) {
                     binding.homeCallsContainer.removeAllViews()
