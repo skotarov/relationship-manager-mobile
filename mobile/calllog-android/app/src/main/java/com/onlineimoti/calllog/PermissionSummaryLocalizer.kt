@@ -12,7 +12,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
  */
 internal object PermissionSummaryLocalizer {
     fun apply(activity: MainActivity, binding: ActivityMainBinding) {
-        val root = binding.permissionsSection.permissionsSummaryText.parent as? ViewGroup ?: return
+        val root = binding.settingsApplicationGroup.permissionsSection.permissionsSummaryText.parent as? ViewGroup ?: return
         localizeTree(activity, root)
     }
 
