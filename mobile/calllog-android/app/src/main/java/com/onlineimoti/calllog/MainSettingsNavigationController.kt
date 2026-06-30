@@ -28,7 +28,7 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.CONTACTS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_AND_BACKUP) }
-        binding.settingsMenuGroup.settingsGeneralButton.setOnClickListener { showSection(SettingsSection.APPLICATION) }
+        binding.settingsMenuGroup.settingsGeneralButton.setOnClickListener { showSection(SettingsSection.LANGUAGE) }
         if (BuildConfig.DEBUG) {
             binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
         } else {
@@ -129,7 +129,7 @@ internal class MainSettingsNavigationController(
         CONTACTS(R.string.settings_crm_section),
         SERVER(R.string.settings_server_section),
         DATA_AND_BACKUP(R.string.settings_storage_section),
-        APPLICATION(R.string.settings_basic_section),
+        LANGUAGE(R.string.settings_language_section),
         DEBUG(R.string.settings_debug_section);
 
         fun view(binding: ActivityMainBinding): View {
@@ -139,7 +139,7 @@ internal class MainSettingsNavigationController(
                 CONTACTS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
                 DATA_AND_BACKUP -> binding.settingsDataArchiveGroup.root
-                APPLICATION -> binding.settingsGeneralGroup.root
+                LANGUAGE -> binding.settingsGeneralGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
             }
         }
