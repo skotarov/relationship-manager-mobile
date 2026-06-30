@@ -28,12 +28,12 @@ internal data class ContactNoteFormSaveResult(
 internal object ContactNoteFormWorkflow {
     fun initialTopicState(context: Context, draft: ContactNoteFormDraft): ContactNoteTopicState {
         val visible = shouldShowTopicSelector(context, draft)
-        val localOnly = visible && !ContactServerCompanyScope.isAvailable(context, draft.phone)
+        // A server company can be selected only for an explicitly CRM-marked
+        // contact. Unknown and ordinary contacts remain local-only.
+        val localOnly = visible && !canUseServerDestination(context, draft.phone)
         return ContactNoteTopicState(
             visible = visible,
             loading = visible && !localOnly,
-            // Non-CRM known contacts are deliberately local-only. CRM contacts and
-            // unknown numbers must explicitly choose Local or one server company.
             selectedCompanyId = if (localOnly) ContactNoteTopicState.LOCAL_COMPANY_ID else "",
             includeLocalOption = visible,
             localOnly = localOnly,
@@ -71,7 +71,7 @@ internal object ContactNoteFormWorkflow {
         )
     }
 
-    /** Returns null while an eligible CRM/unknown contact still needs a destination selection. */
+    /** Returns null while an eligible CRM contact still needs a destination selection. */
     fun selectedTopicOrLocalFallback(state: ContactNoteTopicState): String? {
         if (!state.visible || state.localOnly) return ContactNoteTopicState.LOCAL_COMPANY_ID
         if (state.loadError.isNotBlank()) return ContactNoteTopicState.LOCAL_COMPANY_ID
@@ -79,11 +79,12 @@ internal object ContactNoteFormWorkflow {
         return state.selectedCompanyId
     }
 
-    fun willEnableServerSync(context: Context, draft: ContactNoteFormDraft, state: ContactNoteTopicState): Boolean {
-        return state.selectedCompanyId != ContactNoteTopicState.LOCAL_COMPANY_ID &&
-            state.selectedCompanyId.isNotBlank() &&
-            state.loadError.isBlank() && shouldAutoEnableServerSync(context, draft)
-    }
+    /** CRM is already explicitly enabled for eligible contacts; never auto-enable it from a note. */
+    fun willEnableServerSync(
+        @Suppress("UNUSED_PARAMETER") context: Context,
+        @Suppress("UNUSED_PARAMETER") draft: ContactNoteFormDraft,
+        @Suppress("UNUSED_PARAMETER") state: ContactNoteTopicState,
+    ): Boolean = false
 
     fun save(
         context: Context,
@@ -93,11 +94,11 @@ internal object ContactNoteFormWorkflow {
         localOnlyFallback: Boolean = false,
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
-        val isLocalSelection = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID
+        // This is a second, non-UI guard: a stale form or direct caller cannot
+        // send an unmarked contact to a server company.
+        val serverDestinationAllowed = canUseServerDestination(appContext, draft.phone)
+        val isLocalSelection = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID || !serverDestinationAllowed
         val serverCompanyId = if (isLocalSelection) "" else topicCompanyId
-        val activateUnknownSync = noteText.trim().isNotBlank() &&
-            serverCompanyId.isNotBlank() &&
-            shouldAutoEnableServerSync(appContext, draft)
         val writeResult = when {
             serverCompanyId.isNotBlank() && draft.isGeneralNote -> {
                 CallNoteTopicWriter.writeGeneral(appContext, draft.phone, noteText, serverCompanyId)
@@ -135,9 +136,14 @@ internal object ContactNoteFormWorkflow {
         }
         if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult, localOnlyFallback = localOnlyFallback)
 
-        // Selecting Local for a concrete call note removes its previous server
-        // firm assignment. Main notes remain independent per company.
-        if (isLocalSelection && !draft.isGeneralNote && writeResult.target.hasCall && CallReportRemoteAccess.isReady(ConfigStore.load(appContext))) {
+        // Only a CRM-marked contact may change a server-side company assignment.
+        if (
+            isLocalSelection &&
+            serverDestinationAllowed &&
+            !draft.isGeneralNote &&
+            writeResult.target.hasCall &&
+            CallReportRemoteAccess.isReady(ConfigStore.load(appContext))
+        ) {
             CallReportTopicNoteOutbox.enqueueUnassignCall(
                 context = appContext,
                 phone = draft.phone,
@@ -152,22 +158,9 @@ internal object ContactNoteFormWorkflow {
             )
         }
 
-        val syncEnabled = if (activateUnknownSync) {
-            RmContactSyncLayerStore.setEnabled(
-                context = appContext,
-                phone = draft.phone,
-                title = draft.title,
-                enabled = true,
-                enqueueExistingNotes = false,
-            )
-        } else {
-            false
-        }
         return ContactNoteFormSaveResult(
             writeResult = writeResult,
             localOnlyFallback = localOnlyFallback,
-            serverSyncActivationAttempted = activateUnknownSync,
-            serverSyncEnabled = syncEnabled,
         )
     }
 
@@ -175,10 +168,9 @@ internal object ContactNoteFormWorkflow {
         return CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))
     }
 
-    private fun shouldAutoEnableServerSync(context: Context, draft: ContactNoteFormDraft): Boolean {
+    private fun canUseServerDestination(context: Context, phone: String): Boolean {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(context.applicationContext))) return false
-        if (CrmContactSyncStore.isEnabled(context, draft.phone)) return false
-        return ContactServerCompanyScope.isUnknownNumber(context, draft.phone)
+        return CrmContactSyncStore.isEnabled(context, phone)
     }
 
     private const val TOPIC_REQUEST_FAILED = "topic_request_failed"
