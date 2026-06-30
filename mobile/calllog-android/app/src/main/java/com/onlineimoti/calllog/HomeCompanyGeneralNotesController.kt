@@ -52,6 +52,7 @@ internal class HomeCompanyGeneralNotesController(
             }.getOrDefault(emptyMap())
             handler.post {
                 if (currentGeneration != generation.get()) return@post
+                if (labelsByPhoneKey == labels) return@post
                 labelsByPhoneKey = labels
                 onChanged()
             }
