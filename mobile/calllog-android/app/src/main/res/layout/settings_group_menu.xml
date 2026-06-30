@@ -93,7 +93,7 @@
         android:layout_marginTop="8dp"
         android:gravity="center_vertical"
         android:minHeight="52dp"
-        android:text="@string/settings_basic_section"
+        android:text="@string/settings_language_section"
         app:icon="@drawable/ic_settings_application"
         app:iconGravity="textStart"
         app:iconPadding="14dp"
