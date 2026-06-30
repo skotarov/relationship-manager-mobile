@@ -123,8 +123,8 @@ object HomeCallPageLoader {
     /**
      * The Home page may inspect hundreds of recent calls. Do not use
      * [ContactServerCompanyScope.isUnknownNumber] once per row: its precise lookup
-     * can scan Contacts for every number. Read the real-contact phone keys once,
-     * then preserve the same rule: explicitly CRM or not present among real contacts.
+     * can scan Contacts for every number. Read real phone-contact keys once, then
+     * preserve the same rule: explicitly CRM or not present among real contacts.
      */
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
         val appContext = context.applicationContext
@@ -140,31 +140,46 @@ object HomeCallPageLoader {
     }
 
     /**
-     * Only contacts outside the app's internal Call Report account count as known
-     * phone contacts. With no Contacts permission the former behavior considers all
-     * numbers unknown, so return an empty set.
+     * Query only valid provider columns: first read non-Call-Report raw contact
+     * IDs, then collect phone rows belonging to those IDs. A previous query mixed
+     * RawContacts columns into Data selection and could fail on some providers,
+     * incorrectly treating every call number as unknown.
      */
     private fun realContactPhoneKeys(context: Context): Set<String> {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return emptySet()
         }
         return runCatching {
-            context.contentResolver.query(
-                ContactsContract.Data.CONTENT_URI,
-                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
-                "${ContactsContract.Data.MIMETYPE}=? AND " +
+            val realRawContactIds = context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts._ID),
+                "${ContactsContract.RawContacts.DELETED}=0 AND " +
                     "(${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR " +
-                    "${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?) AND " +
-                    "${ContactsContract.RawContacts.DELETED}=0",
+                    "${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?)",
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE),
+                null,
+            )?.use { cursor ->
+                buildSet {
+                    while (cursor.moveToNext()) add(cursor.getLong(0))
+                }
+            } ?: emptySet()
+
+            if (realRawContactIds.isEmpty()) return@runCatching emptySet()
+
+            context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(
-                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
-                    CallReportContactIntegration.ACCOUNT_TYPE,
+                    ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
                 ),
+                null,
+                null,
                 null,
             )?.use { cursor ->
                 buildSet {
                     while (cursor.moveToNext()) {
-                        noteKey(cursor.getString(0)).takeIf { it.isNotBlank() }?.let(::add)
+                        if (cursor.getLong(0) !in realRawContactIds) continue
+                        noteKey(cursor.getString(1).orEmpty()).takeIf { it.isNotBlank() }?.let(::add)
                     }
                 }
             } ?: emptySet()
