@@ -304,16 +304,17 @@ class HomeActivity : AppCompatActivity() {
     private fun showHomeOverflowMenu() {
         PopupMenu(this, binding.settingsButton).apply {
             if (HomeCrmModeStore.isAvailable(this@HomeActivity)) {
-                menu.setGroupCheckable(MENU_GROUP_CRM_MODE, true, true)
-                menu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_ON, 0, "CRM Mode: Включен").apply { isCheckable = true; isChecked = isCrmModeEnabled() }
-                menu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_OFF, 1, "CRM Mode: Изключен").apply { isCheckable = true; isChecked = !isCrmModeEnabled() }
+                menu.setGroupCheckable(MENU_GROUP_CRM_MODE, true, false)
+                menu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_TOGGLE, 0, "CRM Mode").apply {
+                    isCheckable = true
+                    isChecked = isCrmModeEnabled()
+                }
             }
             menu.add(0, MENU_PHONE_CALL_LOG, 10, getString(R.string.home_overflow_phone_log))
             menu.add(0, MENU_SETTINGS, 20, getString(R.string.home_overflow_settings))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
-                    MENU_CRM_MODE_ON -> { setCrmMode(true); true }
-                    MENU_CRM_MODE_OFF -> { setCrmMode(false); true }
+                    MENU_CRM_MODE_TOGGLE -> { setCrmMode(!isCrmModeEnabled()); true }
                     MENU_PHONE_CALL_LOG -> { openDefaultCallLog(); true }
                     MENU_SETTINGS -> { homeActions.openSettings(); true }
                     else -> false
@@ -359,8 +360,7 @@ class HomeActivity : AppCompatActivity() {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
         private const val MENU_GROUP_CRM_MODE = 100
-        private const val MENU_CRM_MODE_ON = 102
-        private const val MENU_CRM_MODE_OFF = 103
+        private const val MENU_CRM_MODE_TOGGLE = 101
         private const val MENU_PHONE_CALL_LOG = 1
         private const val MENU_SETTINGS = 2
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
