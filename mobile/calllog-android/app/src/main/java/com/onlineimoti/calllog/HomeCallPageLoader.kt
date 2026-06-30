@@ -1,6 +1,10 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.provider.ContactsContract
+import androidx.core.content.ContextCompat
 
 object HomeCallPageLoader {
     private const val SEARCH_SCAN_LIMIT = 500
@@ -116,13 +120,55 @@ object HomeCallPageLoader {
         return filtered.page(pageIndex, pageSize)
     }
 
+    /**
+     * The Home page may inspect hundreds of recent calls. Do not use
+     * [ContactServerCompanyScope.isUnknownNumber] once per row: its precise lookup
+     * can scan Contacts for every number. Read the real-contact phone keys once,
+     * then preserve the same rule: explicitly CRM or not present among real contacts.
+     */
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
+        val appContext = context.applicationContext
+        val realContactPhoneKeys = realContactPhoneKeys(appContext)
         val eligibilityByNumber = mutableMapOf<String, Boolean>()
         return calls.filter { call ->
             val key = noteKey(call.number)
             if (key.isBlank()) return@filter false
-            eligibilityByNumber.getOrPut(key) { isCrmEligible(context, call.number) }
+            eligibilityByNumber.getOrPut(key) {
+                CrmContactSyncStore.isEnabled(appContext, call.number) || key !in realContactPhoneKeys
+            }
         }
+    }
+
+    /**
+     * Only contacts outside the app's internal Call Report account count as known
+     * phone contacts. With no Contacts permission the former behavior considers all
+     * numbers unknown, so return an empty set.
+     */
+    private fun realContactPhoneKeys(context: Context): Set<String> {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return emptySet()
+        }
+        return runCatching {
+            context.contentResolver.query(
+                ContactsContract.Data.CONTENT_URI,
+                arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                "${ContactsContract.Data.MIMETYPE}=? AND " +
+                    "(${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR " +
+                    "${ContactsContract.RawContacts.ACCOUNT_TYPE}!=?) AND " +
+                    "${ContactsContract.RawContacts.DELETED}=0",
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+                    CallReportContactIntegration.ACCOUNT_TYPE,
+                ),
+                null,
+            )?.use { cursor ->
+                buildSet {
+                    while (cursor.moveToNext()) {
+                        noteKey(cursor.getString(0)).takeIf { it.isNotBlank() }?.let(::add)
+                    }
+                }
+            } ?: emptySet()
+        }.getOrDefault(emptySet())
     }
 
     private fun bestCallForPhone(calls: List<PhoneCallRecord>, phone: String, fallbackName: String, callAt: Long, direction: String): PhoneCallRecord {
