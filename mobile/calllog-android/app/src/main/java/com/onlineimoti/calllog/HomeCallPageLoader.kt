@@ -6,15 +6,24 @@ object HomeCallPageLoader {
     private const val SEARCH_SCAN_LIMIT = 500
     private const val FILTERED_CALL_SCAN_LIMIT = 500
     private const val FILTERED_SMS_SCAN_LIMIT = 150
+    private const val CRM_CALL_SCAN_LIMIT = 1_000
 
-    fun calls(context: Context, activePhoneFilter: String, searchQuery: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+    fun calls(
+        context: Context,
+        activePhoneFilter: String,
+        searchQuery: String,
+        pageIndex: Int,
+        pageSize: Int,
+        crmMode: Boolean = false,
+    ): List<PhoneCallRecord> {
         val normalizedSearch = searchQuery.trim()
-        if (normalizedSearch.isNotBlank()) return searchCalls(context, activePhoneFilter, normalizedSearch, pageIndex, pageSize)
-        val offset = pageIndex * pageSize
-        return if (activePhoneFilter.isBlank()) {
-            PhoneCallReader.recentCalls(context, limit = pageSize, offset = offset)
-        } else {
-            filteredTimelineForPhone(context, activePhoneFilter, pageIndex, pageSize)
+        if (normalizedSearch.isNotBlank()) {
+            return searchCalls(context, activePhoneFilter, normalizedSearch, pageIndex, pageSize, crmMode)
+        }
+        return when {
+            activePhoneFilter.isNotBlank() -> filteredTimelineForPhone(context, activePhoneFilter, pageIndex, pageSize, crmMode)
+            crmMode -> crmCalls(context, pageIndex, pageSize)
+            else -> PhoneCallReader.recentCalls(context, limit = pageSize, offset = pageIndex * pageSize)
         }
     }
 
@@ -26,11 +35,26 @@ object HomeCallPageLoader {
 
     fun clearSearchCache() = Unit
 
+    /** A CRM row is either an unknown number or a number explicitly marked CRM. */
+    fun isCrmEligible(context: Context, phone: String): Boolean {
+        if (noteKey(phone).isBlank()) return false
+        return CrmContactSyncStore.isEnabled(context.applicationContext, phone) ||
+            ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone)
+    }
+
+    private fun crmCalls(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+        return filterCrmEligible(
+            context,
+            PhoneCallReader.recentCalls(context, limit = CRM_CALL_SCAN_LIMIT, offset = 0),
+        ).page(pageIndex, pageSize)
+    }
+
     private fun filteredTimelineForPhone(
         context: Context,
         phone: String,
         pageIndex: Int,
         pageSize: Int,
+        crmMode: Boolean,
     ): List<PhoneCallRecord> {
         val calls = PhoneCallReader.callsForPhone(
             context = context,
@@ -53,14 +77,18 @@ object HomeCallPageLoader {
                 providerId = sms.providerId,
             )
         }
-        val offset = pageIndex * pageSize
-        return (calls + messages)
-            .sortedByDescending { item -> item.startedAt }
-            .drop(offset)
-            .take(pageSize)
+        val timeline = (calls + messages).sortedByDescending { item -> item.startedAt }
+        return (if (crmMode) filterCrmEligible(context, timeline) else timeline).page(pageIndex, pageSize)
     }
 
-    private fun searchCalls(context: Context, activePhoneFilter: String, query: String, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+    private fun searchCalls(
+        context: Context,
+        activePhoneFilter: String,
+        query: String,
+        pageIndex: Int,
+        pageSize: Int,
+        crmMode: Boolean,
+    ): List<PhoneCallRecord> {
         if (isSearchTooShort(query)) return emptyList()
         val recentCalls = if (activePhoneFilter.isBlank()) {
             PhoneCallReader.recentCalls(context, limit = SEARCH_SCAN_LIMIT, offset = 0)
@@ -84,7 +112,17 @@ object HomeCallPageLoader {
             if (!seen.add(resultKey)) return@forEach
             ordered.add(bestCallForPhone(recentCalls, note.phone, note.phone, note.callAt, note.direction))
         }
-        return ordered.page(pageIndex, pageSize)
+        val filtered = if (crmMode) filterCrmEligible(context, ordered) else ordered
+        return filtered.page(pageIndex, pageSize)
+    }
+
+    private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
+        val eligibilityByNumber = mutableMapOf<String, Boolean>()
+        return calls.filter { call ->
+            val key = noteKey(call.number)
+            if (key.isBlank()) return@filter false
+            eligibilityByNumber.getOrPut(key) { isCrmEligible(context, call.number) }
+        }
     }
 
     private fun bestCallForPhone(calls: List<PhoneCallRecord>, phone: String, fallbackName: String, callAt: Long, direction: String): PhoneCallRecord {
