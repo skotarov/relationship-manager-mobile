@@ -23,12 +23,12 @@ internal class MainSettingsNavigationController(
 
     fun wire() {
         binding.settingsDetailBackButton.setOnClickListener { showMenu() }
-        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.APPLICATION) }
-        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.POPUP) }
-        binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSection(SettingsSection.CALL_LOG) }
-        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.INTEGRATION) }
+        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.STATUS) }
+        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.CALLS) }
+        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.CONTACTS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
-        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
+        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_AND_BACKUP) }
+        binding.settingsMenuGroup.settingsGeneralButton.setOnClickListener { showSection(SettingsSection.APPLICATION) }
         if (BuildConfig.DEBUG) {
             binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
         } else {
@@ -115,22 +115,22 @@ internal class MainSettingsNavigationController(
     }
 
     private enum class SettingsSection(val titleRes: Int) {
-        APPLICATION(R.string.settings_application_section),
-        POPUP(R.string.settings_popup_section),
-        CALL_LOG(R.string.settings_call_log_section),
-        INTEGRATION(R.string.settings_integration_section),
+        STATUS(R.string.settings_application_section),
+        CALLS(R.string.settings_popup_section),
+        CONTACTS(R.string.settings_crm_section),
         SERVER(R.string.settings_server_section),
-        DATA_ARCHIVE(R.string.settings_storage_section),
+        DATA_AND_BACKUP(R.string.settings_storage_section),
+        APPLICATION(R.string.settings_basic_section),
         DEBUG(R.string.settings_debug_section);
 
         fun view(binding: ActivityMainBinding): View {
             return when (this) {
-                APPLICATION -> binding.settingsApplicationGroup.root
-                POPUP -> binding.settingsPopupGroup.root
-                CALL_LOG -> binding.settingsCallLogGroup.root
-                INTEGRATION -> binding.settingsRmContactsGroup.root
+                STATUS -> binding.settingsApplicationGroup.root
+                CALLS -> binding.settingsPopupGroup.root
+                CONTACTS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
-                DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
+                DATA_AND_BACKUP -> binding.settingsDataArchiveGroup.root
+                APPLICATION -> binding.settingsGeneralGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
             }
         }
