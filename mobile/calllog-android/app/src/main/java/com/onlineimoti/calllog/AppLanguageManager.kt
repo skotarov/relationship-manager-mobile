@@ -8,7 +8,9 @@ import androidx.core.os.LocaleListCompat
 object AppLanguageManager {
     fun applyFromConfig(context: Context) {
         applyLanguage(ConfigStore.load(context).appLanguage)
-        (context as? Activity)?.window?.decorView?.post { decorView ->
+        val activity = context as? Activity ?: return
+        val decorView = activity.window?.decorView ?: return
+        decorView.post {
             TranslationManager.applyOverridesToViewTree(context, decorView)
         }
     }
