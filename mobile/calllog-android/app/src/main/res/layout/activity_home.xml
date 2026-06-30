@@ -109,7 +109,7 @@
             android:contentDescription="@string/clear_filter_content_description"
             android:padding="3dp"
             android:scaleType="center"
-            android:src="@drawable/ic_filter_calls"
+            android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
 
         <LinearLayout
