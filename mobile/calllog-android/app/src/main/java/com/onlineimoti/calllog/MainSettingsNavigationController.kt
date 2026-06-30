@@ -43,6 +43,7 @@ internal class MainSettingsNavigationController(
             remote.toggleAdvancedServerSettingsButton.text = activity.getString(
                 if (showAdvanced) R.string.server_advanced_settings_hide else R.string.server_advanced_settings_show,
             )
+            TranslationManager.applyOverridesToViewTree(activity, remote.toggleAdvancedServerSettingsButton)
         }
         remote.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
         remote.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
@@ -111,6 +112,7 @@ internal class MainSettingsNavigationController(
         binding.settingsDescriptionText.visibility = View.GONE
         binding.settingsDetailHeader.visibility = View.VISIBLE
         binding.settingsDetailTitle.text = activity.getString(section.titleRes)
+        TranslationManager.applyOverridesToViewTree(activity, binding.settingsDetailHeader)
         allGroupViews().forEach { it.visibility = View.GONE }
         section.view(binding).visibility = View.VISIBLE
         binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG && BuildConfig.DEBUG) View.VISIBLE else View.GONE
