@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 
 /** Small editor that assigns one concrete SMS to exactly one company/case. */
 internal class SmsCompanyAssignmentDialog(
@@ -24,6 +25,11 @@ internal class SmsCompanyAssignmentDialog(
         initialCompanyId: String,
         onSaved: () -> Unit,
     ) {
+        if (!CrmContactSyncStore.isEnabled(activity.applicationContext, phone)) {
+            Toast.makeText(activity, "Само CRM маркирани контакти могат да се запишат към фирма.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(18), dp(20), dp(8))
@@ -94,7 +100,7 @@ internal class SmsCompanyAssignmentDialog(
                     if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@runOnUiThread
                     companies = result.getOrDefault(emptyList())
                     val labels = buildList {
-                        add("Избери фирма")
+                        add("Избери")
                         companies.forEach { add(it.name) }
                     }
                     spinner.adapter = ArrayAdapter(activity, android.R.layout.simple_spinner_dropdown_item, labels)
@@ -111,9 +117,13 @@ internal class SmsCompanyAssignmentDialog(
                 }
             }.start()
             saveButton.setOnClickListener {
+                if (!CrmContactSyncStore.isEnabled(activity.applicationContext, phone)) {
+                    status.text = "Този контакт не е CRM маркиран."
+                    return@setOnClickListener
+                }
                 val selected = companies.getOrNull(spinner.selectedItemPosition - 1)
                 if (selected == null) {
-                    status.text = "Избери фирма преди запис"
+                    status.text = "Избери преди запис"
                     return@setOnClickListener
                 }
                 val stored = SmsCompanyAssignmentStore.save(activity, phone, sms.providerId, selected.id)
