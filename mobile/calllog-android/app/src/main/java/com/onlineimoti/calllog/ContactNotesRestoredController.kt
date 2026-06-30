@@ -1,11 +1,15 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
@@ -100,6 +104,7 @@ internal class ContactNotesRestoredController(
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
+        root.addView(headerServerLoadingStatus(historyController.serverLoadingStatusText()))
         generalNoteSectionUi.add(
             root = root,
             phone = phone,
@@ -129,6 +134,27 @@ internal class ContactNotesRestoredController(
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
         })
+    }
+
+    /**
+     * Occupies the header's existing lower 12dp padding through a negative margin.
+     * It is always present, including when hidden, so refreshes never shift sections.
+     */
+    private fun headerServerLoadingStatus(text: String): TextView = TextView(activity).apply {
+        this.text = text
+        textSize = 11f
+        includeFontPadding = false
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        gravity = Gravity.CENTER_VERTICAL
+        setTextColor(Color.rgb(100, 116, 139))
+        visibility = if (text.isBlank()) View.INVISIBLE else View.VISIBLE
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            dp(12),
+        ).apply {
+            topMargin = -dp(12)
+        }
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
