@@ -61,6 +61,9 @@ class HomeActivity : AppCompatActivity() {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
         }
     }
+    private val filteredContactSummaryChipsUi by lazy {
+        HomeCompanyScopeChipsUi(this, ::dp, ::roundedRect)
+    }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
@@ -261,28 +264,50 @@ class HomeActivity : AppCompatActivity() {
             container.visibility = View.GONE
             return
         }
-        val name = ContactGroupFilter.resolveDisplayName(this, activePhoneFilter)
+        val phone = activePhoneFilter
+        val name = ContactGroupFilter.resolveDisplayName(this, phone)
             .orEmpty()
-            .takeIf { HomeCallPageLoader.noteKey(it) != HomeCallPageLoader.noteKey(activePhoneFilter) }
+            .takeIf { HomeCallPageLoader.noteKey(it) != HomeCallPageLoader.noteKey(phone) }
             .orEmpty()
-        val note = ContactNoteReader.generalNoteForPhone(this, activePhoneFilter).orEmpty()
-        if (name.isBlank() && note.isBlank()) {
-            container.visibility = View.GONE
-            return
-        }
+        val summaryCall = PhoneCallRecord(
+            number = phone,
+            name = "",
+            direction = "",
+            startedAt = 0L,
+            durationSeconds = 0L,
+        )
+        val companyLabels = companyGeneralNotesController
+            .labelsFor(listOf(summaryCall))[HomeCallPageLoader.noteKey(phone)]
+        val crmClient = CallReportRemoteAccess.isReady(ConfigStore.load(applicationContext)) &&
+            CrmContactSyncStore.isEnabled(applicationContext, phone)
+        val note = ContactNoteReader.generalNoteForPhone(this, phone).orEmpty()
+
         container.visibility = View.VISIBLE
+        container.addView(TextView(this).apply {
+            text = name.ifBlank { phone }
+            setTextColor(getColor(R.color.calllog_text))
+            textSize = 18f
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(2) }
+        })
         if (name.isNotBlank()) {
             container.addView(TextView(this).apply {
-                text = name
-                setTextColor(getColor(R.color.calllog_text))
-                textSize = 18f
-                setTypeface(typeface, Typeface.BOLD)
-                setPadding(dp(4), dp(2), dp(4), dp(4))
+                text = phone
+                setTextColor(getColor(R.color.calllog_muted_text))
+                textSize = 14f
+                setPadding(dp(4), 0, dp(4), dp(2))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { bottomMargin = dp(4) }
+                ).apply { bottomMargin = dp(2) }
             })
+        }
+        if (crmClient || !companyLabels.isNullOrEmpty()) {
+            container.addView(filteredContactSummaryChipsUi.create(companyLabels, crmClient))
         }
         if (note.isNotBlank()) {
             val colors = NoteUiStyle.General
@@ -298,9 +323,10 @@ class HomeActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                )
+                ).apply { topMargin = dp(5) }
             })
         }
+        companyGeneralNotesController.refresh(listOf(summaryCall))
     }
 
     private fun renderEmptyState() {
