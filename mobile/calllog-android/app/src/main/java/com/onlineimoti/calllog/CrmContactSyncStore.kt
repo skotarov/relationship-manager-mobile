@@ -11,6 +11,17 @@ internal object CrmContactSyncStore {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(key, false)
     }
 
+    /** Returns all phones whose per-contact CRM switch is currently enabled. */
+    fun enabledPhoneKeys(context: Context): Set<String> {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .all
+            .asSequence()
+            .filter { entry -> entry.value as? Boolean == true }
+            .map { entry -> entry.key }
+            .filter { key -> key.isNotBlank() }
+            .toSet()
+    }
+
     fun setEnabled(context: Context, phone: String, enabled: Boolean) {
         val key = phoneKey(phone)
         if (key.isBlank()) return
