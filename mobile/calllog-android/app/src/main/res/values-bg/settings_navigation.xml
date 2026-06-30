@@ -3,4 +3,10 @@
     <string name="server_advanced_settings_hide">Скрий разширените сървърни настройки</string>
     <string name="settings_sms_permissions_section_title">SMS приложение и разрешения</string>
     <string name="settings_sms_permissions_section_description">Активирай ролята за SMS приложение и разрешенията за SMS от едно място.</string>
+    <string name="translation_editor_title">Редактиране на преводите</string>
+    <string name="translation_editor_description">Избери език и редактирай всеки текстов ключ. Промените се пазят локално и се прилагат след „Приложи преводите“.</string>
+    <string name="translation_editor_key_header">Ключ</string>
+    <string name="translation_editor_value_header">Превод</string>
+    <string name="translation_editor_apply_button">Приложи преводите</string>
+    <string name="translation_editor_reset_language_button">Възстанови оригиналните преводи за избрания език</string>
 </resources>
