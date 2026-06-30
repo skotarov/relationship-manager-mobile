@@ -53,6 +53,9 @@ internal class TranslationSettingsController(
             activity.recreate()
         }
         renderEntries()
+        activity.window?.decorView?.post {
+            TranslationManager.applyOverridesToViewTree(activity, binding.root)
+        }
     }
 
     private fun renderEntries() {
