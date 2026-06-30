@@ -1,0 +1,4 @@
+<resources>
+    <string name="server_advanced_settings_show">Покажи разширените сървърни настройки</string>
+    <string name="server_advanced_settings_hide">Скрий разширените сървърни настройки</string>
+</resources>
