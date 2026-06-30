@@ -50,6 +50,7 @@ class HomeActivity : AppCompatActivity() {
             pageSize = ::pageSize,
             activePhoneFilter = { activePhoneFilter },
             activeSearchQuery = { activeSearchQuery },
+            isCrmModeEnabled = ::isCrmModeEnabled,
             pageIndex = { pageIndex },
             setCurrentCalls = { currentCalls = it },
             renderEmptyState = ::renderEmptyState,
@@ -116,6 +117,7 @@ class HomeActivity : AppCompatActivity() {
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         updateSearchButtonIcon()
+        updateCrmModeBadge()
 
         binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
@@ -151,7 +153,16 @@ class HomeActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
-        activePhoneFilter = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
+        val requestedPhone = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
+        activePhoneFilter = if (
+            isCrmModeEnabled() &&
+            requestedPhone.isNotBlank() &&
+            !HomeCallPageLoader.isCrmEligible(this, requestedPhone)
+        ) {
+            ""
+        } else {
+            requestedPhone
+        }
         activeSearchQuery = ""
         pageIndex = 0
         filteredFullLogController.invalidate()
@@ -196,6 +207,7 @@ class HomeActivity : AppCompatActivity() {
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
+        updateCrmModeBadge()
         updatePhoneFilterStatusStyle()
         renderFilteredContactSummary()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
@@ -211,7 +223,14 @@ class HomeActivity : AppCompatActivity() {
             filteredFullLogController.render(activePhoneFilter)
             return
         }
-        currentCalls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, size)
+        currentCalls = HomeCallPageLoader.calls(
+            context = this,
+            activePhoneFilter = activePhoneFilter,
+            searchQuery = activeSearchQuery,
+            pageIndex = pageIndex,
+            pageSize = size,
+            crmMode = isCrmModeEnabled(),
+        )
         if (currentCalls.isEmpty()) {
             renderEmptyState()
             return
@@ -399,7 +418,32 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateCrmModeBadge() {
+        val visible = isCrmModeEnabled()
+        binding.crmModeBadge.visibility = if (visible) View.VISIBLE else View.GONE
+        if (visible) {
+            binding.crmModeBadge.background = roundedRect(
+                color = getColor(R.color.callreport_icon_background),
+                radius = dp(9),
+                strokeColor = Color.TRANSPARENT,
+                strokeWidth = 0,
+            )
+        }
+    }
+
+    private fun isCrmModeEnabled(): Boolean = HomeCrmModeStore.isEnabled(this)
+
+    private fun setCrmMode(enabled: Boolean) {
+        if (!HomeCrmModeStore.setEnabled(this, enabled)) return
+        activePhoneFilter = ""
+        pageIndex = 0
+        filteredFullLogController.invalidate()
+        companyGeneralNotesController.invalidate()
+        renderCalls()
+    }
+
     private fun togglePhoneFilter(number: String) {
+        if (isCrmModeEnabled() && !HomeCallPageLoader.isCrmEligible(this, number)) return
         val key = HomeCallPageLoader.noteKey(number)
         activePhoneFilter = if (activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key) "" else number
         pageIndex = 0
@@ -424,10 +468,30 @@ class HomeActivity : AppCompatActivity() {
 
     private fun showHomeOverflowMenu() {
         PopupMenu(this, binding.settingsButton).apply {
-            menu.add(0, MENU_PHONE_CALL_LOG, 0, getString(R.string.home_overflow_phone_log))
-            menu.add(0, MENU_SETTINGS, 1, getString(R.string.home_overflow_settings))
+            if (HomeCrmModeStore.isAvailable(this@HomeActivity)) {
+                val crmModeMenu = menu.addSubMenu(0, MENU_CRM_MODE, 0, "CRM Mode")
+                crmModeMenu.setGroupCheckable(MENU_GROUP_CRM_MODE, true, true)
+                crmModeMenu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_ON, 0, "Включен").apply {
+                    isCheckable = true
+                    isChecked = isCrmModeEnabled()
+                }
+                crmModeMenu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_OFF, 1, "Изключен").apply {
+                    isCheckable = true
+                    isChecked = !isCrmModeEnabled()
+                }
+            }
+            menu.add(0, MENU_PHONE_CALL_LOG, 10, getString(R.string.home_overflow_phone_log))
+            menu.add(0, MENU_SETTINGS, 20, getString(R.string.home_overflow_settings))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
+                    MENU_CRM_MODE_ON -> {
+                        setCrmMode(true)
+                        true
+                    }
+                    MENU_CRM_MODE_OFF -> {
+                        setCrmMode(false)
+                        true
+                    }
                     MENU_PHONE_CALL_LOG -> {
                         openDefaultCallLog()
                         true
@@ -503,6 +567,10 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
+        private const val MENU_GROUP_CRM_MODE = 100
+        private const val MENU_CRM_MODE = 101
+        private const val MENU_CRM_MODE_ON = 102
+        private const val MENU_CRM_MODE_OFF = 103
         private const val MENU_PHONE_CALL_LOG = 1
         private const val MENU_SETTINGS = 2
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
