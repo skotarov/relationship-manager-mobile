@@ -13,9 +13,9 @@ internal class CallReportSyncException(
     val retryable: Boolean,
 ) : IOException(message)
 
-/** HTTP client for the server's POST /broker/callreport/sync.php contract. */
+/** HTTP client for the standalone Relationship Manager sync endpoint. */
 internal object CallReportSyncClient {
-    private const val SYNC_PATH = "/broker/callreport/sync.php"
+    private const val SYNC_PATH = "/relationship-manager/sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
@@ -39,6 +39,8 @@ internal object CallReportSyncClient {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+            // Older deployed builds also accept this header; both carry the same token.
             connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             connection.outputStream.use { output ->
                 output.write(payload.toString().toByteArray(Charsets.UTF_8))
