@@ -56,8 +56,14 @@ internal class HomeCompanyScopeChipsUi(
         text = "CRM"
         textSize = 12f
         setTypeface(typeface, Typeface.BOLD)
-        setTextColor(Color.rgb(15, 23, 42))
-        setPadding(dp(1), dp(4), dp(1), dp(4))
+        setTextColor(Color.WHITE)
+        setPadding(dp(7), dp(4), dp(7), dp(4))
+        background = roundedRect(
+            activity.getColor(R.color.callreport_icon_background),
+            dp(9),
+            Color.TRANSPARENT,
+            0,
+        )
         contentDescription = "CRM"
     }
 
