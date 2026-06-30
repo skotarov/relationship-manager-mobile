@@ -30,7 +30,7 @@ internal class CompanyScopedGeneralNoteSectionUi(
         if (!showCompanyNotes || !ContactServerCompanyScope.isAvailable(activity, phone)) return
 
         companyNotes.forEach { companyNote ->
-            section.addView(companyLabel(companyNote.companyName))
+            section.addView(companyLabel(companyNote.companyName, showCloud = true))
             val card = cards.generalNoteCard(
                 textValue = companyNote.note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                 muted = companyNote.note.isBlank(),
@@ -60,11 +60,18 @@ internal class CompanyScopedGeneralNoteSectionUi(
         )
     }
 
-    private fun companyLabel(name: String): TextView = TextView(activity).apply {
+    private fun companyLabel(name: String, showCloud: Boolean = false): TextView = TextView(activity).apply {
         text = name
         textSize = 12.5f
         setTextColor(Color.rgb(71, 85, 105))
         setPadding(dp(2), dp(8), dp(2), dp(3))
+        if (showCloud) {
+            activity.getDrawable(R.drawable.ic_cloud_note)?.apply {
+                setBounds(0, 0, dp(14), dp(14))
+                setCompoundDrawables(this, null, null, null)
+                compoundDrawablePadding = dp(4)
+            }
+        }
     }
 
     private fun sectionContainer(): LinearLayout = LinearLayout(activity).apply {
