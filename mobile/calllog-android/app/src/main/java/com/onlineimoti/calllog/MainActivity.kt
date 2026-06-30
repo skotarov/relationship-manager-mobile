@@ -42,6 +42,13 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val translationSettingsController by lazy {
+        TranslationSettingsController(
+            activity = this,
+            binding = binding,
+        )
+    }
+
     private val defaultSmsSettingsController by lazy {
         DefaultSmsSettingsController(
             activity = this,
@@ -119,10 +126,13 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
+        translationSettingsController.wire()
         if (BuildConfig.DEBUG) {
+            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.VISIBLE
             defaultSmsSettingsController.wire()
         } else {
             binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
+            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.GONE
         }
         wireSettingsActions()
         if (BuildConfig.DEBUG) {
