@@ -90,6 +90,15 @@ internal class CallReportMergedHistoryController(
 
     fun hasCompanyMainNoteScope(): Boolean = serverLoaded && serverHistory.principal.companies.isNotEmpty()
 
+    /** Temporary remote-loading text rendered in the fixed slot below the contact header. */
+    fun serverLoadingStatusText(): String {
+        return if (CallReportRemoteAccess.isEnabled(activity) && serverLoading) {
+            "Добавям сървърни бележки и SMS…"
+        } else {
+            ""
+        }
+    }
+
     fun companyMainNotes(phone: String): List<CallReportCompanyMainNote> {
         if (!hasCompanyMainNoteScope() || phone.isBlank()) return emptyList()
         val phoneKey = HomeCallPageLoader.noteKey(phone)
@@ -141,7 +150,9 @@ internal class CallReportMergedHistoryController(
             localSms = localSms,
             localNotes = localNotes,
             localLoading = localLoading,
-            serverLoading = serverLoading,
+            // The remote loading message is shown in the fixed header slot,
+            // not at the bottom of the Notes and SMS section.
+            serverLoading = false,
             openFilteredLog = openFilteredLog,
             onEditCallNote = onEditCallNote,
             onEditSms = onEditSms,
