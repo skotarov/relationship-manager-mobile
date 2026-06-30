@@ -1,4 +1,6 @@
 <resources>
     <string name="server_advanced_settings_show">Show advanced server settings</string>
     <string name="server_advanced_settings_hide">Hide advanced server settings</string>
+    <string name="settings_sms_permissions_section_title">SMS app and permissions</string>
+    <string name="settings_sms_permissions_section_description">Activate the SMS app role and allow SMS permissions from one place.</string>
 </resources>
