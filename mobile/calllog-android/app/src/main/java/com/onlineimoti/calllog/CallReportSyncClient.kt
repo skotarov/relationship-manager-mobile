@@ -15,7 +15,7 @@ internal class CallReportSyncException(
 
 /** HTTP client for the standalone Relationship Manager sync endpoint. */
 internal object CallReportSyncClient {
-    private const val SYNC_PATH = "/relationship-manager/sync.php"
+    private const val SYNC_PATH = "/relationship-manager/api/sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
