@@ -11,6 +11,16 @@
     <string name="translation_editor_reset_language_button">Възстанови оригиналните преводи за избрания език</string>
     <string name="crm_filter_phase_all">Всички фази</string>
     <string name="crm_filter_phase_named">%1$s</string>
+    <string name="crm_filter_phases_all">Фази: Всички</string>
+    <string name="crm_filter_phases_selected">Фази: %1$s</string>
+    <string name="crm_filter_companies_all">Фирми: Всички</string>
+    <string name="crm_filter_company_named">Фирма: %1$s</string>
+    <string name="crm_filter_companies_selected">Фирми: %1$d</string>
+    <string name="crm_filter_select_phases">Избери фази</string>
+    <string name="crm_filter_select_companies">Избери фирми</string>
+    <string name="crm_filter_all">Всички</string>
+    <string name="crm_filter_apply">Приложи</string>
+    <string name="crm_filter_cancel">Отказ</string>
     <string name="crm_mode_toggle">CRM Mod</string>
 
     <string name="dynamic_note_companies_loading">Зареждане на фирми…</string>
