@@ -92,6 +92,24 @@
             android:src="@drawable/ic_popup_close" />
     </LinearLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/crmFiltersScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:fillViewport="false"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/crmFiltersContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingEnd="4dp" />
+    </HorizontalScrollView>
+
     <LinearLayout
         android:id="@+id/homeStatusRow"
         android:layout_width="match_parent"
