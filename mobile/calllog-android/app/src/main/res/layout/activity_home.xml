@@ -92,24 +92,6 @@
             android:src="@drawable/ic_popup_close" />
     </LinearLayout>
 
-    <HorizontalScrollView
-        android:id="@+id/crmFiltersScroll"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:clipToPadding="false"
-        android:fillViewport="false"
-        android:scrollbars="none"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/crmFiltersContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingEnd="4dp" />
-    </HorizontalScrollView>
-
     <LinearLayout
         android:id="@+id/homeStatusRow"
         android:layout_width="match_parent"
@@ -129,19 +111,6 @@
             android:scaleType="center"
             android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/crmModeSwitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:contentDescription="@string/crm_mode_toggle"
-            android:minHeight="36dp"
-            android:text="@string/crm_mode_toggle"
-            android:textColor="@color/calllog_text"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:useMaterialThemeColors="true" />
 
         <LinearLayout
             android:id="@+id/filteredStatusContainer"
@@ -235,4 +204,60 @@
             android:layout_weight="1"
             android:text="@string/next_20" />
     </LinearLayout>
+
+    <HorizontalScrollView
+        android:id="@+id/crmControlsScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false"
+        android:fillViewport="false"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingEnd="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/crmModeButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:minWidth="0dp"
+                android:text="@string/crm_mode_toggle"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="18dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/crmPhaseFilterButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:minWidth="0dp"
+                android:text="@string/crm_filter_phases_all"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:visibility="gone"
+                app:cornerRadius="18dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/crmCompanyFilterButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:minWidth="0dp"
+                android:text="@string/crm_filter_companies_all"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:visibility="gone"
+                app:cornerRadius="18dp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 </LinearLayout>
