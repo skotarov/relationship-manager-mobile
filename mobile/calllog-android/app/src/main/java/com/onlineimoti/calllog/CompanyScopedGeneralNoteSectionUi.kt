@@ -48,13 +48,14 @@ internal class CompanyScopedGeneralNoteSectionUi(
 
     private fun addLocalNote(section: LinearLayout, phone: String, onEditCompany: (String) -> Unit) {
         val note = ContactNoteReader.generalNoteForPhone(activity, phone)
+        val pending = CallReportDeferredCompanyAssignmentStore.isGeneralPending(activity, phone)
         section.addView(companyLabel(activity.getString(R.string.note_local_company)))
         section.addView(
             cards.generalNoteCard(
                 textValue = note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
                 muted = note.isBlank(),
                 serverConfirmed = false,
-                syncStatusText = "",
+                syncStatusText = if (pending) activity.getString(R.string.dynamic_note_pending_company_choice) else "",
                 onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
             )
         )
