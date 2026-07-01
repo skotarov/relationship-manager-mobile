@@ -222,7 +222,7 @@
             android:orientation="horizontal"
             android:paddingEnd="4dp">
 
-            <com.google.android.material.button.MaterialButton
+            <com.onlineimoti.calllog.HomeCrmModeButton
                 android:id="@+id/crmModeButton"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
