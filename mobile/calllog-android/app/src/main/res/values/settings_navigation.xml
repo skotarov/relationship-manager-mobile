@@ -9,6 +9,8 @@
     <string name="translation_editor_value_header">Translation</string>
     <string name="translation_editor_apply_button">Apply translations</string>
     <string name="translation_editor_reset_language_button">Restore selected language defaults</string>
+    <string name="crm_filter_phase_all">Phase: All</string>
+    <string name="crm_filter_phase_named">Phase: %1$s</string>
 
     <string name="dynamic_note_companies_loading">Loading companies…</string>
     <string name="dynamic_note_no_company_destinations">No available company destinations</string>
