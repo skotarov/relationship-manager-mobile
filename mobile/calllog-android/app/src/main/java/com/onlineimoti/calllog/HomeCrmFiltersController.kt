@@ -67,7 +67,9 @@ internal class HomeCrmFiltersController(
     private fun loadCachedCompanies() {
         val config = ConfigStore.load(activity.applicationContext)
         val cached = CallReportTopicCompaniesCache.read(activity.applicationContext, config)?.companies.orEmpty()
-        if (cached.isNotEmpty() && cached != companies) companies = cached
+        // A new account may legitimately have no cache yet. Clear the old account's
+        // names immediately rather than showing a stale firm label until fetch ends.
+        if (cached != companies) companies = cached
     }
 
     private fun render() {
