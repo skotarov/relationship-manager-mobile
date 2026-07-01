@@ -8,6 +8,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 internal class MainSettingsNavigationController(
     private val activity: AppCompatActivity,
     private val binding: ActivityMainBinding,
+    private val onLanguageSectionShown: () -> Unit,
 ) {
     private var selectedSection: SettingsSection? = null
 
@@ -115,6 +116,7 @@ internal class MainSettingsNavigationController(
         TranslationManager.applyOverridesToViewTree(activity, binding.settingsDetailHeader)
         allGroupViews().forEach { it.visibility = View.GONE }
         section.view(binding).visibility = View.VISIBLE
+        if (section == SettingsSection.LANGUAGE) onLanguageSectionShown()
         binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG && BuildConfig.DEBUG) View.VISIBLE else View.GONE
         scrollTop()
     }
