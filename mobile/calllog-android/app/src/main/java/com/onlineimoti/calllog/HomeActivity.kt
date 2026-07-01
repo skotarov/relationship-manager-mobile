@@ -49,6 +49,22 @@ class HomeActivity : AppCompatActivity() {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCurrentRowsAfterCompanyLabels()
         }
     }
+    private val crmFiltersController by lazy {
+        HomeCrmFiltersController(
+            activity = this,
+            binding = binding,
+            handler = handler,
+            dp = ::dp,
+            roundedRect = ::roundedRect,
+            onFilterChanged = {
+                currentCalls = emptyList()
+                pageIndex = 0
+                filteredFullLogController.invalidate()
+                companyGeneralNotesController.invalidate()
+                renderCalls()
+            },
+        )
+    }
     private val filteredContactSummaryChipsUi by lazy { HomeCompanyScopeChipsUi(this, ::dp, ::roundedRect) }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
@@ -90,6 +106,7 @@ class HomeActivity : AppCompatActivity() {
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         updateSearchButtonIcon(); updateCrmModeBadge()
+        crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
@@ -122,7 +139,9 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (!::binding.isInitialized) return
-        noteSavedReceiver.register(); contactsSyncPreparer.prepareOnce(); companyGeneralNotesController.invalidate(); renderCalls()
+        noteSavedReceiver.register(); contactsSyncPreparer.prepareOnce(); companyGeneralNotesController.invalidate()
+        crmFiltersController.refreshCompaniesIfNeeded()
+        renderCalls()
     }
 
     override fun onPause() {
@@ -134,6 +153,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onDestroy() {
         searchGeneration.incrementAndGet(); crmGeneration.incrementAndGet()
         searchExecutor.shutdownNow(); crmExecutor.shutdownNow()
+        crmFiltersController.release()
         companyGeneralNotesController.release(); filteredFullLogController.release(); contactsSyncPreparer.release()
         super.onDestroy()
     }
@@ -141,13 +161,15 @@ class HomeActivity : AppCompatActivity() {
     private fun renderCalls() {
         val generation = crmGeneration.incrementAndGet()
         val size = pageSize()
-        val loadingCrmRows = isCrmModeEnabled() && activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
+        val crmModeEnabled = isCrmModeEnabled()
+        val showCrmFilters = crmModeEnabled && activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
+        val loadingCrmRows = showCrmFilters
         binding.previousCallsButton.text = getString(R.string.dynamic_home_previous_calls, size)
         binding.nextCallsButton.text = getString(R.string.dynamic_home_next_calls, size)
         if (!loadingCrmRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
-        updateCrmModeBadge(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
+        updateCrmModeBadge(); crmFiltersController.updateVisibility(showCrmFilters); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = getString(R.string.dynamic_home_missing_call_log_permission)
             binding.paginationContainer.visibility = View.GONE
@@ -155,13 +177,14 @@ class HomeActivity : AppCompatActivity() {
         }
         if (activeSearchQuery.isNotBlank()) { searchController.renderSearchCallsAsync(); return }
         if (activePhoneFilter.isNotBlank()) { filteredFullLogController.render(activePhoneFilter); return }
-        if (isCrmModeEnabled()) { renderCrmCallsAsync(size, generation); return }
+        if (crmModeEnabled) { renderCrmCallsAsync(size, generation); return }
         val calls = HomeCallPageLoader.calls(this, activePhoneFilter, activeSearchQuery, pageIndex, size, crmMode = false)
         if (calls.isEmpty()) { renderEmptyState(); return }
         applyRenderData(HomeRenderData(calls, HomeCallPageLoader.contactNotes(this, calls), HomeCallPageLoader.contactNames(this, calls)), size)
     }
 
     private fun renderCrmCallsAsync(pageSize: Int, expectedGeneration: Int) {
+        val filterState = crmFiltersController.state()
         if (currentCalls.isEmpty()) {
             binding.homeStatusText.text = "Зареждане на CRM разговори…"
             binding.paginationContainer.visibility = View.GONE
@@ -170,12 +193,28 @@ class HomeActivity : AppCompatActivity() {
         val appContext = applicationContext
         crmExecutor.execute {
             val data = runCatching {
-                val calls = HomeCallPageLoader.calls(appContext, "", "", requestedPage, pageSize, crmMode = true)
+                val localFiltered = HomeCrmFilterEngine.filterLocal(
+                    context = appContext,
+                    calls = HomeCallPageLoader.crmCandidateCalls(appContext),
+                    state = filterState,
+                )
+                val companyFiltered = if (filterState.isCompanyFiltered) {
+                    val memberships = HomeCrmCompanyMembershipStore.resolve(
+                        context = appContext,
+                        config = ConfigStore.load(appContext),
+                        phones = localFiltered.map { it.number },
+                    )
+                    HomeCrmFilterEngine.filterByCompany(localFiltered, filterState, memberships.companyIdsByPhoneKey)
+                } else {
+                    localFiltered
+                }
+                val calls = companyFiltered.drop(requestedPage * pageSize).take(pageSize)
                 HomeRenderData(calls, HomeCallPageLoader.contactNotes(appContext, calls), HomeCallPageLoader.contactNames(appContext, calls))
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
                 val current = expectedGeneration == crmGeneration.get() && !isFinishing && !isDestroyed &&
-                    isCrmModeEnabled() && activePhoneFilter.isBlank() && activeSearchQuery.isBlank() && pageIndex == requestedPage
+                    isCrmModeEnabled() && activePhoneFilter.isBlank() && activeSearchQuery.isBlank() &&
+                    pageIndex == requestedPage && crmFiltersController.state() == filterState
                 if (!current) return@post
                 if (data.calls.isEmpty()) renderEmptyState() else applyRenderData(data, pageSize)
             }
@@ -264,6 +303,7 @@ class HomeActivity : AppCompatActivity() {
         binding.homeStatusText.text = when {
             activeSearchQuery.isNotBlank() -> getString(R.string.dynamic_home_no_search_results, activeSearchQuery.trim())
             activePhoneFilter.isNotBlank() && pageIndex == 0 -> getString(R.string.dynamic_home_filter_no_calls_or_sms, activePhoneFilter)
+            isCrmModeEnabled() && crmFiltersController.hasActiveFilters() -> getString(R.string.dynamic_home_no_crm_filter_results)
             pageIndex == 0 -> getString(R.string.dynamic_home_no_calls)
             else -> getString(R.string.dynamic_home_no_more_calls)
         }
