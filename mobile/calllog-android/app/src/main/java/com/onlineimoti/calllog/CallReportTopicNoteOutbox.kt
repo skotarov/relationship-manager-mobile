@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -8,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 internal data class CallReportQueuedTopicNote(
     val clientEventId: String,
@@ -42,6 +44,7 @@ internal data class CallReportQueuedTopicNote(
 internal object CallReportTopicNoteOutbox {
     private const val PREFS = "callreport_topic_note_outbox"
     private const val KEY_OPERATIONS = "operations_v1"
+    private const val KEY_LAST_FAILURE = "last_failure"
     private const val UNIQUE_WORK = "callreport_topic_note_sync"
     private val lock = Any()
 
@@ -145,6 +148,59 @@ internal object CallReportTopicNoteOutbox {
         ))
     }
 
+    fun pendingCount(context: Context): Int = synchronized(lock) { readLocked(context).size }
+
+    fun hasPendingForPhone(context: Context, phone: String): Boolean {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return false
+        return synchronized(lock) { readLocked(context).any { phoneKey(it.phone) == key } }
+    }
+
+    fun isCallPending(context: Context, phone: String, direction: String, callAt: Long): Boolean {
+        val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction)
+        if (clientNoteId.isBlank()) return false
+        val eventId = ServerRecordIndex.callNoteEventId(context, clientNoteId)
+        return synchronized(lock) { readLocked(context).any { it.clientEventId == eventId } }
+    }
+
+    fun isGeneralPending(context: Context, phone: String, companyId: String): Boolean {
+        val key = phoneKey(phone)
+        val target = companyId.trim()
+        if (key.isBlank() || target.isBlank()) return false
+        val eventId = "${CallReportInstallationId.get(context.applicationContext)}:topic:general:$key:$target"
+        return synchronized(lock) { readLocked(context).any { it.clientEventId == eventId } }
+    }
+
+    fun lastFailure(context: Context): String = context.applicationContext
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getString(KEY_LAST_FAILURE, "")
+        .orEmpty()
+        .trim()
+
+    internal fun recordFailure(context: Context, message: String) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(KEY_LAST_FAILURE, message.trim()).commit()
+    }
+
+    internal fun clearFailure(context: Context) {
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().remove(KEY_LAST_FAILURE).commit()
+    }
+
+    /** Schedules a fresh network-constrained attempt without discarding the durable queue. */
+    fun requestSyncNow(context: Context) {
+        if (!hasPending(context)) return
+        val request = OneTimeWorkRequestBuilder<CallReportTopicNoteWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
+            UNIQUE_WORK,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+    }
+
     internal fun takeBatch(context: Context, limit: Int): List<CallReportQueuedTopicNote> = synchronized(lock) {
         val appContext = context.applicationContext
         val operations = readLocked(appContext)
@@ -177,6 +233,7 @@ internal object CallReportTopicNoteOutbox {
     private fun enqueueWorker(context: Context) {
         val request = OneTimeWorkRequestBuilder<CallReportTopicNoteWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
             UNIQUE_WORK,
