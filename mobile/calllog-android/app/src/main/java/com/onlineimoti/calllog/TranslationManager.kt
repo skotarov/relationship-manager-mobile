@@ -4,12 +4,18 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.res.XmlResourceParser
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.google.android.material.textfield.TextInputLayout
+import java.lang.ref.WeakReference
 import java.lang.reflect.Modifier
 import java.util.Locale
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import org.xmlpull.v1.XmlPullParser
 
 internal data class TranslationEntry(
@@ -28,6 +34,7 @@ internal data class TranslationEntry(
 
 /**
  * Reads every app string resource at runtime, so new strings automatically appear in the editor.
+ * This method is deliberately safe to call from a background worker.
  */
 internal object TranslationCatalog {
     @Volatile
@@ -188,18 +195,32 @@ private object TranslationViewBindingCatalog {
         } catch (_: Exception) {
             // A single malformed or framework-only layout must not prevent the translation editor.
         } finally {
-            closeParser(parser)
+            runCatching { parser.close() }
         }
-    }
-
-    private fun closeParser(parser: XmlResourceParser) {
-        runCatching { parser.close() }
     }
 }
 
-/** Applies saved text overrides to visible Android views without changing any configuration keys. */
+private data class TranslationApplySnapshot(
+    val entriesByEnglishDefault: Map<String, List<TranslationEntry>>,
+    val entriesByBulgarianDefault: Map<String, List<TranslationEntry>>,
+    val keyByResourceId: Map<Int, String>,
+    val viewBindings: Map<Int, ViewStringBinding>,
+) {
+    fun entriesByDefaultFor(language: String): Map<String, List<TranslationEntry>> =
+        if (language == TranslationEntry.LANGUAGE_BG) entriesByBulgarianDefault else entriesByEnglishDefault
+}
+
+/** Applies saved text overrides without building resource catalogs on the UI thread. */
 internal object TranslationManager {
     const val EDITOR_CONTAINER_TAG = "translation_editor_container"
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val lookupExecutor = Executors.newSingleThreadExecutor()
+    private val lookupPreparing = AtomicBoolean(false)
+    private val pendingLookupCallbacks = CopyOnWriteArrayList<(TranslationApplySnapshot) -> Unit>()
+
+    @Volatile
+    private var cachedSnapshot: TranslationApplySnapshot? = null
 
     fun activeLanguage(context: Context): String {
         val configuration = context.resources.configuration
@@ -212,42 +233,93 @@ internal object TranslationManager {
         return TranslationOverridesStore.normalizeLanguage(locale?.language.orEmpty())
     }
 
+    /** Starts the one-time resource/layout lookup without blocking the current screen. */
+    fun warmUp(context: Context) {
+        prepareSnapshotAsync(context.applicationContext) { }
+    }
+
+    /**
+     * Returns immediately when the catalog is cold. The visible tree is updated on
+     * the main thread only after its lookup data has been prepared in the background.
+     */
     fun applyOverridesToViewTree(context: Context, root: View) {
+        val appContext = context.applicationContext
         val language = activeLanguage(context)
-        val overrides = TranslationOverridesStore.overrides(context, language)
+        val overrides = TranslationOverridesStore.overrides(appContext, language)
         if (overrides.isEmpty()) return
 
-        val entriesByDefaultText = TranslationCatalog.entries(context)
-            .groupBy { it.defaultFor(language) }
-        val viewBindings = TranslationViewBindingCatalog.bindings(context)
-        applyToView(context, root, entriesByDefaultText, viewBindings, overrides)
+        val snapshot = cachedSnapshot
+        if (snapshot != null) {
+            applyToView(root, snapshot, language, overrides)
+            return
+        }
+
+        val rootReference = WeakReference(root)
+        prepareSnapshotAsync(appContext) { prepared ->
+            val target = rootReference.get() ?: return@prepareSnapshotAsync
+            if (!target.isAttachedToWindow) return@prepareSnapshotAsync
+            val currentOverrides = TranslationOverridesStore.overrides(appContext, language)
+            if (currentOverrides.isNotEmpty()) {
+                applyToView(target, prepared, language, currentOverrides)
+            }
+        }
+    }
+
+    private fun prepareSnapshotAsync(context: Context, onReady: (TranslationApplySnapshot) -> Unit) {
+        cachedSnapshot?.let { ready ->
+            mainHandler.post { onReady(ready) }
+            return
+        }
+        pendingLookupCallbacks += onReady
+        if (!lookupPreparing.compareAndSet(false, true)) return
+
+        lookupExecutor.execute {
+            val prepared = runCatching {
+                val entries = TranslationCatalog.entries(context)
+                TranslationApplySnapshot(
+                    entriesByEnglishDefault = entries.groupBy { it.englishDefault },
+                    entriesByBulgarianDefault = entries.groupBy { it.bulgarianDefault },
+                    keyByResourceId = entries.associate { it.resourceId to it.key },
+                    viewBindings = TranslationViewBindingCatalog.bindings(context),
+                )
+            }.getOrElse {
+                TranslationApplySnapshot(emptyMap(), emptyMap(), emptyMap(), emptyMap())
+            }
+            cachedSnapshot = prepared
+            lookupPreparing.set(false)
+            val callbacks = pendingLookupCallbacks.toList()
+            pendingLookupCallbacks.clear()
+            mainHandler.post {
+                callbacks.forEach { callback -> callback(prepared) }
+            }
+        }
     }
 
     private fun applyToView(
-        context: Context,
         view: View,
-        entriesByDefaultText: Map<String, List<TranslationEntry>>,
-        viewBindings: Map<Int, ViewStringBinding>,
+        snapshot: TranslationApplySnapshot,
+        language: String,
         overrides: Map<String, String>,
     ) {
         if (view.tag == EDITOR_CONTAINER_TAG) return
-        val binding = viewBindings[view.id]
+        val binding = snapshot.viewBindings[view.id]
+        val entriesByDefaultText = snapshot.entriesByDefaultFor(language)
 
         if (view is TextView) {
-            val translated = overrideForResource(context, binding?.textResourceId ?: 0, overrides)
+            val translated = overrideForResource(binding?.textResourceId ?: 0, snapshot, overrides)
                 ?: translatedText(view.text, entriesByDefaultText, overrides, useFallback = binding?.textResourceId == 0)
             if (translated != null) view.text = translated
         }
 
         if (view is TextInputLayout) {
-            val translated = overrideForResource(context, binding?.hintResourceId ?: 0, overrides)
+            val translated = overrideForResource(binding?.hintResourceId ?: 0, snapshot, overrides)
                 ?: translatedText(view.hint, entriesByDefaultText, overrides, useFallback = binding?.hintResourceId == 0)
             if (translated != null) view.hint = translated
         }
 
         val translatedContentDescription = overrideForResource(
-            context,
             binding?.contentDescriptionResourceId ?: 0,
+            snapshot,
             overrides,
         ) ?: translatedText(
             view.contentDescription,
@@ -259,16 +331,16 @@ internal object TranslationManager {
 
         if (view is ViewGroup) {
             repeat(view.childCount) { index ->
-                applyToView(context, view.getChildAt(index), entriesByDefaultText, viewBindings, overrides)
+                applyToView(view.getChildAt(index), snapshot, language, overrides)
             }
         }
     }
 
-    private fun overrideForResource(context: Context, resourceId: Int, overrides: Map<String, String>): String? {
-        if (resourceId == 0) return null
-        val key = runCatching { context.resources.getResourceEntryName(resourceId) }.getOrNull() ?: return null
-        return overrides[key]
-    }
+    private fun overrideForResource(
+        resourceId: Int,
+        snapshot: TranslationApplySnapshot,
+        overrides: Map<String, String>,
+    ): String? = snapshot.keyByResourceId[resourceId]?.let(overrides::get)
 
     private fun translatedText(
         source: CharSequence?,
