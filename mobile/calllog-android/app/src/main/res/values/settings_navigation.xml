@@ -7,6 +7,10 @@
     <string name="translation_editor_description">Choose a language, then edit every text key. Changes are saved locally and apply after you tap Apply translations.</string>
     <string name="translation_editor_key_header">Key</string>
     <string name="translation_editor_value_header">Translation</string>
+    <string name="translation_editor_loading">Loading translations…</string>
+    <string name="translation_editor_page">Page %1$d of %2$d · %3$d strings</string>
+    <string name="translation_editor_previous_page">Previous</string>
+    <string name="translation_editor_next_page">Next</string>
     <string name="translation_editor_apply_button">Apply translations</string>
     <string name="translation_editor_reset_language_button">Restore selected language defaults</string>
     <string name="crm_filter_phase_all">All phases</string>
