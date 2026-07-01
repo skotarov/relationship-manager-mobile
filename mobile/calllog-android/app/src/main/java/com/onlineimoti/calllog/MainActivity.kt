@@ -27,13 +27,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private val translationSettingsController by lazy {
-        TranslationSettingsController(
-            activity = this,
-            binding = binding,
-        )
-    }
-
     private val settingsNavigationController by lazy {
         MainSettingsNavigationController(
             activity = this,
@@ -47,6 +40,13 @@ class MainActivity : AppCompatActivity() {
             binding = binding,
             autoSaveSettings = ::autoSaveSettings,
             applyLanguageIfChanged = ::applyLanguageIfChanged,
+        )
+    }
+
+    private val translationSettingsController by lazy {
+        TranslationSettingsController(
+            activity = this,
+            binding = binding,
         )
     }
 
@@ -221,36 +221,43 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.requestSharedNotesStoragePermission()
     }
 
-    internal fun requestCallScreeningRoleFromSummary() {
-        permissionFlowController.requestCallScreeningRole()
+    internal fun openSharedNotesStorageSettingsFromSummary() {
+        permissionFlowController.openSharedNotesStorageSettings()
     }
 
-    internal fun requestDefaultSmsRole() {
-        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher)
+    internal fun requestOverlayPermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestOverlayPermissionIfNeeded()
     }
 
-    internal fun requestSmsPermissions() {
-        permissionFlowController.requestSmsPermissions()
+    internal fun requestCallScreeningPermissionFromSummary() {
+        saveConfig()
+        permissionFlowController.requestCallScreeningRoleIfNeeded()
     }
 
-    internal fun openOverlaySettingsFromSummary() {
-        permissionFlowController.openOverlaySettings()
+    private fun requestDefaultSmsRole() {
+        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
     }
 
-    internal fun openAppDetailsFromSummary() {
-        permissionFlowController.openAppDetails()
+    private fun requestSmsPermissions() {
+        val missingPermissions = arrayOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SEND_SMS,
+        ).filterNot(::hasPermission).toTypedArray()
+        if (missingPermissions.isEmpty()) {
+            permissionFlowController.onSmsPermissionsResult()
+            return
+        }
+        smsPermissionsLauncher.launch(missingPermissions)
     }
 
-    private fun refreshPermissionSummary() {
-        PermissionStatusRenderer.render(this, binding, permissionFlowController)
-        PermissionSummaryLocalizer.apply(this, binding)
-    }
-
-    private fun saveConfig(): AppConfig {
-        val config = MainSettingsConfigUi.read(binding)
-        ConfigStore.save(this, config)
-        currentLanguage = config.appLanguage
-        return config
+    private fun hasSmsPermissions(): Boolean {
+        return !BuildConfig.DEBUG || arrayOf(
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SEND_SMS,
+        ).all(::hasPermission)
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -261,31 +268,51 @@ class MainActivity : AppCompatActivity() {
         return config
     }
 
+    private fun saveConfig(): AppConfig {
+        val config = MainSettingsConfigUi.read(binding)
+        ConfigStore.save(this, config)
+        return ConfigStore.load(this)
+    }
+
     private fun applyLanguageIfChanged(language: String) {
         if (language == currentLanguage) return
         currentLanguage = language
-        AppLanguageManager.applyLanguage(language)
+        AppLanguageManager.applyFromConfig(this)
         recreate()
     }
 
-    private fun disableOverlayPopups() {
-        suppressAutoSave = true
-        binding.popupSettingsSection.overlayEnabledCheckBox.isChecked = false
-        suppressAutoSave = false
-        saveConfig()
+    private fun setStatus(message: String) {
+        binding.statusText.visibility = android.view.View.VISIBLE
+        binding.statusText.text = message
     }
 
-    private fun disableCallScreening() {
-        suppressAutoSave = true
-        binding.popupSettingsSection.callScreeningEnabledCheckBox.isChecked = false
-        suppressAutoSave = false
-        saveConfig()
+    private fun openCallLogHome() {
+        startActivity(
+            Intent(this, HomeActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            },
+        )
+        finish()
     }
 
-    private fun hasSmsPermissions(): Boolean = hasPermission(Manifest.permission.READ_SMS) && hasPermission(Manifest.permission.RECEIVE_SMS)
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    }
 
-    private fun hasPermission(permission: String): Boolean =
-        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    private fun syncPrivateNotesToSharedStorageWhenAvailable() {
+        if (LocalNotesFileStore.canUsePublicFolder()) {
+            LocalNotesFileStore.migratePrivateToPublic(this)
+        }
+    }
 
+    private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
+    private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
+    private fun refreshPermissionSummary() {
+        PermissionStatusRenderer.refresh(this, binding)
+        PermissionSummaryLocalizer.apply(this, binding)
+    }
+    private fun renderBuildVersion() = MainBuildVersion.render(this, binding)
+    private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
+    private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
