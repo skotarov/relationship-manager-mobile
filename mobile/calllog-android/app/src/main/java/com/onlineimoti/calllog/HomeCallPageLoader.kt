@@ -60,11 +60,8 @@ object HomeCallPageLoader {
             ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone)
     }
 
-    /**
-     * Resolves the CRM category for each phone in one Contacts pass. It is public
-     * for Home filters so "Unknown" and "Known CRM" are exact opposites.
-     */
-    fun crmContactKinds(context: Context, phones: Iterable<String>): Map<String, HomeCrmContactKind> {
+    /** Resolves the CRM category for each phone in one Contacts pass for Home-only filtering. */
+    internal fun crmContactKinds(context: Context, phones: Iterable<String>): Map<String, HomeCrmContactKind> {
         val candidateKeys = phones.map(::noteKey).filter { it.isNotBlank() }.toSet()
         if (candidateKeys.isEmpty()) return emptyMap()
         val appContext = context.applicationContext
