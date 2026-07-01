@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -105,10 +106,10 @@ class HomeActivity : AppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
-        updateSearchButtonIcon(); updateCrmModeBadge()
+        updateSearchButtonIcon(); updateCrmModeControls()
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
-        binding.crmModeSwitch.setOnClickListener { setCrmMode(binding.crmModeSwitch.isChecked) }
+        binding.crmModeButton.setOnClickListener { setCrmMode(!isCrmModeEnabled()) }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
@@ -141,6 +142,7 @@ class HomeActivity : AppCompatActivity() {
         super.onResume()
         if (!::binding.isInitialized) return
         noteSavedReceiver.register(); contactsSyncPreparer.prepareOnce(); companyGeneralNotesController.invalidate()
+        HomeCrmPhaseLookup.invalidate()
         crmFiltersController.refreshCompaniesIfNeeded()
         renderCalls()
     }
@@ -170,7 +172,7 @@ class HomeActivity : AppCompatActivity() {
         if (!loadingCrmRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (activePhoneFilter.isBlank()) View.GONE else View.VISIBLE
-        updateCrmModeBadge(); crmFiltersController.updateVisibility(showCrmFilters); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
+        updateCrmModeControls(); crmFiltersController.updateVisibility(showCrmFilters); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             binding.homeStatusText.text = getString(R.string.dynamic_home_missing_call_log_permission)
             binding.paginationContainer.visibility = View.GONE
@@ -339,10 +341,16 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateCrmModeBadge() {
+    private fun updateCrmModeControls() {
         val serverEnabled = HomeCrmModeStore.isAvailable(this)
-        binding.crmModeSwitch.visibility = if (serverEnabled) View.VISIBLE else View.GONE
-        if (serverEnabled) binding.crmModeSwitch.isChecked = isCrmModeEnabled()
+        binding.crmControlsScroll.visibility = if (serverEnabled) View.VISIBLE else View.GONE
+        if (!serverEnabled) return
+        val active = isCrmModeEnabled()
+        val fill = if (active) getColor(R.color.callreport_icon_background) else Color.WHITE
+        val border = if (active) getColor(R.color.callreport_icon_background) else Color.rgb(203, 213, 225)
+        binding.crmModeButton.backgroundTintList = ColorStateList.valueOf(fill)
+        binding.crmModeButton.strokeColor = ColorStateList.valueOf(border)
+        binding.crmModeButton.setTextColor(if (active) Color.WHITE else Color.rgb(51, 65, 85))
     }
 
     private fun isCrmModeEnabled(): Boolean = HomeCrmModeStore.isEnabled(this)
