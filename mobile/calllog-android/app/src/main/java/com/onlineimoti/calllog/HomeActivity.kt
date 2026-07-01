@@ -108,6 +108,7 @@ class HomeActivity : AppCompatActivity() {
         updateSearchButtonIcon(); updateCrmModeBadge()
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         binding.settingsButton.setOnClickListener { showHomeOverflowMenu() }
+        binding.crmModeSwitch.setOnClickListener { setCrmMode(binding.crmModeSwitch.isChecked) }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
         binding.searchButton.setOnClickListener { toggleSearchRow() }
@@ -339,9 +340,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun updateCrmModeBadge() {
-        val visible = isCrmModeEnabled()
-        binding.crmModeBadge.visibility = if (visible) View.VISIBLE else View.GONE
-        if (visible) binding.crmModeBadge.background = roundedRect(getColor(R.color.callreport_icon_background), dp(9), Color.TRANSPARENT, 0)
+        val serverEnabled = HomeCrmModeStore.isAvailable(this)
+        binding.crmModeSwitch.visibility = if (serverEnabled) View.VISIBLE else View.GONE
+        if (serverEnabled) binding.crmModeSwitch.isChecked = isCrmModeEnabled()
     }
 
     private fun isCrmModeEnabled(): Boolean = HomeCrmModeStore.isEnabled(this)
@@ -370,18 +371,10 @@ class HomeActivity : AppCompatActivity() {
 
     private fun showHomeOverflowMenu() {
         PopupMenu(this, binding.settingsButton).apply {
-            if (HomeCrmModeStore.isAvailable(this@HomeActivity)) {
-                menu.setGroupCheckable(MENU_GROUP_CRM_MODE, true, false)
-                menu.add(MENU_GROUP_CRM_MODE, MENU_CRM_MODE_TOGGLE, 0, "CRM Mode").apply {
-                    isCheckable = true
-                    isChecked = isCrmModeEnabled()
-                }
-            }
             menu.add(0, MENU_PHONE_CALL_LOG, 10, getString(R.string.home_overflow_phone_log))
             menu.add(0, MENU_SETTINGS, 20, getString(R.string.home_overflow_settings))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
-                    MENU_CRM_MODE_TOGGLE -> { setCrmMode(!isCrmModeEnabled()); true }
                     MENU_PHONE_CALL_LOG -> { openDefaultCallLog(); true }
                     MENU_SETTINGS -> { homeActions.openSettings(); true }
                     else -> false
@@ -426,8 +419,6 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
-        private const val MENU_GROUP_CRM_MODE = 100
-        private const val MENU_CRM_MODE_TOGGLE = 101
         private const val MENU_PHONE_CALL_LOG = 1
         private const val MENU_SETTINGS = 2
         private const val NOTE_REFRESH_WINDOW_MS = 2_000L
