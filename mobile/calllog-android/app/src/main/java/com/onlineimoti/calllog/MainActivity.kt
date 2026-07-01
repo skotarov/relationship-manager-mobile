@@ -49,6 +49,15 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val serverSyncQueueStatusController by lazy {
+        ServerSyncQueueStatusController(
+            activity = this,
+            binding = binding,
+            saveConfig = ::saveConfig,
+            setStatus = ::setStatus,
+        )
+    }
+
     private val defaultSmsSettingsController by lazy {
         DefaultSmsSettingsController(
             activity = this,
@@ -127,6 +136,8 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
         translationSettingsController.wire()
+        serverSyncQueueStatusController.wire()
+        serverSyncQueueStatusController.refresh()
         if (BuildConfig.DEBUG) {
             binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.VISIBLE
             defaultSmsSettingsController.wire()
@@ -156,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
+        serverSyncQueueStatusController.refresh()
         if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
     }
 
@@ -176,6 +188,7 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             setStatus(getString(R.string.settings_server_saved))
             refreshPermissionSummary()
+            serverSyncQueueStatusController.refresh()
         }
         binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
             createArchiveLauncher.launch(MainArchiveActions.archiveFileName())
@@ -249,6 +262,7 @@ class MainActivity : AppCompatActivity() {
         if (suppressAutoSave) return ConfigStore.load(this)
         val config = saveConfig()
         refreshPermissionSummary()
+        serverSyncQueueStatusController.refresh()
         return config
     }
 
