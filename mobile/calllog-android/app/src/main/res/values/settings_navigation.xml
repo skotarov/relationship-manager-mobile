@@ -14,11 +14,9 @@
     <string name="crm_filter_phases_all">Phases: All</string>
     <string name="crm_filter_phases_selected">Phases: %1$s</string>
     <string name="crm_filter_companies_all">Companies: All</string>
-    <string name="crm_filter_company_named">Company: %1$s</string>
     <string name="crm_filter_companies_selected">Companies: %1$d</string>
     <string name="crm_filter_select_phases">Choose phases</string>
     <string name="crm_filter_select_companies">Choose companies</string>
-    <string name="crm_filter_all">All</string>
     <string name="crm_filter_apply">Apply</string>
     <string name="crm_filter_cancel">Cancel</string>
     <string name="crm_mode_toggle">CRM Mod</string>
