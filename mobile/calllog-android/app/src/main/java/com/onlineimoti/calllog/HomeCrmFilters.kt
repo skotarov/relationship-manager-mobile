@@ -1,128 +1,61 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
-import android.provider.CallLog
 
-/** Contact audience within CRM mode. */
-internal enum class HomeCrmContactScope {
-    ALL,
-    UNKNOWN,
-    KNOWN,
-}
-
-/** Call direction/status filters supported by the CRM call-log overview. */
-internal enum class HomeCrmDirectionScope {
-    ALL,
-    INCOMING,
-    OUTGOING,
-    MISSED,
-}
-
-/** Empty [companyId] means every firm; [NO_COMPANY_ID] means no firm is known. */
+/** One optional CRM overview filter: a phase from any company visible to the broker. */
 internal data class HomeCrmFilterState(
-    val contactScope: HomeCrmContactScope = HomeCrmContactScope.ALL,
-    val directionScope: HomeCrmDirectionScope = HomeCrmDirectionScope.ALL,
-    val companyId: String = "",
-    val pendingOnly: Boolean = false,
+    val phase: Int = ContactNegotiationPhaseStore.NONE,
 ) {
-    val isCompanyFiltered: Boolean get() = companyId.isNotBlank()
     val isActive: Boolean
-        get() = contactScope != HomeCrmContactScope.ALL ||
-            directionScope != HomeCrmDirectionScope.ALL ||
-            companyId.isNotBlank() ||
-            pendingOnly
+        get() = phase in ContactNegotiationPhaseStore.PHASE_1..ContactNegotiationPhaseStore.PHASE_4
 
-    companion object {
-        const val NO_COMPANY_ID = "__callreport_no_company__"
-    }
+    /** Kept for the existing Home loader branch; phase filtering needs no company-membership lookup. */
+    val isCompanyFiltered: Boolean get() = false
 }
 
-/** Keeps the Home CRM view exactly as the broker left it. */
+/** Keeps the CRM phase choice after the app is reopened. */
 internal object HomeCrmFilterStore {
     private const val PREFS = "relationship_manager_prefs"
-    private const val KEY_CONTACT_SCOPE = "home_crm_contact_scope"
-    private const val KEY_DIRECTION_SCOPE = "home_crm_direction_scope"
-    private const val KEY_COMPANY_ID = "home_crm_company_id"
-    private const val KEY_PENDING_ONLY = "home_crm_pending_only"
+    private const val KEY_PHASE = "home_crm_phase_filter"
 
     fun load(context: Context): HomeCrmFilterState {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return HomeCrmFilterState(
-            contactScope = enumValueOrDefault(prefs.getString(KEY_CONTACT_SCOPE, ""), HomeCrmContactScope.ALL),
-            directionScope = enumValueOrDefault(prefs.getString(KEY_DIRECTION_SCOPE, ""), HomeCrmDirectionScope.ALL),
-            companyId = prefs.getString(KEY_COMPANY_ID, "").orEmpty().trim(),
-            pendingOnly = prefs.getBoolean(KEY_PENDING_ONLY, false),
-        )
+        return HomeCrmFilterState(normalize(prefs.getInt(KEY_PHASE, ContactNegotiationPhaseStore.NONE)))
     }
 
     fun save(context: Context, state: HomeCrmFilterState) {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_CONTACT_SCOPE, state.contactScope.name)
-            .putString(KEY_DIRECTION_SCOPE, state.directionScope.name)
-            .putString(KEY_COMPANY_ID, state.companyId.trim())
-            .putBoolean(KEY_PENDING_ONLY, state.pendingOnly)
+            .putInt(KEY_PHASE, normalize(state.phase))
             .apply()
     }
 
-    private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String?, fallback: T): T {
-        return enumValues<T>().firstOrNull { it.name == value.orEmpty() } ?: fallback
-    }
+    private fun normalize(phase: Int): Int = phase.takeIf {
+        it in ContactNegotiationPhaseStore.PHASE_1..ContactNegotiationPhaseStore.PHASE_4
+    } ?: ContactNegotiationPhaseStore.NONE
 }
 
-/** Applies local-only CRM criteria before a company membership lookup is needed. */
+/** Filters CRM candidates by a company-scoped phase before the list is paged. */
 internal object HomeCrmFilterEngine {
     fun filterLocal(
         context: Context,
         calls: List<PhoneCallRecord>,
         state: HomeCrmFilterState,
     ): List<PhoneCallRecord> {
-        if (calls.isEmpty()) return emptyList()
-        val kinds = HomeCallPageLoader.crmContactKinds(context, calls.map { it.number })
-        val pendingPhoneKeys = if (state.pendingOnly) {
-            CallReportTopicNoteOutbox.pendingPhoneKeys(context) +
-                CallReportDeferredCompanyAssignmentStore.pendingPhoneKeys(context)
-        } else {
-            emptySet()
-        }
+        if (!state.isActive || calls.isEmpty()) return calls
+        val phasesByPhoneKey = HomeCrmPhaseLookup.resolve(
+            config = ConfigStore.load(context.applicationContext),
+            phones = calls.map { it.number },
+        )
         return calls.filter { call ->
-            val phoneKey = HomeCallPageLoader.noteKey(call.number)
-            matchesContact(kinds[phoneKey] ?: HomeCrmContactKind.NOT_ELIGIBLE, state.contactScope) &&
-                matchesDirection(call, state.directionScope) &&
-                (!state.pendingOnly || phoneKey in pendingPhoneKeys)
+            state.phase in phasesByPhoneKey[HomeCallPageLoader.noteKey(call.number)].orEmpty()
         }
     }
 
+    /** Compatibility no-op: Home no longer offers a separate company filter. */
     fun filterByCompany(
         calls: List<PhoneCallRecord>,
         state: HomeCrmFilterState,
         companyIdsByPhoneKey: Map<String, Set<String>>,
-    ): List<PhoneCallRecord> {
-        val selected = state.companyId.trim()
-        if (selected.isBlank()) return calls
-        return calls.filter { call ->
-            // A missing cache value means the phone has not been safely resolved.
-            // It must not become an incorrect "No company" result.
-            val ids = companyIdsByPhoneKey[HomeCallPageLoader.noteKey(call.number)] ?: return@filter false
-            if (selected == HomeCrmFilterState.NO_COMPANY_ID) ids.isEmpty() else selected in ids
-        }
-    }
-
-    private fun matchesContact(kind: HomeCrmContactKind, scope: HomeCrmContactScope): Boolean = when (scope) {
-        HomeCrmContactScope.ALL -> kind != HomeCrmContactKind.NOT_ELIGIBLE
-        HomeCrmContactScope.UNKNOWN -> kind == HomeCrmContactKind.UNKNOWN
-        HomeCrmContactScope.KNOWN -> kind == HomeCrmContactKind.KNOWN_CRM
-    }
-
-    private fun matchesDirection(call: PhoneCallRecord, scope: HomeCrmDirectionScope): Boolean = when (scope) {
-        HomeCrmDirectionScope.ALL -> true
-        HomeCrmDirectionScope.OUTGOING -> call.direction == "out"
-        HomeCrmDirectionScope.INCOMING -> call.callType == CallLog.Calls.INCOMING_TYPE
-        HomeCrmDirectionScope.MISSED -> call.callType in setOf(
-            CallLog.Calls.MISSED_TYPE,
-            CallLog.Calls.REJECTED_TYPE,
-            CallLog.Calls.BLOCKED_TYPE,
-            CallLog.Calls.VOICEMAIL_TYPE,
-        )
-    }
+    ): List<PhoneCallRecord> = calls
 }
