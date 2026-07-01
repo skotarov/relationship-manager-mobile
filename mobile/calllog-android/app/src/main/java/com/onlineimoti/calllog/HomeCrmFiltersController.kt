@@ -141,8 +141,10 @@ internal class HomeCrmFiltersController(
                 HomeCrmDirectionScope.SMS to R.string.crm_filter_direction_sms,
             )
             options.forEachIndexed { index, (scope, textRes) ->
-                menu.add(0, DIRECTION_FIRST_ID + index, index, activity.getString(textRes)).isCheckable = true
-                    .also { it.isChecked = scope == state.directionScope }
+                menu.add(0, DIRECTION_FIRST_ID + index, index, activity.getString(textRes)).apply {
+                    isCheckable = true
+                    isChecked = scope == state.directionScope
+                }
             }
             setOnMenuItemClickListener { item ->
                 val scope = options.getOrNull(item.itemId - DIRECTION_FIRST_ID)?.first ?: return@setOnMenuItemClickListener false
