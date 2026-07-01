@@ -138,7 +138,6 @@ internal class HomeCrmFiltersController(
                 HomeCrmDirectionScope.INCOMING to R.string.crm_filter_direction_incoming,
                 HomeCrmDirectionScope.OUTGOING to R.string.crm_filter_direction_outgoing,
                 HomeCrmDirectionScope.MISSED to R.string.crm_filter_direction_missed,
-                HomeCrmDirectionScope.SMS to R.string.crm_filter_direction_sms,
             )
             options.forEachIndexed { index, (scope, textRes) ->
                 menu.add(0, DIRECTION_FIRST_ID + index, index, activity.getString(textRes)).apply {
@@ -181,7 +180,6 @@ internal class HomeCrmFiltersController(
             HomeCrmDirectionScope.INCOMING -> R.string.crm_filter_direction_incoming
             HomeCrmDirectionScope.OUTGOING -> R.string.crm_filter_direction_outgoing
             HomeCrmDirectionScope.MISSED -> R.string.crm_filter_direction_missed
-            HomeCrmDirectionScope.SMS -> R.string.crm_filter_direction_sms
         },
     )
 
