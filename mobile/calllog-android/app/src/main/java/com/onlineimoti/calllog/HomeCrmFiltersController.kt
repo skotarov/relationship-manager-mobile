@@ -176,7 +176,7 @@ internal class HomeCrmFiltersController(
         if (!state.hasPhaseFilter) return activity.getString(R.string.crm_filter_phases_all)
         return activity.getString(
             R.string.crm_filter_phases_selected,
-            state.phases.sorted().joinToString(", ") { phaseLabel(it) },
+            state.phases.sorted().joinToString(", "),
         )
     }
 
