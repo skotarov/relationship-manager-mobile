@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         MainSettingsNavigationController(
             activity = this,
             binding = binding,
+            onLanguageSectionShown = translationSettingsController::onSectionVisible,
         )
     }
 
@@ -39,6 +40,22 @@ class MainActivity : AppCompatActivity() {
             binding = binding,
             autoSaveSettings = ::autoSaveSettings,
             applyLanguageIfChanged = ::applyLanguageIfChanged,
+        )
+    }
+
+    private val translationSettingsController by lazy {
+        TranslationSettingsController(
+            activity = this,
+            binding = binding,
+        )
+    }
+
+    private val serverSyncQueueStatusController by lazy {
+        ServerSyncQueueStatusController(
+            activity = this,
+            binding = binding,
+            saveConfig = ::saveConfig,
+            setStatus = ::setStatus,
         )
     }
 
@@ -119,10 +136,15 @@ class MainActivity : AppCompatActivity() {
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
+        translationSettingsController.wire()
+        serverSyncQueueStatusController.wire()
+        serverSyncQueueStatusController.refresh()
         if (BuildConfig.DEBUG) {
+            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.VISIBLE
             defaultSmsSettingsController.wire()
         } else {
             binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
+            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.GONE
         }
         wireSettingsActions()
         if (BuildConfig.DEBUG) {
@@ -146,10 +168,12 @@ class MainActivity : AppCompatActivity() {
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
         refreshPermissionSummary()
+        serverSyncQueueStatusController.refresh()
         if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
     }
 
     override fun onDestroy() {
+        translationSettingsController.release()
         contactsCleanupController.release()
         executor.shutdown()
         super.onDestroy()
@@ -166,6 +190,7 @@ class MainActivity : AppCompatActivity() {
             saveConfig()
             setStatus(getString(R.string.settings_server_saved))
             refreshPermissionSummary()
+            serverSyncQueueStatusController.refresh()
         }
         binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
             createArchiveLauncher.launch(MainArchiveActions.archiveFileName())
@@ -239,6 +264,7 @@ class MainActivity : AppCompatActivity() {
         if (suppressAutoSave) return ConfigStore.load(this)
         val config = saveConfig()
         refreshPermissionSummary()
+        serverSyncQueueStatusController.refresh()
         return config
     }
 

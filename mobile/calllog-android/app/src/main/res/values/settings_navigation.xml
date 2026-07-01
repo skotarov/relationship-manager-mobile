@@ -1,0 +1,53 @@
+<resources>
+    <string name="server_advanced_settings_show">Show advanced server settings</string>
+    <string name="server_advanced_settings_hide">Hide advanced server settings</string>
+    <string name="settings_sms_permissions_section_title">SMS app and permissions</string>
+    <string name="settings_sms_permissions_section_description">Activate the SMS app role and allow SMS permissions from one place.</string>
+    <string name="translation_editor_title">Edit translations</string>
+    <string name="translation_editor_description">Choose a language, then edit every text key. Changes are saved locally and apply after you tap Apply translations.</string>
+    <string name="translation_editor_key_header">Key</string>
+    <string name="translation_editor_value_header">Translation</string>
+    <string name="translation_editor_loading">Loading translations…</string>
+    <string name="translation_editor_page">Page %1$d of %2$d · %3$d strings</string>
+    <string name="translation_editor_previous_page">Previous</string>
+    <string name="translation_editor_next_page">Next</string>
+    <string name="translation_editor_apply_button">Apply translations</string>
+    <string name="translation_editor_reset_language_button">Restore selected language defaults</string>
+    <string name="crm_filter_phase_all">All phases</string>
+    <string name="crm_filter_phase_named">%1$s</string>
+    <string name="crm_filter_phases_all">Ph: All</string>
+    <string name="crm_filter_phases_selected">Ph: %1$s</string>
+    <string name="crm_filter_companies_all">Topic: All</string>
+    <string name="crm_filter_topic_named">Topic: %1$s</string>
+    <string name="crm_filter_companies_selected">Topic: %1$d</string>
+    <string name="crm_filter_select_phases">Choose phases</string>
+    <string name="crm_filter_select_companies">Choose topics</string>
+    <string name="crm_filter_apply">Apply</string>
+    <string name="crm_filter_cancel">Cancel</string>
+    <string name="crm_mode_toggle">CRM</string>
+
+    <string name="dynamic_note_companies_loading">Loading companies…</string>
+    <string name="dynamic_note_no_company_destinations">No available company destinations</string>
+    <string name="dynamic_note_choose_company">Choose</string>
+    <string name="dynamic_note_local_storage_label">The note is saved locally:</string>
+    <string name="dynamic_note_destination_label">Where should the note be saved:</string>
+    <string name="dynamic_note_companies_cached_offline">Offline — the company list is from the last sync. The note will send automatically.</string>
+    <string name="dynamic_note_companies_unavailable_deferred">No cached company list is available. Save the note now and choose a company when Internet returns.</string>
+    <string name="dynamic_note_saved_choose_company_later">Saved locally — choose a company when Internet is available.</string>
+    <string name="dynamic_note_saved_pending_company_sync">Saved locally — waiting to sync with %1$s.</string>
+    <string name="dynamic_note_pending_company_choice">Choose a company when Internet is available</string>
+    <string name="dynamic_note_pending_server_sync">Waiting for server sync</string>
+    <string name="dynamic_note_pending_server_sync_failed">Sync was not confirmed: %1$s</string>
+    <string name="dynamic_notes_loading">Loading notes…</string>
+    <string name="dynamic_notes_empty">No notes or SMS yet.</string>
+    <string name="dynamic_notes_local_only">Server is disabled — showing local notes only.</string>
+
+    <string name="server_retry_pending_notes">Try syncing pending notes</string>
+    <string name="server_pending_notes_none">No pending company notes.</string>
+    <string name="server_pending_notes_status">Pending company notes: %1$d</string>
+    <string name="server_pending_notes_with_deferred">Pending company notes: %1$d • choose company later: %2$d</string>
+    <string name="server_pending_notes_deferred_only">Notes waiting for a company selection: %1$d</string>
+    <string name="server_pending_notes_failure">Pending company notes: %1$d • last sync issue: %2$s</string>
+    <string name="server_pending_notes_settings_required">Complete the cloud settings to send %1$d pending company notes.</string>
+    <string name="server_pending_notes_retry_scheduled">Sync requested. Pending notes will send automatically when Internet is available.</string>
+</resources>

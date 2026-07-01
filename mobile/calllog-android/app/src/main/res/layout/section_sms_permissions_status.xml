@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="@string/settings_sms_permissions_section_title"
+        android:textColor="@color/calllog_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/settings_sms_permissions_section_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/statusSmsPermissionsStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_settings_info"
+        android:paddingStart="12dp"
+        android:paddingTop="9dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="9dp"
+        android:textColor="@color/calllog_text"
+        android:textSize="14sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/statusSmsPermissionsRoleButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:minHeight="46dp"
+        android:text="@string/default_sms_activate_button"
+        app:icon="@drawable/ic_chat_note"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        app:iconTint="@color/calllog_text" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/statusManageDefaultSmsButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="46dp"
+        android:text="@string/default_sms_manage_button"
+        app:icon="@drawable/ic_settings_gear"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+</LinearLayout>

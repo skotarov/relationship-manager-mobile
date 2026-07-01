@@ -21,6 +21,8 @@ internal data class ContactNoteFormSaveResult(
     val localOnlyFallback: Boolean = false,
     val serverSyncActivationAttempted: Boolean = false,
     val serverSyncEnabled: Boolean = false,
+    val pendingServerSync: Boolean = false,
+    val pendingCompanyChoice: Boolean = false,
 ) {
     val saved: Boolean get() = writeResult.saved
 }
@@ -48,13 +50,19 @@ internal object ContactNoteFormWorkflow {
                 companies = emptyList(),
                 selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID,
                 loadError = "",
+                usingCachedCompanies = false,
+                cachedCompaniesUpdatedAtMs = 0L,
             )
         }
 
         val result = runCatching {
-            CallReportTopicCompaniesClient.fetch(ConfigStore.load(context.applicationContext))
+            CallReportTopicCompaniesRepository.load(
+                context = context.applicationContext,
+                config = ConfigStore.load(context.applicationContext),
+            )
         }
-        val companies = result.getOrDefault(emptyList())
+        val loaded = result.getOrNull()
+        val companies = loaded?.companies.orEmpty()
         val loadFailed = result.isFailure
         val selectedCompanyId = when {
             previous.selectedCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID -> {
@@ -68,12 +76,16 @@ internal object ContactNoteFormWorkflow {
             companies = companies,
             selectedCompanyId = selectedCompanyId,
             loadError = if (loadFailed) TOPIC_REQUEST_FAILED else "",
+            usingCachedCompanies = loaded?.source == TopicCompaniesSource.CACHED,
+            cachedCompaniesUpdatedAtMs = if (loaded?.source == TopicCompaniesSource.CACHED) loaded.updatedAtMs else 0L,
         )
     }
 
     /** Returns null while an eligible CRM/unknown contact still needs a destination selection. */
     fun selectedTopicOrLocalFallback(state: ContactNoteTopicState): String? {
         if (!state.visible || state.localOnly) return ContactNoteTopicState.LOCAL_COMPANY_ID
+        // Without a cached list, save locally and retain a durable reminder to choose
+        // a firm later. The user never loses the note because of a connection error.
         if (state.loadError.isNotBlank()) return ContactNoteTopicState.LOCAL_COMPANY_ID
         if (state.loading || state.selectedCompanyId.isBlank()) return null
         return state.selectedCompanyId
@@ -97,11 +109,21 @@ internal object ContactNoteFormWorkflow {
         // A stale UI or a direct caller cannot send an ordinary known non-CRM
         // contact to the server.
         val serverDestinationAllowed = ContactServerCompanyScope.isAvailable(appContext, draft.phone)
-        val isLocalSelection = topicCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID || !serverDestinationAllowed
-        val serverCompanyId = if (isLocalSelection) "" else topicCompanyId
+        val selectedTopic = topicCompanyId.trim()
+        val isLocalSelection = selectedTopic == ContactNoteTopicState.LOCAL_COMPANY_ID || !serverDestinationAllowed
+        val serverCompanyId = if (isLocalSelection) "" else selectedTopic
         val activateUnknownSync = noteText.trim().isNotBlank() &&
             serverCompanyId.isNotBlank() &&
             shouldAutoEnableServerSync(appContext, draft)
+
+        // Mark the unknown number locally before calling the topic writer. The writer
+        // can then save and enqueue the company event even while offline, without
+        // requiring Contacts write access or a live network response.
+        val serverSyncEnabled = if (activateUnknownSync) {
+            RmContactSyncLayerStore.enableTopicSync(appContext, draft.phone)
+        } else {
+            false
+        }
 
         val writeResult = when {
             serverCompanyId.isNotBlank() && draft.isGeneralNote -> {
@@ -138,12 +160,32 @@ internal object ContactNoteFormWorkflow {
                 syncToCrm = false,
             )
         }
-        if (!writeResult.saved) return ContactNoteFormSaveResult(writeResult, localOnlyFallback = localOnlyFallback)
+        if (!writeResult.saved) {
+            return ContactNoteFormSaveResult(
+                writeResult = writeResult,
+                localOnlyFallback = localOnlyFallback,
+                serverSyncActivationAttempted = activateUnknownSync,
+                serverSyncEnabled = serverSyncEnabled,
+            )
+        }
+
+        val pendingCompanyChoice = localOnlyFallback &&
+            isLocalSelection &&
+            serverDestinationAllowed &&
+            noteText.trim().isNotBlank()
+        updateDeferredCompanyAssignment(
+            context = appContext,
+            draft = draft,
+            writeResult = writeResult,
+            pendingCompanyChoice = pendingCompanyChoice,
+        )
 
         // Selecting Local for an eligible concrete call removes any previous
-        // server firm assignment for that same call only.
+        // server firm assignment for that same call only. A forced offline local
+        // fallback deliberately does not unassign the existing server firm.
         if (
             isLocalSelection &&
+            !localOnlyFallback &&
             serverDestinationAllowed &&
             !draft.isGeneralNote &&
             writeResult.target.hasCall &&
@@ -163,23 +205,74 @@ internal object ContactNoteFormWorkflow {
             )
         }
 
-        val serverSyncEnabled = if (activateUnknownSync) {
-            RmContactSyncLayerStore.setEnabled(
-                context = appContext,
-                phone = draft.phone,
-                title = draft.title,
-                enabled = true,
-                enqueueExistingNotes = false,
-            )
-        } else {
-            false
-        }
+        val pendingServerSync = serverCompanyId.isNotBlank() && isTopicSyncPending(
+            context = appContext,
+            phone = draft.phone,
+            writeResult = writeResult,
+            companyId = serverCompanyId,
+        )
         return ContactNoteFormSaveResult(
             writeResult = writeResult,
             localOnlyFallback = localOnlyFallback,
             serverSyncActivationAttempted = activateUnknownSync,
             serverSyncEnabled = serverSyncEnabled,
+            pendingServerSync = pendingServerSync,
+            pendingCompanyChoice = pendingCompanyChoice,
         )
+    }
+
+    private fun updateDeferredCompanyAssignment(
+        context: Context,
+        draft: ContactNoteFormDraft,
+        writeResult: CallNoteWriteResult,
+        pendingCompanyChoice: Boolean,
+    ) {
+        if (writeResult.savedAsGeneralNote) {
+            if (pendingCompanyChoice) {
+                CallReportDeferredCompanyAssignmentStore.markGeneral(context, draft.phone)
+            } else {
+                CallReportDeferredCompanyAssignmentStore.clearGeneral(context, draft.phone)
+            }
+            return
+        }
+
+        if (!writeResult.target.hasCall) return
+        if (pendingCompanyChoice) {
+            CallReportDeferredCompanyAssignmentStore.markCall(
+                context = context,
+                phone = draft.phone,
+                direction = writeResult.target.direction,
+                callAtMs = writeResult.target.callAt,
+                durationSeconds = writeResult.target.durationSeconds,
+            )
+        } else {
+            CallReportDeferredCompanyAssignmentStore.clearCall(
+                context = context,
+                phone = draft.phone,
+                direction = writeResult.target.direction,
+                callAtMs = writeResult.target.callAt,
+            )
+        }
+    }
+
+    private fun isTopicSyncPending(
+        context: Context,
+        phone: String,
+        writeResult: CallNoteWriteResult,
+        companyId: String,
+    ): Boolean {
+        return if (writeResult.savedAsGeneralNote) {
+            CallReportTopicNoteOutbox.isGeneralPending(context, phone, companyId)
+        } else if (writeResult.target.hasCall) {
+            CallReportTopicNoteOutbox.isCallPending(
+                context = context,
+                phone = phone,
+                direction = writeResult.target.direction,
+                callAt = writeResult.target.callAt,
+            )
+        } else {
+            false
+        }
     }
 
     private fun shouldShowTopicSelector(context: Context, @Suppress("UNUSED_PARAMETER") draft: ContactNoteFormDraft): Boolean {

@@ -95,10 +95,6 @@
                 layout="@layout/settings_group_popup" />
 
             <include
-                android:id="@+id/settingsCallLogGroup"
-                layout="@layout/settings_group_call_log" />
-
-            <include
                 android:id="@+id/settingsRmContactsGroup"
                 layout="@layout/settings_group_rm_contacts" />
 
@@ -109,6 +105,10 @@
             <include
                 android:id="@+id/settingsDataArchiveGroup"
                 layout="@layout/settings_group_data_archive" />
+
+            <include
+                android:id="@+id/settingsGeneralGroup"
+                layout="@layout/settings_group_general" />
 
             <include
                 android:id="@+id/settingsDebugGroup"
@@ -122,13 +122,6 @@
                 android:textColor="@color/calllog_muted_text"
                 android:textSize="14sp"
                 android:visibility="gone" />
-            <TextView
-                android:id="@+id/buildVersionText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:textColor="@color/calllog_muted_text"
-                android:textSize="12sp" />
         </LinearLayout>
     </ScrollView>
 

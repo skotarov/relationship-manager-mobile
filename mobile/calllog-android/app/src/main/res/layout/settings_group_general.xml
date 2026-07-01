@@ -21,28 +21,34 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginEnd="10dp"
-                android:contentDescription="@string/settings_crm_section"
-                android:src="@drawable/ic_settings_rm_contacts" />
+                android:contentDescription="@string/settings_language_section"
+                android:src="@drawable/ic_settings_application" />
+
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/settings_crm_section"
+                android:text="@string/settings_language_section"
                 android:textColor="@color/calllog_text"
                 android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
         <include
-            android:id="@+id/defaultSmsSection"
-            layout="@layout/section_default_sms" />
+            android:id="@+id/languageSettingsSection"
+            layout="@layout/section_language_settings" />
 
-        <include
-            android:id="@+id/contactLinkSection"
-            layout="@layout/section_contact_link" />
+        <TextView
+            android:id="@+id/buildVersionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="12sp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

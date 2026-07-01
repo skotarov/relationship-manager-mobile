@@ -18,8 +18,12 @@ internal data class ContactNoteTopicState(
     val includeLocalOption: Boolean = false,
     /** No server company is available for this form; keep only the Local option visible. */
     val localOnly: Boolean = false,
-    /** Non-empty only when the topic request itself failed. Empty companies is a valid server response. */
+    /** Non-empty only when neither the server nor a cached company list could be loaded. */
     val loadError: String = "",
+    /** The visible firms came from the last successful sync, not from a live request. */
+    val usingCachedCompanies: Boolean = false,
+    /** Timestamp of the cached company list, zero when the list is live or unavailable. */
+    val cachedCompaniesUpdatedAtMs: Long = 0L,
 ) {
     companion object {
         /** Synthetic selection only; never sent to the server as a company id. */
@@ -38,12 +42,12 @@ internal object ContactNoteTopicSelector {
         val hasPlaceholder = !state.loading && state.loadError.isBlank() && !state.localOnly && options.isNotEmpty()
         val labels = when {
             state.loading && state.includeLocalOption -> listOf(context.getString(R.string.note_local_company))
-            state.loading -> listOf("Зареждане на фирми…")
+            state.loading -> listOf(context.getString(R.string.dynamic_note_companies_loading))
             state.loadError.isNotBlank() && state.includeLocalOption -> listOf(context.getString(R.string.note_local_company))
             state.loadError.isNotBlank() -> listOf(context.getString(R.string.note_topics_unavailable_local_only))
             state.localOnly -> listOf(context.getString(R.string.note_local_company))
-            options.isEmpty() -> listOf("Няма налични места за запис")
-            hasPlaceholder -> listOf("Избери") + options.map { it.label }
+            options.isEmpty() -> listOf(context.getString(R.string.dynamic_note_no_company_destinations))
+            hasPlaceholder -> listOf(context.getString(R.string.dynamic_note_choose_company)) + options.map { it.label }
             else -> options.map { it.label }
         }
         val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_item, labels).apply {

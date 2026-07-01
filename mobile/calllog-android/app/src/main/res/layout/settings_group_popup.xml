@@ -44,5 +44,18 @@
         <include
             android:id="@+id/popupContactFilterSection"
             layout="@layout/section_popup_contact_filter" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/settings_home_screen_section"
+            android:textColor="@color/calllog_text"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <include
+            android:id="@+id/callLogSettingsSection"
+            layout="@layout/section_call_log_settings" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

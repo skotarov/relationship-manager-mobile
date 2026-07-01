@@ -6,6 +6,15 @@ import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 
+internal enum class HomeCrmContactKind {
+    /** Number does not exist in a regular Android contact. */
+    UNKNOWN,
+    /** Existing Android contact explicitly enabled for CRM/cloud sync. */
+    KNOWN_CRM,
+    /** Existing Android contact without the CRM switch. */
+    NOT_ELIGIBLE,
+}
+
 object HomeCallPageLoader {
     private const val SEARCH_SCAN_LIMIT = 500
     private const val FILTERED_CALL_SCAN_LIMIT = 500
@@ -51,28 +60,43 @@ object HomeCallPageLoader {
             ContactServerCompanyScope.isUnknownNumber(context.applicationContext, phone)
     }
 
+    /** Resolves the CRM category for each phone in one Contacts pass for Home-only filtering. */
+    internal fun crmContactKinds(context: Context, phones: Iterable<String>): Map<String, HomeCrmContactKind> {
+        val candidateKeys = phones.map(::noteKey).filter { it.isNotBlank() }.toSet()
+        if (candidateKeys.isEmpty()) return emptyMap()
+        val appContext = context.applicationContext
+        val explicitlyCrmKeys = CrmContactSyncStore.enabledPhoneKeys(appContext)
+        val knownRealContactKeys = realContactPhoneKeys(appContext)
+        return candidateKeys.associateWith { key ->
+            when {
+                key !in knownRealContactKeys -> HomeCrmContactKind.UNKNOWN
+                key in explicitlyCrmKeys -> HomeCrmContactKind.KNOWN_CRM
+                else -> HomeCrmContactKind.NOT_ELIGIBLE
+            }
+        }
+    }
+
     /**
      * Resolves CRM eligibility for a whole Home page at once. The explicit CRM set
      * comes directly from the per-contact CRM switches, then unknown numbers are
      * added by subtracting normal Android Contacts from the candidate numbers.
      */
     fun crmEligiblePhoneKeys(context: Context, phones: Iterable<String>): Set<String> {
-        val candidateKeys = phones.map(::noteKey).filter { it.isNotBlank() }.toSet()
-        if (candidateKeys.isEmpty()) return emptySet()
-
-        val appContext = context.applicationContext
-        val explicitlyCrmKeys = CrmContactSyncStore.enabledPhoneKeys(appContext)
-        val knownRealContactKeys = realContactPhoneKeys(appContext)
-        return candidateKeys.filterTo(linkedSetOf()) { key ->
-            key in explicitlyCrmKeys || key !in knownRealContactKeys
-        }
+        return crmContactKinds(context, phones)
+            .filterValues { it != HomeCrmContactKind.NOT_ELIGIBLE }
+            .keys
     }
 
-    private fun crmCalls(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+    /** Raw chronological CRM candidates before contact, direction or company filters are applied. */
+    fun crmCandidateCalls(context: Context): List<PhoneCallRecord> {
         return filterCrmEligible(
             context,
             PhoneCallReader.recentCalls(context, limit = CRM_CALL_SCAN_LIMIT, offset = 0),
-        ).page(pageIndex, pageSize)
+        )
+    }
+
+    private fun crmCalls(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
+        return crmCandidateCalls(context).page(pageIndex, pageSize)
     }
 
     private fun filteredTimelineForPhone(
@@ -143,8 +167,8 @@ object HomeCallPageLoader {
     }
 
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
-        val eligiblePhoneKeys = crmEligiblePhoneKeys(context, calls.asSequence().map { it.number }.asIterable())
-        return calls.filter { call -> noteKey(call.number) in eligiblePhoneKeys }
+        val categories = crmContactKinds(context, calls.asSequence().map { it.number }.asIterable())
+        return calls.filter { call -> categories[noteKey(call.number)] != HomeCrmContactKind.NOT_ELIGIBLE }
     }
 
     /**

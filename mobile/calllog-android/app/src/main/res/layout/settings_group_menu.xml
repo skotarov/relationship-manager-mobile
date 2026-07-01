@@ -38,22 +38,6 @@
         app:strokeWidth="1dp" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/settingsCallLogButton"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:minHeight="52dp"
-        android:text="@string/settings_call_log_section"
-        app:icon="@drawable/ic_settings_call_log"
-        app:iconGravity="textStart"
-        app:iconPadding="14dp"
-        app:iconTint="@color/calllog_text"
-        app:strokeColor="@color/calllog_border"
-        app:strokeWidth="1dp" />
-
-    <com.google.android.material.button.MaterialButton
         android:id="@+id/settingsRmContactsButton"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
         android:layout_width="match_parent"
@@ -61,7 +45,7 @@
         android:layout_marginTop="8dp"
         android:gravity="center_vertical"
         android:minHeight="52dp"
-        android:text="@string/settings_integration_section"
+        android:text="@string/settings_crm_section"
         app:icon="@drawable/ic_settings_rm_contacts"
         app:iconGravity="textStart"
         app:iconPadding="14dp"
@@ -95,6 +79,22 @@
         android:minHeight="52dp"
         android:text="@string/settings_storage_section"
         app:icon="@drawable/ic_settings_data_archive"
+        app:iconGravity="textStart"
+        app:iconPadding="14dp"
+        app:iconTint="@color/calllog_text"
+        app:strokeColor="@color/calllog_border"
+        app:strokeWidth="1dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settingsGeneralButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:text="@string/settings_language_section"
+        app:icon="@drawable/ic_settings_application"
         app:iconGravity="textStart"
         app:iconPadding="14dp"
         app:iconTint="@color/calllog_text"

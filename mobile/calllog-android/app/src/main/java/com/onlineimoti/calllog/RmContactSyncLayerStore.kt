@@ -50,6 +50,18 @@ internal object RmContactSyncLayerStore {
     }
 
     /**
+     * Enables the local CRM marker required by the company-note outbox, without
+     * creating or updating a Contacts raw record. This lets an unknown number be
+     * classified under a firm while the device is offline or Contacts permission is unavailable.
+     */
+    fun enableTopicSync(context: Context, phone: String): Boolean {
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+        if (normalizedPhone.isBlank()) return false
+        CrmContactSyncStore.setEnabled(context.applicationContext, normalizedPhone, true)
+        return true
+    }
+
+    /**
      * Changes only the CRM/server-sync switch. It never creates, updates or deletes
      * the RM raw contact layer. Use this for the CRM button in the contact header.
      */

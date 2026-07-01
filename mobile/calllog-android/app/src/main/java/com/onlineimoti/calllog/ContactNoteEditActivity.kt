@@ -244,17 +244,27 @@ class ContactNoteEditActivity : Activity() {
             saved = true,
             serverSyncActivationAttempted = result.serverSyncActivationAttempted,
             serverSyncEnabled = result.serverSyncEnabled,
+            pendingServerSync = result.pendingServerSync,
+            pendingCompanyChoice = result.pendingCompanyChoice,
+            companyName = companyNameFor(topicCompanyId),
         )
     }
 
+    private fun companyNameFor(companyId: String): String {
+        if (companyId == ContactNoteTopicState.LOCAL_COMPANY_ID) return ""
+        return topicState.companies.firstOrNull { it.id == companyId }?.name.orEmpty().ifBlank { companyId }
+    }
+
     private fun showSaveOutcome(outcome: NoteSaveOutcome) {
-        val messageRes = when {
-            !outcome.saved -> R.string.dynamic_note_save_failed
-            outcome.serverSyncActivationAttempted && outcome.serverSyncEnabled -> R.string.note_server_sync_enabled
-            outcome.serverSyncActivationAttempted -> R.string.note_server_sync_activation_failed
-            else -> R.string.dynamic_note_saved
+        val message = when {
+            !outcome.saved -> getString(R.string.dynamic_note_save_failed)
+            outcome.pendingCompanyChoice -> getString(R.string.dynamic_note_saved_choose_company_later)
+            outcome.pendingServerSync -> getString(R.string.dynamic_note_saved_pending_company_sync, outcome.companyName)
+            outcome.serverSyncActivationAttempted && outcome.serverSyncEnabled -> getString(R.string.note_server_sync_enabled)
+            outcome.serverSyncActivationAttempted -> getString(R.string.note_server_sync_activation_failed)
+            else -> getString(R.string.dynamic_note_saved)
         }
-        Toast.makeText(this, getString(messageRes), Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     private fun openCalendarEvent(noteText: String) {
@@ -294,6 +304,9 @@ class ContactNoteEditActivity : Activity() {
         val saved: Boolean,
         val serverSyncActivationAttempted: Boolean = false,
         val serverSyncEnabled: Boolean = false,
+        val pendingServerSync: Boolean = false,
+        val pendingCompanyChoice: Boolean = false,
+        val companyName: String = "",
     )
 
     private companion object {

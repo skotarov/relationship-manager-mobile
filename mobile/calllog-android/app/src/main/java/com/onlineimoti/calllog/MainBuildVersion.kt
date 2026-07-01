@@ -15,6 +15,6 @@ internal object MainBuildVersion {
             @Suppress("DEPRECATION")
             packageInfo?.versionCode?.toString()
         } ?: BuildConfig.VERSION_CODE.toString()
-        binding.buildVersionText.text = "Build version: $versionName ($versionCode)"
+        binding.settingsGeneralGroup.buildVersionText.text = "Build version: $versionName ($versionCode)"
     }
 }

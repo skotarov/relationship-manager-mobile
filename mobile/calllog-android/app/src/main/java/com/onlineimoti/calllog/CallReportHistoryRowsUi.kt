@@ -162,8 +162,15 @@ internal class CallReportHistoryRowsUi(
     ): LinearLayout {
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val serverConfirmed = isServerConfirmed(phone, row)
-        val pendingNote = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && row.localNote?.let {
+        val localNote = row.localNote
+        val pendingGenericSync = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && localNote?.let {
             CallReportNoteOutbox.isCallPending(activity, phone, it)
+        } == true
+        val pendingCompanySync = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && localNote?.let {
+            CallReportTopicNoteOutbox.isCallPending(activity, phone, it.direction, it.callAt)
+        } == true
+        val pendingCompanyChoice = !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && localNote?.let {
+            CallReportDeferredCompanyAssignmentStore.isCallPending(activity, phone, it.direction, it.callAt)
         } == true
         val colors = when {
             foreignRecord -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
@@ -214,7 +221,11 @@ internal class CallReportHistoryRowsUi(
             addView(metaView(row))
             companyLabel(row.companyId, companyNames)?.let(::addView)
             if (row.text.isNotBlank()) addView(noteText(row.text, colors.third))
-            if (pendingNote && !serverConfirmed) addView(pendingSyncText())
+            when {
+                pendingCompanyChoice -> addView(pendingCompanyChoiceText())
+                pendingCompanySync -> addView(pendingSyncText(CallReportTopicNoteOutbox.lastFailure(activity)))
+                pendingGenericSync && !serverConfirmed -> addView(pendingSyncText(CallReportNoteOutbox.lastFailure(activity)))
+            }
             if (!foreignRecord && remoteEnabled && row.serverNewer) addView(serverNewerText())
             if (row.authorIsOtherBroker && row.authorName.isNotBlank()) addView(authorText(row.authorName))
         }
@@ -250,14 +261,22 @@ internal class CallReportHistoryRowsUi(
         setPadding(0, dp(5), 0, 0)
     }
 
-    private fun pendingSyncText(): TextView {
-        val failure = CallReportNoteOutbox.lastFailure(activity)
-        return TextView(activity).apply {
-            text = if (failure.isBlank()) "Чака сървърна синхронизация" else "Синхронизацията не е потвърдена: $failure"
-            textSize = 12f
-            setTextColor(if (failure.isBlank()) Color.rgb(100, 116, 139) else Color.rgb(185, 28, 28))
-            setPadding(0, dp(6), 0, 0)
+    private fun pendingCompanyChoiceText(): TextView = TextView(activity).apply {
+        text = activity.getString(R.string.dynamic_note_pending_company_choice)
+        textSize = 12f
+        setTextColor(Color.rgb(146, 64, 14))
+        setPadding(0, dp(6), 0, 0)
+    }
+
+    private fun pendingSyncText(failure: String): TextView = TextView(activity).apply {
+        text = if (failure.isBlank()) {
+            activity.getString(R.string.dynamic_note_pending_server_sync)
+        } else {
+            activity.getString(R.string.dynamic_note_pending_server_sync_failed, failure)
         }
+        textSize = 12f
+        setTextColor(if (failure.isBlank()) Color.rgb(100, 116, 139) else Color.rgb(185, 28, 28))
+        setPadding(0, dp(6), 0, 0)
     }
 
     private fun serverNewerText(): TextView = TextView(activity).apply {

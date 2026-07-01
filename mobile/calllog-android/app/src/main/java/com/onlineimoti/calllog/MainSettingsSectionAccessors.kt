@@ -13,7 +13,7 @@ import com.onlineimoti.calllog.databinding.SectionStorageSettingsBinding
 import com.onlineimoti.calllog.databinding.SectionTestsBinding
 
 internal val ActivityMainBinding.languageSettingsSection: SectionLanguageSettingsBinding
-    get() = settingsApplicationGroup.languageSettingsSection
+    get() = settingsGeneralGroup.languageSettingsSection
 
 internal val ActivityMainBinding.popupSettingsSection: SectionPopupSettingsBinding
     get() = settingsPopupGroup.popupSettingsSection
@@ -22,7 +22,7 @@ internal val ActivityMainBinding.popupContactFilterSection: SectionPopupContactF
     get() = settingsPopupGroup.popupContactFilterSection
 
 internal val ActivityMainBinding.callLogSettingsSection: SectionCallLogSettingsBinding
-    get() = settingsCallLogGroup.callLogSettingsSection
+    get() = settingsPopupGroup.callLogSettingsSection
 
 internal val ActivityMainBinding.contactLinkSection: SectionContactLinkBinding
     get() = settingsRmContactsGroup.contactLinkSection

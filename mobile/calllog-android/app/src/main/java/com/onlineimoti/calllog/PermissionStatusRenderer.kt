@@ -83,7 +83,7 @@ internal object PermissionStatusRenderer {
             disable = { setScreening(activity, binding, false) },
         )
 
-        val summary = binding.permissionsSection.permissionsSummaryText
+        val summary = binding.settingsApplicationGroup.permissionsSection.permissionsSummaryText
         summary.visibility = View.GONE
         val parent = summary.parent as? LinearLayout ?: return
         parent.findViewWithTag<View>(TAG)?.let(parent::removeView)

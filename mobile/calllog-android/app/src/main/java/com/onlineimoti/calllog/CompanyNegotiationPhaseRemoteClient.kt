@@ -9,7 +9,7 @@ import java.net.URL
 
 /** HTTP client for a negotiation phase scoped to one company and one phone. */
 internal object CompanyNegotiationPhaseRemoteClient {
-    private const val PATH = "/broker/callreport/company_phase.php"
+    private const val PATH = "/relationship-manager/company_phase.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
@@ -51,6 +51,7 @@ internal object CompanyNegotiationPhaseRemoteClient {
             connection.readTimeout = READ_TIMEOUT_MS
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
             if (payload != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")

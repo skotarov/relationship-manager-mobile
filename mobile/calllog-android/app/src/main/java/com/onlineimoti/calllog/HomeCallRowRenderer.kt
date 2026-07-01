@@ -169,6 +169,14 @@ internal class HomeCallRowRenderer(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ).apply { topMargin = dp(5) }
             })
+            noteSyncStatus(call)?.let { status ->
+                textColumn.addView(TextView(activity).apply {
+                    text = status
+                    textSize = 11.5f
+                    setTextColor(Color.rgb(146, 64, 14))
+                    setPadding(dp(8), dp(4), dp(8), 0)
+                })
+            }
         }
 
         row.addView(textColumn)
@@ -178,8 +186,8 @@ internal class HomeCallRowRenderer(
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
                 layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
                 ).apply { leftMargin = dp(3) }
             }
             if (showQuickActions) {
@@ -195,6 +203,19 @@ internal class HomeCallRowRenderer(
 
         card.addView(row)
         return card
+    }
+
+    private fun noteSyncStatus(call: PhoneCallRecord): String? {
+        if (CallReportDeferredCompanyAssignmentStore.isCallPending(activity, call.number, call.direction, call.startedAt)) {
+            return activity.getString(R.string.dynamic_note_pending_company_choice)
+        }
+        if (!CallReportTopicNoteOutbox.isCallPending(activity, call.number, call.direction, call.startedAt)) return null
+        val failure = CallReportTopicNoteOutbox.lastFailure(activity)
+        return if (failure.isBlank()) {
+            activity.getString(R.string.dynamic_note_pending_server_sync)
+        } else {
+            activity.getString(R.string.dynamic_note_pending_server_sync_failed, failure)
+        }
     }
 
     private fun mainNameRow(call: PhoneCallRecord, displayName: String, highlightQuery: String): LinearLayout {
