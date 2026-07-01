@@ -85,6 +85,10 @@ internal object CallReportDeferredCompanyAssignmentStore {
         return key.isNotBlank() && entries(context).any { it.recordId == "general:$key" }
     }
 
+    fun pendingPhoneKeys(context: Context): Set<String> = entries(context)
+        .mapTo(linkedSetOf()) { phoneKey(it.phone) }
+        .filterTo(linkedSetOf()) { it.isNotBlank() }
+
     fun count(context: Context): Int = entries(context).size
 
     private fun upsert(context: Context, entry: DeferredCompanyAssignment) = synchronized(lock) {
