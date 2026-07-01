@@ -9,6 +9,8 @@
     <string name="translation_editor_value_header">Превод</string>
     <string name="translation_editor_apply_button">Приложи преводите</string>
     <string name="translation_editor_reset_language_button">Възстанови оригиналните преводи за избрания език</string>
+    <string name="crm_filter_phase_all">Фаза: Всички</string>
+    <string name="crm_filter_phase_named">Фаза: %1$s</string>
 
     <string name="dynamic_note_companies_loading">Зареждане на фирми…</string>
     <string name="dynamic_note_no_company_destinations">Няма налични места за запис</string>
