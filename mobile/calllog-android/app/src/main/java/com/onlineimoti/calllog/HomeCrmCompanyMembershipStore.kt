@@ -70,7 +70,9 @@ internal object HomeCrmCompanyMembershipStore {
                     writeLocked(context, scope, trim(entries))
                 }
             }
-            val result = requested.keys.associateWith { entries[it]?.companyIds.orEmpty() }
+            val result = requested.keys.mapNotNull { phoneKey ->
+                entries[phoneKey]?.let { phoneKey to it.companyIds }
+            }.toMap()
             return HomeCrmCompanyMembershipResult(
                 companyIdsByPhoneKey = result,
                 complete = requested.keys.all { it in entries },
