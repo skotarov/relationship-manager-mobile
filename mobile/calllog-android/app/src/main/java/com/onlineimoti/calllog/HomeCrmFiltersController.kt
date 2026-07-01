@@ -11,7 +11,7 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** CRM Home filter controls: multi-select phases and firms. */
+/** CRM Home filter controls: multi-select phases and topics. */
 internal class HomeCrmFiltersController(
     private val activity: HomeActivity,
     private val binding: ActivityHomeBinding,
@@ -185,7 +185,7 @@ internal class HomeCrmFiltersController(
         if (state.companyIds.size == 1) {
             val id = state.companyIds.first()
             val name = companies.firstOrNull { it.id == id }?.name.orEmpty().ifBlank { id }
-            return activity.getString(R.string.crm_filter_company_named, name)
+            return activity.getString(R.string.crm_filter_topic_named, name)
         }
         return activity.getString(R.string.crm_filter_companies_selected, state.companyIds.size)
     }
