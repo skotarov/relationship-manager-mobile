@@ -27,10 +27,18 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private val translationSettingsController by lazy {
+        TranslationSettingsController(
+            activity = this,
+            binding = binding,
+        )
+    }
+
     private val settingsNavigationController by lazy {
         MainSettingsNavigationController(
             activity = this,
             binding = binding,
+            onLanguageSectionShown = translationSettingsController::onSectionVisible,
         )
     }
 
@@ -39,13 +47,6 @@ class MainActivity : AppCompatActivity() {
             binding = binding,
             autoSaveSettings = ::autoSaveSettings,
             applyLanguageIfChanged = ::applyLanguageIfChanged,
-        )
-    }
-
-    private val translationSettingsController by lazy {
-        TranslationSettingsController(
-            activity = this,
-            binding = binding,
         )
     }
 
@@ -172,6 +173,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        translationSettingsController.release()
         contactsCleanupController.release()
         executor.shutdown()
         super.onDestroy()
@@ -219,43 +221,36 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.requestSharedNotesStoragePermission()
     }
 
-    internal fun openSharedNotesStorageSettingsFromSummary() {
-        permissionFlowController.openSharedNotesStorageSettings()
+    internal fun requestCallScreeningRoleFromSummary() {
+        permissionFlowController.requestCallScreeningRole()
     }
 
-    internal fun requestOverlayPermissionFromSummary() {
-        saveConfig()
-        permissionFlowController.requestOverlayPermissionIfNeeded()
+    internal fun requestDefaultSmsRole() {
+        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher)
     }
 
-    internal fun requestCallScreeningPermissionFromSummary() {
-        saveConfig()
-        permissionFlowController.requestCallScreeningRoleIfNeeded()
+    internal fun requestSmsPermissions() {
+        permissionFlowController.requestSmsPermissions()
     }
 
-    private fun requestDefaultSmsRole() {
-        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
+    internal fun openOverlaySettingsFromSummary() {
+        permissionFlowController.openOverlaySettings()
     }
 
-    private fun requestSmsPermissions() {
-        val missingPermissions = arrayOf(
-            Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.READ_SMS,
-            Manifest.permission.SEND_SMS,
-        ).filterNot(::hasPermission).toTypedArray()
-        if (missingPermissions.isEmpty()) {
-            permissionFlowController.onSmsPermissionsResult()
-            return
-        }
-        smsPermissionsLauncher.launch(missingPermissions)
+    internal fun openAppDetailsFromSummary() {
+        permissionFlowController.openAppDetails()
     }
 
-    private fun hasSmsPermissions(): Boolean {
-        return !BuildConfig.DEBUG || arrayOf(
-            Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.READ_SMS,
-            Manifest.permission.SEND_SMS,
-        ).all(::hasPermission)
+    private fun refreshPermissionSummary() {
+        PermissionStatusRenderer.render(this, binding, permissionFlowController)
+        PermissionSummaryLocalizer.apply(this, binding)
+    }
+
+    private fun saveConfig(): AppConfig {
+        val config = MainSettingsConfigUi.read(binding)
+        ConfigStore.save(this, config)
+        currentLanguage = config.appLanguage
+        return config
     }
 
     private fun autoSaveSettings(): AppConfig {
@@ -266,51 +261,31 @@ class MainActivity : AppCompatActivity() {
         return config
     }
 
-    private fun saveConfig(): AppConfig {
-        val config = MainSettingsConfigUi.read(binding)
-        ConfigStore.save(this, config)
-        return ConfigStore.load(this)
-    }
-
     private fun applyLanguageIfChanged(language: String) {
         if (language == currentLanguage) return
         currentLanguage = language
-        AppLanguageManager.applyFromConfig(this)
+        AppLanguageManager.applyLanguage(language)
         recreate()
     }
 
-    private fun setStatus(message: String) {
-        binding.statusText.visibility = android.view.View.VISIBLE
-        binding.statusText.text = message
+    private fun disableOverlayPopups() {
+        suppressAutoSave = true
+        binding.popupSettingsSection.overlayEnabledCheckBox.isChecked = false
+        suppressAutoSave = false
+        saveConfig()
     }
 
-    private fun openCallLogHome() {
-        startActivity(
-            Intent(this, HomeActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            },
-        )
-        finish()
+    private fun disableCallScreening() {
+        suppressAutoSave = true
+        binding.popupSettingsSection.callScreeningEnabledCheckBox.isChecked = false
+        suppressAutoSave = false
+        saveConfig()
     }
 
-    private fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasSmsPermissions(): Boolean = hasPermission(Manifest.permission.READ_SMS) && hasPermission(Manifest.permission.RECEIVE_SMS)
 
-    private fun syncPrivateNotesToSharedStorageWhenAvailable() {
-        if (LocalNotesFileStore.canUsePublicFolder()) {
-            LocalNotesFileStore.migratePrivateToPublic(this)
-        }
-    }
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-    private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
-    private fun disableCallScreening() = MainPermissionSettings.disableCallScreening(this)
-    private fun refreshPermissionSummary() {
-        PermissionStatusRenderer.refresh(this, binding)
-        PermissionSummaryLocalizer.apply(this, binding)
-    }
-    private fun renderBuildVersion() = MainBuildVersion.render(this, binding)
-    private fun testStartPopup() = MainTestActions.testStartPopup(this, binding, executor, ::setStatus)
-    private fun testEndPopup() = MainTestActions.testEndPopup(this, binding, executor, ::setStatus)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
