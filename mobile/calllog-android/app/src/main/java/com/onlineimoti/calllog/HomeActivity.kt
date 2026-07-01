@@ -23,8 +23,18 @@ class HomeActivity : AppCompatActivity() {
             renderCalls()
         }
     }
+    private val noteRefreshController by lazy {
+        HomeNoteRefreshController(
+            handler = handler,
+            onPrepare = {
+                filteredFullLogController.invalidate()
+                companyGeneralNotesController.invalidate()
+            },
+            onRefresh = ::renderCalls,
+        )
+    }
     private val homeActions by lazy {
-        HomeActions(this, binding, ::startTemporaryNoteRefresh) {
+        HomeActions(this, binding, noteRefreshController::start) {
             activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         }
     }
@@ -142,17 +152,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private var pageIndex = 0
-    private var noteRefreshUntilMs = 0L
     private var activePhoneFilter = ""
     private var activeSearchQuery = ""
-
-    private val noteRefreshRunnable = object : Runnable {
-        override fun run() {
-            if (System.currentTimeMillis() > noteRefreshUntilMs) return
-            renderCalls()
-            handler.postDelayed(this, NOTE_REFRESH_INTERVAL_MS)
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -217,7 +218,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onPause() {
         if (::binding.isInitialized) noteSavedReceiver.unregister()
-        handler.removeCallbacks(noteRefreshRunnable)
+        noteRefreshController.cancel()
         searchInputController.cancelPending()
         super.onPause()
     }
@@ -287,14 +288,6 @@ class HomeActivity : AppCompatActivity() {
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
-    private fun startTemporaryNoteRefresh() {
-        filteredFullLogController.invalidate()
-        companyGeneralNotesController.invalidate()
-        noteRefreshUntilMs = System.currentTimeMillis() + NOTE_REFRESH_WINDOW_MS
-        handler.removeCallbacks(noteRefreshRunnable)
-        handler.postDelayed(noteRefreshRunnable, NOTE_REFRESH_INTERVAL_MS)
-    }
-
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable =
         GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -308,7 +301,5 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
-        private const val NOTE_REFRESH_WINDOW_MS = 2_000L
-        private const val NOTE_REFRESH_INTERVAL_MS = 400L
     }
 }
