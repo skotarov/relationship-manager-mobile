@@ -28,6 +28,10 @@ internal class HomeContentRenderer(
     var currentCalls: List<PhoneCallRecord> = emptyList()
         private set
 
+    fun replaceCurrentCalls(calls: List<PhoneCallRecord>) {
+        currentCalls = calls
+    }
+
     fun clearCalls() {
         currentCalls = emptyList()
     }
