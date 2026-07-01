@@ -34,18 +34,35 @@ internal class ContactNoteTopicFieldUi(
         }
         val spinner = Spinner(context)
         field.addView(TextView(context).apply {
-            text = if (state.localOnly) "Бележката се пази само локално:" else "Къде да се запише бележката:"
+            text = if (state.localOnly) {
+                context.getString(R.string.dynamic_note_local_storage_label)
+            } else {
+                context.getString(R.string.dynamic_note_destination_label)
+            }
             textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(55, 65, 81))
         })
+        if (state.usingCachedCompanies) {
+            field.addView(TextView(context).apply {
+                text = context.getString(R.string.dynamic_note_companies_cached_offline)
+                textSize = 12f
+                setTextColor(Color.rgb(146, 64, 14))
+                setPadding(0, dp(4), 0, 0)
+            })
+        } else if (state.loadError.isNotBlank()) {
+            field.addView(TextView(context).apply {
+                text = context.getString(R.string.dynamic_note_companies_unavailable_deferred)
+                textSize = 12f
+                setTextColor(Color.rgb(146, 64, 14))
+                setPadding(0, dp(4), 0, 0)
+            })
+        }
         field.addView(spinner, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { topMargin = dp(5) })
 
-        // Bind only after the spinner has a tagged parent, so the shared selector
-        // can update the validation border immediately on every choice.
         ContactNoteTopicSelector.bind(context, spinner, state, onSelected)
         onSpinnerReady(spinner)
         return field
