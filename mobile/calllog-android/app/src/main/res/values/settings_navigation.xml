@@ -14,6 +14,7 @@
     <string name="crm_filter_phases_all">Ph: All</string>
     <string name="crm_filter_phases_selected">Ph: %1$s</string>
     <string name="crm_filter_companies_all">Topic: All</string>
+    <string name="crm_filter_topic_named">Topic: %1$s</string>
     <string name="crm_filter_companies_selected">Topic: %1$d</string>
     <string name="crm_filter_select_phases">Choose phases</string>
     <string name="crm_filter_select_companies">Choose topics</string>
