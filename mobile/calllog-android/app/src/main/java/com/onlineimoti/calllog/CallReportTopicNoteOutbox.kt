@@ -150,6 +150,10 @@ internal object CallReportTopicNoteOutbox {
 
     fun pendingCount(context: Context): Int = synchronized(lock) { readLocked(context).size }
 
+    fun pendingPhoneKeys(context: Context): Set<String> = synchronized(lock) {
+        readLocked(context).mapTo(linkedSetOf()) { phoneKey(it.phone) }.filterTo(linkedSetOf()) { it.isNotBlank() }
+    }
+
     fun hasPendingForPhone(context: Context, phone: String): Boolean {
         val key = phoneKey(phone)
         if (key.isBlank()) return false
