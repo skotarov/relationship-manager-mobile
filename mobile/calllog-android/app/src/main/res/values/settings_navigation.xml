@@ -11,15 +11,15 @@
     <string name="translation_editor_reset_language_button">Restore selected language defaults</string>
     <string name="crm_filter_phase_all">All phases</string>
     <string name="crm_filter_phase_named">%1$s</string>
-    <string name="crm_filter_phases_all">Phases: All</string>
-    <string name="crm_filter_phases_selected">Phases: %1$s</string>
-    <string name="crm_filter_companies_all">Companies: All</string>
-    <string name="crm_filter_companies_selected">Companies: %1$d</string>
+    <string name="crm_filter_phases_all">Ph: All</string>
+    <string name="crm_filter_phases_selected">Ph: %1$s</string>
+    <string name="crm_filter_companies_all">Topic: All</string>
+    <string name="crm_filter_companies_selected">Topic: %1$d</string>
     <string name="crm_filter_select_phases">Choose phases</string>
-    <string name="crm_filter_select_companies">Choose companies</string>
+    <string name="crm_filter_select_companies">Choose topics</string>
     <string name="crm_filter_apply">Apply</string>
     <string name="crm_filter_cancel">Cancel</string>
-    <string name="crm_mode_toggle">CRM Mod</string>
+    <string name="crm_mode_toggle">CRM</string>
 
     <string name="dynamic_note_companies_loading">Loading companies…</string>
     <string name="dynamic_note_no_company_destinations">No available company destinations</string>
