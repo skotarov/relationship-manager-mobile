@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -13,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
+    private val uiGeometry by lazy { HomeUiGeometry(resources) }
     private val searchExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
     private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
@@ -50,8 +50,8 @@ class HomeActivity : AppCompatActivity() {
             activity = this,
             binding = binding,
             handler = handler,
-            dp = ::dp,
-            roundedRect = ::roundedRect,
+            dp = uiGeometry::dp,
+            roundedRect = uiGeometry::roundedRect,
             onFilterChanged = {
                 homeContentRenderer.clearCalls()
                 pageIndex = 0
@@ -62,14 +62,14 @@ class HomeActivity : AppCompatActivity() {
         )
     }
     private val filteredContactSummaryChipsUi by lazy {
-        HomeCompanyScopeChipsUi(this, ::dp, ::roundedRect)
+        HomeCompanyScopeChipsUi(this, uiGeometry::dp, uiGeometry::roundedRect)
     }
     private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
-            dp = ::dp,
+            dp = uiGeometry::dp,
             noteKey = HomeCallPageLoader::noteKey,
-            roundedRect = ::roundedRect,
+            roundedRect = uiGeometry::roundedRect,
             openContactNotesScreen = homeActions::openContactNotesScreen,
             openContactNotePopupForCall = homeActions::openContactNotePopupForCall,
             openDialer = homeActions::openDialer,
@@ -85,8 +85,8 @@ class HomeActivity : AppCompatActivity() {
             pageIndex = { pageIndex },
             isCrmModeEnabled = ::isCrmModeEnabled,
             hasActiveCrmFilters = { crmFiltersController.hasActiveFilters() },
-            dp = ::dp,
-            roundedRect = ::roundedRect,
+            dp = uiGeometry::dp,
+            roundedRect = uiGeometry::roundedRect,
             rowRenderer = homeCallRowRenderer,
             companyGeneralNotes = companyGeneralNotesController,
             scopeChipsUi = filteredContactSummaryChipsUi,
@@ -142,8 +142,8 @@ class HomeActivity : AppCompatActivity() {
         FilteredFullLogController(
             activity = this,
             binding = binding,
-            dp = ::dp,
-            roundedRect = ::roundedRect,
+            dp = uiGeometry::dp,
+            roundedRect = uiGeometry::roundedRect,
             openContactNotes = homeActions::openContactNotesScreen,
             openCallNoteEditor = homeActions::openContactNotePopupForCall,
             pageSize = ::pageSize,
@@ -287,16 +287,6 @@ class HomeActivity : AppCompatActivity() {
     private fun isFilteredFullLogMode(): Boolean = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
-
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable =
-        GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius.toFloat()
-            setColor(color)
-            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
-        }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
