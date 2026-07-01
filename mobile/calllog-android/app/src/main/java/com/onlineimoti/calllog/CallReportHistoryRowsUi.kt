@@ -326,32 +326,41 @@ internal class CallReportHistoryRowsUi(
         serverLoading: Boolean,
         remoteEnabled: Boolean,
     ) {
-        val status = when {
-            localLoading || serverLoading -> activity.getString(R.string.dynamic_notes_loading)
-            rows.isEmpty() && latestCall == null -> activity.getString(R.string.dynamic_notes_empty)
-            rows.isEmpty() && latestCall != null && localNotes.isEmpty() -> activity.getString(R.string.dynamic_notes_empty)
-            !remoteEnabled -> activity.getString(R.string.dynamic_notes_local_only)
+        val text = when {
+            localLoading -> "Зареждам SMS и бележки…"
+            remoteEnabled && serverLoading -> "Добавям сървърни бележки и SMS…"
+            rows.isEmpty() && latestCallWithoutNote(latestCall, localNotes) == null -> "Няма SMS или бележки за този номер"
             else -> ""
         }
-        if (status.isBlank()) return
-        container.addView(TextView(activity).apply {
-            text = status
-            textSize = 12.5f
-            setTextColor(Color.rgb(100, 116, 139))
-            setPadding(0, dp(8), 0, 0)
-        })
+        if (text.isNotBlank()) container.addView(status(text))
+    }
+
+    private fun status(textValue: String): TextView = TextView(activity).apply {
+        text = textValue
+        textSize = 13f
+        setTextColor(Color.rgb(100, 116, 139))
+        setPadding(dp(12), dp(10), dp(12), dp(10))
     }
 
     private fun directionLabel(direction: String): String = when (direction) {
-        "out", "sms_out" -> "↗"
-        "in", "sms_in" -> "↙"
+        "in" -> "входящ"
+        "out" -> "изходящ"
         else -> ""
     }
 
+    private fun PhoneCallRecord.toContactCallNote(): ContactCallNote = ContactCallNote(
+        note = "",
+        callAt = startedAt,
+        savedAt = startedAt,
+        direction = direction,
+        durationSeconds = durationSeconds,
+        clientNoteId = LocalNotesFileStore.clientNoteIdForCall(number, startedAt, direction),
+    )
+
     private companion object {
-        val FOREIGN_BACKGROUND = Color.rgb(247, 250, 252)
-        val FOREIGN_BORDER = Color.rgb(203, 213, 225)
-        val FOREIGN_TEXT = Color.rgb(71, 85, 105)
-        val SMS_BACKGROUND = Color.rgb(248, 250, 252)
+        val SMS_BACKGROUND: Int = Color.rgb(248, 250, 252)
+        val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
+        val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
+        val FOREIGN_TEXT: Int = Color.rgb(100, 116, 139)
     }
 }
