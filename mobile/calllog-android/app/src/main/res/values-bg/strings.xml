@@ -13,6 +13,20 @@
     <string name="search_hint">Търси в бележките</string>
     <string name="previous_20">Предишни 20</string>
     <string name="next_20">Следващи 20</string>
+    <string name="crm_filter_all">Всички</string>
+    <string name="crm_filter_unknown">Непознати</string>
+    <string name="crm_filter_known">Само познати</string>
+    <string name="crm_filter_pending">Чакат</string>
+    <string name="crm_filter_company_all">Фирма: Всички</string>
+    <string name="crm_filter_company_none">Без фирма</string>
+    <string name="crm_filter_company_choose">Избери фирма</string>
+    <string name="crm_filter_company_named">Фирма: %1$s</string>
+    <string name="crm_filter_direction_all">Посока: Всички</string>
+    <string name="crm_filter_direction_incoming">Входящи</string>
+    <string name="crm_filter_direction_outgoing">Изходящи</string>
+    <string name="crm_filter_direction_missed">Пропуснати</string>
+    <string name="crm_filter_direction_sms">SMS</string>
+    <string name="dynamic_home_no_crm_filter_results">Няма CRM разговори за избраните филтри.</string>
 
     <string name="settings_title">Настройки</string>
     <string name="settings_back_content_description">Назад</string>
