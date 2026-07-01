@@ -10,13 +10,12 @@ internal enum class HomeCrmContactScope {
     KNOWN,
 }
 
-/** Communication kind within CRM mode. */
+/** Call direction/status filters supported by the CRM call-log overview. */
 internal enum class HomeCrmDirectionScope {
     ALL,
     INCOMING,
     OUTGOING,
     MISSED,
-    SMS,
 }
 
 /** Empty [companyId] means every firm; [NO_COMPANY_ID] means no firm is known. */
@@ -117,10 +116,9 @@ internal object HomeCrmFilterEngine {
 
     private fun matchesDirection(call: PhoneCallRecord, scope: HomeCrmDirectionScope): Boolean = when (scope) {
         HomeCrmDirectionScope.ALL -> true
-        HomeCrmDirectionScope.SMS -> call.isSms
-        HomeCrmDirectionScope.OUTGOING -> !call.isSms && call.direction == "out"
-        HomeCrmDirectionScope.INCOMING -> !call.isSms && call.callType == CallLog.Calls.INCOMING_TYPE
-        HomeCrmDirectionScope.MISSED -> !call.isSms && call.callType in setOf(
+        HomeCrmDirectionScope.OUTGOING -> call.direction == "out"
+        HomeCrmDirectionScope.INCOMING -> call.callType == CallLog.Calls.INCOMING_TYPE
+        HomeCrmDirectionScope.MISSED -> call.callType in setOf(
             CallLog.Calls.MISSED_TYPE,
             CallLog.Calls.REJECTED_TYPE,
             CallLog.Calls.BLOCKED_TYPE,
