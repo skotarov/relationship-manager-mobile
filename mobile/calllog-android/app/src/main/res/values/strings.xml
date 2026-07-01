@@ -13,6 +13,20 @@
     <string name="search_hint">Search notes</string>
     <string name="previous_20">Previous 20</string>
     <string name="next_20">Next 20</string>
+    <string name="crm_filter_all">All</string>
+    <string name="crm_filter_unknown">Unknown</string>
+    <string name="crm_filter_known">Known only</string>
+    <string name="crm_filter_pending">Pending</string>
+    <string name="crm_filter_company_all">Company: All</string>
+    <string name="crm_filter_company_none">No company</string>
+    <string name="crm_filter_company_choose">Choose company</string>
+    <string name="crm_filter_company_named">Company: %1$s</string>
+    <string name="crm_filter_direction_all">Direction: All</string>
+    <string name="crm_filter_direction_incoming">Incoming</string>
+    <string name="crm_filter_direction_outgoing">Outgoing</string>
+    <string name="crm_filter_direction_missed">Missed</string>
+    <string name="crm_filter_direction_sms">SMS</string>
+    <string name="dynamic_home_no_crm_filter_results">No CRM conversations match the selected filters.</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_back_content_description">Back</string>
