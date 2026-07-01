@@ -50,6 +50,29 @@
                 android:inputType="textNoSuggestions" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <TextView
+            android:id="@+id/pendingTopicNotesStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_settings_info"
+            android:paddingStart="12dp"
+            android:paddingTop="9dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="9dp"
+            android:textColor="@color/calllog_text"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/retryPendingTopicNotesButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/server_retry_pending_notes"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/toggleAdvancedServerSettingsButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
