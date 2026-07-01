@@ -11,125 +11,76 @@ import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-/**
- * Resolves negotiation phases for the CRM overview in batches. Each value is tied
- * to one firm, so Home can correctly combine selected phases and selected firms.
- */
 internal object HomeCrmPhaseLookup {
-    private const val MAX_PHONES_PER_REQUEST = 50
-    private const val MAX_PARALLEL_REQUESTS = 4
-    private const val MAX_CACHE_ENTRIES = 5_000
-    private val phaseCache = ConcurrentHashMap<String, Map<String, Int>>()
+    private const val MAX_PHONES = 50
+    private const val MAX_PARALLEL = 4
+    private const val MAX_CACHE = 5_000
+    private val cache = ConcurrentHashMap<String, Map<String, Int>>()
 
-    fun invalidate() {
-        phaseCache.clear()
-    }
+    fun invalidate() = cache.clear()
 
-    /**
-     * Missing or failed batches deliberately stay unresolved and cannot match a
-     * selected phase. This avoids showing a number under an incorrect phase.
-     */
-    fun resolveCompanyPhases(
-        config: AppConfig,
-        phones: List<String>,
-    ): Map<String, Map<String, Int>> {
+    fun resolveCompanyPhases(config: AppConfig, phones: List<String>): Map<String, Map<String, Int>> {
         if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
-        val phoneByKey = linkedMapOf<String, String>()
+        val requested = linkedMapOf<String, String>()
         phones.forEach { phone ->
-            val key = HomeCallPageLoader.noteKey(phone)
-            if (key.isNotBlank()) phoneByKey.putIfAbsent(key, phone)
+            HomeCallPageLoader.noteKey(phone).takeIf { it.isNotBlank() }?.let { requested.putIfAbsent(it, phone) }
         }
-        if (phoneByKey.isEmpty()) return emptyMap()
-
-        val scope = accountScope(config)
-        val missingPhones = phoneByKey
-            .filterKeys { phaseCache[cacheKey(scope, it)] == null }
-            .values
-            .toList()
-        if (missingPhones.isNotEmpty()) fetchMissing(scope, config, missingPhones)
-
-        return phoneByKey.keys.mapNotNull { phoneKey ->
-            phaseCache[cacheKey(scope, phoneKey)]?.let { phasesByCompany -> phoneKey to phasesByCompany }
-        }.toMap()
+        if (requested.isEmpty()) return emptyMap()
+        val scope = "${config.baseUrl.trim().trimEnd('/')}|${config.accessToken.hashCode()}"
+        val missing = requested.filterKeys { cache["$scope|$it"] == null }.values.toList()
+        if (missing.isNotEmpty()) fetchMissing(scope, config, missing)
+        return requested.keys.mapNotNull { key -> cache["$scope|$key"]?.let { key to it } }.toMap()
     }
 
     private fun fetchMissing(scope: String, config: AppConfig, phones: List<String>) {
-        if (phaseCache.size > MAX_CACHE_ENTRIES) phaseCache.clear()
-        val batches = phones.chunked(MAX_PHONES_PER_REQUEST)
-        val executor = Executors.newFixedThreadPool(minOf(MAX_PARALLEL_REQUESTS, batches.size))
+        if (cache.size > MAX_CACHE) cache.clear()
+        val batches = phones.chunked(MAX_PHONES)
+        val executor = Executors.newFixedThreadPool(minOf(MAX_PARALLEL, batches.size))
         try {
-            val futures = batches.map { batch ->
-                executor.submit(Callable { CompanyNegotiationPhaseBatchRemoteClient.fetch(config, batch) })
-            }
-            futures.forEach { future ->
-                val phases = runCatching { future.get() }.getOrNull() ?: return@forEach
-                phases.forEach { (phoneKey, values) ->
-                    phaseCache[cacheKey(scope, phoneKey)] = values
-                }
-            }
+            batches.map { batch -> executor.submit(Callable { CompanyNegotiationPhaseBatchRemoteClient.fetch(config, batch) }) }
+                .forEach { future -> future.get().forEach { (phone, phases) -> cache["$scope|$phone"] = phases } }
         } finally {
             executor.shutdownNow()
         }
     }
-
-    private fun accountScope(config: AppConfig): String =
-        "${config.baseUrl.trim().trimEnd('/')}|${config.accessToken.hashCode()}"
-
-    private fun cacheKey(scope: String, phoneKey: String): String = "$scope|$phoneKey"
 }
 
-/** Reads company-scoped phase values for up to 50 phones from Call Report. */
 internal object CompanyNegotiationPhaseBatchRemoteClient {
-    private const val PATH = "/broker/callreport/company_phase_batch.php"
-    private const val CONNECT_TIMEOUT_MS = 10_000
-    private const val READ_TIMEOUT_MS = 10_000
-    private const val MAX_PHONES = 50
+    private const val PATH = "/relationship-manager/company_phase.php"
 
     fun fetch(config: AppConfig, phones: List<String>): Map<String, Map<String, Int>> {
-        val phoneByKey = linkedMapOf<String, String>()
+        val requested = linkedMapOf<String, String>()
         phones.forEach { phone ->
-            val key = HomeCallPageLoader.noteKey(phone)
-            if (key.isNotBlank() && phoneByKey.size < MAX_PHONES) phoneByKey.putIfAbsent(key, phone)
+            HomeCallPageLoader.noteKey(phone).takeIf { it.isNotBlank() }?.let { requested.putIfAbsent(it, phone) }
         }
-        if (phoneByKey.isEmpty()) return emptyMap()
-
-        val endpoint = config.baseUrl.trim().trimEnd('/') + PATH
-        val connection = URL(endpoint).openConnection() as HttpURLConnection
+        if (requested.isEmpty()) return emptyMap()
+        val connection = URL(config.baseUrl.trim().trimEnd('/') + PATH).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
             connection.doOutput = true
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            val payload = JSONObject().apply {
-                put("phones", JSONArray().apply { phoneByKey.values.forEach(::put) })
-            }.toString()
-            connection.outputStream.use { output -> output.write(payload.toByteArray(Charsets.UTF_8)) }
-
+            val payload = JSONObject().put("phones", JSONArray().apply { requested.values.forEach(::put) }).toString()
+            connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.use { input -> BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText() }.orEmpty()
+            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
             val json = runCatching { JSONObject(body) }.getOrNull()
-            if (status !in 200..299 || json?.optBoolean("ok", false) != true) {
-                val error = json?.optString("error").orEmpty().trim()
-                throw IOException(if (error.isNotBlank()) "$error (HTTP $status)" else "Batch phase request failed ($status).")
+            if (status !in 200..299 || json?.optBoolean("ok") != true) {
+                throw IOException(json?.optString("error").orEmpty().ifBlank { "CRM phase request failed (HTTP $status)." })
             }
-
-            val phasesByPhone = phoneByKey.keys.associateWith { linkedMapOf<String, Int>() }.toMutableMap()
+            val result = requested.keys.associateWith { linkedMapOf<String, Int>() }.toMutableMap()
             val items = json.optJSONArray("items")
-            for (index in 0 until (items?.length() ?: 0)) {
-                val item = items?.optJSONObject(index) ?: continue
+            for (i in 0 until (items?.length() ?: 0)) {
+                val item = items?.optJSONObject(i) ?: continue
                 val phoneKey = HomeCallPageLoader.noteKey(item.optString("phone"))
                 val companyId = item.optString("company_id").trim()
-                val phase = item.optInt("phase", ContactNegotiationPhaseStore.NONE)
-                if (phoneKey in phasesByPhone && companyId.isNotBlank()) {
-                    phasesByPhone.getValue(phoneKey)[companyId] = phase
-                }
+                if (phoneKey in result && companyId.isNotBlank()) result.getValue(phoneKey)[companyId] = item.optInt("phase", 0)
             }
-            return phasesByPhone.mapValues { (_, phasesByCompany) -> phasesByCompany.toMap() }
+            return result.mapValues { it.value.toMap() }
         } finally {
             connection.disconnect()
         }
