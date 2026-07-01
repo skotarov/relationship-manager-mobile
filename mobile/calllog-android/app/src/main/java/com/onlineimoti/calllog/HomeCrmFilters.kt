@@ -102,7 +102,9 @@ internal object HomeCrmFilterEngine {
         val selected = state.companyId.trim()
         if (selected.isBlank()) return calls
         return calls.filter { call ->
-            val ids = companyIdsByPhoneKey[HomeCallPageLoader.noteKey(call.number)].orEmpty()
+            // A missing cache value means the phone has not been safely resolved.
+            // It must not become an incorrect "No company" result.
+            val ids = companyIdsByPhoneKey[HomeCallPageLoader.noteKey(call.number)] ?: return@filter false
             if (selected == HomeCrmFilterState.NO_COMPANY_ID) ids.isEmpty() else selected in ids
         }
     }
