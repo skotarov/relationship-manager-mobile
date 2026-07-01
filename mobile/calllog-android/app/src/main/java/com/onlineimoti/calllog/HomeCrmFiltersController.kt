@@ -9,23 +9,17 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicInteger
 
-/** One compact horizontal filter bar, shown only while CRM Mode is active. */
+/** One compact dropdown for the four company-scoped CRM phases. */
 internal class HomeCrmFiltersController(
     private val activity: HomeActivity,
     private val binding: ActivityHomeBinding,
-    private val handler: Handler,
+    @Suppress("UNUSED_PARAMETER") handler: Handler,
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val onFilterChanged: () -> Unit,
 ) {
-    private val executor = Executors.newSingleThreadExecutor()
-    private val generation = AtomicInteger(0)
     private var state = HomeCrmFilterStore.load(activity)
-    private var companies: List<CallReportTopicCompany> = emptyList()
-    private var lastRequestedAccount = ""
 
     fun state(): HomeCrmFilterState = state
 
@@ -33,123 +27,68 @@ internal class HomeCrmFiltersController(
 
     fun updateVisibility(crmModeEnabled: Boolean) {
         binding.crmFiltersScroll.visibility = if (crmModeEnabled) View.VISIBLE else View.GONE
-        if (!crmModeEnabled) return
-        loadCachedCompanies()
-        render()
-        refreshCompaniesIfNeeded()
+        if (crmModeEnabled) render()
     }
 
+    /** Retained for the Home lifecycle; phase options are static and require no separate preload. */
     fun refreshCompaniesIfNeeded(force: Boolean = false) {
-        val config = ConfigStore.load(activity.applicationContext)
-        if (!CallReportRemoteAccess.isReady(config)) return
-        val account = "${config.baseUrl}|${config.accessToken}"
-        if (!force && account == lastRequestedAccount) return
-        lastRequestedAccount = account
-        val requestGeneration = generation.incrementAndGet()
-        executor.execute {
-            val loaded = runCatching {
-                CallReportTopicCompaniesRepository.load(activity.applicationContext, config).companies
-            }.getOrNull() ?: return@execute
-            handler.post {
-                if (requestGeneration != generation.get() || activity.isFinishing || activity.isDestroyed) return@post
-                if (companies == loaded) return@post
-                companies = loaded
-                render()
-            }
-        }
+        if (force && HomeCrmModeStore.isEnabled(activity)) render()
     }
 
-    fun release() {
-        generation.incrementAndGet()
-        executor.shutdownNow()
-    }
-
-    private fun loadCachedCompanies() {
-        val config = ConfigStore.load(activity.applicationContext)
-        val cached = CallReportTopicCompaniesCache.read(activity.applicationContext, config)?.companies.orEmpty()
-        // A new account may legitimately have no cache yet. Clear the old account's
-        // names immediately rather than showing a stale firm label until fetch ends.
-        if (cached != companies) companies = cached
-    }
+    fun release() = Unit
 
     private fun render() {
         if (!HomeCrmModeStore.isEnabled(activity)) return
         val container = binding.crmFiltersContainer
         container.removeAllViews()
-        addChip(
-            container = container,
-            text = activity.getString(R.string.crm_filter_all),
-            selected = state.contactScope == HomeCrmContactScope.ALL,
-        ) { updateState(state.copy(contactScope = HomeCrmContactScope.ALL)) }
-        addChip(
-            container = container,
-            text = activity.getString(R.string.crm_filter_unknown),
-            selected = state.contactScope == HomeCrmContactScope.UNKNOWN,
-        ) { updateState(state.copy(contactScope = HomeCrmContactScope.UNKNOWN)) }
-        addChip(
-            container = container,
-            text = activity.getString(R.string.crm_filter_known),
-            selected = state.contactScope == HomeCrmContactScope.KNOWN,
-        ) { updateState(state.copy(contactScope = HomeCrmContactScope.KNOWN)) }
-        addChip(
-            container = container,
-            text = companyChipText(),
-            selected = state.isCompanyFiltered,
-        ) { chip -> showCompanyMenu(chip) }
-        addChip(
-            container = container,
-            text = directionChipText(),
-            selected = state.directionScope != HomeCrmDirectionScope.ALL,
-        ) { chip -> showDirectionMenu(chip) }
-        addChip(
-            container = container,
-            text = activity.getString(R.string.crm_filter_pending),
-            selected = state.pendingOnly,
-        ) { updateState(state.copy(pendingOnly = !state.pendingOnly)) }
+        addPhaseDropdown(container)
     }
 
-    private fun showCompanyMenu(anchor: View) {
-        PopupMenu(activity, anchor).apply {
-            menu.add(0, COMPANY_ALL_ID, 0, activity.getString(R.string.crm_filter_company_all))
-            menu.add(0, COMPANY_NONE_ID, 1, activity.getString(R.string.crm_filter_company_none))
-            if (companies.isNotEmpty()) {
-                menu.add(0, COMPANY_DIVIDER_ID, 2, activity.getString(R.string.crm_filter_company_choose)).isEnabled = false
-            }
-            val ids = linkedMapOf<Int, String>()
-            companies.forEachIndexed { index, company ->
-                val itemId = COMPANY_FIRST_ID + index
-                ids[itemId] = company.id
-                menu.add(0, itemId, index + 3, company.name)
-            }
-            setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    COMPANY_ALL_ID -> updateState(state.copy(companyId = ""))
-                    COMPANY_NONE_ID -> updateState(state.copy(companyId = HomeCrmFilterState.NO_COMPANY_ID))
-                    else -> ids[item.itemId]?.let { companyId -> updateState(state.copy(companyId = companyId)) }
-                }
-                true
-            }
-            show()
-        }
-    }
-
-    private fun showDirectionMenu(anchor: View) {
-        PopupMenu(activity, anchor).apply {
-            val options = listOf(
-                HomeCrmDirectionScope.ALL to R.string.crm_filter_direction_all,
-                HomeCrmDirectionScope.INCOMING to R.string.crm_filter_direction_incoming,
-                HomeCrmDirectionScope.OUTGOING to R.string.crm_filter_direction_outgoing,
-                HomeCrmDirectionScope.MISSED to R.string.crm_filter_direction_missed,
+    private fun addPhaseDropdown(container: LinearLayout) {
+        val selected = state.isActive
+        val fill = if (selected) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
+        val border = if (selected) Color.TRANSPARENT else Color.rgb(203, 213, 225)
+        container.addView(TextView(activity).apply {
+            text = phaseText() + " ▾"
+            contentDescription = text
+            gravity = Gravity.CENTER
+            minHeight = dp(36)
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            textSize = 13f
+            setTextColor(if (selected) Color.WHITE else Color.rgb(51, 65, 85))
+            background = roundedRect(fill, dp(18), border, if (selected) 0 else dp(1))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener(::showPhaseMenu)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
             )
-            options.forEachIndexed { index, (scope, textRes) ->
-                menu.add(0, DIRECTION_FIRST_ID + index, index, activity.getString(textRes)).apply {
+        })
+    }
+
+    private fun showPhaseMenu(anchor: View) {
+        val options = listOf(
+            ContactNegotiationPhaseStore.NONE to R.string.crm_filter_phase_all,
+            ContactNegotiationPhaseStore.PHASE_1 to R.string.contact_phase_1,
+            ContactNegotiationPhaseStore.PHASE_2 to R.string.contact_phase_2,
+            ContactNegotiationPhaseStore.PHASE_3 to R.string.contact_phase_3,
+            ContactNegotiationPhaseStore.PHASE_4 to R.string.contact_phase_4,
+        )
+        PopupMenu(activity, anchor).apply {
+            menu.setGroupCheckable(PHASE_MENU_GROUP, true, true)
+            options.forEachIndexed { index, (phase, titleRes) ->
+                menu.add(PHASE_MENU_GROUP, PHASE_MENU_BASE + phase, index, activity.getString(titleRes)).apply {
                     isCheckable = true
-                    isChecked = scope == state.directionScope
+                    isChecked = phase == state.phase
                 }
             }
             setOnMenuItemClickListener { item ->
-                val scope = options.getOrNull(item.itemId - DIRECTION_FIRST_ID)?.first ?: return@setOnMenuItemClickListener false
-                updateState(state.copy(directionScope = scope))
+                val phase = item.itemId - PHASE_MENU_BASE
+                if (phase !in ContactNegotiationPhaseStore.NONE..ContactNegotiationPhaseStore.PHASE_4) {
+                    return@setOnMenuItemClickListener false
+                }
+                updateState(HomeCrmFilterState(phase = phase))
                 true
             }
             show()
@@ -164,58 +103,28 @@ internal class HomeCrmFiltersController(
         onFilterChanged()
     }
 
-    private fun companyChipText(): String {
-        val selected = state.companyId.trim()
-        return when {
-            selected.isBlank() -> activity.getString(R.string.crm_filter_company_all)
-            selected == HomeCrmFilterState.NO_COMPANY_ID -> activity.getString(R.string.crm_filter_company_none)
-            else -> {
-                val company = companies.firstOrNull { it.id == selected }?.name.orEmpty().ifBlank { selected }
-                activity.getString(R.string.crm_filter_company_named, company)
-            }
-        }
-    }
-
-    private fun directionChipText(): String = activity.getString(
-        when (state.directionScope) {
-            HomeCrmDirectionScope.ALL -> R.string.crm_filter_direction_all
-            HomeCrmDirectionScope.INCOMING -> R.string.crm_filter_direction_incoming
-            HomeCrmDirectionScope.OUTGOING -> R.string.crm_filter_direction_outgoing
-            HomeCrmDirectionScope.MISSED -> R.string.crm_filter_direction_missed
-        },
-    )
-
-    private fun addChip(
-        container: LinearLayout,
-        text: String,
-        selected: Boolean,
-        onClick: (View) -> Unit,
-    ) {
-        val fill = if (selected) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
-        val border = if (selected) Color.TRANSPARENT else Color.rgb(203, 213, 225)
-        container.addView(TextView(activity).apply {
-            this.text = text
-            gravity = Gravity.CENTER
-            minHeight = dp(36)
-            setPadding(dp(12), dp(6), dp(12), dp(6))
-            textSize = 13f
-            setTextColor(if (selected) Color.WHITE else Color.rgb(51, 65, 85))
-            background = roundedRect(fill, dp(18), border, if (selected) 0 else dp(1))
-            isClickable = true
-            isFocusable = true
-            setOnClickListener(onClick)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = dp(7) }
-        })
+    private fun phaseText(): String = when (state.phase) {
+        ContactNegotiationPhaseStore.PHASE_1 -> activity.getString(
+            R.string.crm_filter_phase_named,
+            activity.getString(R.string.contact_phase_1),
+        )
+        ContactNegotiationPhaseStore.PHASE_2 -> activity.getString(
+            R.string.crm_filter_phase_named,
+            activity.getString(R.string.contact_phase_2),
+        )
+        ContactNegotiationPhaseStore.PHASE_3 -> activity.getString(
+            R.string.crm_filter_phase_named,
+            activity.getString(R.string.contact_phase_3),
+        )
+        ContactNegotiationPhaseStore.PHASE_4 -> activity.getString(
+            R.string.crm_filter_phase_named,
+            activity.getString(R.string.contact_phase_4),
+        )
+        else -> activity.getString(R.string.crm_filter_phase_all)
     }
 
     private companion object {
-        const val COMPANY_ALL_ID = 1
-        const val COMPANY_NONE_ID = 2
-        const val COMPANY_DIVIDER_ID = 3
-        const val COMPANY_FIRST_ID = 100
-        const val DIRECTION_FIRST_ID = 500
+        const val PHASE_MENU_GROUP = 20
+        const val PHASE_MENU_BASE = 1_000
     }
 }
