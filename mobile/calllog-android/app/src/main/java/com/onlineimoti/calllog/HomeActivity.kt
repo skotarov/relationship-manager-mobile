@@ -1,6 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,18 +11,18 @@ import java.util.concurrent.atomic.AtomicInteger
 class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
-    private val uiGeometry by lazy { HomeUiGeometry(resources) }
+    private val uiGeometry: HomeUiGeometry by lazy { HomeUiGeometry(resources) }
     private val searchExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
-    private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
-    private val noteSavedReceiver by lazy {
+    private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
+    private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
         HomeNoteSavedReceiverController(this) {
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
             renderCalls()
         }
     }
-    private val noteRefreshController by lazy {
+    private val noteRefreshController: HomeNoteRefreshController by lazy {
         HomeNoteRefreshController(
             handler = handler,
             onPrepare = {
@@ -33,19 +32,19 @@ class HomeActivity : AppCompatActivity() {
             onRefresh = ::renderCalls,
         )
     }
-    private val homeActions by lazy {
+    private val homeActions: HomeActions by lazy {
         HomeActions(this, binding, noteRefreshController::start) {
             activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         }
     }
-    private val companyGeneralNotesController by lazy {
+    private val companyGeneralNotesController: HomeCompanyGeneralNotesController by lazy {
         HomeCompanyGeneralNotesController(this, handler) {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) {
                 homeContentRenderer.renderCurrentRowsAfterCompanyLabels(pageSize())
             }
         }
     }
-    private val crmFiltersController by lazy {
+    private val crmFiltersController: HomeCrmFiltersController by lazy {
         HomeCrmFiltersController(
             activity = this,
             binding = binding,
@@ -61,10 +60,10 @@ class HomeActivity : AppCompatActivity() {
             },
         )
     }
-    private val filteredContactSummaryChipsUi by lazy {
+    private val filteredContactSummaryChipsUi: HomeCompanyScopeChipsUi by lazy {
         HomeCompanyScopeChipsUi(this, uiGeometry::dp, uiGeometry::roundedRect)
     }
-    private val homeCallRowRenderer by lazy {
+    private val homeCallRowRenderer: HomeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
             dp = uiGeometry::dp,
@@ -76,7 +75,7 @@ class HomeActivity : AppCompatActivity() {
             togglePhoneFilter = ::togglePhoneFilter,
         )
     }
-    private val homeContentRenderer by lazy {
+    private val homeContentRenderer: HomeContentRenderer by lazy {
         HomeContentRenderer(
             activity = this,
             binding = binding,
@@ -92,7 +91,7 @@ class HomeActivity : AppCompatActivity() {
             scopeChipsUi = filteredContactSummaryChipsUi,
         )
     }
-    private val callsLoader by lazy {
+    private val callsLoader: HomeCallsLoader by lazy {
         HomeCallsLoader(
             activity = this,
             handler = handler,
@@ -104,7 +103,7 @@ class HomeActivity : AppCompatActivity() {
             isCrmModeEnabled = ::isCrmModeEnabled,
         )
     }
-    private val searchController by lazy {
+    private val searchController: HomeSearchController by lazy {
         HomeSearchController(
             context = this,
             binding = binding,
@@ -121,7 +120,7 @@ class HomeActivity : AppCompatActivity() {
             applyRenderData = homeContentRenderer::applyRenderData,
         )
     }
-    private val searchInputController by lazy {
+    private val searchInputController: HomeSearchInputController by lazy {
         HomeSearchInputController(
             activity = this,
             binding = binding,
@@ -138,7 +137,7 @@ class HomeActivity : AppCompatActivity() {
             },
         )
     }
-    private val filteredFullLogController by lazy {
+    private val filteredFullLogController: FilteredFullLogController by lazy {
         FilteredFullLogController(
             activity = this,
             binding = binding,
@@ -188,7 +187,7 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: android.content.Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
         val phone = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
