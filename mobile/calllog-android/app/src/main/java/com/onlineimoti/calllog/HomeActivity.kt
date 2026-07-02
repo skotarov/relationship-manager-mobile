@@ -86,6 +86,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+        if (EnterpriseAccessGate.redirectIfNeeded(this)) return
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
@@ -121,6 +122,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (EnterpriseAccessGate.redirectIfNeeded(this)) return
         if (!::binding.isInitialized) return
         noteSavedReceiver.register(); contactsSyncPreparer.prepareOnce(); companyGeneralNotesController.invalidate(); renderCalls()
     }
