@@ -25,6 +25,7 @@ internal class ContactNotesRestoredController(
     private var phone: String = ""
     private var titleText: String = ""
     private var crmSyncBusy = false
+    private var pullRefreshRequested = false
     private val handler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
@@ -76,7 +77,21 @@ internal class ContactNotesRestoredController(
         historyController.release()
     }
 
+    private fun refreshFromPull() {
+        if (phone.isBlank()) {
+            pullRefreshRequested = false
+            render()
+            return
+        }
+        pullRefreshRequested = true
+        historyController.refreshLocal(phone)
+        historyController.refreshServer(phone)
+        render()
+    }
+
     private fun render() {
+        val showPullRefresh = pullRefreshRequested && historyController.isLoading()
+        if (pullRefreshRequested && !showPullRefresh) pullRefreshRequested = false
         val config = ConfigStore.load(activity)
         val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
         val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
@@ -130,9 +145,14 @@ internal class ContactNotesRestoredController(
             onEditSms = ::openSmsCompanyEditor,
         )
         CrmHistoryTextLocalizer.apply(activity, root)
-        activity.setContentView(ScrollView(activity).apply {
+        val scrollView = ScrollView(activity).apply {
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
+        }
+        activity.setContentView(PullToRefreshLayout(activity).apply {
+            addView(scrollView)
+            setOnRefreshListener(::refreshFromPull)
+            if (showPullRefresh) setRefreshing(true)
         })
     }
 
