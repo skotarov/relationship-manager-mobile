@@ -141,6 +141,13 @@ android {
     }
 }
 
+// Compatibility alias for the diagnostics workflow created before flavors existed.
+tasks.register("compileDebugKotlin") {
+    group = "verification"
+    description = "Compiles Kotlin for internalDebug and playDebug."
+    dependsOn("compileInternalDebugKotlin", "compilePlayDebugKotlin")
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
