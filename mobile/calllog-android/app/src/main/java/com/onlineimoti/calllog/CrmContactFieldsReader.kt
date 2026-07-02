@@ -7,6 +7,9 @@ import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 
 internal object CrmContactFieldsReader {
+    private const val LEGACY_SIP_MIME_TYPE = "vnd.android.cursor.item/sip_address"
+    private const val LEGACY_IM_MIME_TYPE = "vnd.android.cursor.item/im"
+
     fun load(context: Context, phone: String): CallReportStableCrmContactWriter.Fields? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
         val originalPhone = PhoneNormalizer.normalize(phone)
@@ -22,8 +25,8 @@ internal object CrmContactFieldsReader {
         val note = rows.firstOrNull { it.mime == ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE }
         val custom = rows.firstOrNull { it.mime == CallReportCrmContactWriter.CRM_MIME_TYPE }
         val nickname = rows.firstOrNull { it.mime == ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE }
-        val sip = rows.firstOrNull { it.mime == ContactsContract.CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE }
-        val im = rows.firstOrNull { it.mime == ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE }
+        val legacySip = rows.firstOrNull { it.mime == LEGACY_SIP_MIME_TYPE }
+        val legacyIm = rows.firstOrNull { it.mime == LEGACY_IM_MIME_TYPE }
 
         return CallReportStableCrmContactWriter.Fields(
             originalPhone = originalPhone,
@@ -69,8 +72,10 @@ internal object CrmContactFieldsReader {
             anniversary = event(rows, ContactsContract.CommonDataKinds.Event.TYPE_ANNIVERSARY),
             otherDate = event(rows, ContactsContract.CommonDataKinds.Event.TYPE_OTHER),
             nickname = nickname?.value(ContactsContract.CommonDataKinds.Nickname.NAME).orEmpty(),
-            sipAddress = sip?.value(ContactsContract.CommonDataKinds.SipAddress.SIP_ADDRESS).orEmpty(),
-            im = im?.value(ContactsContract.CommonDataKinds.Im.DATA).orEmpty(),
+            sipAddress = custom?.value(ContactsContract.Data.DATA4).orEmpty()
+                .ifBlank { legacySip?.value(ContactsContract.Data.DATA1).orEmpty() },
+            im = custom?.value(ContactsContract.Data.DATA5).orEmpty()
+                .ifBlank { legacyIm?.value(ContactsContract.Data.DATA1).orEmpty() },
             relationSpouse = relation(rows, ContactsContract.CommonDataKinds.Relation.TYPE_SPOUSE),
             relationAssistant = relation(rows, ContactsContract.CommonDataKinds.Relation.TYPE_ASSISTANT),
             relationManager = relation(rows, ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER),
