@@ -24,12 +24,13 @@ internal object CallReportLookupClient {
                 openFormUrl = "",
             )
         }
+        val enterpriseSession = config.accessToken.startsWith("rms1_")
         val params = linkedMapOf(
             "phone" to phone,
             "direction" to direction,
             "history_limit" to HISTORY_LIMIT.toString(),
-            "access_token" to config.accessToken,
         )
+        if (!enterpriseSession) params["access_token"] = config.accessToken
         params.putAll(context.asQueryParameters())
         val url = buildEndpoint(
             baseUrl = config.baseUrl,
@@ -41,7 +42,11 @@ internal object CallReportLookupClient {
         connection.connectTimeout = 7000
         connection.readTimeout = 7000
         connection.setRequestProperty("Accept", "application/json")
-        if (config.accessToken.isNotBlank()) connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+        if (enterpriseSession) {
+            connection.setRequestProperty("Authorization", "Bearer ${config.accessToken}")
+        } else if (config.accessToken.isNotBlank()) {
+            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+        }
 
         val responseCode = connection.responseCode
         val stream = if (responseCode in 200..299) connection.inputStream else connection.errorStream
