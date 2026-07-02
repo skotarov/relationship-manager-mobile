@@ -102,7 +102,6 @@ internal class ContactNotesRestoredController(
                 setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone))
             },
             openRmCallLog = { openRmCallLog(false) },
-            openRmCallLogFiltered = { openRmCallLog(true) },
         ))
         root.addView(headerServerLoadingStatus(historyController.serverLoadingStatusText()))
         generalNoteSectionUi.add(
@@ -260,6 +259,6 @@ internal class ContactNotesRestoredController(
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
 
     private companion object {
-        const val SERVER_CONFIRMATION_REFRESH_DELAY_MS = 1_500L
+        const val SERVER_CONFIRMATION_REFRESH_DELAY_MS = 650L
     }
 }
