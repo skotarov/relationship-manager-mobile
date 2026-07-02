@@ -11,6 +11,12 @@ class EnabledContactCommunicationSyncWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // A stale scheduled job must not read or upload call history after the
+        // company session expires or a user signs out of the public Play build.
+        if (BuildConfig.IS_PLAY_DISTRIBUTION && !EnterpriseAccessGate.isReady(applicationContext)) {
+            return@withContext Result.success()
+        }
+
         val config = ConfigStore.load(applicationContext)
         if (!config.remoteEnabled || config.baseUrl.isBlank() || config.accessToken.isBlank()) {
             return@withContext Result.success()
