@@ -12,6 +12,12 @@ class CallReportNoteOutboxWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        // A public Play session governs both call records and company notes.
+        // Retain pending local notes, but never transmit them after logout/expiry.
+        if (BuildConfig.IS_PLAY_DISTRIBUTION && !EnterpriseAccessGate.isReady(applicationContext)) {
+            return@withContext Result.success()
+        }
+
         val config = ConfigStore.load(applicationContext)
         // Server-off mode is fully local. Do not contact the server and do not create a
         // visible failure status for retained pending notes.
