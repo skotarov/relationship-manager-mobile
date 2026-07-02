@@ -77,9 +77,10 @@ class RelationshipManagerWordmarkView @JvmOverloads constructor(
         val rightPadding = drawWidth * (MANAGER_RIGHT_PADDING / VIEWPORT_WIDTH)
         val targetRight = visibleWidth - rightPadding
         val targetTop = sourceTop - drawHeight * (MANAGER_LIFT / VIEWPORT_HEIGHT)
+        val managerClipTop = relationshipBottom - drawHeight * (MANAGER_OVERLAP_ALLOWANCE / VIEWPORT_HEIGHT)
 
         canvas.save()
-        canvas.clipRect(left, top + relationshipBottom, left + visibleWidth, top + drawHeight)
+        canvas.clipRect(left, top + managerClipTop, left + visibleWidth, top + drawHeight)
         canvas.translate(left + targetRight, top + targetTop)
         canvas.scale(MANAGER_SCALE, MANAGER_SCALE)
         canvas.translate(-sourceRight, -sourceTop)
@@ -102,7 +103,8 @@ class RelationshipManagerWordmarkView @JvmOverloads constructor(
         private const val MANAGER_TOP = 199f
         private const val MANAGER_RIGHT = 1065f
         private const val MANAGER_SCALE = 0.91f
-        private const val MANAGER_RIGHT_PADDING = 72f
-        private const val MANAGER_LIFT = 6f
+        private const val MANAGER_RIGHT_PADDING = 96f
+        private const val MANAGER_LIFT = 12f
+        private const val MANAGER_OVERLAP_ALLOWANCE = 8f
     }
 }
