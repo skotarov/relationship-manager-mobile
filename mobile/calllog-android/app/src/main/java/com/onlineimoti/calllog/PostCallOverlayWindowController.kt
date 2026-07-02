@@ -84,6 +84,8 @@ internal class PostCallOverlayWindowController(
                                 windowManager()?.updateViewLayout(view, params)
                                 prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
                             }
+                        } else {
+                            view.performClick()
                         }
                     }
                     dragAllowedForGesture = false
