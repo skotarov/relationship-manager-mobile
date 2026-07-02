@@ -31,6 +31,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -56,6 +57,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -81,6 +83,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -106,6 +109,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -131,6 +135,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -156,6 +161,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -181,6 +187,7 @@
             android:layout_width="15dp"
             android:layout_height="15dp"
             android:layout_marginEnd="5dp"
+            android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
         <TextView
@@ -211,7 +218,7 @@
             android:paddingTop="4dp"
             android:paddingEnd="8dp"
             android:paddingBottom="4dp"
-            android:text="Бележка"
+            android:text="@string/notification_note_action"
             android:textColor="#1976F3"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -226,7 +233,7 @@
             android:paddingTop="4dp"
             android:paddingEnd="8dp"
             android:paddingBottom="4dp"
-            android:text="История"
+            android:text="@string/notification_history_action"
             android:textColor="#1976F3"
             android:textSize="14sp"
             android:textStyle="bold" />
