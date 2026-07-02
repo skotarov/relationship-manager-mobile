@@ -142,12 +142,17 @@ android {
     }
 }
 
-// Kept for the diagnostics workflow that predates the internal/play flavors.
-// Calling :app:compileDebugKotlin now validates both debug variants explicitly.
+// Compatibility tasks for diagnostics created before internal/play flavors existed.
 tasks.register("compileDebugKotlin") {
     group = "verification"
     description = "Compiles Kotlin for internalDebug and playDebug."
     dependsOn("compileInternalDebugKotlin", "compilePlayDebugKotlin")
+}
+
+tasks.register("lintDebug") {
+    group = "verification"
+    description = "Runs lint for internalDebug and playDebug."
+    dependsOn("lintInternalDebug", "lintPlayDebug")
 }
 
 dependencies {

@@ -23,7 +23,7 @@ class CallStateReceiver : BroadcastReceiver() {
         if (!hasPhoneState) return
 
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
-        val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
+        val number = LegacyPlatformCompat.incomingPhoneNumber(intent)
 
         if (state == TelephonyManager.EXTRA_STATE_IDLE) {
             handleCallEnded(context, hasCallLog)

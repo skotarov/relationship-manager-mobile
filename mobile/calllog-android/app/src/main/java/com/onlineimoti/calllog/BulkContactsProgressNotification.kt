@@ -27,6 +27,13 @@ internal object BulkContactsProgressNotification {
             cancel(context)
             return
         }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            cancel(context)
+            return
+        }
         ensureChannel(context)
         val title = runningTitle(context, action, stopping)
         val content = when {
@@ -62,6 +69,13 @@ internal object BulkContactsProgressNotification {
 
     fun showFinished(context: Context, action: BulkContactsTaskAction, status: String) {
         if (!canShowBulkContactSyncNotifications(context)) {
+            cancel(context)
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
             cancel(context)
             return
         }

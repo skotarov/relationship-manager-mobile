@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lint policy for intentional implementation choices. This is deliberately scoped
+  to exact files and issue IDs; compiler warnings and correctness errors are not
+  disabled globally.
+-->
+<lint>
+    <!-- Resource names are retained because TranslationManager resolves them dynamically. -->
+    <issue id="UnusedResources">
+        <ignore path="app/src/main/res/values/strings.xml" />
+        <ignore path="app/src/main/res/values/callreport_contact_rows.xml" />
+        <ignore path="app/src/main/res/values/callreport_notifications.xml" />
+        <ignore path="app/src/main/res/values/contacts_sync_strings.xml" />
+        <ignore path="app/src/main/res/values/sms_strings.xml" />
+        <ignore path="app/src/main/res/values/settings_strings.xml" />
+    </issue>
+
+    <!-- Dynamic configuration defaults and developer-only fields intentionally remain literal. -->
+    <issue id="HardcodedText">
+        <ignore path="app/src/main/res/layout/activity_home.xml" />
+        <ignore path="app/src/main/res/layout/activity_recent_calls.xml" />
+        <ignore path="app/src/main/res/layout/notification_lookup_system.xml" />
+        <ignore path="app/src/main/res/layout/notification_post_call_black.xml" />
+        <ignore path="app/src/main/res/layout/section_call_log_settings.xml" />
+        <ignore path="app/src/main/res/layout/section_contact_filter.xml" />
+        <ignore path="app/src/main/res/layout/section_popup_settings.xml" />
+        <ignore path="app/src/main/res/layout/section_remote_settings.xml" />
+        <ignore path="app/src/main/res/layout/section_remote_settings_compact.xml" />
+        <ignore path="app/src/main/res/layout/section_server_tests.xml" />
+        <ignore path="app/src/main/res/layout/section_tests.xml" />
+    </issue>
+
+    <!-- These view builders concatenate user/server data; their localized labels are supplied separately. -->
+    <issue id="SetTextI18n">
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/CallReportHistoryRowsUi.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/ContactHeaderActionWidgets.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/ContactNotesCrmHistoryController.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/ContactNotesHeaderUi.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/FilteredFullLogController.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/HomeCompanyScopeChipsUi.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/HomeContentRenderer.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/MainBuildVersion.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/MainContactsCleanupController.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/MainPermissionSummary.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/MainServerTestsController.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/MainSettingsConfigUi.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/PermissionSummaryLocalizer.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/RmContactFormDialog.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/SmsCompanyAssignmentDialog.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/SmsComposeDialog.kt" />
+    </issue>
+
+    <!-- These stores intentionally use synchronous commit for durable queues/caches before scheduling work. -->
+    <issue id="ApplySharedPref">
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/CallReportDeferredCompanyAssignmentStore.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/CallReportNoteOutbox.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/CallReportTopicCompaniesCache.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/CallReportTopicNoteOutbox.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/HomeCrmCompanyMembershipStore.kt" />
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/ServerRecordIndex.kt" />
+    </issue>
+
+    <!-- Bulgarian wording is intentionally authored as explicit strings rather than generic quantity templates. -->
+    <issue id="PluralsCandidate">
+        <ignore path="app/src/main/res/values/contacts_sync_strings.xml" />
+        <ignore path="app/src/main/res/values/crm_history_strings.xml" />
+        <ignore path="app/src/main/res/values/notification_strings.xml" />
+        <ignore path="app/src/main/res/values/recent_calls_strings.xml" />
+        <ignore path="app/src/main/res/values/settings_navigation.xml" />
+        <ignore path="app/src/main/res/values/settings_runtime_text.xml" />
+    </issue>
+
+    <!-- These approved vector assets intentionally use paths extending beyond the viewport. -->
+    <issue id="VectorPath">
+        <ignore path="app/src/main/res/drawable/callreport_sms_launcher_foreground.xml" />
+        <ignore path="app/src/main/res/drawable/ic_call_incoming.xml" />
+        <ignore path="app/src/main/res/drawable/ic_call_missed.xml" />
+        <ignore path="app/src/main/res/drawable/ic_call_outgoing.xml" />
+        <ignore path="app/src/main/res/drawable/ic_call_rejected.xml" />
+        <ignore path="app/src/main/res/drawable/ic_qs_callreport.xml" />
+        <ignore path="app/src/main/res/drawable/ic_settings_application.xml" />
+        <ignore path="app/src/main/res/drawable/relationship_manager_wordmark.xml" />
+    </issue>
+
+    <!-- Settings headers use separate icon views for dynamic translation/theme behavior. -->
+    <issue id="UseCompoundDrawables">
+        <ignore path="app/src/main/res/layout/settings_group_application.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_call_log.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_data_archive.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_debug.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_general.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_permissions.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_popup.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_rm_contacts.xml" />
+        <ignore path="app/src/main/res/layout/settings_group_server.xml" />
+    </issue>
+
+    <!-- Background layers are intentional to keep overlay and activity surfaces consistent. -->
+    <issue id="Overdraw">
+        <ignore path="app/src/main/res/layout/activity_home.xml" />
+        <ignore path="app/src/main/res/layout/activity_main.xml" />
+        <ignore path="app/src/main/res/layout/activity_post_call_prompt.xml" />
+        <ignore path="app/src/main/res/layout/activity_recent_calls.xml" />
+        <ignore path="app/src/main/res/layout/activity_web_view.xml" />
+        <ignore path="app/src/main/res/layout/notification_post_call_black.xml" />
+    </issue>
+
+    <!-- Intentional compatibility behavior for a transparent notification launcher activity. -->
+    <issue id="CustomSplashScreen">
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/NoteEditorLaunchActivity.kt" />
+    </issue>
+
+    <!-- Runtime language override keeps installed resources together. -->
+    <issue id="AppBundleLocaleChanges">
+        <ignore path="app/src/main/java/com/onlineimoti/calllog/TranslationManager.kt" />
+    </issue>
+
+    <!-- Search is intentionally excluded from Android Autofill. -->
+    <issue id="Autofill">
+        <ignore path="app/src/main/res/layout/activity_home.xml" />
+    </issue>
+
+    <!-- The notification is intentionally end-aligned because it follows the phone notification convention. -->
+    <issue id="RtlSymmetry">
+        <ignore path="app/src/main/res/layout/notification_post_call_black.xml" />
+    </issue>
+
+    <!-- The weighted contact list hierarchy is needed for its scroll/pagination geometry. -->
+    <issue id="NestedWeights">
+        <ignore path="app/src/main/res/layout/activity_home.xml" />
+    </issue>
+</lint>

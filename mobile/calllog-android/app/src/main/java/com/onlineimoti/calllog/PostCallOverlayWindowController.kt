@@ -50,8 +50,7 @@ internal class PostCallOverlayWindowController(
             y = prefs.getInt(KEY_LOOKUP_POPUP_Y, defaultY)
             width = popupWidth
             if (focusable) {
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+                softInputMode = LegacyPlatformCompat.resizeInputMode()
             }
         }
         view.setOnTouchListener { _, event ->
@@ -85,6 +84,8 @@ internal class PostCallOverlayWindowController(
                                 windowManager()?.updateViewLayout(view, params)
                                 prefs.edit().putInt(KEY_LOOKUP_POPUP_Y, params.y).remove(KEY_LOOKUP_POPUP_X).apply()
                             }
+                        } else {
+                            view.performClick()
                         }
                     }
                     dragAllowedForGesture = false

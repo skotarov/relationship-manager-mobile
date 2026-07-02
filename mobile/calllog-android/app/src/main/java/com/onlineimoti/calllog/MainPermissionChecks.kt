@@ -6,7 +6,6 @@ import android.os.Build
 
 internal object MainPermissionChecks {
     fun hasCallScreeningRole(activity: MainActivity): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val roleManager = activity.getSystemService(RoleManager::class.java) ?: return false
         return roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
     }

@@ -74,7 +74,7 @@ object CallReportStableCrmContactWriter {
             val ops = arrayListOf<ContentProviderOperation>()
 
             if (callReportRawContactId > 0L) {
-                updateRawContact(context, ops, callReportRawContactId, normalized, groupId, existingRawContactId)
+                updateRawContact(context, ops, callReportRawContactId, normalized, groupId)
                 keepTogether(ops, existingRawContactId, callReportRawContactId)
             } else {
                 createRawContact(ops, normalized, existingRawContactId, groupId)
@@ -116,7 +116,6 @@ object CallReportStableCrmContactWriter {
         rawId: Long,
         fields: CrmContactNormalizedFields,
         groupId: Long,
-        existingRawContactId: Long,
     ) {
         ops.add(
             ContentProviderOperation.newUpdate(ContactsContract.RawContacts.CONTENT_URI)

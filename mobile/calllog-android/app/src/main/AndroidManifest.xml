@@ -12,8 +12,16 @@
     <!-- Optional post-call UI. It is off by default and never required for the core call log. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_identity"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -132,7 +140,6 @@
             android:name=".ContactShareActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="@string/app_identity"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

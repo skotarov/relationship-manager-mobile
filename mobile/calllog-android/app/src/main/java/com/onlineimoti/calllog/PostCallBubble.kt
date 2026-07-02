@@ -42,6 +42,7 @@ internal class PostCallBubble(
             setPadding(ui.dp(8), ui.dp(8), ui.dp(8), ui.dp(8))
             elevation = ui.dp(6).toFloat()
             translationZ = ui.dp(2).toFloat()
+            setOnClickListener { openConfiguredAction() }
         }
         val params = WindowManager.LayoutParams(
             size,
@@ -54,7 +55,7 @@ internal class PostCallBubble(
             x = ui.dp(18)
             y = ui.dp(110)
         }
-        bubble.setOnTouchListener { _, event ->
+        bubble.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params.x
@@ -71,7 +72,7 @@ internal class PostCallBubble(
                 }
                 MotionEvent.ACTION_UP -> {
                     val moved = kotlin.math.abs(event.rawX - initialTouchX) + kotlin.math.abs(event.rawY - initialTouchY)
-                    if (moved < ui.dp(8)) openConfiguredAction()
+                    if (moved < ui.dp(8)) view.performClick()
                     true
                 }
                 else -> false

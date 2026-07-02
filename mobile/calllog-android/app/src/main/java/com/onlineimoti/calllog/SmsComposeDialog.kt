@@ -11,7 +11,6 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
-import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
@@ -51,10 +50,7 @@ internal class SmsComposeDialog(
             setGravity(Gravity.TOP or Gravity.CENTER_HORIZONTAL)
             attributes = attributes.apply { y = dp(12) }
             setLayout(activity.resources.displayMetrics.widthPixels - dp(28), ViewGroup.LayoutParams.WRAP_CONTENT)
-            setSoftInputMode(
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
-            )
+            setSoftInputMode(LegacyPlatformCompat.resizeInputMode())
         }
         input.requestFocus()
         (activity.getSystemService(Activity.INPUT_METHOD_SERVICE) as? InputMethodManager)

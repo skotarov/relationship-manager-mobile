@@ -50,7 +50,7 @@ internal class MainContactsCleanupController(
     fun syncAllRmContacts() {
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.REGISTER) {
-            BulkContactsTaskRunner.cancel()
+            BulkContactsTaskRunner.cancel(activity.applicationContext)
         } else if (!state.running) {
             BulkContactsTaskRunner.registerAll(activity.applicationContext)
         }
@@ -112,7 +112,7 @@ internal class MainContactsCleanupController(
         progressStopButton = MaterialButton(activity).apply {
             text = activity.getString(R.string.contacts_sync_stop)
             textSize = 14f
-            setOnClickListener { BulkContactsTaskRunner.cancel() }
+            setOnClickListener { BulkContactsTaskRunner.cancel(activity.applicationContext) }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,

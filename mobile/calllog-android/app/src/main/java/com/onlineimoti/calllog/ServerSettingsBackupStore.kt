@@ -86,7 +86,7 @@ internal object ServerSettingsBackupStore {
                     historyPath = settings.stringOrCurrent("history_path", currentConfig.historyPath),
                 ),
             )
-        }.getOrElse { error ->
+        }.getOrElse {
             RestoreResult.Failed("Грешен PIN или повреден архивен файл.")
         }
     }

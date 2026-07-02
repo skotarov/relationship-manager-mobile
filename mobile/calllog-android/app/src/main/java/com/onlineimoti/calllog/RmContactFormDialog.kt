@@ -9,7 +9,6 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
-import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -200,7 +199,7 @@ internal class RmContactFormDialog(
         dialog.setContentView(root)
         dialog.setOnShowListener {
             dialog.window?.apply {
-                setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+                setSoftInputMode(LegacyPlatformCompat.resizeInputMode(alwaysShowKeyboard = false))
                 val width = (activity.resources.displayMetrics.widthPixels * 0.95f).toInt()
                 val height = (activity.resources.displayMetrics.heightPixels * 0.88f).toInt()
                 setLayout(width, height)
