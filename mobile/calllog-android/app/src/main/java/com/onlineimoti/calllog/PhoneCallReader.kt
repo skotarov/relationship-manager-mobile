@@ -43,6 +43,7 @@ data class PhoneCallRecord(
 
 object PhoneCallReader {
     fun hasCallLogPermission(context: Context): Boolean {
+        if (BuildConfig.IS_PLAY_DISTRIBUTION && !EnterpriseAccessGate.isReady(context)) return false
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
     }
 
