@@ -1,0 +1,14 @@
+<resources>
+    <string name="enterprise_login_title">Служебен вход</string>
+    <string name="enterprise_login_description">Влез със служебния акаунт, предоставен от твоята организация. Достъпът до дневника на разговорите се иска едва след успешен вход.</string>
+    <string name="enterprise_login_server_url">Адрес на фирмения сървър</string>
+    <string name="enterprise_login_email">Служебен имейл или потребителско име</string>
+    <string name="enterprise_login_password">Парола</string>
+    <string name="enterprise_login_button">Влез сигурно</string>
+    <string name="enterprise_login_loading">Влизане…</string>
+    <string name="enterprise_login_invalid_server">Въведи валиден HTTPS адрес на фирмения сървър.</string>
+    <string name="enterprise_login_missing_fields">Въведи служебен имейл или потребителско име и парола.</string>
+    <string name="enterprise_login_failed">Служебният вход не беше успешен.</string>
+    <string name="enterprise_login_network_error">Фирменият сървър не е достъпен. Провери адреса и интернет връзката.</string>
+    <string name="enterprise_login_privacy">Дневникът на разговорите се използва само след вход в упълномощен фирмен акаунт.</string>
+</resources>
