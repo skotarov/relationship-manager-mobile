@@ -1,0 +1,17 @@
+<resources>
+    <string name="enterprise_login_title">Служебен вход</string>
+    <string name="enterprise_login_description">Влез със служебния профил, предоставен от администратора на фирмата.</string>
+    <string name="enterprise_login_identity_hint">Служебен имейл или потребителско име</string>
+    <string name="enterprise_login_password_hint">Парола</string>
+    <string name="enterprise_login_button">Вход</string>
+    <string name="enterprise_login_help">Нямаш служебен профил? Свържи се с администратора на фирмата.</string>
+    <string name="enterprise_login_progress">Влизане…</string>
+    <string name="enterprise_disclosure_title">Използване на дневника на разговорите</string>
+    <string name="enterprise_disclosure_description">В служебен CRM режим Relationship Manager чете телефонния номер, посоката, датата и часа и продължителността на разговорите ти. Изпраща тези данни към CRM на фирмата, за да създаде история на разговорите и да ти помогне да добавяш служебни бележки и следващи действия.</string>
+    <string name="enterprise_disclosure_notice">Този достъп се използва само докато служебната ти сесия е активна. Можеш да излезеш по всяко време от Настройки.</string>
+    <string name="enterprise_disclosure_continue">Продължи</string>
+    <string name="enterprise_disclosure_sign_out">Изход</string>
+    <string name="enterprise_login_error_missing_fields">Въведи служебен имейл или потребителско име и парола.</string>
+    <string name="enterprise_session_signed_out">Излезе от служебния профил.</string>
+    <string name="enterprise_session_account">Служебен профил: %1$s</string>
+</resources>
