@@ -144,12 +144,12 @@ jobs:
             "$AAPT2" compile -o "$output_dir" "$resource_file"
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
-      - name: Lint internal build
+      - name: Lint internal and Play builds
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:lintDebug 2>&1 | tee /tmp/relationship-manager-lint.log
+          gradle --no-daemon --console=plain :app:lintInternalDebug :app:lintPlayRelease 2>&1 | tee /tmp/relationship-manager-lint.log
           gradle_status=${PIPESTATUS[0]}
 
           if [ "$gradle_status" -ne 0 ]; then
@@ -160,12 +160,12 @@ jobs:
             exit "$gradle_status"
           fi
 
-      - name: Build Relationship Manager APK
+      - name: Build internal Relationship Manager APK
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:assembleDebug 2>&1 | tee /tmp/relationship-manager-gradle.log
+          gradle --no-daemon --console=plain :app:assembleInternalDebug 2>&1 | tee /tmp/relationship-manager-gradle.log
           gradle_status=${PIPESTATUS[0]}
 
           if [ "$gradle_status" -ne 0 ]; then
@@ -176,9 +176,9 @@ jobs:
             exit "$gradle_status"
           fi
 
-      - name: Upload Relationship Manager APK
+      - name: Upload internal Relationship Manager APK
         uses: actions/upload-artifact@v4
         with:
           name: relationship-manager-apk
-          path: mobile/calllog-android/app/build/outputs/apk/debug/relationship-manager.apk
+          path: mobile/calllog-android/app/build/outputs/apk/internal/debug/relationship-manager.apk
           if-no-files-found: error
