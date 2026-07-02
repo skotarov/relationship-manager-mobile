@@ -77,6 +77,7 @@ android {
         create("play") {
             dimension = "distribution"
             applicationId = "com.onlineimoti.relationshipmanager"
+            // This release path is reserved for authenticated business CRM use.
             buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "true")
             buildConfigField("String", "ENTERPRISE_SERVER_BASE_URL", "\"https://onlineimoti.com\"")
         }
