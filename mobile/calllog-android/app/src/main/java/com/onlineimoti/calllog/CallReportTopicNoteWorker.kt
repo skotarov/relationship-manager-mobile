@@ -24,17 +24,28 @@ class CallReportTopicNoteWorker(
                     batch.map { it.toSyncEvent(applicationContext) },
                 )
                 val expected = batch.map { it.clientEventId }.toSet()
-                if (!confirmed.containsAll(expected)) return@withContext Result.retry()
+                if (!confirmed.containsAll(expected)) {
+                    CallReportTopicNoteOutbox.recordFailure(
+                        applicationContext,
+                        "Сървърът не потвърди всички бележки. Отвори бележката и избери друга фирма, ако проблемът остане.",
+                    )
+                    return@withContext Result.retry()
+                }
 
                 ServerRecordIndex.markConfirmed(applicationContext, confirmed)
                 CallReportTopicNoteOutbox.acknowledge(applicationContext, confirmed)
+                CallReportTopicNoteOutbox.clearFailure(applicationContext)
                 applicationContext.sendBroadcast(
                     Intent(PostCallOverlayService.ACTION_NOTES_CHANGED)
                         .setPackage(applicationContext.packageName),
                 )
             }
             Result.success()
-        } catch (_: Throwable) {
+        } catch (error: Throwable) {
+            CallReportTopicNoteOutbox.recordFailure(
+                applicationContext,
+                error.message.orEmpty().trim().ifBlank { "Няма връзка със сървъра." },
+            )
             Result.retry()
         }
     }

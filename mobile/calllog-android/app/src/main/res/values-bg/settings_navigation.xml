@@ -1,0 +1,53 @@
+<resources>
+    <string name="server_advanced_settings_show">Покажи разширените сървърни настройки</string>
+    <string name="server_advanced_settings_hide">Скрий разширените сървърни настройки</string>
+    <string name="settings_sms_permissions_section_title">SMS приложение и разрешения</string>
+    <string name="settings_sms_permissions_section_description">Активирай ролята за SMS приложение и разрешенията за SMS от едно място.</string>
+    <string name="translation_editor_title">Редактиране на преводите</string>
+    <string name="translation_editor_description">Избери език и редактирай всеки текстов ключ. Промените се пазят локално и се прилагат след „Приложи преводите“.</string>
+    <string name="translation_editor_key_header">Ключ</string>
+    <string name="translation_editor_value_header">Превод</string>
+    <string name="translation_editor_loading">Зареждане на преводите…</string>
+    <string name="translation_editor_page">Страница %1$d от %2$d · %3$d текста</string>
+    <string name="translation_editor_previous_page">Предишни</string>
+    <string name="translation_editor_next_page">Следващи</string>
+    <string name="translation_editor_apply_button">Приложи преводите</string>
+    <string name="translation_editor_reset_language_button">Възстанови оригиналните преводи за избрания език</string>
+    <string name="crm_filter_phase_all">Всички фази</string>
+    <string name="crm_filter_phase_named">%1$s</string>
+    <string name="crm_filter_phases_all">Ph: All</string>
+    <string name="crm_filter_phases_selected">Ph: %1$s</string>
+    <string name="crm_filter_companies_all">Topic: All</string>
+    <string name="crm_filter_topic_named">Topic: %1$s</string>
+    <string name="crm_filter_companies_selected">Topic: %1$d</string>
+    <string name="crm_filter_select_phases">Избери фази</string>
+    <string name="crm_filter_select_companies">Избери теми</string>
+    <string name="crm_filter_apply">Приложи</string>
+    <string name="crm_filter_cancel">Отказ</string>
+    <string name="crm_mode_toggle">CRM</string>
+
+    <string name="dynamic_note_companies_loading">Зареждане на фирми…</string>
+    <string name="dynamic_note_no_company_destinations">Няма налични места за запис</string>
+    <string name="dynamic_note_choose_company">Избери</string>
+    <string name="dynamic_note_local_storage_label">Бележката се пази само локално:</string>
+    <string name="dynamic_note_destination_label">Къде да се запише бележката:</string>
+    <string name="dynamic_note_companies_cached_offline">Офлайн — фирмите са от последната синхронизация. Бележката ще се изпрати автоматично.</string>
+    <string name="dynamic_note_companies_unavailable_deferred">Няма запазен списък с фирми. Запази бележката сега и избери фирма при интернет.</string>
+    <string name="dynamic_note_saved_choose_company_later">Запазено локално — избери фирма при интернет.</string>
+    <string name="dynamic_note_saved_pending_company_sync">Запазено локално — чака синхронизация към %1$s.</string>
+    <string name="dynamic_note_pending_company_choice">Избери фирма при интернет</string>
+    <string name="dynamic_note_pending_server_sync">Чака сървърна синхронизация</string>
+    <string name="dynamic_note_pending_server_sync_failed">Синхронизацията не е потвърдена: %1$s</string>
+    <string name="dynamic_notes_loading">Зареждане на бележки…</string>
+    <string name="dynamic_notes_empty">Все още няма бележки или SMS.</string>
+    <string name="dynamic_notes_local_only">Сървърът е изключен — показват се само локалните бележки.</string>
+
+    <string name="server_retry_pending_notes">Опитай да изпратиш чакащите бележки</string>
+    <string name="server_pending_notes_none">Няма чакащи бележки към фирма.</string>
+    <string name="server_pending_notes_status">Чакащи бележки към фирма: %1$d</string>
+    <string name="server_pending_notes_with_deferred">Чакащи бележки към фирма: %1$d • избери фирма по-късно: %2$d</string>
+    <string name="server_pending_notes_deferred_only">Бележки, чакащи избор на фирма: %1$d</string>
+    <string name="server_pending_notes_failure">Чакащи бележки към фирма: %1$d • последен проблем: %2$s</string>
+    <string name="server_pending_notes_settings_required">Довърши сървърните настройки, за да се изпратят %1$d чакащи бележки към фирма.</string>
+    <string name="server_pending_notes_retry_scheduled">Поискано е изпращане. Бележките ще се изпратят автоматично при интернет.</string>
+</resources>

@@ -7,10 +7,10 @@ object MainSettingsConfigUi {
     fun hydrate(binding: ActivityMainBinding, config: AppConfig) {
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
-        val callLog = binding.callLogSettingsSection
+        val callLog = binding.settingsPopupGroup.callLogSettingsSection
         val defaultSms = binding.settingsRmContactsGroup.defaultSmsSection
         val contactLink = binding.contactLinkSection
-        val language = binding.languageSettingsSection
+        val language = binding.settingsGeneralGroup.languageSettingsSection
         val tests = binding.testsSection
 
         hydrateServerSettings(binding, config)
@@ -53,10 +53,10 @@ object MainSettingsConfigUi {
         val remote = binding.remoteSettingsSection
         val popup = binding.popupSettingsSection
         val popupFilter = binding.popupContactFilterSection
-        val callLog = binding.callLogSettingsSection
+        val callLog = binding.settingsPopupGroup.callLogSettingsSection
         val defaultSms = binding.settingsRmContactsGroup.defaultSmsSection
         val contactLink = binding.contactLinkSection
-        val language = binding.languageSettingsSection
+        val language = binding.settingsGeneralGroup.languageSettingsSection
         val tests = binding.testsSection
         val currentConfig = ConfigStore.load(binding.root.context)
 

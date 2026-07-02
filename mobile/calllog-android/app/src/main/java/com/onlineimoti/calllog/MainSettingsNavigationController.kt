@@ -8,6 +8,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 internal class MainSettingsNavigationController(
     private val activity: AppCompatActivity,
     private val binding: ActivityMainBinding,
+    private val onLanguageSectionShown: () -> Unit,
 ) {
     private var selectedSection: SettingsSection? = null
 
@@ -23,20 +24,30 @@ internal class MainSettingsNavigationController(
 
     fun wire() {
         binding.settingsDetailBackButton.setOnClickListener { showMenu() }
-        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.APPLICATION) }
-        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.POPUP) }
-        binding.settingsMenuGroup.settingsCallLogButton.setOnClickListener { showSection(SettingsSection.CALL_LOG) }
-        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.INTEGRATION) }
+        binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.STATUS) }
+        binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.CALLS) }
+        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.CONTACTS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
-        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_ARCHIVE) }
+        binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_AND_BACKUP) }
+        binding.settingsMenuGroup.settingsGeneralButton.setOnClickListener { showSection(SettingsSection.LANGUAGE) }
         if (BuildConfig.DEBUG) {
             binding.settingsMenuGroup.settingsDebugButton.setOnClickListener { showSection(SettingsSection.DEBUG) }
         } else {
             binding.settingsMenuGroup.settingsDebugButton.visibility = View.GONE
             binding.settingsDebugGroup.root.visibility = View.GONE
         }
-        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
-        binding.remoteSettingsSection.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
+
+        val remote = binding.remoteSettingsSection
+        remote.toggleAdvancedServerSettingsButton.setOnClickListener {
+            val showAdvanced = remote.advancedServerSettingsGroup.visibility != View.VISIBLE
+            remote.advancedServerSettingsGroup.visibility = if (showAdvanced) View.VISIBLE else View.GONE
+            remote.toggleAdvancedServerSettingsButton.text = activity.getString(
+                if (showAdvanced) R.string.server_advanced_settings_hide else R.string.server_advanced_settings_show,
+            )
+            TranslationManager.applyOverridesToViewTree(activity, remote.toggleAdvancedServerSettingsButton)
+        }
+        remote.saveServerSettingsButton.setOnClickListener { saveServerSettingsArchive() }
+        remote.restoreServerSettingsButton.setOnClickListener { restoreServerSettingsArchive() }
     }
 
     fun showMenu() {
@@ -102,8 +113,10 @@ internal class MainSettingsNavigationController(
         binding.settingsDescriptionText.visibility = View.GONE
         binding.settingsDetailHeader.visibility = View.VISIBLE
         binding.settingsDetailTitle.text = activity.getString(section.titleRes)
+        TranslationManager.applyOverridesToViewTree(activity, binding.settingsDetailHeader)
         allGroupViews().forEach { it.visibility = View.GONE }
         section.view(binding).visibility = View.VISIBLE
+        if (section == SettingsSection.LANGUAGE) onLanguageSectionShown()
         binding.quickTestBar.visibility = if (section == SettingsSection.DEBUG && BuildConfig.DEBUG) View.VISIBLE else View.GONE
         scrollTop()
     }
@@ -115,22 +128,22 @@ internal class MainSettingsNavigationController(
     }
 
     private enum class SettingsSection(val titleRes: Int) {
-        APPLICATION(R.string.settings_application_section),
-        POPUP(R.string.settings_popup_section),
-        CALL_LOG(R.string.settings_call_log_section),
-        INTEGRATION(R.string.settings_integration_section),
+        STATUS(R.string.settings_application_section),
+        CALLS(R.string.settings_popup_section),
+        CONTACTS(R.string.settings_crm_section),
         SERVER(R.string.settings_server_section),
-        DATA_ARCHIVE(R.string.settings_storage_section),
+        DATA_AND_BACKUP(R.string.settings_storage_section),
+        LANGUAGE(R.string.settings_language_section),
         DEBUG(R.string.settings_debug_section);
 
         fun view(binding: ActivityMainBinding): View {
             return when (this) {
-                APPLICATION -> binding.settingsApplicationGroup.root
-                POPUP -> binding.settingsPopupGroup.root
-                CALL_LOG -> binding.settingsCallLogGroup.root
-                INTEGRATION -> binding.settingsRmContactsGroup.root
+                STATUS -> binding.settingsApplicationGroup.root
+                CALLS -> binding.settingsPopupGroup.root
+                CONTACTS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
-                DATA_ARCHIVE -> binding.settingsDataArchiveGroup.root
+                DATA_AND_BACKUP -> binding.settingsDataArchiveGroup.root
+                LANGUAGE -> binding.settingsGeneralGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
             }
         }

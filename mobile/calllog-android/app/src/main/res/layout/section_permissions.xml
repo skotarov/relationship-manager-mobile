@@ -21,6 +21,10 @@
         android:textColor="@color/calllog_muted_text"
         android:textSize="13sp" />
 
+    <include
+        android:id="@+id/statusSmsPermissionsSection"
+        layout="@layout/section_sms_permissions_status" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

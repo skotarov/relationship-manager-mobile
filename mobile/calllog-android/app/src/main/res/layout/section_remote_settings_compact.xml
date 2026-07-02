@@ -50,91 +50,130 @@
                 android:inputType="textNoSuggestions" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/server_lookup_path_hint"
-            app:boxBackgroundColor="@android:color/white"
-            app:boxStrokeColor="@color/calllog_border">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/lookupPathInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                android:inputType="textUri"
-                android:text="/broker/callreport/lookup.php" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/server_form_path_hint"
-            app:boxBackgroundColor="@android:color/white"
-            app:boxStrokeColor="@color/calllog_border">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/formPathInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                android:inputType="textUri"
-                android:text="/broker/callreport/form.php" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/server_history_path_hint"
-            app:boxBackgroundColor="@android:color/white"
-            app:boxStrokeColor="@color/calllog_border">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/historyPathInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                android:inputType="textUri"
-                android:text="/broker/callreport/history.php" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/server_backup_code_hint"
-            app:boxBackgroundColor="@android:color/white"
-            app:boxStrokeColor="@color/calllog_border">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/serverBackupCodeInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@android:color/transparent"
-                android:inputType="number"
-                android:maxLength="4" />
-        </com.google.android.material.textfield.TextInputLayout>
-
         <TextView
+            android:id="@+id/pendingTopicNotesStatusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/server_backup_code_description"
-            android:textColor="@color/calllog_muted_text"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_settings_info"
+            android:paddingStart="12dp"
+            android:paddingTop="9dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="9dp"
+            android:textColor="@color/calllog_text"
             android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveServerSettingsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="@string/save_server_settings" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/restoreServerSettingsButton"
+            android:id="@+id/retryPendingTopicNotesButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/restore_server_settings" />
+            android:text="@string/server_retry_pending_notes"
+            app:strokeColor="@color/calllog_border"
+            app:strokeWidth="1dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/toggleAdvancedServerSettingsButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/server_advanced_settings_show" />
+
+        <LinearLayout
+            android:id="@+id/advancedServerSettingsGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/server_lookup_path_hint"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/calllog_border">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/lookupPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/lookup.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/server_form_path_hint"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/calllog_border">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/formPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/form.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/server_history_path_hint"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/calllog_border">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/historyPathInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:inputType="textUri"
+                    android:text="/broker/callreport/history.php" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/server_backup_code_hint"
+                app:boxBackgroundColor="@android:color/white"
+                app:boxStrokeColor="@color/calllog_border">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/serverBackupCodeInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@android:color/transparent"
+                    android:inputType="number"
+                    android:maxLength="4" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/server_backup_code_description"
+                android:textColor="@color/calllog_muted_text"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveServerSettingsButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/save_server_settings" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/restoreServerSettingsButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/restore_server_settings" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

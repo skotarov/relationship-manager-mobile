@@ -13,7 +13,7 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <ImageView
+        <com.onlineimoti.calllog.RelationshipManagerWordmarkView
             android:id="@+id/relationshipManagerWordmark"
             android:layout_width="0dp"
             android:layout_height="48dp"
@@ -112,21 +112,6 @@
             android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/crmModeBadge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
-            android:paddingStart="7dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="4dp"
-            android:text="CRM"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
-
         <LinearLayout
             android:id="@+id/filteredStatusContainer"
             android:layout_width="0dp"
@@ -140,15 +125,79 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/calllog_muted_text"
                 android:textSize="14sp" />
+
+            <LinearLayout
+                android:id="@+id/crmControlsScroll"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <com.onlineimoti.calllog.HomeCrmModeButton
+                    android:id="@+id/crmModeButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:minHeight="0dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:text="@string/crm_mode_toggle"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    app:cornerRadius="16dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/crmPhaseFilterButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:maxWidth="78dp"
+                    android:minHeight="0dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="7dp"
+                    android:text="@string/crm_filter_phases_all"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    app:cornerRadius="16dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/crmCompanyFilterButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:maxWidth="104dp"
+                    android:minHeight="0dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="7dp"
+                    android:paddingEnd="7dp"
+                    android:text="@string/crm_filter_companies_all"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    app:cornerRadius="16dp" />
+            </LinearLayout>
 
             <ProgressBar
                 android:id="@+id/fullLogProgress"
                 style="?android:attr/progressBarStyleSmall"
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginStart="4dp"
                 android:indeterminate="true"
                 android:visibility="gone" />
 
