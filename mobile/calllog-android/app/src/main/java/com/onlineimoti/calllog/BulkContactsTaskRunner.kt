@@ -59,7 +59,7 @@ internal object BulkContactsTaskRunner {
     fun cancel(context: Context? = null) {
         val snapshot = state
         val appContext = context?.applicationContext ?: activeContext
-        appContext?.let { cancelAndroidContactsSync(it) }
+        if (appContext != null) cancelAndroidContactsSync()
         if (!snapshot.running || snapshot.stopping) return
         cancelRequested.set(true)
         updateProgress(
@@ -276,7 +276,7 @@ internal object BulkContactsTaskRunner {
         )
     }
 
-    private fun cancelAndroidContactsSync(context: Context) {
+    private fun cancelAndroidContactsSync() {
         runCatching {
             ContentResolver.cancelSync(
                 Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
