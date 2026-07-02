@@ -23,7 +23,14 @@ internal object BulkContactsProgressNotification {
         status: String,
         stopping: Boolean = false,
     ) {
-        if (!canShowBulkContactSyncNotifications(context) || !hasRuntimeNotificationPermission(context)) {
+        if (!canShowBulkContactSyncNotifications(context)) {
+            cancel(context)
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
             cancel(context)
             return
         }
@@ -61,7 +68,14 @@ internal object BulkContactsProgressNotification {
     }
 
     fun showFinished(context: Context, action: BulkContactsTaskAction, status: String) {
-        if (!canShowBulkContactSyncNotifications(context) || !hasRuntimeNotificationPermission(context)) {
+        if (!canShowBulkContactSyncNotifications(context)) {
+            cancel(context)
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
             cancel(context)
             return
         }
@@ -146,12 +160,6 @@ internal object BulkContactsProgressNotification {
 
     private fun canShowBulkContactSyncNotifications(context: Context): Boolean {
         return ConfigStore.load(context).showBulkContactSyncNotifications && canShowNotifications(context)
-    }
-
-    /** Direct permission guard is kept at notification call sites for Android Lint. */
-    private fun hasRuntimeNotificationPermission(context: Context): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun canShowNotifications(context: Context): Boolean {
