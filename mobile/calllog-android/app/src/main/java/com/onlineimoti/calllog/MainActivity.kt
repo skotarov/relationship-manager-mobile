@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -108,6 +109,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+        if (EnterpriseAccessGate.redirectIfNeeded(this)) return
         currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -115,6 +117,7 @@ class MainActivity : AppCompatActivity() {
         syncPrivateNotesToSharedStorageWhenAvailable()
         CallReportRuntime.ensureNotificationChannel(this)
         hydrateFields()
+        configureEnterprisePlayUi()
         refreshPermissionSummary()
         renderBuildVersion()
         contactsCleanupController.addProgressBar()
@@ -122,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) {
             defaultSmsSettingsController.wire()
         } else {
-            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
+            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = View.GONE
         }
         wireSettingsActions()
         if (BuildConfig.DEBUG) {
@@ -142,6 +145,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (EnterpriseAccessGate.redirectIfNeeded(this)) return
         syncPrivateNotesToSharedStorageWhenAvailable()
         contactsCleanupController.addProgressBar()
         contactsCleanupController.refreshFromCurrentTask()
@@ -157,6 +161,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun hydrateFields() {
         MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
+    }
+
+    private fun configureEnterprisePlayUi() {
+        if (!BuildConfig.IS_PLAY_DISTRIBUTION) return
+        binding.settingsServerGroup.root.visibility = View.GONE
+        binding.enterpriseAccountSection.visibility = View.VISIBLE
+        val session = EnterpriseSessionStore.current(this)
+        val accountLabel = sequenceOf(session?.accountName, session?.userName)
+            .filterNotNull()
+            .map(String::trim)
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
+            .ifBlank { getString(R.string.app_name) }
+        binding.enterpriseAccountText.text = getString(R.string.enterprise_session_account, accountLabel)
+        binding.enterpriseLogoutButton.setOnClickListener {
+            EnterpriseSessionStore.clear(this)
+            setStatus(getString(R.string.enterprise_session_signed_out))
+            EnterpriseAccessGate.redirectIfNeeded(this)
+        }
     }
 
     private fun wireSettingsActions() {
@@ -256,7 +279,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setStatus(message: String) {
-        binding.statusText.visibility = android.view.View.VISIBLE
+        binding.statusText.visibility = View.VISIBLE
         binding.statusText.text = message
     }
 
