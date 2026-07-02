@@ -1,0 +1,110 @@
+name: Build signed Google Play bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Unique positive Android versionCode (maximum 2100000000)"
+        required: true
+        type: string
+      version_name:
+        description: "Human-readable version, for example 1.0.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-play-bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/calllog-android
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Validate release inputs
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]]
+          [[ "$VERSION_CODE" -le 2100000000 ]]
+          [[ "$VERSION_NAME" =~ ^[0-9A-Za-z._-]+$ ]]
+
+      - name: Install Play upload key
+        env:
+          PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          PLAY_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${PLAY_UPLOAD_KEYSTORE_BASE64:?Missing PLAY_UPLOAD_KEYSTORE_BASE64 secret}"
+          : "${PLAY_UPLOAD_STORE_PASSWORD:?Missing PLAY_UPLOAD_STORE_PASSWORD secret}"
+          : "${PLAY_UPLOAD_KEY_ALIAS:?Missing PLAY_UPLOAD_KEY_ALIAS secret}"
+          : "${PLAY_UPLOAD_KEY_PASSWORD:?Missing PLAY_UPLOAD_KEY_PASSWORD secret}"
+
+          mkdir -p release-signing
+          printf '%s' "$PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > release-signing/relationship-manager-upload.jks
+          keytool -list \
+            -keystore release-signing/relationship-manager-upload.jks \
+            -storepass "$PLAY_UPLOAD_STORE_PASSWORD" \
+            -alias "$PLAY_UPLOAD_KEY_ALIAS" > /dev/null
+
+          cat > play-signing.properties <<EOF
+          storeFile=release-signing/relationship-manager-upload.jks
+          storeSecret=$PLAY_UPLOAD_STORE_PASSWORD
+          keyAlias=$PLAY_UPLOAD_KEY_ALIAS
+          keySecret=$PLAY_UPLOAD_KEY_PASSWORD
+          EOF
+
+      - name: Lint and build signed Play bundle
+        env:
+          VERSION_CODE: ${{ inputs.version_code }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --console=plain \
+            :app:lintRelease \
+            :app:bundleRelease \
+            -PplayVersionCode="$VERSION_CODE" \
+            -PplayVersionName="$VERSION_NAME"
+
+          input=app/build/outputs/bundle/release/app-release.aab
+          output="app/build/outputs/bundle/release/relationship-manager-${VERSION_NAME}-${VERSION_CODE}.aab"
+          test -f "$input"
+          mv "$input" "$output"
+          jarsigner -verify -strict -certs "$output"
+
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: relationship-manager-play-aab-${{ inputs.version_code }}
+          path: mobile/calllog-android/app/build/outputs/bundle/release/relationship-manager-${{ inputs.version_name }}-${{ inputs.version_code }}.aab
+          if-no-files-found: error
+          retention-days: 30
