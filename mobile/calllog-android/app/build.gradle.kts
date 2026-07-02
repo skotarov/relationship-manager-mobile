@@ -56,16 +56,13 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // Public Play identity. The internal flavor overrides this with the legacy ID.
         applicationId = "com.onlineimoti.relationshipmanager"
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
         resourceConfigurations += setOf("bg")
-
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -73,13 +70,15 @@ android {
     productFlavors {
         create("internal") {
             dimension = "distribution"
-            // This preserves updates for existing sideloaded internal APKs.
             applicationId = "com.onlineimoti.calllog"
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "false")
+            buildConfigField("String", "ENTERPRISE_SERVER_BASE_URL", "\"\"")
         }
         create("play") {
             dimension = "distribution"
-            // A distinct secure identity avoids signature conflicts with the public debug key.
             applicationId = "com.onlineimoti.relationshipmanager"
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "true")
+            buildConfigField("String", "ENTERPRISE_SERVER_BASE_URL", "\"https://onlineimoti.com\"")
         }
     }
 
@@ -102,7 +101,6 @@ android {
 
     buildTypes {
         debug {
-            // The internal flavor retains the legacy package ID with no suffix.
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
