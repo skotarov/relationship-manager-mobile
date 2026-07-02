@@ -1,62 +1,116 @@
-# Google Play release checklist — OnlineImoti CRM
+# Google Play release checklist — Relationship Manager
 
 This checklist applies to the Android app in `mobile/calllog-android/`.
 
-## Before the first upload
+## Current release identity
 
-1. Choose the final public app name and update `app_name`, the Play Store title, icon and screenshots together.
-2. Create the Google Play Console app with package id `com.onlineimoti.calllog`.
-3. Enable **Play App Signing** and create a dedicated upload key. Never use the debug key.
-4. Create a local signing file from `play-signing.properties.example`:
+- **Package ID:** `com.onlineimoti.calllog`
+- **Visible name:** `Relationship Manager`
+- **Minimum SDK:** Android 10 / API 29
+- **Target SDK:** Android 15 / API 35
+- **Publishing artifact:** signed Android App Bundle (`.aab`)
 
-   ```bash
-   cd mobile/calllog-android
-   cp play-signing.properties.example play-signing.properties
-   ```
+Keep this package ID. Google Play package names are permanent, and the existing ID lets internal users receive an update from the Play build.
 
-   Fill in the file with the location of the upload key, its alias and the two local secrets. `play-signing.properties` and key files are intentionally ignored by Git.
+## Build a signed AAB from GitHub Actions
 
-5. Build the signed bundle:
+Run the manual **Build signed Google Play bundle** workflow. It validates inputs, runs `lintRelease`, builds `bundleRelease`, verifies the AAB signature, and uploads the AAB artifact for 30 days.
 
-   ```bash
-   gradle --no-daemon \
-     -PplayVersionCode=1 \
-     -PplayVersionName=1.0.0 \
-     :app:bundleRelease
-   ```
+Before the first run, add these GitHub repository Actions secrets:
 
-   Upload the generated `app/build/outputs/bundle/release/app-release.aab` to the **Internal testing** track first.
+| Secret | Value |
+| --- | --- |
+| `PLAY_UPLOAD_KEYSTORE_BASE64` | Upload keystore encoded as base64 on one line. |
+| `PLAY_UPLOAD_STORE_PASSWORD` | Upload keystore password. |
+| `PLAY_UPLOAD_KEY_ALIAS` | Upload key alias. |
+| `PLAY_UPLOAD_KEY_PASSWORD` | Upload key password. |
 
-## Required Play Console content
+Keep an offline backup of the upload key. Never commit a `.jks`, `.keystore`, or `play-signing.properties` file. The repository ignores all of them.
 
-- Category: Business.
-- A public privacy-policy URL.
-- Accurate Data safety declarations for call log, contacts, phone numbers, locally stored notes and server synchronization.
-- App access instructions and a dedicated review account or test access token that lets reviewers complete the core CRM flow.
-- Screenshots from the release build only, with no debug/test panels and no real customer data.
-- A support email address and an account/data-deletion contact path.
+Use a new, higher positive integer for every Play upload. Suggested first public release values:
 
-## Release controls included in this branch
+- `version_code`: `1261830001`
+- `version_name`: `1.0.0`
 
-- No SMS/MMS permissions or default-SMS components.
-- No `MANAGE_EXTERNAL_STORAGE` or full-screen intent permission.
-- Local notes use app-private storage; archive import/export continues through the Android document picker.
-- Backup is disabled and cleartext HTTP is blocked in the release manifest.
-- Debug defaults and debug/test navigation are isolated from release builds.
-- The default access token is no longer packaged into the app.
+The workflow permits Android version codes up to `2100000000`.
 
-## Versioning
+For a local manual build, copy `play-signing.properties.example` to `play-signing.properties`, set the four values, then run:
 
-Use a new, higher integer for every Play upload:
+```bash
+cd mobile/calllog-android
+gradle --no-daemon \
+  -PplayVersionCode=1261830001 \
+  -PplayVersionName=1.0.0 \
+  :app:lintRelease :app:bundleRelease
+```
 
-- `-PplayVersionCode=1`, then `2`, `3`, and so on.
-- Keep the visible version semantic, for example `-PplayVersionName=1.0.0`, then `1.0.1`.
+Upload the resulting `app/build/outputs/bundle/release/app-release.aab` to **Internal testing** first.
 
-## Manual GitHub Actions bundle release
+## Mandatory Play Console preparation
 
-The `Build signed Play bundle` workflow expects these GitHub repository secrets:
+1. Create the app as an **App**, accept Play App Signing, set the support email, and choose the price model carefully.
+2. Prepare the store listing: Bulgarian title, short description, long description, 512×512 icon, feature graphic, and at least two real-device screenshots.
+3. Complete App content: Data safety, content rating, ads declaration, target audience, and App access.
+4. Test a clean install, denied permission paths, call start/end UI, note saving, CRM synchronization, WebView forms, offline behavior, upgrade from the current internal APK, and reinstall.
+5. For a personal developer account created after 13 November 2023, complete the applicable Play testing requirement before production.
 
-- `PLAY_UPLOAD_KEYSTORE_BASE64`: Base64 content of the upload `.jks` file.
-- `PLAY_SIGNING_PROPERTIES_BASE64`: Base64 content of `play-signing.properties`, with `storeFile=play-upload.jks`.
+Use the **Business** category. Do not use screenshots containing real customer data, test/debug controls, tokens, or internal URLs.
 
-Run it manually with the next version code and version name. It uploads a signed `.aab` artifact for Play Console.
+## Critical policy gate: Call Log and contacts
+
+The release app uses `READ_CALL_LOG`, `READ_PHONE_STATE`, `READ_CONTACTS`, `WRITE_CONTACTS`, and optional overlay access. These are sensitive permissions.
+
+The intended public use is an **enterprise CRM**: a broker sees business calls, records a note, and synchronizes it to the broker's company account. `READ_CALL_LOG` requires an accurate Call Log permissions declaration and must be essential to the CRM's core function.
+
+Before submitting to closed or production testing, the release must require a verified company account before it requests or uses Call Log access. The current app supports local/free mode with an empty default server URL and a manually entered access token, so it does not yet prove the required enterprise-login condition for a public CRM release.
+
+Required product decision:
+
+- **Enterprise CRM release — preferred:** implement mandatory company sign-in/session validation, show a clear explanation before the permission dialog, and request Call Log only after successful sign-in.
+- **Non-CRM public release:** remove Call Log access and ensure the app remains useful without it. This materially changes Relationship Manager and is not the intended route.
+
+The enterprise route also needs a public privacy-policy page and a clear account/data-deletion path. The policy must explain local storage, optional company sync, collected data, retention, access, and deletion requests.
+
+## Data Safety inventory to verify against the released app and backend
+
+Do not copy these as final Play Console answers without verifying the deployed server and all release features.
+
+| Area | Likely data category | Why it needs review |
+| --- | --- | --- |
+| Call log | Phone numbers and call metadata | Read on-device and may be synchronized when remote mode is enabled. |
+| Contact linking | Contacts and names | Used for optional contact-link and synchronization functions. |
+| Notes and CRM associations | User-generated content | Stored locally and may be sent to the configured company service. |
+| Company login | User/account identifiers | Required after enterprise sign-in is implemented. |
+| Controlled WebView screens | Data submitted in the controlled form/history pages | Must be included in Data safety answers. |
+
+All controlled network traffic must use HTTPS. Do not package, display, or log access tokens.
+
+## Store listing draft direction
+
+**Title:** Relationship Manager
+
+**Short description:**
+
+> Manage business calls, contact notes and CRM follow-ups from one place.
+
+Core description points:
+
+- Shows recent business calls directly on the phone.
+- Lets a broker add a structured note after a call.
+- Organizes contact context and CRM follow-ups.
+- Company synchronization is available only for authorized company accounts.
+- Does not record calls or sell call/contact data.
+
+The final listing must describe only enabled release features. The CRM Call Log function must be prominent, not hidden in settings.
+
+## Release stop checklist
+
+- [ ] Upload key is backed up offline and all four GitHub secrets are present.
+- [ ] A signed AAB built successfully through the manual workflow.
+- [ ] `lintRelease` and real-device smoke tests passed.
+- [ ] Mandatory company sign-in is in place before Call Log permission is used.
+- [ ] Call Log declaration accurately describes enterprise CRM usage.
+- [ ] Public privacy policy and deletion/contact path are available.
+- [ ] Data safety, content rating, ads, target audience, and App access are complete.
+- [ ] Store assets and Bulgarian listing are final.
+- [ ] Internal testing and any required closed-test gate are complete before production.
