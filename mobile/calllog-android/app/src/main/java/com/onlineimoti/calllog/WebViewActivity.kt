@@ -68,7 +68,11 @@ class WebViewActivity : AppCompatActivity() {
         @JavascriptInterface
         fun closeWithMessage(message: String) {
             runOnUiThread {
-                sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+                sendBroadcast(
+                    Intent(PostCallOverlayService.ACTION_NOTES_CHANGED)
+                        .setPackage(packageName)
+                        .putExtra(EXTRA_CLOSE_MESSAGE, message.trim()),
+                )
                 finish()
             }
         }
@@ -78,5 +82,6 @@ class WebViewActivity : AppCompatActivity() {
         const val EXTRA_URL = "url"
         const val EXTRA_PHONE = "phone"
         const val EXTRA_DIRECTION = "direction"
+        const val EXTRA_CLOSE_MESSAGE = "close_message"
     }
 }
