@@ -91,7 +91,11 @@ internal object CallReportHistoryLookupClient {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+            if (config.accessToken.startsWith("rms1_")) {
+                connection.setRequestProperty("Authorization", "Bearer ${config.accessToken}")
+            } else {
+                connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+            }
             if (singlePhone == null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
