@@ -1,14 +1,18 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
+import androidx.core.content.ContextCompat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -125,7 +129,7 @@ internal object CallReportNotifications {
     }
 
     fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
-        NotificationManagerCompat.from(context).cancel(POST_CALL_NOTIFICATION_ID)
+        cancelNotificationsIfAllowed(context, POST_CALL_NOTIFICATION_ID)
         PostCallActionRouter.route(context, phone, direction, title, formUrl)
     }
 
@@ -215,12 +219,14 @@ internal object CallReportNotifications {
         remoteRows: List<PostCallLookupRemoteRow>,
         requestRemoteRows: Boolean,
     ) {
+        if (!canPostNotifications(context)) return
         ensureNotificationChannel(context)
-        NotificationManagerCompat.from(context).apply {
-            cancel(LEGACY_LOOKUP_SHADE_NOTIFICATION_ID)
-            cancel(POST_CALL_NOTIFICATION_ID)
-            if (alertAgain) cancel(notificationId)
-        }
+        cancelNotificationsIfAllowed(
+            context,
+            LEGACY_LOOKUP_SHADE_NOTIFICATION_ID,
+            POST_CALL_NOTIFICATION_ID,
+            *if (alertAgain) intArrayOf(notificationId) else intArrayOf(),
+        )
 
         val actionIssuedAt = System.currentTimeMillis()
         val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
@@ -273,7 +279,7 @@ internal object CallReportNotifications {
         if (useFullScreen || alertAgain) builder.setFullScreenIntent(editIntent, useFullScreen)
 
         if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
-        NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+        notifyIfAllowed(context, notificationId, builder)
 
         if (requestRemoteRows && PostCallLookupRemoteRows.shouldLookup(context, phone)) {
             refreshRemoteRowsAsync(
@@ -326,5 +332,23 @@ internal object CallReportNotifications {
         val token = lookupRenderSequence.incrementAndGet()
         lookupRenderTokens[notificationId] = token
         return token
+    }
+
+    private fun canPostNotifications(context: Context): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun notifyIfAllowed(context: Context, notificationId: Int, builder: NotificationCompat.Builder) {
+        if (!canPostNotifications(context)) return
+        NotificationManagerCompat.from(context).notify(notificationId, builder.build())
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun cancelNotificationsIfAllowed(context: Context, vararg notificationIds: Int) {
+        if (!canPostNotifications(context)) return
+        val notifications = NotificationManagerCompat.from(context)
+        notificationIds.forEach(notifications::cancel)
     }
 }
