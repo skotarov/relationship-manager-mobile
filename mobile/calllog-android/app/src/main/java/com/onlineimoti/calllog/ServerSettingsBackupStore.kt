@@ -10,18 +10,16 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
-/** Creates and restores a PIN-encrypted server settings backup file. */
 internal object ServerSettingsBackupStore {
-    private const val FILE_NAME = "callreport-server-settings.json"
-    private const val APP_NAME = "Call Report"
-    private const val VERSION = 2
+    private const val APP_NAME = "relationship-manager-server-settings"
+    private const val VERSION = 1
     private const val KDF = "PBKDF2WithHmacSHA256"
     private const val CIPHER = "AES/GCM/NoPadding"
     private const val ITERATIONS = 210_000
     private const val KEY_BITS = 256
-    private const val GCM_TAG_BITS = 128
     private const val SALT_BYTES = 16
     private const val IV_BYTES = 12
+    private const val GCM_TAG_BITS = 128
     private val random = SecureRandom()
 
     sealed interface RestoreResult {
@@ -29,34 +27,30 @@ internal object ServerSettingsBackupStore {
         data class Failed(val message: String) : RestoreResult
     }
 
-    fun suggestedFileName(): String = FILE_NAME
-
-    fun createEncryptedJson(config: AppConfig, pin: String): String {
+    fun save(config: AppConfig, pin: String): String {
         requireValidPin(pin)
-        val plainText = serverSettingsJson(config).toString().toByteArray(StandardCharsets.UTF_8)
         val salt = randomBytes(SALT_BYTES)
         val iv = randomBytes(IV_BYTES)
-        val encrypted = Cipher.getInstance(CIPHER).run {
+        val plainText = serverSettingsJson(config).toString().toByteArray(StandardCharsets.UTF_8)
+        val ciphertext = Cipher.getInstance(CIPHER).run {
             init(Cipher.ENCRYPT_MODE, derivedKey(pin, salt), GCMParameterSpec(GCM_TAG_BITS, iv))
             doFinal(plainText)
         }
-
         return JSONObject()
-            .put("v", VERSION)
             .put("app", APP_NAME)
-            .put("created_at", System.currentTimeMillis())
+            .put("v", VERSION)
             .put("kdf", KDF)
             .put("iterations", ITERATIONS)
             .put("cipher", CIPHER)
             .put("salt", encode(salt))
             .put("iv", encode(iv))
-            .put("ciphertext", encode(encrypted))
-            .toString(2)
+            .put("ciphertext", encode(ciphertext))
+            .toString()
     }
 
-    fun restoreEncryptedJson(currentConfig: AppConfig, content: String, pin: String): RestoreResult {
+    fun restore(content: String, pin: String, currentConfig: AppConfig): RestoreResult {
+        requireValidPin(pin)
         return runCatching {
-            requireValidPin(pin)
             val archive = JSONObject(content)
             require(archive.optString("app") == APP_NAME) { "Неподдържан архивен файл." }
             require(archive.optInt("v", 0) == VERSION) { "Неподдържана версия на архивния файл." }
@@ -86,7 +80,7 @@ internal object ServerSettingsBackupStore {
                     historyPath = settings.stringOrCurrent("history_path", currentConfig.historyPath),
                 ),
             )
-        }.getOrElse { error ->
+        }.getOrElse {
             RestoreResult.Failed("Грешен PIN или повреден архивен файл.")
         }
     }
@@ -119,16 +113,15 @@ internal object ServerSettingsBackupStore {
         require(pin.length == 4 && pin.all(Char::isDigit)) { "PIN кодът трябва да е 4 цифри." }
     }
 
-    private fun JSONObject.requiredString(key: String): String = optString(key).trim().also {
-        require(it.isNotBlank()) { "Повреден архивен файл." }
+    private fun JSONObject.requiredString(key: String): String {
+        return optString(key).trim().also { value -> require(value.isNotBlank()) { "Липсва поле: $key" } }
     }
 
-    private fun JSONObject.stringOrCurrent(key: String, currentValue: String): String {
-        if (!has(key) || isNull(key)) return currentValue
-        return optString(key).trim()
+    private fun JSONObject.stringOrCurrent(key: String, current: String): String {
+        return optString(key).trim().ifBlank { current }
     }
 
-    private fun JSONObject.booleanOrCurrent(key: String, currentValue: Boolean): Boolean {
-        return if (!has(key) || isNull(key)) currentValue else optBoolean(key, currentValue)
+    private fun JSONObject.booleanOrCurrent(key: String, current: Boolean): Boolean {
+        return if (has(key)) optBoolean(key) else current
     }
 }
