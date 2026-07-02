@@ -75,11 +75,17 @@ android {
             dimension = "distribution"
             // This preserves updates for existing sideloaded internal APKs.
             applicationId = "com.onlineimoti.calllog"
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "false")
+            buildConfigField("String", "ENTERPRISE_SERVER_BASE_URL", "\"\"")
         }
         create("play") {
             dimension = "distribution"
             // A distinct secure identity avoids signature conflicts with the public debug key.
             applicationId = "com.onlineimoti.relationshipmanager"
+            // The Play variant is a business CRM: Call Log is enabled only after an
+            // authenticated company session and explicit in-app disclosure.
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "true")
+            buildConfigField("String", "ENTERPRISE_SERVER_BASE_URL", "\"https://onlineimoti.com\"")
         }
     }
 
