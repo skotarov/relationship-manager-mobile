@@ -10,8 +10,8 @@ import kotlin.math.roundToInt
 
 /**
  * Draws a compact two-line wordmark. Its visible width is the width of
- * "Relationship"; "Manager" is right-aligned beneath it with one letter of
- * breathing room at the right edge.
+ * "Relationship"; "Manager" is right-aligned beneath it with extra breathing
+ * room at the right edge.
  */
 class RelationshipManagerWordmarkView @JvmOverloads constructor(
     context: Context,
@@ -102,7 +102,7 @@ class RelationshipManagerWordmarkView @JvmOverloads constructor(
         private const val MANAGER_TOP = 199f
         private const val MANAGER_RIGHT = 1065f
         private const val MANAGER_SCALE = 0.91f
-        private const val MANAGER_RIGHT_PADDING = 48f
+        private const val MANAGER_RIGHT_PADDING = 72f
         private const val MANAGER_LIFT = 6f
     }
 }
