@@ -56,9 +56,8 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // Keep the original identity so existing internal installs receive updates.
-        // Android users see the app label "Relationship Manager", not this technical package ID.
-        applicationId = "com.onlineimoti.calllog"
+        // Public Play identity. The internal flavor overrides this with the legacy ID.
+        applicationId = "com.onlineimoti.relationshipmanager"
         minSdk = 29
         targetSdk = 35
         versionCode = appVersionCode
@@ -68,6 +67,20 @@ android {
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("internal") {
+            dimension = "distribution"
+            // This preserves updates for existing sideloaded internal APKs.
+            applicationId = "com.onlineimoti.calllog"
+        }
+        create("play") {
+            dimension = "distribution"
+            // A distinct secure identity avoids signature conflicts with the public debug key.
+            applicationId = "com.onlineimoti.relationshipmanager"
+        }
     }
 
     signingConfigs {
@@ -89,7 +102,7 @@ android {
 
     buildTypes {
         debug {
-            // No applicationIdSuffix: this must update the earlier internal build.
+            // The internal flavor retains the legacy package ID with no suffix.
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
@@ -106,10 +119,10 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = if (buildType.name == "release") {
-                "relationship-manager-release.apk"
-            } else {
-                "relationship-manager.apk"
+            output.outputFileName = when {
+                flavorName == "play" && buildType.name == "release" -> "relationship-manager-play-release.apk"
+                flavorName == "internal" && buildType.name == "debug" -> "relationship-manager.apk"
+                else -> "relationship-manager-${flavorName}-${buildType.name}.apk"
             }
         }
     }
