@@ -15,8 +15,9 @@ class CallScreeningBridgeService : CallScreeningService() {
                 .setSilenceCall(false)
                 .setSkipCallLog(false)
                 .setSkipNotification(false)
-                .build()
+                .build(),
         )
+        if (BuildConfig.IS_PLAY_DISTRIBUTION && !EnterpriseAccessGate.isReady(this)) return
 
         val handle: Uri = callDetails.handle ?: return
         val number = handle.schemeSpecificPart?.trim().orEmpty()
@@ -82,9 +83,7 @@ class CallScreeningBridgeService : CallScreeningService() {
         }
     }
 
-    private fun remoteReady(config: AppConfig): Boolean {
-        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
-    }
+    private fun remoteReady(config: AppConfig): Boolean = CallReportRemoteAccess.isReady(config)
 
     private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
         return if (this.isNullOrBlank()) fallback() else this
