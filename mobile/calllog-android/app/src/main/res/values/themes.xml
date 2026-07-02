@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <style name="Theme.CallLog" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/calllog_accent</item>
         <item name="colorPrimaryVariant">@color/calllog_accent</item>
@@ -9,7 +9,7 @@
         <item name="colorSurface">@color/calllog_surface</item>
         <item name="colorOnSurface">@color/calllog_text</item>
         <item name="colorOnPrimary">@android:color/white</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.CallLog.TransparentLauncher" parent="Theme.MaterialComponents.DayNight.NoActionBar">
