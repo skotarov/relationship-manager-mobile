@@ -41,9 +41,6 @@ internal object BulkContactsTaskRunner {
     @Volatile
     private var state = BulkContactsTaskState()
 
-    @Volatile
-    private var activeContext: Context? = null
-
     fun currentState(): BulkContactsTaskState = state
 
     fun addListener(listener: (BulkContactsTaskState) -> Unit) {
@@ -57,9 +54,9 @@ internal object BulkContactsTaskRunner {
     }
 
     fun cancel(context: Context? = null) {
+        val appContext = context?.applicationContext
+        appContext?.let(::cancelAndroidContactsSync)
         val snapshot = state
-        val appContext = context?.applicationContext ?: activeContext
-        if (appContext != null) cancelAndroidContactsSync()
         if (!snapshot.running || snapshot.stopping) return
         cancelRequested.set(true)
         updateProgress(
@@ -214,7 +211,6 @@ internal object BulkContactsTaskRunner {
     @Synchronized
     private fun tryStart(action: BulkContactsTaskAction, status: String, context: Context): Boolean {
         if (state.running) return false
-        activeContext = context.applicationContext
         cancelRequested.set(false)
         state = BulkContactsTaskState(
             running = true,
@@ -258,7 +254,6 @@ internal object BulkContactsTaskRunner {
             status = status,
             stopping = wasCanceled,
         )
-        activeContext = null
         BulkContactsProgressNotification.showFinished(context, action, status)
         notifyListeners()
     }
@@ -276,7 +271,7 @@ internal object BulkContactsTaskRunner {
         )
     }
 
-    private fun cancelAndroidContactsSync() {
+    private fun cancelAndroidContactsSync(context: Context) {
         runCatching {
             ContentResolver.cancelSync(
                 Account(CrmContactAccountStore.ACCOUNT_NAME, CallReportContactIntegration.ACCOUNT_TYPE),
