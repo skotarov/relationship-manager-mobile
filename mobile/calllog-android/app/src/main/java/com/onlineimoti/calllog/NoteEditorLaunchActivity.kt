@@ -54,7 +54,6 @@ class NoteEditorLaunchActivity : Activity() {
         }
 
         finish()
-        overridePendingTransition(0, 0)
     }
 
     companion object {
