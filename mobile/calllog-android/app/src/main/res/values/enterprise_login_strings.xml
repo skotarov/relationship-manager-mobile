@@ -1,0 +1,17 @@
+<resources>
+    <string name="enterprise_login_title">Business sign in</string>
+    <string name="enterprise_login_description">Sign in with the company account provided by your administrator.</string>
+    <string name="enterprise_login_identity_hint">Work email or username</string>
+    <string name="enterprise_login_password_hint">Password</string>
+    <string name="enterprise_login_button">Sign in</string>
+    <string name="enterprise_login_help">No company account? Contact your company administrator.</string>
+    <string name="enterprise_login_progress">Signing in…</string>
+    <string name="enterprise_disclosure_title">Use of call history</string>
+    <string name="enterprise_disclosure_description">In Business CRM mode, Relationship Manager reads the phone number, direction, date and time, and duration of your calls. It sends these details to your company CRM to create the call history and help you add business notes and follow-up actions.</string>
+    <string name="enterprise_disclosure_notice">This access is used only while your company session is active. You can sign out at any time from Settings.</string>
+    <string name="enterprise_disclosure_continue">Continue</string>
+    <string name="enterprise_disclosure_sign_out">Sign out</string>
+    <string name="enterprise_login_error_missing_fields">Enter your work email or username and password.</string>
+    <string name="enterprise_session_signed_out">You have signed out of the company account.</string>
+    <string name="enterprise_session_account">Company account: %1$s</string>
+</resources>
