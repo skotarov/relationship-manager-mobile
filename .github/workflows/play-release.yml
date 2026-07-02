@@ -90,13 +90,13 @@ jobs:
         run: |
           set -euo pipefail
           gradle --no-daemon --console=plain \
-            :app:lintRelease \
-            :app:bundleRelease \
+            :app:lintPlayRelease \
+            :app:bundlePlayRelease \
             -PplayVersionCode="$VERSION_CODE" \
             -PplayVersionName="$VERSION_NAME"
 
-          input=app/build/outputs/bundle/release/app-release.aab
-          output="app/build/outputs/bundle/release/relationship-manager-${VERSION_NAME}-${VERSION_CODE}.aab"
+          input=app/build/outputs/bundle/playRelease/app-play-release.aab
+          output="app/build/outputs/bundle/playRelease/relationship-manager-${VERSION_NAME}-${VERSION_CODE}.aab"
           test -f "$input"
           mv "$input" "$output"
           jarsigner -verify -strict -certs "$output"
@@ -105,6 +105,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: relationship-manager-play-aab-${{ inputs.version_code }}
-          path: mobile/calllog-android/app/build/outputs/bundle/release/relationship-manager-${{ inputs.version_name }}-${{ inputs.version_code }}.aab
+          path: mobile/calllog-android/app/build/outputs/bundle/playRelease/relationship-manager-${{ inputs.version_name }}-${{ inputs.version_code }}.aab
           if-no-files-found: error
           retention-days: 30
