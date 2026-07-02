@@ -96,7 +96,6 @@ internal class ContactNotesCrmHistoryController(
 
     fun addSection(
         root: LinearLayout,
-        phone: String,
         openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
     ) {
