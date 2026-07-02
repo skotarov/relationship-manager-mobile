@@ -5,6 +5,9 @@ import android.content.Context
 import android.provider.ContactsContract
 
 object CrmContactDataRows {
+    private const val LEGACY_SIP_MIME_TYPE = "vnd.android.cursor.item/sip_address"
+    private const val LEGACY_IM_MIME_TYPE = "vnd.android.cursor.item/im"
+
     fun insertStructuredName(ops: ArrayList<ContentProviderOperation>, fields: CrmContactNormalizedFields) {
         val values = structuredNameValues(fields)
         if (values.isNotEmpty()) insertRow(ops, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE, values)
@@ -94,11 +97,10 @@ object CrmContactDataRows {
         insertRelationIfPresent(ops, fields.relationManager, ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER)
         insertRelationIfPresent(ops, fields.relationReferredBy, ContactsContract.CommonDataKinds.Relation.TYPE_REFERRED_BY)
         if (fields.nickname.isNotBlank()) insertRow(ops, ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Nickname.NAME to fields.nickname, ContactsContract.CommonDataKinds.Nickname.TYPE to ContactsContract.CommonDataKinds.Nickname.TYPE_DEFAULT))
-        if (fields.sipAddress.isNotBlank()) insertRow(ops, ContactsContract.CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.SipAddress.SIP_ADDRESS to fields.sipAddress, ContactsContract.CommonDataKinds.SipAddress.TYPE to ContactsContract.CommonDataKinds.SipAddress.TYPE_OTHER))
-        if (fields.im.isNotBlank()) insertRow(ops, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Im.DATA to fields.im, ContactsContract.CommonDataKinds.Im.PROTOCOL to ContactsContract.CommonDataKinds.Im.PROTOCOL_CUSTOM, ContactsContract.CommonDataKinds.Im.CUSTOM_PROTOCOL to CrmContactAccountStore.ACCOUNT_NAME))
+        val crmValues = crmValues(fields)
+        if (crmValues.isNotEmpty()) insertRow(ops, CallReportCrmContactWriter.CRM_MIME_TYPE, crmValues)
         if (fields.note.isNotBlank()) insertRow(ops, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Note.NOTE to fields.note))
         if (groupId > 0L) insertRow(ops, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID to groupId))
-        if (fields.customText.isNotBlank()) insertRow(ops, CallReportCrmContactWriter.CRM_MIME_TYPE, mapOf(ContactsContract.Data.DATA1 to fields.customText, ContactsContract.Data.DATA2 to "Call Report CRM", ContactsContract.Data.DATA3 to "CRM"))
     }
 
     fun upsertOptionalRows(context: Context, ops: ArrayList<ContentProviderOperation>, rawId: Long, fields: CrmContactNormalizedFields, groupId: Long) {
@@ -126,11 +128,12 @@ object CrmContactDataRows {
         upsertRelation(context, ops, rawId, fields.relationManager, ContactsContract.CommonDataKinds.Relation.TYPE_MANAGER)
         upsertRelation(context, ops, rawId, fields.relationReferredBy, ContactsContract.CommonDataKinds.Relation.TYPE_REFERRED_BY)
         upsertOrDelete(context, ops, rawId, ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Nickname.NAME to fields.nickname, ContactsContract.CommonDataKinds.Nickname.TYPE to ContactsContract.CommonDataKinds.Nickname.TYPE_DEFAULT), fields.nickname.isNotBlank())
-        upsertOrDelete(context, ops, rawId, ContactsContract.CommonDataKinds.SipAddress.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.SipAddress.SIP_ADDRESS to fields.sipAddress, ContactsContract.CommonDataKinds.SipAddress.TYPE to ContactsContract.CommonDataKinds.SipAddress.TYPE_OTHER), fields.sipAddress.isNotBlank())
-        upsertOrDelete(context, ops, rawId, ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Im.DATA to fields.im, ContactsContract.CommonDataKinds.Im.PROTOCOL to ContactsContract.CommonDataKinds.Im.PROTOCOL_CUSTOM, ContactsContract.CommonDataKinds.Im.CUSTOM_PROTOCOL to CrmContactAccountStore.ACCOUNT_NAME), fields.im.isNotBlank())
+        val crmValues = crmValues(fields)
+        upsertOrDelete(context, ops, rawId, CallReportCrmContactWriter.CRM_MIME_TYPE, crmValues, crmValues.isNotEmpty())
+        deleteRow(context, ops, rawId, LEGACY_SIP_MIME_TYPE)
+        deleteRow(context, ops, rawId, LEGACY_IM_MIME_TYPE)
         upsertOrDelete(context, ops, rawId, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.Note.NOTE to fields.note), fields.note.isNotBlank())
         upsertOrDelete(context, ops, rawId, ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE, mapOf(ContactsContract.CommonDataKinds.GroupMembership.GROUP_ROW_ID to groupId), groupId > 0L)
-        upsertOrDelete(context, ops, rawId, CallReportCrmContactWriter.CRM_MIME_TYPE, mapOf(ContactsContract.Data.DATA1 to fields.customText, ContactsContract.Data.DATA2 to "Call Report CRM", ContactsContract.Data.DATA3 to "CRM"), fields.customText.isNotBlank())
     }
 
     fun insertHistoryRow(ops: ArrayList<ContentProviderOperation>, originalPhone: String) {
@@ -157,6 +160,18 @@ object CrmContactDataRows {
         if (fields.familyName.isNotBlank()) values[ContactsContract.CommonDataKinds.StructuredName.FAMILY_NAME] = fields.familyName
         if (fields.nameSuffix.isNotBlank()) values[ContactsContract.CommonDataKinds.StructuredName.SUFFIX] = fields.nameSuffix
         if (fields.phoneticName.isNotBlank()) values[ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME] = fields.phoneticName
+        return values
+    }
+
+    private fun crmValues(fields: CrmContactNormalizedFields): Map<String, Any> {
+        val values = linkedMapOf<String, Any>()
+        if (fields.customText.isNotBlank()) values[ContactsContract.Data.DATA1] = fields.customText
+        if (fields.sipAddress.isNotBlank()) values[ContactsContract.Data.DATA4] = fields.sipAddress
+        if (fields.im.isNotBlank()) values[ContactsContract.Data.DATA5] = fields.im
+        if (values.isNotEmpty()) {
+            values[ContactsContract.Data.DATA2] = "Call Report CRM"
+            values[ContactsContract.Data.DATA3] = "CRM"
+        }
         return values
     }
 
