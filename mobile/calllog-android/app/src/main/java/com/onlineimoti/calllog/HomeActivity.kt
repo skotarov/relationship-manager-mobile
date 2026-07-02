@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -101,6 +102,7 @@ class HomeActivity : AppCompatActivity() {
             activeSearchQuery = { activeSearchQuery },
             pageIndex = { pageIndex },
             isCrmModeEnabled = ::isCrmModeEnabled,
+            onRenderComplete = ::completePullToRefresh,
         )
     }
     private val searchController: HomeSearchController by lazy {
@@ -118,6 +120,7 @@ class HomeActivity : AppCompatActivity() {
             setCurrentCalls = homeContentRenderer::replaceCurrentCalls,
             renderEmptyState = homeContentRenderer::renderEmptyState,
             applyRenderData = homeContentRenderer::applyRenderData,
+            onRenderComplete = ::completePullToRefresh,
         )
     }
     private val searchInputController: HomeSearchInputController by lazy {
@@ -149,10 +152,21 @@ class HomeActivity : AppCompatActivity() {
             onStateChanged = ::renderCalls,
         )
     }
+    private val filteredFullLogRefreshWatcher = object : Runnable {
+        override fun run() {
+            if (!pullRefreshInProgress || !::binding.isInitialized) return
+            if (binding.fullLogProgress.visibility == View.VISIBLE) {
+                handler.postDelayed(this, FILTERED_REFRESH_CHECK_DELAY_MS)
+            } else {
+                completePullToRefresh()
+            }
+        }
+    }
 
     private var pageIndex = 0
     private var activePhoneFilter = ""
     private var activeSearchQuery = ""
+    private var pullRefreshInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -163,6 +177,7 @@ class HomeActivity : AppCompatActivity() {
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         homeContentRenderer.prepareForRender(pageSize(), keepExistingRows = false)
         searchInputController.bind()
+        binding.homeCallsRefreshLayout.setOnRefreshListener(::refreshFromPull)
         binding.settingsButton.setOnClickListener {
             HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() }
         }
@@ -216,7 +231,12 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        if (::binding.isInitialized) noteSavedReceiver.unregister()
+        if (::binding.isInitialized) {
+            noteSavedReceiver.unregister()
+            pullRefreshInProgress = false
+            binding.homeCallsRefreshLayout.setRefreshing(false)
+        }
+        handler.removeCallbacks(filteredFullLogRefreshWatcher)
         noteRefreshController.cancel()
         searchInputController.cancelPending()
         super.onPause()
@@ -242,6 +262,7 @@ class HomeActivity : AppCompatActivity() {
         homeContentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             homeContentRenderer.showMissingCallLogPermission()
+            completePullToRefresh()
             return
         }
         when {
@@ -250,6 +271,26 @@ class HomeActivity : AppCompatActivity() {
             crmModeEnabled -> callsLoader.renderCrmCallsAsync(size, renderGeneration)
             else -> callsLoader.renderLocalCalls(size)
         }
+    }
+
+    private fun refreshFromPull() {
+        if (pullRefreshInProgress) return
+        pullRefreshInProgress = true
+        filteredFullLogController.invalidate()
+        companyGeneralNotesController.invalidate()
+        HomeCrmPhaseLookup.invalidate()
+        renderCalls()
+        if (isFilteredFullLogMode()) {
+            handler.removeCallbacks(filteredFullLogRefreshWatcher)
+            handler.post(filteredFullLogRefreshWatcher)
+        }
+    }
+
+    private fun completePullToRefresh() {
+        if (!pullRefreshInProgress || !::binding.isInitialized) return
+        pullRefreshInProgress = false
+        handler.removeCallbacks(filteredFullLogRefreshWatcher)
+        binding.homeCallsRefreshLayout.setRefreshing(false)
     }
 
     private fun isCrmModeEnabled(): Boolean = HomeCrmModeStore.isEnabled(this)
@@ -290,5 +331,6 @@ class HomeActivity : AppCompatActivity() {
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
+        private const val FILTERED_REFRESH_CHECK_DELAY_MS = 80L
     }
 }
