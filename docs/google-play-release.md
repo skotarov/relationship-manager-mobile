@@ -2,19 +2,20 @@
 
 This checklist applies to the Android app in `mobile/calllog-android/`.
 
-## Current release identity
+## Distribution identities
 
-- **Package ID:** `com.onlineimoti.calllog`
-- **Visible name:** `Relationship Manager`
-- **Minimum SDK:** Android 10 / API 29
-- **Target SDK:** Android 15 / API 35
-- **Publishing artifact:** signed Android App Bundle (`.aab`)
+| Distribution | Variant | Package ID | Purpose |
+| --- | --- | --- | --- |
+| Existing internal APK | `internalDebug` | `com.onlineimoti.calllog` | Keeps the legacy sideloaded app and its debug-only SMS/testing behavior. |
+| Google Play | `playRelease` | `com.onlineimoti.relationshipmanager` | Public signed release with no internal SMS, storage, or debug-only components. |
 
-Keep this package ID. Google Play package names are permanent, and the existing ID lets internal users receive an update from the Play build.
+The existing internal package is signed with a debug key that is present in the repository. A Google Play release must use a private Play upload key, so it cannot safely update that legacy APK under the same package ID. The public Play app is therefore a **separate clean install**. Do not use the debug key for Play signing.
+
+The public Play package ID is permanent after the Play Console app is created.
 
 ## Build a signed AAB from GitHub Actions
 
-Run the manual **Build signed Google Play bundle** workflow. It validates inputs, runs `lintRelease`, builds `bundleRelease`, verifies the AAB signature, and uploads the AAB artifact for 30 days.
+Run the manual **Build signed Google Play bundle** workflow. It validates inputs, runs `lintPlayRelease`, builds `bundlePlayRelease`, verifies the AAB signature, and uploads the AAB artifact for 30 days.
 
 Before the first run, add these GitHub repository Actions secrets:
 
@@ -29,7 +30,7 @@ Keep an offline backup of the upload key. Never commit a `.jks`, `.keystore`, or
 
 Use a new, higher positive integer for every Play upload. Suggested first public release values:
 
-- `version_code`: `1261830001`
+- `version_code`: `1`
 - `version_name`: `1.0.0`
 
 The workflow permits Android version codes up to `2100000000`.
@@ -39,19 +40,19 @@ For a local manual build, copy `play-signing.properties.example` to `play-signin
 ```bash
 cd mobile/calllog-android
 gradle --no-daemon \
-  -PplayVersionCode=1261830001 \
+  -PplayVersionCode=1 \
   -PplayVersionName=1.0.0 \
-  :app:lintRelease :app:bundleRelease
+  :app:lintPlayRelease :app:bundlePlayRelease
 ```
 
-Upload the resulting `app/build/outputs/bundle/release/app-release.aab` to **Internal testing** first.
+Upload the resulting `app/build/outputs/bundle/playRelease/app-play-release.aab` to **Internal testing** first.
 
 ## Mandatory Play Console preparation
 
-1. Create the app as an **App**, accept Play App Signing, set the support email, and choose the price model carefully.
+1. Create the app as an **App** using `com.onlineimoti.relationshipmanager`, accept Play App Signing, set the support email, and choose the price model carefully.
 2. Prepare the store listing: Bulgarian title, short description, long description, 512×512 icon, feature graphic, and at least two real-device screenshots.
 3. Complete App content: Data safety, content rating, ads declaration, target audience, and App access.
-4. Test a clean install, denied permission paths, call start/end UI, note saving, CRM synchronization, WebView forms, offline behavior, upgrade from the current internal APK, and reinstall.
+4. Test a clean install, denied permission paths, call start/end UI, note saving, CRM synchronization, WebView forms, offline behavior, and reinstall.
 5. For a personal developer account created after 13 November 2023, complete the applicable Play testing requirement before production.
 
 Use the **Business** category. Do not use screenshots containing real customer data, test/debug controls, tokens, or internal URLs.
@@ -107,7 +108,7 @@ The final listing must describe only enabled release features. The CRM Call Log 
 
 - [ ] Upload key is backed up offline and all four GitHub secrets are present.
 - [ ] A signed AAB built successfully through the manual workflow.
-- [ ] `lintRelease` and real-device smoke tests passed.
+- [ ] `lintPlayRelease` and real-device smoke tests passed.
 - [ ] Mandatory company sign-in is in place before Call Log permission is used.
 - [ ] Call Log declaration accurately describes enterprise CRM usage.
 - [ ] Public privacy policy and deletion/contact path are available.
