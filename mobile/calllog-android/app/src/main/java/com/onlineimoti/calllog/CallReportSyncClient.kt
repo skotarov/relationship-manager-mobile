@@ -16,6 +16,7 @@ internal class CallReportSyncException(
 /** HTTP client for the standalone Relationship Manager sync endpoint. */
 internal object CallReportSyncClient {
     private const val SYNC_PATH = "/relationship-manager/api/sync.php"
+    private const val ENTERPRISE_SYNC_PATH = "/relationship-manager/api/mobile_sync.php"
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 10_000
 
@@ -30,7 +31,9 @@ internal object CallReportSyncClient {
                 events.forEach { event -> put(event.toJson()) }
             })
         }
-        val endpoint = config.baseUrl.trim().trimEnd('/') + SYNC_PATH
+        val enterpriseSession = config.accessToken.startsWith("rms1_")
+        val path = if (enterpriseSession) ENTERPRISE_SYNC_PATH else SYNC_PATH
+        val endpoint = config.baseUrl.trim().trimEnd('/') + path
         val connection = (URL(endpoint).openConnection() as HttpURLConnection)
         try {
             connection.requestMethod = "POST"
@@ -39,9 +42,13 @@ internal object CallReportSyncClient {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            // Older deployed builds also accept this header; both carry the same token.
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            if (enterpriseSession) {
+                connection.setRequestProperty("Authorization", "Bearer ${config.accessToken}")
+            } else {
+                connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+                // Older deployed builds also accept this header; both carry the same token.
+                connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+            }
             connection.outputStream.use { output ->
                 output.write(payload.toString().toByteArray(Charsets.UTF_8))
             }
