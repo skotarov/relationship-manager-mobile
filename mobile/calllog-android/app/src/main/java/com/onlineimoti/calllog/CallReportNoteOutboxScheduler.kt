@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -12,6 +13,7 @@ import java.util.concurrent.TimeUnit
 /** Schedules the persisted note outbox without blocking note editing or the Home UI. */
 internal object CallReportNoteOutboxScheduler {
     private const val UNIQUE_WORK_NAME = "callreport_note_outbox_sync"
+    private const val INPUT_REASON = "reason"
 
     fun enqueue(context: Context, reason: String = "unspecified") {
         val appContext = context.applicationContext
@@ -20,6 +22,7 @@ internal object CallReportNoteOutboxScheduler {
         val request = OneTimeWorkRequestBuilder<CallReportNoteOutboxWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .setInputData(Data.Builder().putString(INPUT_REASON, reason).build())
             .addTag(UNIQUE_WORK_NAME)
             .build()
         // Keep the in-flight worker. It always reads the latest coalesced outbox state.
