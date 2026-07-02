@@ -9,12 +9,7 @@ internal object MainBuildVersion {
             activity.packageManager.getPackageInfo(activity.packageName, 0)
         }.getOrNull()
         val versionName = packageInfo?.versionName ?: BuildConfig.VERSION_NAME
-        val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            packageInfo?.longVersionCode?.toString()
-        } else {
-            @Suppress("DEPRECATION")
-            packageInfo?.versionCode?.toString()
-        } ?: BuildConfig.VERSION_CODE.toString()
+        val versionCode = packageInfo?.longVersionCode?.toString() ?: BuildConfig.VERSION_CODE.toString()
         binding.settingsGeneralGroup.buildVersionText.text = "Build version: $versionName ($versionCode)"
     }
 }
