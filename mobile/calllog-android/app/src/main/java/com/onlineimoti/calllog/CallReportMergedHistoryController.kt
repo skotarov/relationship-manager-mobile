@@ -88,6 +88,8 @@ internal class CallReportMergedHistoryController(
         }
     }
 
+    fun isLoading(): Boolean = localLoading || serverLoading
+
     fun hasCompanyMainNoteScope(): Boolean = serverLoaded && serverHistory.principal.companies.isNotEmpty()
 
     /** Temporary remote-loading text rendered in the fixed slot below the contact header. */
