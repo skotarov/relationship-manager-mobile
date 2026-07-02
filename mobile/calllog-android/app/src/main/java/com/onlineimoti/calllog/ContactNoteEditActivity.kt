@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.provider.CalendarContract
-import android.view.WindowManager
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
@@ -47,10 +46,7 @@ class ContactNoteEditActivity : Activity() {
             return
         }
 
-        window.setSoftInputMode(
-            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE,
-        )
+        window.setSoftInputMode(LegacyPlatformCompat.resizeInputMode())
         readDraftFromIntent()
         val initialTopicState = ContactNoteFormWorkflow.initialTopicState(this, draft())
         topicState = when {
