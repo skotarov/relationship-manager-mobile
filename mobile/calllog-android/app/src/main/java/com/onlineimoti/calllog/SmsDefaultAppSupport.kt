@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -173,6 +174,8 @@ class SmsRespondViaMessageService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 }
 
+/** Each public notification entrypoint verifies POST_NOTIFICATIONS before posting. */
+@SuppressLint("MissingPermission")
 internal object SmsIncomingNotifier {
     private const val CHANNEL_ID = "callreport_sms_messages"
     private const val CHANNEL_NAME = "SMS през Relationship Manager"
