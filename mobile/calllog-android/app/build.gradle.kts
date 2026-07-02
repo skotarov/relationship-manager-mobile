@@ -69,6 +69,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    sourceSets {
+        getByName("main") {
+            // This legacy PNG intermittently crashes AAPT2 in the Play resource merge.
+            // It is not referenced by the current app UI or launcher; leave it in Git
+            // for historical recovery but keep it out of all packaged resource sets.
+            res.exclude("drawable/callreport_icon.png")
+        }
+    }
+
     flavorDimensions += "distribution"
     productFlavors {
         create("internal") {
