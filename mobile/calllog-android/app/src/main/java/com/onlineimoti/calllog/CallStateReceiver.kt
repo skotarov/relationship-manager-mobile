@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit
 class CallStateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
+        if (BuildConfig.IS_PLAY_DISTRIBUTION && !EnterpriseAccessGate.isReady(context)) return
 
         val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
         val hasCallLog = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
@@ -85,9 +86,7 @@ class CallStateReceiver : BroadcastReceiver() {
         return keyguardManager?.isKeyguardLocked == true
     }
 
-    private fun remoteReady(config: AppConfig): Boolean {
-        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
-    }
+    private fun remoteReady(config: AppConfig): Boolean = CallReportRemoteAccess.isReady(config)
 
     private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
         val pendingResult = goAsync()
@@ -162,21 +161,26 @@ class CallStateReceiver : BroadcastReceiver() {
                 }
 
                 val lookupContext = CallReportSyncEventFactory.latestPhoneCallContext(context, number, direction)
+                val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
+                val enterpriseSession = config.accessToken.startsWith("rms1_")
+                val lookup = runCatching {
+                    CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { result ->
+                        if (displayName.isBlank()) result else result.copy(title = displayName)
+                    }
+                }.getOrNull()
+                if (lookup == null && enterpriseSession) {
+                    // Do not put a bearer credential in a WebView URL. A later retry can obtain a signed form ticket.
+                    routeLocalPostCall(context, number, direction, config)
+                    return@executeBounded
+                }
                 val fallbackParams = linkedMapOf(
                     "phone" to number,
                     "direction" to direction,
-                    "access_token" to config.accessToken,
                 )
+                if (!enterpriseSession) fallbackParams["access_token"] = config.accessToken
                 fallbackParams.putAll(lookupContext.asQueryParameters())
                 val fallbackFormUrl = buildEndpoint(config.baseUrl, config.formPath, fallbackParams)
-                val displayName = ContactGroupFilter.resolveDisplayName(context, number).orEmpty()
-                val result = runCatching {
-                    CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
-                        if (displayName.isBlank()) lookup else lookup.copy(title = displayName)
-                    }
-                }.getOrElse {
-                    LookupResult(displayName.ifBlank { "Бележка след разговора" }, number, emptyList(), fallbackFormUrl)
-                }
+                val result = lookup ?: LookupResult(displayName.ifBlank { "Бележка след разговора" }, number, emptyList(), fallbackFormUrl)
                 CallReportRuntime.showPostCallPromptNotification(
                     context = context,
                     formUrl = result.openFormUrl.ifBlank { fallbackFormUrl },
