@@ -40,7 +40,6 @@ class ContactNotesHeaderUi(
         openRmContact: () -> Unit,
         toggleCrmSync: () -> Unit,
         openRmCallLog: () -> Unit,
-        openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
         val displayName = displayNameFromTitle(title, phone)
         val contactDescription = activity.getString(
