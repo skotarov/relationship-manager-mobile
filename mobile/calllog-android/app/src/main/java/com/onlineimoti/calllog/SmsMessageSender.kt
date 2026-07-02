@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Telephony
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
@@ -49,7 +50,7 @@ internal object SmsMessageSender {
             "Липсва разрешение за изпращане на SMS. Отвори Settings → Permissions и разреши SMS."
         }
 
-        val manager = smsManagerForSubscription(subscriptionId)
+        val manager = smsManagerForSubscription(appContext, subscriptionId)
         val parts = manager.divideMessage(body)
         require(parts.isNotEmpty()) { "Не успях да подготвя текста за изпращане." }
 
@@ -116,17 +117,28 @@ internal object SmsMessageSender {
         }
     }
 
-    private fun smsManagerForSubscription(requestedSubscriptionId: Int?): SmsManager {
-        return runCatching {
-            val subscriptionId = requestedSubscriptionId
-                ?.takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
-                ?: SubscriptionManager.getDefaultSmsSubscriptionId()
-            if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
-            } else {
-                SmsManager.getDefault()
+    private fun smsManagerForSubscription(context: Context, requestedSubscriptionId: Int?): SmsManager {
+        val subscriptionId = requestedSubscriptionId
+            ?.takeIf { it != SubscriptionManager.INVALID_SUBSCRIPTION_ID }
+            ?: SubscriptionManager.getDefaultSmsSubscriptionId()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = requireNotNull(context.getSystemService(SmsManager::class.java)) {
+                "SMS услугата не е налична на това устройство."
             }
-        }.getOrElse {
+            return if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                manager.createForSubscriptionId(subscriptionId)
+            } else {
+                manager
+            }
+        }
+        return legacySmsManagerForSubscription(subscriptionId)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacySmsManagerForSubscription(subscriptionId: Int): SmsManager {
+        return if (subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            SmsManager.getSmsManagerForSubscriptionId(subscriptionId)
+        } else {
             SmsManager.getDefault()
         }
     }
