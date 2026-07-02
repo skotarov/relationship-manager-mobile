@@ -24,9 +24,7 @@ class CallReportTileService : TileService() {
         qsTile?.apply {
             label = "Relationship Manager"
             icon = Icon.createWithResource(this@CallReportTileService, R.drawable.ic_qs_callreport)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                subtitle = "Отвори"
-            }
+            subtitle = "Отвори"
             state = Tile.STATE_ACTIVE
             updateTile()
         }
