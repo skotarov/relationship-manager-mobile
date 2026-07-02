@@ -112,21 +112,29 @@
             android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
 
-        <com.onlineimoti.calllog.HomeCrmModeButton
-            android:id="@+id/crmModeButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <LinearLayout
+            android:id="@+id/crmControlsScroll"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
             android:layout_marginEnd="6dp"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="@string/crm_mode_toggle"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:cornerRadius="16dp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.onlineimoti.calllog.HomeCrmModeButton
+                android:id="@+id/crmModeButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:text="@string/crm_mode_toggle"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                app:cornerRadius="16dp" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/filteredStatusContainer"
@@ -147,13 +155,11 @@
                 android:textSize="14sp" />
 
             <LinearLayout
-                android:id="@+id/crmControlsScroll"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:layout_marginStart="4dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:visibility="gone">
+                android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/crmPhaseFilterButton"
