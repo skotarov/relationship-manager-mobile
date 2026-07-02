@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -57,7 +58,7 @@ internal object BulkContactsProgressNotification {
             builder.setProgress(0, 0, true)
         }
 
-        runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build()) }
+        notifyIfPermissionGranted(context, builder)
     }
 
     fun showFinished(context: Context, action: BulkContactsTaskAction, status: String) {
@@ -79,11 +80,11 @@ internal object BulkContactsProgressNotification {
             .setProgress(0, 0, false)
             .setContentIntent(settingsPendingIntent(context))
 
-        runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build()) }
+        notifyIfPermissionGranted(context, builder)
     }
 
     fun cancel(context: Context) {
-        runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
+        cancelIfPermissionGranted(context)
     }
 
     private fun ensureChannel(context: Context) {
@@ -151,5 +152,17 @@ internal object BulkContactsProgressNotification {
     private fun canShowNotifications(context: Context): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun notifyIfPermissionGranted(context: Context, builder: NotificationCompat.Builder) {
+        if (!canShowNotifications(context)) return
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun cancelIfPermissionGranted(context: Context) {
+        if (!canShowNotifications(context)) return
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
     }
 }
