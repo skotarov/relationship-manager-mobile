@@ -14,6 +14,7 @@ internal class HomeCallsLoader(
     private val activeSearchQuery: () -> String,
     private val pageIndex: () -> Int,
     private val isCrmModeEnabled: () -> Boolean,
+    private val onRenderComplete: () -> Unit,
 ) {
     private val crmExecutor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
@@ -36,6 +37,7 @@ internal class HomeCallsLoader(
         )
         if (calls.isEmpty()) {
             contentRenderer.renderEmptyState()
+            onRenderComplete()
             return
         }
         contentRenderer.applyRenderData(
@@ -46,6 +48,7 @@ internal class HomeCallsLoader(
             ),
             pageSize,
         )
+        onRenderComplete()
     }
 
     fun renderCrmCallsAsync(pageSize: Int, expectedGeneration: Int) {
@@ -89,6 +92,7 @@ internal class HomeCallsLoader(
                 if (!current) return@post
                 if (data.calls.isEmpty()) contentRenderer.renderEmptyState()
                 else contentRenderer.applyRenderData(data, pageSize)
+                onRenderComplete()
             }
         }
     }
