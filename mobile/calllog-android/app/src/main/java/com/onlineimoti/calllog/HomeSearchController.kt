@@ -21,6 +21,7 @@ internal class HomeSearchController(
     private val setCurrentCalls: (List<PhoneCallRecord>) -> Unit,
     private val renderEmptyState: () -> Unit,
     private val applyRenderData: (HomeRenderData, Int) -> Unit,
+    private val onRenderComplete: () -> Unit,
 ) {
     fun renderSearchCallsAsync() {
         val query = activeSearchQuery()
@@ -32,6 +33,7 @@ internal class HomeSearchController(
             binding.nextCallsButton.isEnabled = false
             binding.pageText.text = context.getString(R.string.dynamic_home_page, pageIndex() + 1)
             binding.paginationContainer.visibility = View.VISIBLE
+            onRenderComplete()
             return
         }
 
@@ -75,6 +77,7 @@ internal class HomeSearchController(
                 } else {
                     applyRenderData(renderData, currentPageSize)
                 }
+                onRenderComplete()
             }
         }
     }
