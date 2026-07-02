@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.provider.Telephony
 import androidx.activity.result.ActivityResultLauncher
@@ -177,7 +178,7 @@ internal object SmsIncomingNotifier {
     private const val CHANNEL_NAME = "SMS през Relationship Manager"
 
     fun showIncomingSms(context: Context, address: String, body: String, timestamp: Long) {
-        if (!canPostNotifications(context)) return
+        if (!hasNotificationPermission(context)) return
         ensureChannel(context)
         val normalizedPhone = PhoneNormalizer.normalize(address).ifBlank { address }
         val displayName = RmRealContactLookup.resolveDisplayName(context, normalizedPhone).orEmpty().ifBlank { normalizedPhone }
@@ -195,7 +196,7 @@ internal object SmsIncomingNotifier {
     }
 
     fun showIncomingMms(context: Context) {
-        if (!canPostNotifications(context)) return
+        if (!hasNotificationPermission(context)) return
         ensureChannel(context)
         val pendingIntent = PendingIntent.getActivity(
             context,
@@ -218,7 +219,7 @@ internal object SmsIncomingNotifier {
     }
 
     fun showReplyRequest(context: Context, address: String) {
-        if (!canPostNotifications(context)) return
+        if (!hasNotificationPermission(context)) return
         ensureChannel(context)
         val normalizedPhone = PhoneNormalizer.normalize(address).ifBlank { address }
         val pendingIntent = PendingIntent.getActivity(
@@ -271,8 +272,9 @@ internal object SmsIncomingNotifier {
         manager.createNotificationChannel(channel)
     }
 
-    private fun canPostNotifications(context: Context): Boolean {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    private fun hasNotificationPermission(context: Context): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun notificationId(address: String, timestamp: Long): Int = 9000 + ((address.hashCode() xor timestamp.hashCode()) and 0x0FFF)
