@@ -75,11 +75,13 @@ android {
             dimension = "distribution"
             // This preserves updates for existing sideloaded internal APKs.
             applicationId = "com.onlineimoti.calllog"
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "false")
         }
         create("play") {
             dimension = "distribution"
             // A distinct secure identity avoids signature conflicts with the public debug key.
             applicationId = "com.onlineimoti.relationshipmanager"
+            buildConfigField("boolean", "IS_PLAY_DISTRIBUTION", "true")
         }
     }
 
