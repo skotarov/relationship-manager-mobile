@@ -23,10 +23,10 @@ object LocalNotesFileStore {
 
     fun isEnabled(context: Context): Boolean = ConfigStore.load(context).useLocalNotesStorage
 
-    /** The active location depends only on Android shared-storage access. */
-    fun shouldUsePublicFolder(context: Context): Boolean = canUsePublicFolder()
+    /** The active location needs both local-notes storage and Android shared-storage access. */
+    fun shouldUsePublicFolder(context: Context): Boolean = isEnabled(context) && canUsePublicFolder()
 
-    fun usesPublicFolder(context: Context): Boolean = isEnabled(context) && canUsePublicFolder()
+    fun usesPublicFolder(context: Context): Boolean = shouldUsePublicFolder(context)
 
     fun canUseConfiguredFolder(context: Context): Boolean = isEnabled(context)
 
