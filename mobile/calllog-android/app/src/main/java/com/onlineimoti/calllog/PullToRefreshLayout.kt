@@ -146,6 +146,14 @@ internal class PullToRefreshLayout @JvmOverloads constructor(
     private fun updatePull(rawDistance: Float) {
         pullDistance = min(rawDistance * DRAG_RESISTANCE, maximumPullDistance)
         contentView?.translationY = pullDistance
+        if (pullDistance <= 0f) {
+            spinner.visibility = INVISIBLE
+            spinner.alpha = 0f
+            spinner.translationY = 0f
+            spinner.scaleX = IDLE_SPINNER_SCALE
+            spinner.scaleY = IDLE_SPINNER_SCALE
+            return
+        }
         val progress = (pullDistance / triggerDistance).coerceIn(0f, 1f)
         spinner.visibility = VISIBLE
         spinner.translationY = max(0f, pullDistance - spinnerSize)
