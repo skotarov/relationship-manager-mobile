@@ -154,7 +154,10 @@ internal object CallReportHistoryMerge {
                 text = event.note,
                 serverEvent = event,
                 companyId = event.companyId,
-                editable = kind == CallReportHistoryRowKind.NOTE && isConversationNote(event) && !foreignAuthor,
+                // Every non-foreign timeline note returned by history_lookup has a
+                // timestamp. Its original client_event_id is preserved by the UI
+                // and server editor, so no duplicate note is inserted.
+                editable = kind == CallReportHistoryRowKind.NOTE && !foreignAuthor,
                 authorIsOtherBroker = foreignAuthor,
             )
         }
@@ -181,15 +184,6 @@ internal object CallReportHistoryMerge {
         return false
     }
 
-    private fun isConversationNote(event: CallReportHistoryEvent): Boolean {
-        return event.communicationType.equals("note", ignoreCase = true) && (
-            event.clientEventId.contains(":call:") ||
-                event.direction.isNotBlank() ||
-                event.durationSeconds > 0L
-            )
-    }
-
-    /** Recognises notes saved by the previous topic-per-company Android format. */
     private fun legacyTopicCallMatch(
         events: List<CallReportHistoryEvent>,
         usedIndexes: Set<Int>,
