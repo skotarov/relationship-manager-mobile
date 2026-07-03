@@ -13,18 +13,22 @@ internal class OverlayContactNoteFormController(
     private val handler: Handler,
     private val dp: (Int) -> Int,
     private val draft: ContactNoteFormDraft,
+    preferredCompanyId: String = "",
 ) {
     private val topicFieldUi by lazy { ContactNoteTopicFieldUi(service, dp) }
-    private var topicState = ContactNoteFormWorkflow.initialTopicState(service, draft)
+    private var topicState = initialTopicState(preferredCompanyId)
     private var topicSpinner: Spinner? = null
     private var noteInput: EditText? = null
     private var serverScopeTexts: Map<String, String>? = null
     private var serverScopeTextLoading = false
     private var displayedScopeId = ""
     private var displayedScopeText = ""
+    /** Updated after programmatic scope text changes and successful writes. */
+    private var persistedText = ""
 
     fun addTopicFieldTo(container: LinearLayout, input: EditText) {
         noteInput = input
+        persistedText = input.text?.toString().orEmpty()
         topicFieldUi.create(
             state = topicState,
             onSelected = { selected ->
@@ -37,17 +41,67 @@ internal class OverlayContactNoteFormController(
         if (topicState.visible) loadTopics()
     }
 
+    /** Used by explicit Save: an eligible contact must deliberately choose Local or a firm. */
     fun save(noteText: String): ContactNoteFormSaveResult? {
         val topicId = ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState) ?: run {
             Toast.makeText(service, service.getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
             return null
         }
+        return saveToTopic(noteText, topicId, localOnlyFallback = topicState.loadError.isNotBlank())
+    }
+
+    /**
+     * Used before switching editor/modal or closing it. While the firm list is
+     * still loading or no option has been selected, preserve changed text locally
+     * and keep the existing deferred-company marker instead of losing the draft.
+     */
+    fun saveForTransition(noteText: String): ContactNoteFormSaveResult {
+        val explicitDestination = effectiveCompanyId()
+        val strictDestination = ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState)
+        val mustFallbackLocally = strictDestination == null && explicitDestination.isBlank()
+        val destination = strictDestination
+            ?: explicitDestination.takeIf { it.isNotBlank() }
+            ?: ContactNoteTopicState.LOCAL_COMPANY_ID
+        return saveToTopic(
+            noteText = noteText,
+            topicId = destination,
+            localOnlyFallback = topicState.loadError.isNotBlank() || mustFallbackLocally,
+        )
+    }
+
+    fun hasChangedText(noteText: String): Boolean = noteText != persistedText
+
+    fun markTextPersisted(noteText: String) {
+        persistedText = noteText
+    }
+
+    /** Carries a concrete company across the blue/yellow overlay forms. */
+    fun effectiveCompanyId(): String = topicState.selectedCompanyId.trim()
+
+    private fun initialTopicState(preferredCompanyId: String): ContactNoteTopicState {
+        val base = ContactNoteFormWorkflow.initialTopicState(service, draft)
+        val preferred = preferredCompanyId.trim()
+        if (preferred.isBlank() || !base.visible) return base
+        // A previously assigned company must remain selectable even if the CRM
+        // switch is currently off for that Android contact.
+        return base.copy(
+            loading = true,
+            localOnly = false,
+            selectedCompanyId = preferred,
+        )
+    }
+
+    private fun saveToTopic(
+        noteText: String,
+        topicId: String,
+        localOnlyFallback: Boolean,
+    ): ContactNoteFormSaveResult {
         return ContactNoteFormWorkflow.save(
             context = service,
             draft = draft,
             noteText = noteText,
             topicCompanyId = topicId,
-            localOnlyFallback = topicState.loadError.isNotBlank(),
+            localOnlyFallback = localOnlyFallback,
         )
     }
 
@@ -115,5 +169,6 @@ internal class OverlayContactNoteFormController(
         }
         displayedScopeId = companyId
         displayedScopeText = value
+        persistedText = value
     }
 }
