@@ -10,6 +10,8 @@ import java.util.Locale
 internal data class ContactSearchResult(
     val phone: String,
     val name: String,
+    /** Full provider-normalized number retained for digit searches. */
+    val normalizedPhone: String = "",
 )
 
 /**
@@ -29,7 +31,7 @@ internal object ContactSearchProvider {
         val digitsQuery = trimmed.filter { it.isDigit() }
         return allContacts(context)
             .asSequence()
-            .filter { result -> matches(result.name, result.phone, result.phone, lowerQuery, digitsQuery) }
+            .filter { result -> matches(result.name, result.phone, result.normalizedPhone, lowerQuery, digitsQuery) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
             .toList()
     }
@@ -81,7 +83,11 @@ internal object ContactSearchProvider {
                 val phone = number.ifBlank { normalized }
                 val key = noteKey(phone)
                 if (key.isBlank() || results.containsKey(key)) continue
-                results[key] = ContactSearchResult(phone = phone, name = name.ifBlank { phone })
+                results[key] = ContactSearchResult(
+                    phone = phone,
+                    name = name.ifBlank { phone },
+                    normalizedPhone = normalized,
+                )
             }
         }
         return results.values.toList()
