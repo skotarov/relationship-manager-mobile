@@ -45,6 +45,9 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
+    private val serverCallNotesController: HomeServerCallNotesController by lazy {
+        HomeServerCallNotesController(this, handler)
+    }
     private val crmFiltersController: HomeCrmFiltersController by lazy {
         HomeCrmFiltersController(
             activity = this,
@@ -98,6 +101,7 @@ class HomeActivity : AppCompatActivity() {
             handler = handler,
             contentRenderer = homeContentRenderer,
             crmFilters = crmFiltersController,
+            serverCallNotes = serverCallNotesController,
             activePhoneFilter = { activePhoneFilter },
             activeSearchQuery = { activeSearchQuery },
             pageIndex = { pageIndex },
@@ -112,6 +116,7 @@ class HomeActivity : AppCompatActivity() {
             handler = handler,
             searchExecutor = searchExecutor,
             searchGeneration = searchGeneration,
+            serverCallNotes = serverCallNotesController,
             pageSize = ::pageSize,
             activePhoneFilter = { activePhoneFilter },
             activeSearchQuery = { activeSearchQuery },
@@ -246,6 +251,7 @@ class HomeActivity : AppCompatActivity() {
         searchGeneration.incrementAndGet()
         searchExecutor.shutdownNow()
         callsLoader.release()
+        serverCallNotesController.release()
         crmFiltersController.release()
         companyGeneralNotesController.release()
         filteredFullLogController.release()
@@ -255,6 +261,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun renderCalls() {
         val renderGeneration = callsLoader.invalidate()
+        serverCallNotesController.invalidate()
         val size = pageSize()
         val crmModeEnabled = isCrmModeEnabled()
         val showCrmFilters = crmModeEnabled && activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
