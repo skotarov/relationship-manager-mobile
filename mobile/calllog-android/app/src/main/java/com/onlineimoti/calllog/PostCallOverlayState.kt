@@ -12,6 +12,10 @@ internal data class PostCallOverlayState(
     var lines: List<String> = emptyList(),
     /** Currently selected company, carried while switching blue/yellow note forms. */
     var companyId: String = "",
+    /** Original server note identity; when present, edits mutate that record in place. */
+    var serverClientEventId: String = "",
+    /** Initial text supplied by a Home server-note row before any local mirror exists. */
+    var initialNoteText: String = "",
     /** True when the incoming-call coordinator already loads server history rows. */
     var remoteRowsArePreloaded: Boolean = false,
     var callAt: Long = 0L,
@@ -28,6 +32,8 @@ internal data class PostCallOverlayState(
         subtitle = intent?.getStringExtra(PostCallOverlayService.EXTRA_SUBTITLE).orEmpty()
         lines = intent?.getStringArrayListExtra(PostCallOverlayService.EXTRA_LINES).orEmpty()
         companyId = intent?.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
+        serverClientEventId = intent?.getStringExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID).orEmpty().trim()
+        initialNoteText = intent?.getStringExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT).orEmpty()
         remoteRowsArePreloaded = intent?.getBooleanExtra(PostCallOverlayService.EXTRA_REMOTE_ROWS_ARE_PRELOADED, false) ?: false
         callAt = intent?.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L) ?: 0L
         durationSeconds = intent?.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L) ?: 0L
