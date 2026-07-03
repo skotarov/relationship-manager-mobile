@@ -23,6 +23,8 @@ internal class PostCallNoteEditor(
     private val callAt: () -> Long,
     private val durationSeconds: () -> Long,
     private val actionIssuedAt: () -> Long,
+    private val preferredCompanyId: () -> String,
+    private val setPreferredCompanyId: (String) -> Unit,
     private val callDirectionColor: (String) -> Int,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
@@ -47,6 +49,8 @@ internal class PostCallNoteEditor(
         val durationValue = durationSeconds()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
+        val existingCallNote = existingCallNote(phoneValue, callAtValue, directionValue)
+        val initialCompanyId = preferredCompanyId().trim().ifBlank { existingCallNote?.companyId.orEmpty() }
         val draft = ContactNoteFormDraft(
             phone = phoneValue,
             title = titleText,
@@ -55,15 +59,41 @@ internal class PostCallNoteEditor(
             durationSeconds = durationValue,
             actionIssuedAt = actionIssuedAt(),
         )
-        val form = OverlayContactNoteFormController(service, handler, ui::dp, draft)
-        val callNote = pendingCallNote() ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
+        val form = OverlayContactNoteFormController(
+            service = service,
+            handler = handler,
+            dp = ui::dp,
+            draft = draft,
+            preferredCompanyId = initialCompanyId,
+        )
+        val callNote = pendingCallNote()
+            ?: existingCallNote?.note
+            ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
 
-        fun saveCurrent(noteText: String): Boolean {
+        fun saveCurrent(noteText: String, transition: Boolean): Boolean {
             setPendingCallNote(noteText)
-            val result = form.save(noteText) ?: return false
-            if (result.saved) notifyNotesChanged()
-            return result.saved
+            if (!form.hasChangedText(noteText)) return true
+            val result = if (transition) form.saveForTransition(noteText) else form.save(noteText) ?: return false
+            if (!result.saved) return false
+            form.markTextPersisted(noteText)
+            val destination = form.effectiveCompanyId().ifBlank {
+                if (result.localOnlyFallback) ContactNoteTopicState.LOCAL_COMPANY_ID else initialCompanyId
+            }
+            setPreferredCompanyId(destination)
+            notifyNotesChanged()
+            return true
         }
+
+        fun closeAfterAutosave() {
+            if (saveCurrent(callNoteInputText(), transition = true)) {
+                stopOverlay()
+            } else {
+                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        lateinit var callNoteInput: TextView
+        fun callNoteInputText(): String = callNoteInput.text?.toString().orEmpty()
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -97,19 +127,25 @@ internal class PostCallNoteEditor(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })
-        val callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
+        callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
-            val noteText = callNoteInput.text?.toString().orEmpty()
-            if (saveCurrent(noteText)) openCalendarEvent(titleText)
+            val noteText = callNoteInputText()
+            if (saveCurrent(noteText, transition = false)) openCalendarEvent(titleText)
             else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
         })
-        titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { stopOverlay() })
+        titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { closeAfterAutosave() })
         card.addView(titleRow)
 
         if (callAtValue > 0L) card.addView(callInfoRow(directionValue, callAtValue, durationValue))
-        form.addTopicFieldTo(card, callNoteInput)
+        form.addTopicFieldTo(card, callNoteInput as android.widget.EditText)
         card.addView(callNoteInput)
-        card.addView(actionRow(callNoteInput, ::saveCurrent, showGeneralNoteEditor, openContactNotesScreen, stopOverlay))
+        card.addView(actionRow(
+            input = callNoteInput,
+            saveCurrent = { text, transition -> saveCurrent(text, transition) },
+            showGeneral = showGeneralNoteEditor,
+            openHistory = openContactNotesScreen,
+            close = stopOverlay,
+        ))
 
         addDraggableOverlay(ui.shadowScroll(card), true, ui.dp(135), 0L)
         callNoteInput.requestFocus()
@@ -117,6 +153,17 @@ internal class PostCallNoteEditor(
             (service.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
                 ?.showSoftInput(callNoteInput, InputMethodManager.SHOW_IMPLICIT)
         }, 250)
+    }
+
+    private fun existingCallNote(phone: String, callAt: Long, direction: String): ContactCallNote? {
+        if (callAt <= 0L) return null
+        return ContactNoteReader.callNotesForPhone(service, phone)
+            .asSequence()
+            .filter { note ->
+                note.callAt == callAt &&
+                    (direction.isBlank() || note.direction.isBlank() || note.direction == direction)
+            }
+            .maxByOrNull { note -> maxOf(note.savedAt, note.callAt) }
     }
 
     private fun callInfoRow(directionValue: String, callAtValue: Long, durationValue: Long): LinearLayout {
@@ -150,7 +197,7 @@ internal class PostCallNoteEditor(
 
     private fun actionRow(
         input: TextView,
-        saveCurrent: (String) -> Boolean,
+        saveCurrent: (String, Boolean) -> Boolean,
         showGeneral: () -> Unit,
         openHistory: () -> Unit,
         close: () -> Unit,
@@ -160,17 +207,17 @@ internal class PostCallNoteEditor(
             gravity = Gravity.END
             setPadding(0, ui.dp(12), 0, 0)
             addView(ui.secondaryIconAction(R.drawable.ic_note_lines, "Основна") {
-                if (saveCurrent(input.text?.toString().orEmpty())) showGeneral()
+                if (saveCurrent(input.text?.toString().orEmpty(), true)) showGeneral()
                 else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
             })
             addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
             addView(ui.secondaryTextAction("История") {
-                if (saveCurrent(input.text?.toString().orEmpty())) openHistory()
+                if (saveCurrent(input.text?.toString().orEmpty(), true)) openHistory()
                 else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
             })
             addView(View(service).apply { layoutParams = LinearLayout.LayoutParams(ui.dp(8), 1) })
             addView(ui.textAction("Запази") {
-                if (saveCurrent(input.text?.toString().orEmpty())) {
+                if (saveCurrent(input.text?.toString().orEmpty(), false)) {
                     Toast.makeText(service, "Бележката към обаждането е записана", Toast.LENGTH_SHORT).show()
                     close()
                 } else {
