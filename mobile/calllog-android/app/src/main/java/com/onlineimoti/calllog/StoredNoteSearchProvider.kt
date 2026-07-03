@@ -16,21 +16,52 @@ internal data class StoredNoteSearchResult(
     val isCallNote: Boolean,
 )
 
+/**
+ * Keeps a small, short-lived local-note snapshot. Filtering still uses every
+ * stored note; only repeated disk walks during a single typing session vanish.
+ */
 internal object StoredNoteSearchProvider {
     private const val LOCAL_NOTE_PREFS = "callreport_local_contact_notes"
+    private const val CACHE_MS = 15_000L
+    private val cacheLock = Any()
+    private var cachedNotes: List<StoredNoteSearchResult> = emptyList()
+    private var cachedAtMs = 0L
 
     fun search(context: Context, query: String): List<StoredNoteSearchResult> {
         val lowerQuery = query.trim().lowercase(Locale.getDefault())
         if (lowerQuery.isBlank()) return emptyList()
-        return (generalNotes(context, lowerQuery) + callNotes(context, lowerQuery))
+        return allNotes(context)
+            .asSequence()
+            .filter { result -> result.note.lowercase(Locale.getDefault()).contains(lowerQuery) }
             .sortedByDescending { it.noteAt.takeIf { at -> at > 0L } ?: it.callAt }
+            .toList()
     }
 
-    private fun generalNotes(context: Context, lowerQuery: String): List<StoredNoteSearchResult> {
+    fun invalidate() {
+        synchronized(cacheLock) {
+            cachedNotes = emptyList()
+            cachedAtMs = 0L
+        }
+    }
+
+    private fun allNotes(context: Context): List<StoredNoteSearchResult> {
+        val now = System.currentTimeMillis()
+        synchronized(cacheLock) {
+            if (cachedAtMs > 0L && now - cachedAtMs < CACHE_MS) return cachedNotes
+        }
+        val loaded = generalNotes(context) + callNotes(context)
+        synchronized(cacheLock) {
+            cachedNotes = loaded
+            cachedAtMs = now
+            return cachedNotes
+        }
+    }
+
+    private fun generalNotes(context: Context): List<StoredNoteSearchResult> {
         val prefs = context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE)
         return prefs.all.mapNotNull { (key, value) ->
             val note = (value as? String).orEmpty().trim()
-            if (key.isBlank() || note.isBlank() || !note.lowercase(Locale.getDefault()).contains(lowerQuery)) return@mapNotNull null
+            if (key.isBlank() || note.isBlank()) return@mapNotNull null
             StoredNoteSearchResult(
                 phone = key,
                 phoneKey = key,
@@ -44,23 +75,23 @@ internal object StoredNoteSearchProvider {
         }
     }
 
-    private fun callNotes(context: Context, lowerQuery: String): List<StoredNoteSearchResult> {
+    private fun callNotes(context: Context): List<StoredNoteSearchResult> {
         if (!LocalNotesFileStore.canUseConfiguredFolder(context)) return emptyList()
         val root = File(LocalNotesFileStore.activeRootPath(context), "notes")
         if (!root.exists()) return emptyList()
         return root.walkTopDown()
             .filter { it.isFile && it.name == "calllog.notes" }
-            .flatMap { file -> parseCallNotes(file, lowerQuery).asSequence() }
+            .flatMap { file -> parseCallNotes(file).asSequence() }
             .toList()
     }
 
-    private fun parseCallNotes(file: File, lowerQuery: String): List<StoredNoteSearchResult> {
+    private fun parseCallNotes(file: File): List<StoredNoteSearchResult> {
         return runCatching {
             file.readLines().mapNotNull { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
                 if (json.optString("type") != "call_note") return@mapNotNull null
                 val note = json.optString("note").trim()
-                if (note.isBlank() || !note.lowercase(Locale.getDefault()).contains(lowerQuery)) return@mapNotNull null
+                if (note.isBlank()) return@mapNotNull null
                 val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
                 val phoneKey = json.optString("normalized_phone").ifBlank { noteKey(phone) }
                 if (phoneKey.isBlank()) return@mapNotNull null
