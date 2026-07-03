@@ -37,7 +37,7 @@ internal class ContactNoteEditUi(
     private val onTopicSpinnerReady: (Spinner) -> Unit,
     private val saveAndClose: (String) -> Unit,
     private val saveAndOpenCalendar: (String) -> Unit,
-    private val close: () -> Unit,
+    private val close: (String) -> Unit,
 ) {
     private val topicFieldUi by lazy { ContactNoteTopicFieldUi(activity, ::dp) }
 
@@ -107,7 +107,9 @@ internal class ContactNoteEditUi(
             addView(iconButton(R.drawable.ic_calendar_event, activity.getString(R.string.dynamic_action_calendar)) {
                 saveAndOpenCalendar(input.text?.toString().orEmpty())
             })
-            addView(iconButton(R.drawable.ic_popup_close, activity.getString(R.string.dynamic_sms_close)) { close() })
+            addView(iconButton(R.drawable.ic_popup_close, activity.getString(R.string.dynamic_sms_close)) {
+                close(input.text?.toString().orEmpty())
+            })
         }
     }
 
@@ -188,7 +190,7 @@ internal class ContactNoteEditUi(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.END
             setPadding(0, dp(12), 0, 0)
-            addView(secondaryTextButton(activity.getString(R.string.dynamic_note_cancel)) { close() })
+            addView(secondaryTextButton(activity.getString(R.string.dynamic_note_cancel)) { close(input.text?.toString().orEmpty()) })
             addView(TextView(activity).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
             addView(primaryTextButton(activity.getString(R.string.dynamic_note_save)) { saveAndClose(input.text?.toString().orEmpty()) })
         }
