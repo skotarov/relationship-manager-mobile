@@ -16,14 +16,17 @@ internal data class HomeCallNote(
 internal object HomeCallNotesResolver {
     fun localNotes(context: android.content.Context, calls: List<PhoneCallRecord>): Map<String, HomeCallNote> {
         if (calls.isEmpty()) return emptyMap()
-        val notesByPhone = calls
+        val notesByPhoneKey = calls
             .filterNot { it.isSms }
             .map { it.number }
             .distinctBy(HomeCallPageLoader::noteKey)
-            .associateWith { phone -> ContactNoteReader.callNotesForPhone(context, phone) }
+            .associateBy(
+                keySelector = HomeCallPageLoader::noteKey,
+                valueTransform = { phone -> ContactNoteReader.callNotesForPhone(context, phone) },
+            )
         val result = linkedMapOf<String, HomeCallNote>()
         calls.filterNot { it.isSms }.forEach { call ->
-            val local = notesByPhone[call.number]
+            val local = notesByPhoneKey[HomeCallPageLoader.noteKey(call.number)]
                 .orEmpty()
                 .filter { note -> sameLocalCall(call, note) }
                 .maxByOrNull(::localVersionMs)
