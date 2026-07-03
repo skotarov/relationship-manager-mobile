@@ -13,6 +13,7 @@ internal class HomeSearchController(
     private val handler: Handler,
     private val searchExecutor: ExecutorService,
     private val searchGeneration: AtomicInteger,
+    private val serverCallNotes: HomeServerCallNotesController,
     private val pageSize: () -> Int,
     private val activePhoneFilter: () -> String,
     private val activeSearchQuery: () -> String,
@@ -59,6 +60,7 @@ internal class HomeSearchController(
                 calls = calls,
                 contactNotesByNumber = HomeCallPageLoader.contactNotes(context, calls),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
+                callNotesByCall = HomeCallNotesResolver.localNotes(context, calls),
             )
             handler.post {
                 if (generation != searchGeneration.get()) return@post
@@ -76,6 +78,18 @@ internal class HomeSearchController(
                     renderEmptyState()
                 } else {
                     applyRenderData(renderData, currentPageSize)
+                    serverCallNotes.enrichAsync(renderData) { enriched ->
+                        if (generation != searchGeneration.get()) return@enrichAsync
+                        if (
+                            query != activeSearchQuery() ||
+                            phoneFilter != activePhoneFilter() ||
+                            crmMode != isCrmModeEnabled() ||
+                            page != pageIndex()
+                        ) {
+                            return@enrichAsync
+                        }
+                        applyRenderData(enriched, currentPageSize)
+                    }
                 }
                 onRenderComplete()
             }
@@ -87,4 +101,5 @@ internal data class HomeRenderData(
     val calls: List<PhoneCallRecord>,
     val contactNotesByNumber: Map<String, String>,
     val contactNamesByNumber: Map<String, String>,
+    val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
 )
