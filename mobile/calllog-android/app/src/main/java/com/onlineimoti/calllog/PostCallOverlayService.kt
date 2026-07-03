@@ -27,6 +27,8 @@ class PostCallOverlayService : Service() {
             actionIssuedAt = { state.actionIssuedAt },
             preferredCompanyId = { state.companyId },
             setPreferredCompanyId = { state.companyId = it },
+            initialNoteText = { state.initialNoteText },
+            serverClientEventId = { state.serverClientEventId },
             callDirectionColor = ::callDirectionColor,
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
