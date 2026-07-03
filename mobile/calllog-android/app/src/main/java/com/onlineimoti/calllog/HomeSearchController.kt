@@ -107,6 +107,9 @@ internal class HomeSearchController(
     fun cancelActiveTask() {
         activeTask?.cancel(true)
         activeTask = null
+        // Invalidate a callback that may have been posted immediately before
+        // cancellation, such as when Home goes to the background.
+        searchGeneration.incrementAndGet()
     }
 }
 
