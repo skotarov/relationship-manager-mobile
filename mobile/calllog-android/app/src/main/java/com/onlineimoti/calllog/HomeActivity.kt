@@ -13,11 +13,13 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
     private val uiGeometry: HomeUiGeometry by lazy { HomeUiGeometry(resources) }
-    private val searchExecutor = Executors.newSingleThreadExecutor()
+    /** Two workers let the current query start even while an older provider read is unwinding. */
+    private val searchExecutor = Executors.newFixedThreadPool(2)
     private val searchGeneration = AtomicInteger(0)
     private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
     private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
         HomeNoteSavedReceiverController(this) {
+            HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
             renderCalls()
@@ -27,6 +29,7 @@ class HomeActivity : AppCompatActivity() {
         HomeNoteRefreshController(
             handler = handler,
             onPrepare = {
+                HomeCallPageLoader.clearSearchCache()
                 filteredFullLogController.invalidate()
                 companyGeneralNotesController.invalidate()
             },
@@ -227,6 +230,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (!::binding.isInitialized) return
+        HomeCallPageLoader.clearSearchCache()
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
         companyGeneralNotesController.invalidate()
@@ -244,11 +248,13 @@ class HomeActivity : AppCompatActivity() {
         handler.removeCallbacks(filteredFullLogRefreshWatcher)
         noteRefreshController.cancel()
         searchInputController.cancelPending()
+        searchController.cancelActiveTask()
         super.onPause()
     }
 
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
+        searchController.cancelActiveTask()
         searchExecutor.shutdownNow()
         callsLoader.release()
         serverCallNotesController.release()
@@ -262,6 +268,7 @@ class HomeActivity : AppCompatActivity() {
     private fun renderCalls() {
         val renderGeneration = callsLoader.invalidate()
         serverCallNotesController.invalidate()
+        if (activeSearchQuery.isBlank()) searchController.cancelActiveTask()
         val size = pageSize()
         val crmModeEnabled = isCrmModeEnabled()
         val showCrmFilters = crmModeEnabled && activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
@@ -283,6 +290,7 @@ class HomeActivity : AppCompatActivity() {
     private fun refreshFromPull() {
         if (pullRefreshInProgress) return
         pullRefreshInProgress = true
+        HomeCallPageLoader.clearSearchCache()
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
         HomeCrmPhaseLookup.invalidate()
