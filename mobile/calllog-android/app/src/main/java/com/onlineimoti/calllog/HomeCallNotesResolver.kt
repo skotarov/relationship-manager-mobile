@@ -10,6 +10,8 @@ internal data class HomeCallNote(
     val companyId: String = "",
     /** Lets Home edit an existing server-only note in place instead of duplicating it. */
     val serverClientEventId: String = "",
+    /** Foreign server notes stay visible but must not be opened for mutation. */
+    val editable: Boolean = true,
 )
 
 /**
@@ -53,6 +55,7 @@ internal object HomeCallNotesResolver {
         calls: List<PhoneCallRecord>,
         localNotes: Map<String, HomeCallNote>,
         serverEvents: List<CallReportHistoryEvent>,
+        principal: CallReportHistoryPrincipal = CallReportHistoryPrincipal(),
     ): Map<String, HomeCallNote> {
         if (calls.isEmpty()) return emptyMap()
         val merged = localNotes.toMutableMap()
@@ -74,6 +77,7 @@ internal object HomeCallNotesResolver {
                         authorName = event.authorBrokerName.trim(),
                         companyId = event.companyId.trim(),
                         serverClientEventId = event.clientEventId.trim(),
+                        editable = !isOtherBrokerAuthor(event, principal),
                     )
                     val current = merged[key]
                     if (current == null || isNewer(candidate, current)) merged[key] = candidate
@@ -104,6 +108,19 @@ internal object HomeCallNotesResolver {
             event.durationSeconds > 0L ||
             id.contains(":note:call:") ||
             id.contains(":topic:call:")
+    }
+
+    private fun isOtherBrokerAuthor(
+        event: CallReportHistoryEvent,
+        principal: CallReportHistoryPrincipal,
+    ): Boolean {
+        val authorId = event.authorBrokerId.trim()
+        val authorName = event.authorBrokerName.trim()
+        val currentId = principal.brokerId.trim()
+        val currentName = principal.brokerName.trim()
+        if (authorId.isNotBlank() && currentId.isNotBlank()) return authorId != currentId
+        if (authorName.isNotBlank() && currentName.isNotBlank()) return !authorName.equals(currentName, ignoreCase = true)
+        return false
     }
 
     private fun localVersionMs(note: ContactCallNote): Long = maxOf(note.savedAt, note.callAt)
