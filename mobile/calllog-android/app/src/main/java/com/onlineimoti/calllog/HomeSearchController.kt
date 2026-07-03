@@ -5,6 +5,7 @@ import android.os.Handler
 import android.view.View
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
 
 internal class HomeSearchController(
@@ -24,10 +25,13 @@ internal class HomeSearchController(
     private val applyRenderData: (HomeRenderData, Int) -> Unit,
     private val onRenderComplete: () -> Unit,
 ) {
+    private var activeTask: Future<*>? = null
+
     fun renderSearchCallsAsync() {
         val query = activeSearchQuery()
         val currentPageSize = pageSize()
         if (HomeCallPageLoader.isSearchTooShort(query)) {
+            cancelActiveTask()
             setCurrentCalls(emptyList())
             binding.homeStatusText.text = context.getString(R.string.dynamic_home_search_minimum)
             binding.previousCallsButton.isEnabled = false
@@ -38,6 +42,7 @@ internal class HomeSearchController(
             return
         }
 
+        cancelActiveTask()
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
         val crmMode = isCrmModeEnabled()
@@ -47,7 +52,8 @@ internal class HomeSearchController(
         binding.nextCallsButton.isEnabled = false
         binding.paginationContainer.visibility = View.VISIBLE
 
-        searchExecutor.execute {
+        activeTask = searchExecutor.submit {
+            if (Thread.currentThread().isInterrupted) return@submit
             val calls = HomeCallPageLoader.calls(
                 context = context,
                 activePhoneFilter = phoneFilter,
@@ -56,12 +62,14 @@ internal class HomeSearchController(
                 pageSize = currentPageSize,
                 crmMode = crmMode,
             )
+            if (Thread.currentThread().isInterrupted) return@submit
             val renderData = HomeRenderData(
                 calls = calls,
                 contactNotesByNumber = HomeCallPageLoader.contactNotes(context, calls),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
                 callNotesByCall = HomeCallNotesResolver.localNotes(context, calls),
             )
+            if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
                 if (generation != searchGeneration.get()) return@post
                 if (
@@ -94,6 +102,11 @@ internal class HomeSearchController(
                 onRenderComplete()
             }
         }
+    }
+
+    fun cancelActiveTask() {
+        activeTask?.cancel(true)
+        activeTask = null
     }
 }
 
