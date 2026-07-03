@@ -12,13 +12,52 @@ internal data class ContactSearchResult(
     val name: String,
 )
 
+/**
+ * Searches all device contacts, but retains a short-lived in-memory snapshot so
+ * typing one query character at a time does not rescan the Contacts provider.
+ */
 internal object ContactSearchProvider {
+    private const val CACHE_MS = 30_000L
+    private val cacheLock = Any()
+    private var cachedContacts: List<ContactSearchResult> = emptyList()
+    private var cachedAtMs = 0L
+
     fun search(context: Context, query: String): List<ContactSearchResult> {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return emptyList()
         val trimmed = query.trim()
         if (trimmed.isBlank()) return emptyList()
         val lowerQuery = trimmed.lowercase(Locale.getDefault())
         val digitsQuery = trimmed.filter { it.isDigit() }
+        return allContacts(context)
+            .asSequence()
+            .filter { result -> matches(result.name, result.phone, result.phone, lowerQuery, digitsQuery) }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
+            .toList()
+    }
+
+    fun invalidate() {
+        synchronized(cacheLock) {
+            cachedContacts = emptyList()
+            cachedAtMs = 0L
+        }
+    }
+
+    private fun allContacts(context: Context): List<ContactSearchResult> {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return emptyList()
+        }
+        val now = System.currentTimeMillis()
+        synchronized(cacheLock) {
+            if (cachedAtMs > 0L && now - cachedAtMs < CACHE_MS) return cachedContacts
+        }
+        val loaded = loadAllContacts(context)
+        synchronized(cacheLock) {
+            cachedContacts = loaded
+            cachedAtMs = now
+            return cachedContacts
+        }
+    }
+
+    private fun loadAllContacts(context: Context): List<ContactSearchResult> {
         val results = linkedMapOf<String, ContactSearchResult>()
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -40,14 +79,12 @@ internal object ContactSearchProvider {
                 val number = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                 val normalized = if (normalizedIndex >= 0) cursor.getString(normalizedIndex).orEmpty() else ""
                 val phone = number.ifBlank { normalized }
-                if (phone.isBlank()) continue
-                if (!matches(name, number, normalized, lowerQuery, digitsQuery)) continue
                 val key = noteKey(phone)
                 if (key.isBlank() || results.containsKey(key)) continue
                 results[key] = ContactSearchResult(phone = phone, name = name.ifBlank { phone })
             }
         }
-        return results.values.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
+        return results.values.toList()
     }
 
     private fun matches(name: String, number: String, normalized: String, lowerQuery: String, digitsQuery: String): Boolean {
