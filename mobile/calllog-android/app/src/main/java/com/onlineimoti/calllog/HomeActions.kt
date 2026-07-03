@@ -30,13 +30,33 @@ class HomeActions(
         )
     }
 
-    fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
+    fun openContactNotePopupForCall(
+        call: PhoneCallRecord,
+        displayName: String,
+        renderedNote: HomeCallNote? = null,
+    ) {
+        if (renderedNote?.editable == false) {
+            binding.homeStatusText.text = "Чуждата бележка е само за преглед"
+            return
+        }
         val config = ConfigStore.load(activity)
         val existingNote = existingCallNote(call)
-        val companyId = existingNote?.companyId.orEmpty().trim()
-        val noteText = existingNote?.note.orEmpty()
+        val companyId = renderedNote?.companyId?.trim().takeUnless { it.isNullOrBlank() }
+            ?: existingNote?.companyId.orEmpty().trim()
+        val noteText = renderedNote?.text?.takeIf { it.isNotBlank() }
+            ?: existingNote?.note.orEmpty()
+        val serverClientEventId = renderedNote
+            ?.takeIf { it.fromServer && it.editable }
+            ?.serverClientEventId
+            .orEmpty()
         if (!config.useOverlayPopups) {
-            openContactNoteEditorForCall(call, displayName, companyId, noteText)
+            openContactNoteEditorForCall(
+                call = call,
+                displayName = displayName,
+                companyId = companyId,
+                initialNoteText = noteText,
+                serverClientEventId = serverClientEventId,
+            )
             return
         }
 
@@ -54,6 +74,7 @@ class HomeActions(
                 .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
                 .putExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID, companyId)
                 .putExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT, noteText)
+                .putExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID, serverClientEventId)
         )
         startTemporaryNoteRefresh()
     }
@@ -63,6 +84,7 @@ class HomeActions(
         displayName: String,
         companyId: String,
         initialNoteText: String,
+        serverClientEventId: String,
     ) {
         activity.startActivity(
             CallNoteEditorLauncher.editorIntent(
@@ -75,6 +97,7 @@ class HomeActions(
                 durationSeconds = call.durationSeconds,
                 companyId = companyId,
                 initialNoteText = initialNoteText,
+                serverClientEventId = serverClientEventId,
             )
         )
     }
