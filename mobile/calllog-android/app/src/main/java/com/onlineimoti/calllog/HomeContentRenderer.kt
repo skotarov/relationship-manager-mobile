@@ -111,13 +111,14 @@ internal class HomeContentRenderer(
         val companyLabels = if (phoneFiltered) emptyMap() else companyGeneralNotes.labelsFor(renderData.calls)
         renderData.calls.forEach { call ->
             val key = HomeCallPageLoader.noteKey(call.number)
+            val callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
             binding.homeCallsContainer.addView(
                 rowRenderer.compactCallRow(
                     call = call,
                     displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName },
                     contactNote = if (phoneFiltered) null else renderData.contactNotesByNumber[key],
                     companyGeneralNoteLabels = if (phoneFiltered) null else companyLabels[key],
-                    callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)]?.text,
+                    callNote = callNote,
                     highlightQuery = activeSearchQuery(),
                     showContactIdentity = !phoneFiltered,
                     showGeneralContactNote = !phoneFiltered,
