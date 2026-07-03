@@ -7,10 +7,9 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 /**
- * Produces the incoming-call popup progressively. Contact policy, lookup.php and
- * server history run independently, so the first useful UI does not wait for the
- * slowest source. The history result is cached for the overlay to avoid a second
- * request from [PostCallLookupPopup].
+ * Produces the incoming-call popup progressively. Contact policy, local call
+ * history, lookup.php and server history run independently, so the first useful
+ * UI does not wait for the slowest source.
  */
 internal class IncomingCallLookupCoordinator(
     context: Context,
@@ -29,7 +28,9 @@ internal class IncomingCallLookupCoordinator(
     private var finishedCallbackSent = false
 
     fun start() {
-        if (!submit(::resolveContactAndStartLookups)) finishOnce()
+        val policyQueued = submit(::resolveContactAndStartLookups)
+        submit(::loadLocalRows)
+        if (!policyQueued) finishOnce()
     }
 
     private fun resolveContactAndStartLookups() {
@@ -61,6 +62,14 @@ internal class IncomingCallLookupCoordinator(
         }
     }
 
+    private fun loadLocalRows() {
+        val rows = runCatching {
+            LocalCallStatsProvider.buildPopupInfoRows(appContext, phone)
+        }.getOrDefault(emptyList())
+        IncomingLookupPopupRowsCache.putLocalRows(phone, rows)
+        publishCurrent()
+    }
+
     private fun loadLookup() {
         val contact = synchronized(lock) { contactInfo } ?: return
         val fallback = fallbackLookup(contact)
@@ -80,6 +89,8 @@ internal class IncomingCallLookupCoordinator(
             lookupFinished = true
         }
         publishCurrent()
+        // BroadcastReceiver work ends after lookup.php. Server history may still
+        // populate the already-open overlay without holding the receiver alive.
         finishOnce()
     }
 
@@ -90,7 +101,7 @@ internal class IncomingCallLookupCoordinator(
                 phone = phone,
             )
         }.getOrDefault(emptyList())
-        IncomingLookupPopupRowsCache.put(phone, rows)
+        IncomingLookupPopupRowsCache.putRemoteRows(phone, rows)
         publishCurrent()
     }
 
