@@ -15,6 +15,8 @@ data class ContactCallNote(
     val clientNoteId: String = "",
     /** Selected server company for this single conversation; blank means local-only. */
     val companyId: String = "",
+    /** Original cloud record identifier for a server-only note that must be updated in place. */
+    val serverClientEventId: String = "",
 )
 
 object ContactNoteReader {
