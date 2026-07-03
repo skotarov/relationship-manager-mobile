@@ -43,6 +43,7 @@ internal class PostCallGeneralNoteEditor(
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Основна бележка" } }
         val initialCompanyId = preferredCompanyId().trim()
+        if (initialCompanyId.isNotBlank()) setPreferredCompanyId(initialCompanyId)
         val draft = ContactNoteFormDraft(phone = phoneValue, title = titleText, isGeneralNote = true)
         val form = OverlayContactNoteFormController(
             service = service,
@@ -55,7 +56,10 @@ internal class PostCallGeneralNoteEditor(
 
         fun saveCurrent(noteText: String, transition: Boolean): Boolean {
             setPendingGeneralNote(noteText)
-            if (!form.hasChangedText(noteText)) return true
+            if (!form.hasChangedText(noteText)) {
+                setPreferredCompanyId(form.effectiveCompanyId().ifBlank { initialCompanyId })
+                return true
+            }
             val result = if (transition) form.saveForTransition(noteText) else form.save(noteText) ?: return false
             if (!result.saved) return false
             form.markTextPersisted(noteText)
@@ -102,7 +106,7 @@ internal class PostCallGeneralNoteEditor(
         })
         val generalNoteInput = ui.noteEditText(generalNote, "Основна бележка към контакта/номера", 4, ui.dp(12))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
-            if (saveCurrent(generalNoteInput.text?.toString().orEmpty(), transition = false)) {
+            if (saveCurrent(generalNoteInput.text?.toString().orEmpty(), transition = true)) {
                 openCalendarEvent(titleText)
             } else {
                 Toast.makeText(service, "Не успях да запиша основната бележка", Toast.LENGTH_SHORT).show()
@@ -120,7 +124,7 @@ internal class PostCallGeneralNoteEditor(
         card.addView(generalNoteInput)
         card.addView(actionRow(
             input = generalNoteInput,
-            saveCurrent = { text, transition -> saveCurrent(text, transition) },
+            saveCurrent = ::saveCurrent,
             showCallNote = showNoteEditor,
             openHistory = openContactNotesScreen,
             close = stopOverlay,
