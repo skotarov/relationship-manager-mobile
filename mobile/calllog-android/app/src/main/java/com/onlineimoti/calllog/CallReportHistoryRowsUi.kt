@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -191,6 +192,20 @@ internal class CallReportHistoryRowsUi(
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
+                        val serverOnly = row.localNote == null && row.serverEvent?.clientEventId?.isNotBlank() == true
+                        if (serverOnly) {
+                            val event = row.serverEvent ?: return@setOnClickListener
+                            activity.startActivity(Intent(activity, ServerNoteEditActivity::class.java).apply {
+                                putExtra(ServerNoteEditActivity.EXTRA_PHONE, phone)
+                                putExtra(ServerNoteEditActivity.EXTRA_TITLE, event.contactName.ifBlank { phone })
+                                putExtra(ServerNoteEditActivity.EXTRA_DIRECTION, row.direction)
+                                putExtra(ServerNoteEditActivity.EXTRA_CALL_AT, row.timeMs)
+                                putExtra(ServerNoteEditActivity.EXTRA_DURATION, row.durationSeconds)
+                                putExtra(ServerNoteEditActivity.EXTRA_SERVER_CLIENT_EVENT_ID, event.clientEventId)
+                                putExtra(ServerNoteEditActivity.EXTRA_INITIAL_NOTE_TEXT, row.text)
+                            })
+                            return@setOnClickListener
+                        }
                         val source = row.localNote ?: ContactCallNote(
                             note = row.text,
                             callAt = row.timeMs,
