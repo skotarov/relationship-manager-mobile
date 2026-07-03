@@ -44,6 +44,7 @@ internal class HomeServerCallNotesController(
                 calls = renderData.calls,
                 localNotes = renderData.callNotesByCall,
                 serverEvents = history.events,
+                principal = history.principal,
             )
             if (mergedNotes == renderData.callNotesByCall) return@execute
             val updated = renderData.copy(callNotesByCall = mergedNotes)
