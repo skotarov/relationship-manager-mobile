@@ -52,6 +52,7 @@ internal class PostCallNoteEditor(
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
         val existingCallNote = existingCallNote(phoneValue, callAtValue, directionValue)
         val initialCompanyId = preferredCompanyId().trim().ifBlank { existingCallNote?.companyId.orEmpty() }
+        if (initialCompanyId.isNotBlank()) setPreferredCompanyId(initialCompanyId)
         val draft = ContactNoteFormDraft(
             phone = phoneValue,
             title = titleText,
@@ -73,7 +74,10 @@ internal class PostCallNoteEditor(
 
         fun saveCurrent(noteText: String, transition: Boolean): Boolean {
             setPendingCallNote(noteText)
-            if (!form.hasChangedText(noteText)) return true
+            if (!form.hasChangedText(noteText)) {
+                setPreferredCompanyId(form.effectiveCompanyId().ifBlank { initialCompanyId })
+                return true
+            }
             val result = if (transition) form.saveForTransition(noteText) else form.save(noteText) ?: return false
             if (!result.saved) return false
             form.markTextPersisted(noteText)
@@ -120,7 +124,7 @@ internal class PostCallNoteEditor(
         val callNoteInput = ui.callNoteEditText(originalText, "Бележка към това обаждане", 3, ui.dp(8))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
             val noteText = callNoteInput.text?.toString().orEmpty()
-            if (saveCurrent(noteText, transition = false)) openCalendarEvent(titleText)
+            if (saveCurrent(noteText, transition = true)) openCalendarEvent(titleText)
             else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
         })
         titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) {
