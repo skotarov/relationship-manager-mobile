@@ -30,8 +30,20 @@ object CallReportRuntime {
         CallReportNotifications.showLookupNotification(context, result, fullscreen, phone, direction)
     }
 
-    fun showLookupShadeNotification(context: Context, result: LookupResult, phone: String = "", direction: String = "") {
-        CallReportNotifications.showLookupShadeNotification(context, result, phone, direction)
+    fun showLookupShadeNotification(
+        context: Context,
+        result: LookupResult,
+        phone: String = "",
+        direction: String = "",
+        incomingPopupDataIsPreloaded: Boolean = false,
+    ) {
+        CallReportNotifications.showLookupShadeNotification(
+            context = context,
+            result = result,
+            phone = phone,
+            direction = direction,
+            incomingPopupDataIsPreloaded = incomingPopupDataIsPreloaded,
+        )
     }
 
     fun showImmediatePostCallPrompt(context: Context, formUrl: String, phone: String, direction: String, title: String = "Post call note") {
