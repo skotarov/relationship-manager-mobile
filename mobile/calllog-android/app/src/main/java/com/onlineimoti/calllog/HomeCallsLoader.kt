@@ -10,6 +10,7 @@ internal class HomeCallsLoader(
     private val handler: Handler,
     private val contentRenderer: HomeContentRenderer,
     private val crmFilters: HomeCrmFiltersController,
+    private val serverCallNotes: HomeServerCallNotesController,
     private val activePhoneFilter: () -> String,
     private val activeSearchQuery: () -> String,
     private val pageIndex: () -> Int,
@@ -40,14 +41,16 @@ internal class HomeCallsLoader(
             onRenderComplete()
             return
         }
-        contentRenderer.applyRenderData(
-            HomeRenderData(
-                calls = calls,
-                contactNotesByNumber = HomeCallPageLoader.contactNotes(activity, calls),
-                contactNamesByNumber = HomeCallPageLoader.contactNames(activity, calls),
-            ),
-            pageSize,
+        val data = HomeRenderData(
+            calls = calls,
+            contactNotesByNumber = HomeCallPageLoader.contactNotes(activity, calls),
+            contactNamesByNumber = HomeCallPageLoader.contactNames(activity, calls),
+            callNotesByCall = HomeCallNotesResolver.localNotes(activity, calls),
         )
+        contentRenderer.applyRenderData(data, pageSize)
+        serverCallNotes.enrichAsync(data) { enriched ->
+            contentRenderer.applyRenderData(enriched, pageSize)
+        }
         onRenderComplete()
     }
 
@@ -78,6 +81,7 @@ internal class HomeCallsLoader(
                     calls = calls,
                     contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
                     contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
+                    callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
@@ -90,8 +94,14 @@ internal class HomeCallsLoader(
                     pageIndex() == requestedPage &&
                     crmFilters.state() == filterState
                 if (!current) return@post
-                if (data.calls.isEmpty()) contentRenderer.renderEmptyState()
-                else contentRenderer.applyRenderData(data, pageSize)
+                if (data.calls.isEmpty()) {
+                    contentRenderer.renderEmptyState()
+                } else {
+                    contentRenderer.applyRenderData(data, pageSize)
+                    serverCallNotes.enrichAsync(data) { enriched ->
+                        contentRenderer.applyRenderData(enriched, pageSize)
+                    }
+                }
                 onRenderComplete()
             }
         }
