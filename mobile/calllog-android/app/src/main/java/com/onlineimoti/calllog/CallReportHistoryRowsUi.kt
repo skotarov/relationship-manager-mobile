@@ -162,6 +162,7 @@ internal class CallReportHistoryRowsUi(
         companyNames: Map<String, String>,
     ): LinearLayout {
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
+        val readOnlyForeignNote = foreignRecord && row.kind == CallReportHistoryRowKind.NOTE
         val serverConfirmed = isServerConfirmed(phone, row)
         val localNote = row.localNote
         val pendingGenericSync = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && localNote?.let {
@@ -183,6 +184,11 @@ internal class CallReportHistoryRowsUi(
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(colors.first, dp(12), colors.second, dp(1))
+            if (readOnlyForeignNote) {
+                contentDescription = "Само за преглед. Чужда бележка."
+                isClickable = false
+                isFocusable = false
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -241,6 +247,7 @@ internal class CallReportHistoryRowsUi(
                 pendingCompanySync -> addView(pendingSyncText(CallReportTopicNoteOutbox.lastFailure(activity)))
                 pendingGenericSync && !serverConfirmed -> addView(pendingSyncText(CallReportNoteOutbox.lastFailure(activity)))
             }
+            if (readOnlyForeignNote) addView(readOnlyNoteBadge())
             if (!foreignRecord && remoteEnabled && row.serverNewer) addView(serverNewerText())
             if (row.authorIsOtherBroker && row.authorName.isNotBlank()) addView(authorText(row.authorName))
         }
@@ -292,6 +299,19 @@ internal class CallReportHistoryRowsUi(
         textSize = 12f
         setTextColor(if (failure.isBlank()) Color.rgb(100, 116, 139) else Color.rgb(185, 28, 28))
         setPadding(0, dp(6), 0, 0)
+    }
+
+    private fun readOnlyNoteBadge(): TextView = TextView(activity).apply {
+        text = "Само за преглед"
+        textSize = 11.5f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(FOREIGN_TEXT)
+        setPadding(dp(8), dp(4), dp(8), dp(4))
+        background = roundedRect(FOREIGN_BADGE_BACKGROUND, dp(8), Color.TRANSPARENT, 0)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(8) }
     }
 
     private fun serverNewerText(): TextView = TextView(activity).apply {
@@ -377,5 +397,6 @@ internal class CallReportHistoryRowsUi(
         val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
         val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
         val FOREIGN_TEXT: Int = Color.rgb(100, 116, 139)
+        val FOREIGN_BADGE_BACKGROUND: Int = Color.rgb(226, 232, 240)
     }
 }
