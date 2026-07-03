@@ -28,6 +28,8 @@ class ContactNoteEditActivity : Activity() {
     private var serverScopeTextLoading = false
     private var displayedScopeId = ""
     private var displayedScopeText = ""
+    /** Value last read from storage or deliberately saved by this editor. */
+    private var persistedEditorText = ""
     private val topicExecutor = Executors.newSingleThreadExecutor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,15 +79,25 @@ class ContactNoteEditActivity : Activity() {
                 },
                 onNoteInputReady = { input ->
                     noteInput = input
+                    persistedEditorText = input.text?.toString().orEmpty()
                     if (isGeneralNote) refreshTextForScope(topicState.selectedCompanyId, input)
                 },
                 onTopicSpinnerReady = { spinner -> topicSpinner = spinner },
                 saveAndClose = ::saveAndClose,
                 saveAndOpenCalendar = ::saveAndOpenCalendar,
-                close = { finish() },
+                close = ::saveAndCloseIfChanged,
             ).buildContent(),
         )
         if (topicState.visible) loadTopicCompanies()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (intent.getBooleanExtra(EXTRA_SHOW_NUMBER_KEYPAD, false)) {
+            super.onBackPressed()
+            return
+        }
+        saveAndCloseIfChanged(noteInput?.text?.toString().orEmpty())
     }
 
     override fun onDestroy() {
@@ -209,20 +221,55 @@ class ContactNoteEditActivity : Activity() {
         }
         displayedScopeId = companyId
         displayedScopeText = value
+        persistedEditorText = value
     }
 
     private fun saveAndClose(noteText: String) {
         val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
         val outcome = saveCurrentNote(noteText, topicCompanyId)
         showSaveOutcome(outcome)
-        if (outcome.saved) finish()
+        if (outcome.saved) {
+            persistedEditorText = noteText
+            finish()
+        }
+    }
+
+    /** Saves only changed content before an X, Cancel or system-Back exit. */
+    private fun saveAndCloseIfChanged(noteText: String) {
+        if (noteText == persistedEditorText) {
+            finish()
+            return
+        }
+        val strictDestination = if (serverClientEventId.isNotBlank()) {
+            topicState.selectedCompanyId.ifBlank { preferredCompanyId }.ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+        } else {
+            ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState)
+        }
+        val fallbackLocally = strictDestination == null
+        val destination = strictDestination
+            ?: topicState.selectedCompanyId.ifBlank { preferredCompanyId }
+            .ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+        val outcome = saveCurrentNote(
+            noteText = noteText,
+            topicCompanyId = destination,
+            localOnlyFallback = topicState.loadError.isNotBlank() || fallbackLocally,
+        )
+        if (!outcome.saved) {
+            Toast.makeText(this, getString(R.string.dynamic_note_save_failed), Toast.LENGTH_SHORT).show()
+            return
+        }
+        persistedEditorText = noteText
+        finish()
     }
 
     private fun saveAndOpenCalendar(noteText: String) {
         val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
         val outcome = saveCurrentNote(noteText, topicCompanyId)
         showSaveOutcome(outcome)
-        if (outcome.saved) openCalendarEvent(noteText)
+        if (outcome.saved) {
+            persistedEditorText = noteText
+            openCalendarEvent(noteText)
+        }
     }
 
     private fun selectedTopicCompanyIdOrNull(): String? {
@@ -237,13 +284,17 @@ class ContactNoteEditActivity : Activity() {
         }
     }
 
-    private fun saveCurrentNote(noteText: String, topicCompanyId: String): NoteSaveOutcome {
+    private fun saveCurrentNote(
+        noteText: String,
+        topicCompanyId: String,
+        localOnlyFallback: Boolean = topicState.loadError.isNotBlank(),
+    ): NoteSaveOutcome {
         val result = ContactNoteFormWorkflow.save(
             context = this,
             draft = draft(),
             noteText = noteText,
             topicCompanyId = topicCompanyId,
-            localOnlyFallback = topicState.loadError.isNotBlank(),
+            localOnlyFallback = localOnlyFallback,
         )
         if (!result.saved) return NoteSaveOutcome(saved = false)
         if (!result.writeResult.savedAsGeneralNote) {
