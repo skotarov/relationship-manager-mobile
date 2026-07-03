@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 internal enum class HomeCrmContactKind {
     /** Number does not exist in a regular Android contact. */
@@ -21,10 +23,17 @@ object HomeCallPageLoader {
     private const val FILTERED_SMS_SCAN_LIMIT = 150
     private const val CRM_CALL_SCAN_LIMIT = 1_000
     private const val REAL_CONTACT_CACHE_MS = 30_000L
+    private const val SEARCH_CALL_CACHE_MS = 10_000L
+    private const val MAX_FILTERED_SEARCH_CALL_CACHES = 8
 
     private val realContactPhoneKeysLock = Any()
     private var cachedRealContactPhoneKeys: Set<String> = emptySet()
     private var realContactPhoneKeysCachedAtMs = 0L
+
+    private val searchCallCacheLock = Any()
+    private var cachedUnfilteredSearchCalls = TimedCalls(0L, emptyList())
+    private val cachedFilteredSearchCalls = linkedMapOf<String, TimedCalls>()
+    private val searchSourceExecutor = Executors.newFixedThreadPool(3)
 
     fun calls(
         context: Context,
@@ -51,7 +60,15 @@ object HomeCallPageLoader {
         return trimmed.isNotBlank() && trimmed.length < 2 && digits.length < 3
     }
 
-    fun clearSearchCache() = Unit
+    /** Clears only local, short-lived snapshots; it never alters stored notes or contacts. */
+    fun clearSearchCache() {
+        synchronized(searchCallCacheLock) {
+            cachedUnfilteredSearchCalls = TimedCalls(0L, emptyList())
+            cachedFilteredSearchCalls.clear()
+        }
+        ContactSearchProvider.invalidate()
+        StoredNoteSearchProvider.invalidate()
+    }
 
     /** A CRM row is either an unknown number or a number explicitly marked CRM. */
     fun isCrmEligible(context: Context, phone: String): Boolean {
@@ -140,30 +157,83 @@ object HomeCallPageLoader {
         crmMode: Boolean,
     ): List<PhoneCallRecord> {
         if (isSearchTooShort(query)) return emptyList()
-        val recentCalls = if (activePhoneFilter.isBlank()) {
-            PhoneCallReader.recentCalls(context, limit = SEARCH_SCAN_LIMIT, offset = 0)
-        } else {
-            PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = SEARCH_SCAN_LIMIT, offset = 0)
-        }
-        val contactResults: List<ContactSearchResult> = ContactSearchProvider.search(context, query)
-            .filter { result: ContactSearchResult -> activePhoneFilter.isBlank() || noteKey(result.phone) == noteKey(activePhoneFilter) }
-        val noteResults: List<StoredNoteSearchResult> = StoredNoteSearchProvider.search(context, query)
-            .filter { result: StoredNoteSearchResult -> activePhoneFilter.isBlank() || result.phoneKey == noteKey(activePhoneFilter) }
+        val sources = loadSearchSources(context.applicationContext, activePhoneFilter, query)
+        val recentCalls = sources.calls
+        val contactResults = sources.contacts
+            .filter { result -> activePhoneFilter.isBlank() || noteKey(result.phone) == noteKey(activePhoneFilter) }
+        val noteResults = sources.notes
+            .filter { result -> activePhoneFilter.isBlank() || result.phoneKey == noteKey(activePhoneFilter) }
 
         val seen = linkedSetOf<String>()
         val ordered = arrayListOf<PhoneCallRecord>()
-        contactResults.forEach { contact: ContactSearchResult ->
+        contactResults.forEach { contact ->
             val key = noteKey(contact.phone)
             if (!seen.add("contact:$key")) return@forEach
             ordered.add(bestCallForPhone(recentCalls, contact.phone, contact.name, 0L, ""))
         }
-        noteResults.forEach { note: StoredNoteSearchResult ->
+        noteResults.forEach { note ->
             val resultKey = if (note.isCallNote && note.callAt > 0L) "call:${note.phoneKey}:${note.callAt}:${note.direction}" else "note:${note.phoneKey}"
             if (!seen.add(resultKey)) return@forEach
             ordered.add(bestCallForPhone(recentCalls, note.phone, note.phone, note.callAt, note.direction))
         }
         val filtered = if (crmMode) filterCrmEligible(context, ordered) else ordered
         return filtered.page(pageIndex, pageSize)
+    }
+
+    /** The three data sources are independent; run them concurrently without reducing scope. */
+    private fun loadSearchSources(context: Context, activePhoneFilter: String, query: String): SearchSources {
+        val callsFuture = searchSourceExecutor.submit<List<PhoneCallRecord>> {
+            searchCallSnapshot(context, activePhoneFilter)
+        }
+        val contactsFuture = searchSourceExecutor.submit<List<ContactSearchResult>> {
+            ContactSearchProvider.search(context, query)
+        }
+        val notesFuture = searchSourceExecutor.submit<List<StoredNoteSearchResult>> {
+            StoredNoteSearchProvider.search(context, query)
+        }
+        return SearchSources(
+            calls = await(callsFuture, emptyList()),
+            contacts = await(contactsFuture, emptyList()),
+            notes = await(notesFuture, emptyList()),
+        )
+    }
+
+    private fun searchCallSnapshot(context: Context, activePhoneFilter: String): List<PhoneCallRecord> {
+        val key = noteKey(activePhoneFilter)
+        val now = System.currentTimeMillis()
+        synchronized(searchCallCacheLock) {
+            val cached = if (key.isBlank()) cachedUnfilteredSearchCalls else cachedFilteredSearchCalls[key]
+            if (cached != null && now - cached.loadedAtMs < SEARCH_CALL_CACHE_MS) return cached.calls
+        }
+        val loaded = if (activePhoneFilter.isBlank()) {
+            PhoneCallReader.recentCalls(context, limit = SEARCH_SCAN_LIMIT, offset = 0)
+        } else {
+            PhoneCallReader.callsForPhone(context, activePhoneFilter, limit = SEARCH_SCAN_LIMIT, offset = 0)
+        }
+        synchronized(searchCallCacheLock) {
+            val entry = TimedCalls(now, loaded)
+            if (key.isBlank()) {
+                cachedUnfilteredSearchCalls = entry
+            } else {
+                cachedFilteredSearchCalls[key] = entry
+                while (cachedFilteredSearchCalls.size > MAX_FILTERED_SEARCH_CALL_CACHES) {
+                    cachedFilteredSearchCalls.remove(cachedFilteredSearchCalls.entries.first().key)
+                }
+            }
+        }
+        return loaded
+    }
+
+    private fun <T> await(future: Future<T>, fallback: T): T {
+        return try {
+            future.get()
+        } catch (_: InterruptedException) {
+            future.cancel(true)
+            Thread.currentThread().interrupt()
+            fallback
+        } catch (_: Throwable) {
+            fallback
+        }
     }
 
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
@@ -242,9 +312,9 @@ object HomeCallPageLoader {
     private fun bestCallForPhone(calls: List<PhoneCallRecord>, phone: String, fallbackName: String, callAt: Long, direction: String): PhoneCallRecord {
         val key = noteKey(phone)
         val exact = if (callAt > 0L) {
-            calls.firstOrNull { call: PhoneCallRecord -> noteKey(call.number) == key && call.startedAt == callAt && (direction.isBlank() || call.direction == direction) }
+            calls.firstOrNull { call -> noteKey(call.number) == key && call.startedAt == callAt && (direction.isBlank() || call.direction == direction) }
         } else null
-        val latest = calls.firstOrNull { call: PhoneCallRecord -> noteKey(call.number) == key }
+        val latest = calls.firstOrNull { call -> noteKey(call.number) == key }
         return exact ?: latest ?: PhoneCallRecord(
             number = phone,
             name = fallbackName.takeIf { it.isNotBlank() && noteKey(it) != key }.orEmpty(),
@@ -260,8 +330,8 @@ object HomeCallPageLoader {
 
     fun contactNotes(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
         val notes = linkedMapOf<String, String>()
-        calls.map { call: PhoneCallRecord -> call.number }.distinctBy { number: String -> noteKey(number) }.forEach { number: String ->
-            ContactNoteReader.generalNoteForPhone(context, number).takeIf { note: String -> note.isNotBlank() }?.let { note: String ->
+        calls.map { call -> call.number }.distinctBy { number -> noteKey(number) }.forEach { number ->
+            ContactNoteReader.generalNoteForPhone(context, number).takeIf { note -> note.isNotBlank() }?.let { note ->
                 notes[noteKey(number)] = note
             }
         }
@@ -270,8 +340,8 @@ object HomeCallPageLoader {
 
     fun contactNames(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
         val names = linkedMapOf<String, String>()
-        calls.map { call: PhoneCallRecord -> call.number }.distinctBy { number: String -> noteKey(number) }.forEach { number: String ->
-            ContactGroupFilter.resolveDisplayName(context, number).orEmpty().takeIf { name: String -> name.isNotBlank() }?.let { name: String ->
+        calls.map { call -> call.number }.distinctBy { number -> noteKey(number) }.forEach { number ->
+            ContactGroupFilter.resolveDisplayName(context, number).orEmpty().takeIf { name -> name.isNotBlank() }?.let { name ->
                 names[noteKey(number)] = name
             }
         }
@@ -282,4 +352,15 @@ object HomeCallPageLoader {
         val digits = number.filter { it.isDigit() }
         return if (digits.length > 9) digits.takeLast(9) else digits
     }
+
+    private data class TimedCalls(
+        val loadedAtMs: Long,
+        val calls: List<PhoneCallRecord>,
+    )
+
+    private data class SearchSources(
+        val calls: List<PhoneCallRecord>,
+        val contacts: List<ContactSearchResult>,
+        val notes: List<StoredNoteSearchResult>,
+    )
 }
