@@ -5,6 +5,7 @@ import android.content.Intent
 
 internal object CallNoteEditorLauncher {
     const val EXTRA_INITIAL_NOTE_TEXT = "initial_note_text"
+    const val EXTRA_SERVER_CLIENT_EVENT_ID = "server_client_event_id"
 
     fun editorIntent(
         context: Context,
@@ -17,6 +18,7 @@ internal object CallNoteEditorLauncher {
         actionIssuedAt: Long = 0L,
         companyId: String = "",
         initialNoteText: String = "",
+        serverClientEventId: String = "",
     ): Intent {
         return ExternalLaunchNavigation.apply(
             Intent(context, ContactNoteEditActivity::class.java)
@@ -29,6 +31,7 @@ internal object CallNoteEditorLauncher {
                 .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
                 .putExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID, companyId)
                 .putExtra(EXTRA_INITIAL_NOTE_TEXT, initialNoteText)
+                .putExtra(EXTRA_SERVER_CLIENT_EVENT_ID, serverClientEventId)
         )
     }
 
@@ -43,6 +46,7 @@ internal object CallNoteEditorLauncher {
         actionIssuedAt: Long = 0L,
         companyId: String = "",
         initialNoteText: String = "",
+        serverClientEventId: String = "",
     ) {
         context.startActivity(
             editorIntent(
@@ -56,6 +60,7 @@ internal object CallNoteEditorLauncher {
                 actionIssuedAt,
                 companyId,
                 initialNoteText,
+                serverClientEventId,
             )
         )
     }
