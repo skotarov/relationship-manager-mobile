@@ -27,6 +27,7 @@ internal class HomeContentRenderer(
 ) {
     var currentCalls: List<PhoneCallRecord> = emptyList()
         private set
+    private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) {
         currentCalls = calls
@@ -34,6 +35,7 @@ internal class HomeContentRenderer(
 
     fun clearCalls() {
         currentCalls = emptyList()
+        currentCallNotesByCall = emptyMap()
     }
 
     fun prepareForRender(pageSize: Int, keepExistingRows: Boolean) {
@@ -69,6 +71,7 @@ internal class HomeContentRenderer(
                 calls = calls,
                 contactNotesByNumber = HomeCallPageLoader.contactNotes(activity, calls),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(activity, calls),
+                callNotesByCall = currentCallNotesByCall,
             ),
             pageSize = pageSize,
             refreshCompanyLabels = false,
@@ -100,6 +103,7 @@ internal class HomeContentRenderer(
         refreshCompanyLabels: Boolean,
     ) {
         currentCalls = renderData.calls
+        currentCallNotesByCall = renderData.callNotesByCall
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
@@ -113,7 +117,7 @@ internal class HomeContentRenderer(
                     displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName },
                     contactNote = if (phoneFiltered) null else renderData.contactNotesByNumber[key],
                     companyGeneralNoteLabels = if (phoneFiltered) null else companyLabels[key],
-                    callNote = ContactNoteReader.callNoteForPhone(activity, call.number, call.startedAt, call.direction),
+                    callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)],
                     highlightQuery = activeSearchQuery(),
                     showContactIdentity = !phoneFiltered,
                     showGeneralContactNote = !phoneFiltered,
