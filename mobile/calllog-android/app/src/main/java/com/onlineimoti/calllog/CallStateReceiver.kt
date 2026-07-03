@@ -45,8 +45,9 @@ class CallStateReceiver : BroadcastReceiver() {
 
         CallLifecycleStore.markActive(context, number, direction)
         if (!CallStateDeduper.markHandled(context, number, direction)) return
-        showInstantLoading(context, number, "Зарежда се информация…", "Проверявам разговори и бележка…")
-        showLookup(context, number, direction, fullscreen = direction == "in")
+        val config = ConfigStore.load(context.applicationContext)
+        showInstantLoading(context, config, number, "Зарежда се информация…", "Проверявам разговори и бележка…")
+        showLookup(context, config, number, direction, fullscreen = direction == "in")
     }
 
     private fun handleCallEnded(context: Context, hasCallLog: Boolean) {
@@ -68,8 +69,13 @@ class CallStateReceiver : BroadcastReceiver() {
         return ActiveCallRecord(number = latest.number, direction = latest.direction, startedAt = latest.startedAt)
     }
 
-    private fun showInstantLoading(context: Context, number: String, title: String, subtitle: String) {
-        val config = ConfigStore.load(context)
+    private fun showInstantLoading(
+        context: Context,
+        config: AppConfig,
+        number: String,
+        title: String,
+        subtitle: String,
+    ) {
         if (!config.useOverlayPopups || !config.useCustomStartPopup || !Settings.canDrawOverlays(context) || isScreenLocked(context)) return
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
@@ -89,53 +95,22 @@ class CallStateReceiver : BroadcastReceiver() {
         return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
     }
 
-    private fun showLookup(context: Context, number: String, direction: String, fullscreen: Boolean) {
+    private fun showLookup(
+        context: Context,
+        config: AppConfig,
+        number: String,
+        direction: String,
+        fullscreen: Boolean,
+    ) {
         val pendingResult = goAsync()
-        executeBounded(pendingResult) {
-            try {
-                val config = ConfigStore.load(context)
-                if (!ContactGroupFilter.shouldNotify(context, number, config)) return@executeBounded
-                val displayName = ContactGroupFilter.resolveDisplayName(context, number)
-                val title = displayName.ifNullOrBlank { number }
-                val lookupContext = CallReportLookupContext(
-                    communicationType = "phone",
-                    contactName = displayName.orEmpty(),
-                )
-
-                CallReportRuntime.ensureNotificationChannel(context)
-                if (!remoteReady(config)) {
-                    LookupPopupPresenter.show(
-                        context = context,
-                        result = LookupResult(title, number, emptyList(), ""),
-                        fullscreen = fullscreen,
-                        phone = number,
-                        direction = direction,
-                    )
-                    return@executeBounded
-                }
-
-                LookupPopupPresenter.show(
-                    context = context,
-                    result = LookupResult(title, "Зарежда се информация от Call Report…", emptyList(), ""),
-                    fullscreen = fullscreen,
-                    phone = number,
-                    direction = direction,
-                )
-                val result = CallReportRuntime.fetchLookup(config, number, direction, lookupContext).let { lookup ->
-                    if (displayName.isNullOrBlank()) lookup else lookup.copy(title = displayName)
-                }
-                LookupPopupPresenter.show(context, result, fullscreen = false, phone = number, direction = direction)
-            } catch (_: Throwable) {
-                CallReportRuntime.ensureNotificationChannel(context)
-                LookupPopupPresenter.show(
-                    context = context,
-                    result = LookupResult(number, number, emptyList(), ""),
-                    fullscreen = fullscreen,
-                    phone = number,
-                    direction = direction,
-                )
-            }
-        }
+        IncomingCallLookupCoordinator(
+            context = context.applicationContext,
+            config = config,
+            phone = number,
+            direction = direction,
+            fullscreen = fullscreen,
+            onLookupFinished = { pendingResult.finish() },
+        ).start()
     }
 
     private fun showPostCallPrompt(context: Context, number: String, direction: String) {
@@ -220,10 +195,6 @@ class CallStateReceiver : BroadcastReceiver() {
         PostCallActionRouter.route(context, number, direction, title, config = config)
     }
 
-    private inline fun String?.ifNullOrBlank(fallback: () -> String): String {
-        return if (this.isNullOrBlank()) fallback() else this
-    }
-
     private object CallStateDeduper {
         private const val PREFS = "calllog_call_state_deduper"
         private const val KEY_LAST_NUMBER = "last_number"
@@ -259,8 +230,8 @@ class CallStateReceiver : BroadcastReceiver() {
     private companion object {
         const val MAX_PENDING_LOOKUPS = 12
         val EXECUTOR = ThreadPoolExecutor(
-            1,
-            1,
+            2,
+            2,
             0L,
             TimeUnit.MILLISECONDS,
             ArrayBlockingQueue(MAX_PENDING_LOOKUPS),
