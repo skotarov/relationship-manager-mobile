@@ -20,6 +20,7 @@ class ContactNoteEditActivity : Activity() {
     private var isGeneralNote = false
     private var preferredCompanyId = ""
     private var initialNoteText = ""
+    private var serverClientEventId = ""
     private var topicState = ContactNoteTopicState(visible = false)
     private var topicSpinner: Spinner? = null
     private var noteInput: EditText? = null
@@ -54,10 +55,13 @@ class ContactNoteEditActivity : Activity() {
         readDraftFromIntent()
         val initialTopicState = ContactNoteFormWorkflow.initialTopicState(this, draft())
         topicState = when {
-            preferredCompanyId.isNotBlank() -> initialTopicState.copy(selectedCompanyId = preferredCompanyId)
-            // An already saved local call note keeps its present destination when
-            // opened for editing. New CRM/unknown notes deliberately require the
-            // user to select Local or a company.
+            preferredCompanyId.isNotBlank() -> initialTopicState.copy(
+                selectedCompanyId = preferredCompanyId,
+                // Keep an already assigned firm editable even when the current
+                // Android contact is no longer marked for CRM sync.
+                localOnly = false,
+                loading = initialTopicState.visible,
+            )
             !isGeneralNote && initialNoteText.isNotBlank() && initialTopicState.visible && !initialTopicState.localOnly -> {
                 initialTopicState.copy(selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID)
             }
@@ -69,8 +73,6 @@ class ContactNoteEditActivity : Activity() {
                 state = ::uiState,
                 onTopicSelected = { selectedCompanyId, input ->
                     topicState = topicState.copy(selectedCompanyId = selectedCompanyId)
-                    // General notes are per company. A call note is one record that
-                    // can be moved to a different company, so preserve its text.
                     if (isGeneralNote) refreshTextForScope(selectedCompanyId, input)
                 },
                 onNoteInputReady = { input ->
@@ -103,6 +105,7 @@ class ContactNoteEditActivity : Activity() {
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
         preferredCompanyId = intent.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
         initialNoteText = if (isGeneralNote) "" else intent.getStringExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT).orEmpty()
+        serverClientEventId = intent.getStringExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID).orEmpty().trim()
     }
 
     private fun draft(): ContactNoteFormDraft = ContactNoteFormDraft(
@@ -113,6 +116,7 @@ class ContactNoteEditActivity : Activity() {
         durationSeconds = durationSeconds,
         actionIssuedAt = actionIssuedAt,
         isGeneralNote = isGeneralNote,
+        serverClientEventId = serverClientEventId,
     )
 
     private fun uiState(): ContactNoteEditUiState = ContactNoteEditUiState(
@@ -138,6 +142,9 @@ class ContactNoteEditActivity : Activity() {
                         loadedState.copy(selectedCompanyId = ContactNoteTopicState.LOCAL_COMPANY_ID)
                     }
                     preferredCompanyId.isNotBlank() && loadedState.companies.any { company -> company.id == preferredCompanyId } -> {
+                        loadedState.copy(selectedCompanyId = preferredCompanyId)
+                    }
+                    preferredCompanyId.isNotBlank() && loadedState.loadError.isNotBlank() -> {
                         loadedState.copy(selectedCompanyId = preferredCompanyId)
                     }
                     else -> loadedState
@@ -219,6 +226,11 @@ class ContactNoteEditActivity : Activity() {
     }
 
     private fun selectedTopicCompanyIdOrNull(): String? {
+        if (serverClientEventId.isNotBlank()) {
+            return topicState.selectedCompanyId
+                .ifBlank { preferredCompanyId }
+                .ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+        }
         return ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState) ?: run {
             Toast.makeText(this, getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
             null
