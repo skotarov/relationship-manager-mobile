@@ -43,9 +43,15 @@ internal class OverlayContactNoteFormController(
 
     /** Used by explicit Save: an eligible contact must deliberately choose Local or a firm. */
     fun save(noteText: String): ContactNoteFormSaveResult? {
-        val topicId = ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState) ?: run {
-            Toast.makeText(service, service.getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
-            return null
+        val topicId = if (draft.serverClientEventId.isNotBlank()) {
+            // Existing server notes are mutated by their original client_event_id;
+            // an unfinished company selector must never block that edit.
+            effectiveCompanyId().ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+        } else {
+            ContactNoteFormWorkflow.selectedTopicOrLocalFallback(topicState) ?: run {
+                Toast.makeText(service, service.getString(R.string.note_company_required), Toast.LENGTH_SHORT).show()
+                return null
+            }
         }
         return saveToTopic(noteText, topicId, localOnlyFallback = topicState.loadError.isNotBlank())
     }
