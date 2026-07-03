@@ -24,7 +24,7 @@ internal class HomeCallRowRenderer(
     private val noteKey: (String) -> String,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val openContactNotesScreen: (PhoneCallRecord, String) -> Unit,
-    private val openContactNotePopupForCall: (PhoneCallRecord, String) -> Unit,
+    private val openContactNotePopupForCall: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
     private val openDialer: (String) -> Unit = {},
     private val togglePhoneFilter: (String) -> Unit = {},
 ) {
@@ -37,7 +37,7 @@ internal class HomeCallRowRenderer(
         displayName: String,
         contactNote: String? = null,
         companyGeneralNoteLabels: List<HomeCompanyScopeLabel>? = null,
-        callNote: String? = null,
+        callNote: HomeCallNote? = null,
         highlightQuery: String = "",
         showContactIdentity: Boolean = true,
         showGeneralContactNote: Boolean = true,
@@ -142,10 +142,10 @@ internal class HomeCallRowRenderer(
                 ).apply { topMargin = dp(5) }
             })
         }
-        if (!callNote.isNullOrBlank()) {
+        callNote?.takeIf { it.text.isNotBlank() }?.let { note ->
             val colors = NoteUiStyle.Call
             textColumn.addView(TextView(activity).apply {
-                text = highlightedText(callNote, highlightQuery, colors.text)
+                text = highlightedText(note.text, highlightQuery, colors.text)
                 // A confirmed server record is the canonical shared note. Show a
                 // cloud instead of the local conversation bubble, at the exact
                 // same 18dp bounds so neither source changes the row layout.
@@ -194,9 +194,13 @@ internal class HomeCallRowRenderer(
                 actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
             }
             if (!call.isSms) {
-                actions.addView(iconButton(R.drawable.ic_chat_note, activity.getString(R.string.dynamic_action_note)) {
-                    openContactNotePopupForCall(call, displayName)
-                })
+                val noteEditable = callNote?.editable != false
+                actions.addView(iconButton(
+                    drawableRes = R.drawable.ic_chat_note,
+                    description = if (noteEditable) activity.getString(R.string.dynamic_action_note) else "Само за преглед",
+                    action = { openContactNotePopupForCall(call, displayName, callNote) },
+                    enabled = noteEditable,
+                ))
             }
             row.addView(actions)
         }
@@ -276,7 +280,12 @@ internal class HomeCallRowRenderer(
         spannable.setSpan(ForegroundColorSpan(Color.WHITE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
 
-    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
+    private fun iconButton(
+        drawableRes: Int,
+        description: String,
+        action: () -> Unit,
+        enabled: Boolean = true,
+    ): ImageButton {
         return ImageButton(activity).apply {
             setImageResource(drawableRes)
             contentDescription = description
@@ -284,8 +293,10 @@ internal class HomeCallRowRenderer(
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
+            isEnabled = enabled
+            alpha = if (enabled) 1f else 0.38f
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
-            setOnClickListener { action() }
+            setOnClickListener { if (enabled) action() }
         }
     }
 
