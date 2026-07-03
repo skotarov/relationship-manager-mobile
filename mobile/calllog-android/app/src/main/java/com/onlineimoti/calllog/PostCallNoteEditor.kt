@@ -26,6 +26,8 @@ internal class PostCallNoteEditor(
     private val actionIssuedAt: () -> Long,
     private val preferredCompanyId: () -> String,
     private val setPreferredCompanyId: (String) -> Unit,
+    private val initialNoteText: () -> String,
+    private val serverClientEventId: () -> String,
     private val callDirectionColor: (String) -> Int,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
@@ -48,6 +50,7 @@ internal class PostCallNoteEditor(
         val directionValue = direction()
         val callAtValue = callAt()
         val durationValue = durationSeconds()
+        val serverEventId = serverClientEventId().trim()
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
         val existingCallNote = existingCallNote(phoneValue, callAtValue, directionValue)
@@ -60,6 +63,7 @@ internal class PostCallNoteEditor(
             callAt = callAtValue,
             durationSeconds = durationValue,
             actionIssuedAt = actionIssuedAt(),
+            serverClientEventId = serverEventId,
         )
         val form = OverlayContactNoteFormController(
             service = service,
@@ -69,6 +73,7 @@ internal class PostCallNoteEditor(
             preferredCompanyId = initialCompanyId,
         )
         val originalText = pendingCallNote()
+            ?: initialNoteText().takeIf { it.isNotBlank() }
             ?: existingCallNote?.note
             ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
 
@@ -81,8 +86,10 @@ internal class PostCallNoteEditor(
             val result = if (transition) form.saveForTransition(noteText) else form.save(noteText) ?: return false
             if (!result.saved) return false
             form.markTextPersisted(noteText)
-            val destination = form.effectiveCompanyId().ifBlank {
-                if (result.localOnlyFallback) ContactNoteTopicState.LOCAL_COMPANY_ID else initialCompanyId
+            val destination = if (result.localOnlyFallback) {
+                ContactNoteTopicState.LOCAL_COMPANY_ID
+            } else {
+                form.effectiveCompanyId().ifBlank { initialCompanyId }
             }
             setPreferredCompanyId(destination)
             notifyNotesChanged()
