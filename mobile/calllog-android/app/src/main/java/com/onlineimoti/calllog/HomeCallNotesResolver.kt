@@ -6,6 +6,10 @@ internal data class HomeCallNote(
     val updatedAtMs: Long,
     val fromServer: Boolean,
     val authorName: String = "",
+    /** Firm assigned to the same concrete conversation, when known. */
+    val companyId: String = "",
+    /** Lets Home edit an existing server-only note in place instead of duplicating it. */
+    val serverClientEventId: String = "",
 )
 
 /**
@@ -35,6 +39,7 @@ internal object HomeCallNotesResolver {
                 text = local.note,
                 updatedAtMs = localVersionMs(local),
                 fromServer = false,
+                companyId = local.companyId.trim(),
             )
         }
         return result
@@ -67,6 +72,8 @@ internal object HomeCallNotesResolver {
                         updatedAtMs = serverVersionMs(event),
                         fromServer = true,
                         authorName = event.authorBrokerName.trim(),
+                        companyId = event.companyId.trim(),
+                        serverClientEventId = event.clientEventId.trim(),
                     )
                     val current = merged[key]
                     if (current == null || isNewer(candidate, current)) merged[key] = candidate
