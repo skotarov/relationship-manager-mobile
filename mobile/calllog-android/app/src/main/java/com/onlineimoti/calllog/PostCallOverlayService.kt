@@ -65,6 +65,7 @@ class PostCallOverlayService : Service() {
             phone = { state.phone },
             title = { state.title },
             lookupLines = { state.lines },
+            remoteRowsArePreloaded = { state.remoteRowsArePreloaded },
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
@@ -303,6 +304,7 @@ class PostCallOverlayService : Service() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_SUBTITLE = "subtitle"
         const val EXTRA_LINES = "lines"
+        const val EXTRA_REMOTE_ROWS_ARE_PRELOADED = "remote_rows_are_preloaded"
         const val EXTRA_CALL_AT = "call_at"
         const val EXTRA_DURATION = "duration"
         private const val LOADING_POPUP_TIMEOUT_MS = 45_000L
