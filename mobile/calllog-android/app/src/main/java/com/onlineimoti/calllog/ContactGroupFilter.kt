@@ -6,30 +6,60 @@ import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 
+/** Result of one Contacts lookup used by the incoming-call coordinator. */
+internal data class IncomingCallContactInfo(
+    val shouldNotify: Boolean,
+    val displayName: String? = null,
+)
+
 object ContactGroupFilter {
     fun shouldNotify(context: Context, phoneNumber: String, config: AppConfig): Boolean {
-        val contact = findContact(context, phoneNumber)
+        return resolveIncomingCallContact(context, phoneNumber, config).shouldNotify
+    }
+
+    /**
+     * Reads Contacts once and returns both notification eligibility and display
+     * name. Group membership is queried only when known-contact groups are
+     * configured, avoiding two unnecessary content-provider queries on most calls.
+     */
+    fun resolveIncomingCallContact(
+        context: Context,
+        phoneNumber: String,
+        config: AppConfig,
+    ): IncomingCallContactInfo {
+        val knownContactsEnabled = config.notifyKnownContacts
+        val allowedGroups = if (knownContactsEnabled) parseAllowedGroups(config.contactGroups) else emptySet()
+        val contact = findContact(
+            context = context,
+            phoneNumber = phoneNumber,
+            includeGroups = knownContactsEnabled && allowedGroups.isNotEmpty(),
+        )
         if (contact == null) {
-            return config.notifyUnknownContacts
+            return IncomingCallContactInfo(
+                shouldNotify = config.notifyUnknownContacts,
+                displayName = null,
+            )
         }
-
-        if (!config.notifyKnownContacts) {
-            return false
-        }
-
-        val allowedGroups = parseAllowedGroups(config.contactGroups)
-        if (allowedGroups.isEmpty()) {
-            return true
-        }
-
-        return contact.groups.any { normalizeGroupName(it) in allowedGroups }
+        val displayName = contact.displayName.takeIf { it.isNotBlank() }
+        if (!knownContactsEnabled) return IncomingCallContactInfo(false, displayName)
+        if (allowedGroups.isEmpty()) return IncomingCallContactInfo(true, displayName)
+        return IncomingCallContactInfo(
+            shouldNotify = contact.groups.any { normalizeGroupName(it) in allowedGroups },
+            displayName = displayName,
+        )
     }
 
     fun resolveDisplayName(context: Context, phoneNumber: String): String? {
-        return findContact(context, phoneNumber)?.displayName?.takeIf { it.isNotBlank() }
+        return findContact(context, phoneNumber, includeGroups = false)
+            ?.displayName
+            ?.takeIf { it.isNotBlank() }
     }
 
-    private fun findContact(context: Context, phoneNumber: String): ContactRecord? {
+    private fun findContact(
+        context: Context,
+        phoneNumber: String,
+        includeGroups: Boolean,
+    ): ContactRecord? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return null
         }
@@ -45,7 +75,7 @@ object ContactGroupFilter {
             ),
             null,
             null,
-            null
+            null,
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
                 ContactRecord(
@@ -58,6 +88,7 @@ object ContactGroupFilter {
             }
         } ?: return null
 
+        if (!includeGroups) return contact
         val groupIds = mutableListOf<Long>()
         resolver.query(
             ContactsContract.Data.CONTENT_URI,
@@ -65,19 +96,16 @@ object ContactGroupFilter {
             "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
             arrayOf(
                 contact.contactId.toString(),
-                ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE
+                ContactsContract.CommonDataKinds.GroupMembership.CONTENT_ITEM_TYPE,
             ),
-            null
+            null,
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 groupIds += cursor.getLong(0)
             }
         }
 
-        if (groupIds.isEmpty()) {
-            return contact
-        }
-
+        if (groupIds.isEmpty()) return contact
         val placeholders = groupIds.joinToString(",") { "?" }
         val groups = mutableListOf<String>()
         resolver.query(
@@ -85,7 +113,7 @@ object ContactGroupFilter {
             arrayOf(ContactsContract.Groups.TITLE),
             "${ContactsContract.Groups._ID} IN ($placeholders)",
             groupIds.map { it.toString() }.toTypedArray(),
-            null
+            null,
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 groups += cursor.getString(0).orEmpty()
