@@ -18,6 +18,10 @@ internal data class CallReportSyncEvent(
     val appVersion: String,
     /** null means do not alter a server note; an empty string explicitly clears it. */
     val note: String? = null,
+    /** Client-side ordering metadata for a queued mutable server-note edit. */
+    val updatedAtMs: Long = 0L,
+    /** Uses the original server client_event_id and must never create a second note. */
+    val editExistingNote: Boolean = false,
 ) {
     fun toLookupContext(): CallReportLookupContext = CallReportLookupContext(
         communicationType = communicationType,
