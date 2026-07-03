@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -66,7 +67,7 @@ internal class PostCallNoteEditor(
             draft = draft,
             preferredCompanyId = initialCompanyId,
         )
-        val callNote = pendingCallNote()
+        val originalText = pendingCallNote()
             ?: existingCallNote?.note
             ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
 
@@ -83,17 +84,6 @@ internal class PostCallNoteEditor(
             notifyNotesChanged()
             return true
         }
-
-        fun closeAfterAutosave() {
-            if (saveCurrent(callNoteInputText(), transition = true)) {
-                stopOverlay()
-            } else {
-                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        lateinit var callNoteInput: TextView
-        fun callNoteInputText(): String = callNoteInput.text?.toString().orEmpty()
 
         val card = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
@@ -127,21 +117,28 @@ internal class PostCallNoteEditor(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         })
-        callNoteInput = ui.callNoteEditText(callNote, "Бележка към това обаждане", 3, ui.dp(8))
+        val callNoteInput = ui.callNoteEditText(originalText, "Бележка към това обаждане", 3, ui.dp(8))
         titleRow.addView(ui.iconAction(R.drawable.ic_calendar_event) {
-            val noteText = callNoteInputText()
+            val noteText = callNoteInput.text?.toString().orEmpty()
             if (saveCurrent(noteText, transition = false)) openCalendarEvent(titleText)
             else Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
         })
-        titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) { closeAfterAutosave() })
+        titleRow.addView(ui.iconAction(R.drawable.ic_popup_close) {
+            val noteText = callNoteInput.text?.toString().orEmpty()
+            if (saveCurrent(noteText, transition = true)) {
+                stopOverlay()
+            } else {
+                Toast.makeText(service, "Не успях да запиша бележката", Toast.LENGTH_SHORT).show()
+            }
+        })
         card.addView(titleRow)
 
         if (callAtValue > 0L) card.addView(callInfoRow(directionValue, callAtValue, durationValue))
-        form.addTopicFieldTo(card, callNoteInput as android.widget.EditText)
+        form.addTopicFieldTo(card, callNoteInput)
         card.addView(callNoteInput)
         card.addView(actionRow(
             input = callNoteInput,
-            saveCurrent = { text, transition -> saveCurrent(text, transition) },
+            saveCurrent = ::saveCurrent,
             showGeneral = showGeneralNoteEditor,
             openHistory = openContactNotesScreen,
             close = stopOverlay,
@@ -196,7 +193,7 @@ internal class PostCallNoteEditor(
     }
 
     private fun actionRow(
-        input: TextView,
+        input: EditText,
         saveCurrent: (String, Boolean) -> Boolean,
         showGeneral: () -> Unit,
         openHistory: () -> Unit,
