@@ -37,8 +37,10 @@ internal object PostCallLookupDisplayRows {
         identity: String,
         remoteRows: List<PostCallLookupRemoteRow>,
         lookupServerLines: List<String> = emptyList(),
+        /** Null keeps compatibility for non-incoming call sites; non-null never reads CallLog on UI. */
+        preloadedLocalRows: List<String>? = null,
     ): PostCallLookupDisplayContent {
-        val localRows = LocalCallStatsProvider.buildPopupInfoRows(context.applicationContext, phone)
+        val localRows = preloadedLocalRows ?: LocalCallStatsProvider.buildPopupInfoRows(context.applicationContext, phone)
         val header = localRows.firstOrNull { !isLocalNoteRow(it) }
             .orEmpty()
             .ifBlank { context.getString(R.string.overlay_no_previous_call) }
