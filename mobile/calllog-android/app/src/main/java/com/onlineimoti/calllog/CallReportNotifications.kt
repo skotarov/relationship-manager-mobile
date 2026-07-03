@@ -90,11 +90,29 @@ internal object CallReportNotifications {
             renderToken = renderToken,
             remoteRows = emptyList(),
             requestRemoteRows = true,
+            preloadedLocalRows = null,
+            skipDeviceLookups = false,
         )
     }
 
-    fun showLookupShadeNotification(context: Context, result: LookupResult, phone: String = "", direction: String = "") {
+    fun showLookupShadeNotification(
+        context: Context,
+        result: LookupResult,
+        phone: String = "",
+        direction: String = "",
+        incomingPopupDataIsPreloaded: Boolean = false,
+    ) {
         val renderToken = beginLookupRender(LOOKUP_NOTIFICATION_ID)
+        val cachedRemoteRows = if (incomingPopupDataIsPreloaded) {
+            IncomingLookupPopupRowsCache.remoteRowsFor(phone)
+        } else {
+            emptyList()
+        }
+        val cachedLocalRows = if (incomingPopupDataIsPreloaded) {
+            IncomingLookupPopupRowsCache.localRowsFor(phone).orEmpty()
+        } else {
+            null
+        }
         showLookupNotificationInternal(
             context = context,
             result = result,
@@ -107,8 +125,10 @@ internal object CallReportNotifications {
             markPopup = false,
             alertAgain = false,
             renderToken = renderToken,
-            remoteRows = emptyList(),
-            requestRemoteRows = true,
+            remoteRows = cachedRemoteRows,
+            requestRemoteRows = !incomingPopupDataIsPreloaded,
+            preloadedLocalRows = cachedLocalRows,
+            skipDeviceLookups = incomingPopupDataIsPreloaded,
         )
     }
 
@@ -218,6 +238,8 @@ internal object CallReportNotifications {
         renderToken: Long,
         remoteRows: List<PostCallLookupRemoteRow>,
         requestRemoteRows: Boolean,
+        preloadedLocalRows: List<String>?,
+        skipDeviceLookups: Boolean,
     ) {
         if (!canPostNotifications(context)) return
         ensureNotificationChannel(context)
@@ -229,9 +251,13 @@ internal object CallReportNotifications {
         )
 
         val actionIssuedAt = System.currentTimeMillis()
-        val latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        val latestCall = if (skipDeviceLookups) null else PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
         val resolvedDirection = direction.ifBlank { latestCall?.direction.orEmpty() }
-        val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
+        val displayName = if (skipDeviceLookups) {
+            result.title.takeIf { it.isNotBlank() && it != phone }.orEmpty()
+        } else {
+            ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
+        }
         val unknownContactTitle = context.getString(R.string.notification_unknown_contact)
         val notificationIdentity = when {
             displayName.isNotBlank() && phone.isNotBlank() -> "$displayName • $phone"
@@ -250,6 +276,7 @@ internal object CallReportNotifications {
             identity = notificationIdentity,
             remoteRows = remoteRows,
             lookupServerLines = result.lines,
+            preloadedLocalRows = preloadedLocalRows,
         )
         val expandedRows = content.rows.map { row -> row.plainText() }
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(content.header)
@@ -324,6 +351,8 @@ internal object CallReportNotifications {
                 renderToken = renderToken,
                 remoteRows = remoteRows,
                 requestRemoteRows = false,
+                preloadedLocalRows = null,
+                skipDeviceLookups = false,
             )
         }.start()
     }
