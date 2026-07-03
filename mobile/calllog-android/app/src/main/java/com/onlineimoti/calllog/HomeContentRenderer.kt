@@ -117,7 +117,7 @@ internal class HomeContentRenderer(
                     displayName = renderData.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName },
                     contactNote = if (phoneFiltered) null else renderData.contactNotesByNumber[key],
                     companyGeneralNoteLabels = if (phoneFiltered) null else companyLabels[key],
-                    callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)],
+                    callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)]?.text,
                     highlightQuery = activeSearchQuery(),
                     showContactIdentity = !phoneFiltered,
                     showGeneralContactNote = !phoneFiltered,
