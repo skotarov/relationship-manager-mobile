@@ -191,7 +191,11 @@ internal class HomeCallRowRenderer(
                 ).apply { leftMargin = dp(3) }
             }
             if (showQuickActions) {
-                actions.addView(iconButton(R.drawable.ic_filter_calls, activity.getString(R.string.dynamic_action_filter)) { togglePhoneFilter(call.number) })
+                actions.addView(iconButton(
+                    drawableRes = R.drawable.ic_filter_calls,
+                    description = activity.getString(R.string.dynamic_action_filter),
+                    action = { togglePhoneFilter(call.number) },
+                ))
             }
             if (!call.isSms) {
                 val noteEditable = callNote?.editable != false
