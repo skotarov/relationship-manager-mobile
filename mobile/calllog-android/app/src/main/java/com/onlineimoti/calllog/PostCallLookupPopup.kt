@@ -38,11 +38,13 @@ internal class PostCallLookupPopup(
         val requestId = ++activeRequestId
         val phoneValue = phone()
         val titleValue = title()
-        val cachedRows = IncomingLookupPopupRowsCache.rowsFor(phoneValue)
-        render(requestId, phoneValue, titleValue, cachedRows)
+        val preloaded = remoteRowsArePreloaded()
+        val cachedRemoteRows = IncomingLookupPopupRowsCache.remoteRowsFor(phoneValue)
+        val cachedLocalRows = if (preloaded) IncomingLookupPopupRowsCache.localRowsFor(phoneValue).orEmpty() else null
+        render(requestId, phoneValue, titleValue, cachedRemoteRows, cachedLocalRows)
         // Incoming calls already fetch this in parallel with lookup.php. Other
         // callers keep the safe fallback request, but never create a raw Thread.
-        if (cachedRows.isEmpty() && !remoteRowsArePreloaded()) {
+        if (cachedRemoteRows.isEmpty() && !preloaded) {
             loadRemoteRows(requestId, phoneValue, titleValue)
         }
     }
@@ -58,10 +60,16 @@ internal class PostCallLookupPopup(
                     PostCallLookupRemoteRows.load(service.applicationContext, phoneValue)
                 }.getOrDefault(emptyList())
                 if (remoteRows.isEmpty()) return@execute
-                IncomingLookupPopupRowsCache.put(phoneValue, remoteRows)
+                IncomingLookupPopupRowsCache.putRemoteRows(phoneValue, remoteRows)
                 handler.post {
                     if (requestId != activeRequestId || phoneValue != phone()) return@post
-                    render(requestId, phoneValue, titleValue, remoteRows)
+                    render(
+                        requestId = requestId,
+                        phoneValue = phoneValue,
+                        titleValue = titleValue,
+                        remoteRows = remoteRows,
+                        localRows = null,
+                    )
                 }
             }
         } catch (_: RejectedExecutionException) {
@@ -74,6 +82,8 @@ internal class PostCallLookupPopup(
         phoneValue: String,
         titleValue: String,
         remoteRows: List<PostCallLookupRemoteRow>,
+        /** Non-null means rows were prepared off the UI thread. */
+        localRows: List<String>?,
     ) {
         removeOverlay()
         setWindowManager(service.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
@@ -91,6 +101,7 @@ internal class PostCallLookupPopup(
             identity = identity,
             remoteRows = remoteRows,
             lookupServerLines = lookupLines(),
+            preloadedLocalRows = localRows,
         )
 
         val card = LinearLayout(service).apply {
