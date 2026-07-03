@@ -12,6 +12,8 @@ object LookupPopupPresenter {
         fullscreen: Boolean = false,
         phone: String = "",
         direction: String = "",
+        /** Incoming-call coordinator already requested history rows in parallel. */
+        remoteRowsArePreloaded: Boolean = false,
     ) {
         val config = ConfigStore.load(context)
         val screenLocked = isScreenLocked(context)
@@ -31,6 +33,7 @@ object LookupPopupPresenter {
                     .putExtra(PostCallOverlayService.EXTRA_FORM_URL, result.openFormUrl)
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                     .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
+                    .putExtra(PostCallOverlayService.EXTRA_REMOTE_ROWS_ARE_PRELOADED, remoteRowsArePreloaded),
             )
             if (phone.isNotBlank()) {
                 CallPopupTracker.markPopupOpened(context, phone, direction)
