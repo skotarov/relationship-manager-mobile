@@ -22,7 +22,7 @@ object ContactGroupFilter {
      * name. Group membership is queried only when known-contact groups are
      * configured, avoiding two unnecessary content-provider queries on most calls.
      */
-    fun resolveIncomingCallContact(
+    internal fun resolveIncomingCallContact(
         context: Context,
         phoneNumber: String,
         config: AppConfig,
