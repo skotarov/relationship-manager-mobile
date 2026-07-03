@@ -37,6 +37,7 @@ object LookupPopupPresenter {
                 result = result,
                 phone = phone,
                 direction = direction,
+                incomingPopupDataIsPreloaded = remoteRowsArePreloaded,
             )
             if (phone.isNotBlank()) {
                 CallPopupTracker.markPopupOpened(context, phone, direction)
