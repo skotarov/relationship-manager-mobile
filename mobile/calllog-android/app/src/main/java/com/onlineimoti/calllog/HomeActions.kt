@@ -32,9 +32,11 @@ class HomeActions(
 
     fun openContactNotePopupForCall(call: PhoneCallRecord, displayName: String) {
         val config = ConfigStore.load(activity)
-        val companyId = companyIdForExistingCallNote(call)
+        val existingNote = existingCallNote(call)
+        val companyId = existingNote?.companyId.orEmpty().trim()
+        val noteText = existingNote?.note.orEmpty()
         if (!config.useOverlayPopups) {
-            openContactNoteEditorForCall(call, displayName, companyId)
+            openContactNoteEditorForCall(call, displayName, companyId, noteText)
             return
         }
 
@@ -51,11 +53,17 @@ class HomeActions(
                 .putExtra(PostCallOverlayService.EXTRA_CALL_AT, call.startedAt)
                 .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
                 .putExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID, companyId)
+                .putExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT, noteText)
         )
         startTemporaryNoteRefresh()
     }
 
-    private fun openContactNoteEditorForCall(call: PhoneCallRecord, displayName: String, companyId: String) {
+    private fun openContactNoteEditorForCall(
+        call: PhoneCallRecord,
+        displayName: String,
+        companyId: String,
+        initialNoteText: String,
+    ) {
         activity.startActivity(
             CallNoteEditorLauncher.editorIntent(
                 context = activity,
@@ -66,13 +74,14 @@ class HomeActions(
                 callAt = call.startedAt,
                 durationSeconds = call.durationSeconds,
                 companyId = companyId,
+                initialNoteText = initialNoteText,
             )
         )
     }
 
-    /** Restores the firm already attached to this exact local call-note row. */
-    private fun companyIdForExistingCallNote(call: PhoneCallRecord): String {
-        if (call.startedAt <= 0L) return ""
+    /** Returns the existing local note attached to this exact Call Log row. */
+    private fun existingCallNote(call: PhoneCallRecord): ContactCallNote? {
+        if (call.startedAt <= 0L) return null
         return ContactNoteReader.callNotesForPhone(activity.applicationContext, call.number)
             .asSequence()
             .filter { note ->
@@ -80,8 +89,5 @@ class HomeActions(
                     (call.direction.isBlank() || note.direction.isBlank() || note.direction == call.direction)
             }
             .maxByOrNull { note -> maxOf(note.savedAt, note.callAt) }
-            ?.companyId
-            .orEmpty()
-            .trim()
     }
 }
