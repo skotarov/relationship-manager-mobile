@@ -6,7 +6,7 @@ import android.net.Uri
 import android.provider.Settings
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
-class HomeActions(
+internal class HomeActions(
     private val activity: Activity,
     private val binding: ActivityHomeBinding,
     private val startTemporaryNoteRefresh: () -> Unit,
