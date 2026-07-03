@@ -14,6 +14,8 @@ internal data class CallReportQueuedNote(
     val note: String,
     val contactName: String,
     val updatedAtMs: Long,
+    /** Uses an existing cloud client_event_id instead of inserting a second note. */
+    val editExistingServerNote: Boolean = false,
 ) {
     val isGeneralNote: Boolean
         get() = clientEventId.contains(":note:general:")
@@ -31,6 +33,8 @@ internal data class CallReportQueuedNote(
         deviceId = CallReportInstallationId.get(context),
         appVersion = BuildConfig.VERSION_NAME,
         note = note,
+        updatedAtMs = updatedAtMs,
+        editExistingNote = editExistingServerNote,
     )
 }
 
@@ -87,6 +91,33 @@ internal object CallReportNoteOutbox {
         ))
     }
 
+    /** Queues an edit/delete against the original server note without requiring a local CRM marker. */
+    fun enqueueExistingServerNote(
+        context: Context,
+        phone: String,
+        note: String,
+        serverClientEventId: String,
+        direction: String,
+        callAt: Long,
+        durationSeconds: Long,
+    ): Boolean {
+        val appContext = context.applicationContext
+        val clientEventId = serverClientEventId.trim()
+        if (phoneKey(phone).isBlank() || clientEventId.isBlank()) return false
+        val now = System.currentTimeMillis()
+        return enqueue(appContext, CallReportQueuedNote(
+            clientEventId = clientEventId,
+            phone = phone,
+            direction = direction,
+            occurredAtMs = callAt.takeIf { it > 0L } ?: now,
+            durationSeconds = durationSeconds.coerceAtLeast(0L),
+            note = note.trim(),
+            contactName = contactName(appContext, phone),
+            updatedAtMs = now,
+            editExistingServerNote = true,
+        ))
+    }
+
     fun isCallPending(context: Context, phone: String, note: ContactCallNote): Boolean {
         val localId = note.clientNoteId.ifBlank {
             LocalNotesFileStore.clientNoteIdForCall(phone, note.callAt, note.direction)
@@ -140,7 +171,7 @@ internal object CallReportNoteOutbox {
     internal fun takeBatch(context: Context, limit: Int): List<CallReportQueuedNote> = synchronized(lock) {
         val all = readLocked(context)
         val eligible = all.filter { operation ->
-            operation.isGeneralNote || CrmContactSyncStore.isEnabled(context.applicationContext, operation.phone)
+            operation.isGeneralNote || operation.editExistingServerNote || CrmContactSyncStore.isEnabled(context.applicationContext, operation.phone)
         }
         if (eligible.size != all.size) writeLocked(context, eligible)
         eligible.sortedBy { it.updatedAtMs }.take(limit.coerceIn(1, 50))
@@ -195,6 +226,7 @@ internal object CallReportNoteOutbox {
         put("note", note)
         put("contact_name", contactName)
         put("updated_at_ms", updatedAtMs)
+        put("edit_existing_server_note", editExistingServerNote)
     }
 
     private fun JSONObject.toOperation(): CallReportQueuedNote? {
@@ -210,6 +242,7 @@ internal object CallReportNoteOutbox {
             note = optString("note"),
             contactName = optString("contact_name").trim(),
             updatedAtMs = optLong("updated_at_ms", 0L).takeIf { it > 0L } ?: System.currentTimeMillis(),
+            editExistingServerNote = optBoolean("edit_existing_server_note", false),
         )
     }
 
