@@ -11,6 +11,10 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 internal class PostCallLookupPopup(
     private val service: Service,
@@ -18,6 +22,7 @@ internal class PostCallLookupPopup(
     private val phone: () -> String,
     private val title: () -> String,
     private val lookupLines: () -> List<String>,
+    private val remoteRowsArePreloaded: () -> Boolean,
     private val setWindowManager: (WindowManager) -> Unit,
     private val removeOverlay: () -> Unit,
     private val addDraggableOverlay: (View, Boolean, Int, Long, () -> Unit) -> Unit,
@@ -33,8 +38,13 @@ internal class PostCallLookupPopup(
         val requestId = ++activeRequestId
         val phoneValue = phone()
         val titleValue = title()
-        render(requestId, phoneValue, titleValue, emptyList())
-        loadRemoteRows(requestId, phoneValue, titleValue)
+        val cachedRows = IncomingLookupPopupRowsCache.rowsFor(phoneValue)
+        render(requestId, phoneValue, titleValue, cachedRows)
+        // Incoming calls already fetch this in parallel with lookup.php. Other
+        // callers keep the safe fallback request, but never create a raw Thread.
+        if (cachedRows.isEmpty() && !remoteRowsArePreloaded()) {
+            loadRemoteRows(requestId, phoneValue, titleValue)
+        }
     }
 
     /**
@@ -42,17 +52,21 @@ internal class PostCallLookupPopup(
      * queried when CRM is on. The network task never delays the first popup.
      */
     private fun loadRemoteRows(requestId: Long, phoneValue: String, titleValue: String) {
-        Thread {
-            val remoteRows = runCatching {
-                PostCallLookupRemoteRows.load(service.applicationContext, phoneValue)
-            }.getOrDefault(emptyList())
-            if (remoteRows.isEmpty()) return@Thread
-
-            handler.post {
-                if (requestId != activeRequestId || phoneValue != phone()) return@post
-                render(requestId, phoneValue, titleValue, remoteRows)
+        try {
+            REMOTE_ROWS_EXECUTOR.execute {
+                val remoteRows = runCatching {
+                    PostCallLookupRemoteRows.load(service.applicationContext, phoneValue)
+                }.getOrDefault(emptyList())
+                if (remoteRows.isEmpty()) return@execute
+                IncomingLookupPopupRowsCache.put(phoneValue, remoteRows)
+                handler.post {
+                    if (requestId != activeRequestId || phoneValue != phone()) return@post
+                    render(requestId, phoneValue, titleValue, remoteRows)
+                }
             }
-        }.start()
+        } catch (_: RejectedExecutionException) {
+            // A full queue must not block or delay the already visible popup.
+        }
     }
 
     private fun render(
@@ -64,12 +78,12 @@ internal class PostCallLookupPopup(
         removeOverlay()
         setWindowManager(service.getSystemService(Context.WINDOW_SERVICE) as WindowManager)
 
-        val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
+        // Contact resolution has already run in the incoming-call coordinator.
+        // Never query Contacts from this main/UI path.
         val identity = when {
-            displayName.isNotBlank() && phoneValue.isNotBlank() -> "$displayName • $phoneValue"
-            displayName.isNotBlank() -> displayName
             titleValue.isNotBlank() && titleValue != phoneValue -> "$titleValue • $phoneValue"
-            else -> phoneValue.ifBlank { titleValue.ifBlank { "Call Report" } }
+            phoneValue.isNotBlank() -> phoneValue
+            else -> titleValue.ifBlank { "Call Report" }
         }
         val content = PostCallLookupDisplayRows.build(
             context = service,
@@ -156,5 +170,17 @@ internal class PostCallLookupPopup(
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
         }
+    }
+
+    private companion object {
+        private const val MAX_PENDING_REMOTE_ROWS = 8
+        private val REMOTE_ROWS_EXECUTOR = ThreadPoolExecutor(
+            2,
+            2,
+            20L,
+            TimeUnit.SECONDS,
+            ArrayBlockingQueue(MAX_PENDING_REMOTE_ROWS),
+            ThreadPoolExecutor.AbortPolicy(),
+        )
     }
 }
