@@ -14,6 +14,8 @@ internal data class ContactNoteFormDraft(
     val durationSeconds: Long = 0L,
     val actionIssuedAt: Long = 0L,
     val isGeneralNote: Boolean = false,
+    /** Original cloud note id means the editor must mutate that existing note. */
+    val serverClientEventId: String = "",
 )
 
 internal data class ContactNoteFormSaveResult(
@@ -106,6 +108,27 @@ internal object ContactNoteFormWorkflow {
         localOnlyFallback: Boolean = false,
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
+        val existingServerNoteId = draft.serverClientEventId.trim()
+        if (existingServerNoteId.isNotBlank()) {
+            val queued = CallReportNoteOutbox.enqueueExistingServerNote(
+                context = appContext,
+                phone = draft.phone,
+                note = noteText,
+                serverClientEventId = existingServerNoteId,
+                direction = draft.direction,
+                callAt = draft.callAt,
+                durationSeconds = draft.durationSeconds,
+            )
+            return ContactNoteFormSaveResult(
+                writeResult = CallNoteWriteResult(
+                    saved = queued,
+                    savedAsGeneralNote = false,
+                    target = CallNoteTarget(draft.direction, draft.callAt, draft.durationSeconds),
+                ),
+                pendingServerSync = queued,
+            )
+        }
+
         // A stale UI or a direct caller cannot send an ordinary known non-CRM
         // contact to the server.
         val serverDestinationAllowed = ContactServerCompanyScope.isAvailable(appContext, draft.phone)
