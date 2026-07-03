@@ -112,9 +112,12 @@ internal object ContactNoteFormWorkflow {
         val selectedTopic = topicCompanyId.trim()
         val isLocalSelection = selectedTopic == ContactNoteTopicState.LOCAL_COMPANY_ID || !serverDestinationAllowed
         val serverCompanyId = if (isLocalSelection) "" else selectedTopic
-        val activateUnknownSync = noteText.trim().isNotBlank() &&
-            serverCompanyId.isNotBlank() &&
-            shouldAutoEnableServerSync(appContext, draft)
+        // A selected company main note must reach the server even when the user
+        // clears its text. Without this, an unknown number had sync enabled only
+        // for nonblank saves and the delete remained local-only.
+        val activateUnknownSync = serverCompanyId.isNotBlank() &&
+            shouldAutoEnableServerSync(appContext, draft) &&
+            (noteText.trim().isNotBlank() || draft.isGeneralNote)
 
         // Mark the unknown number locally before calling the topic writer. The writer
         // can then save and enqueue the company event even while offline, without
