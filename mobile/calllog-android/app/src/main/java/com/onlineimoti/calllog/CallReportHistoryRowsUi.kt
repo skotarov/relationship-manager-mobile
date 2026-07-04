@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -175,7 +176,11 @@ internal class CallReportHistoryRowsUi(
         onEditSms: (SmsMessageRecord, String) -> Unit,
         remoteEnabled: Boolean,
         companyNames: Map<String, String>,
-    ): LinearLayout {
+    ): View {
+        if (row.kind == CallReportHistoryRowKind.SMS) {
+            return smsHistoryRow(row, onEditSms, remoteEnabled, companyNames)
+        }
+
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val readOnlyNote = row.kind == CallReportHistoryRowKind.NOTE && !row.editable
         val serverConfirmed = isServerConfirmed(phone, row)
@@ -192,7 +197,6 @@ internal class CallReportHistoryRowsUi(
         val colors = when {
             readOnlyNote -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
             row.kind == CallReportHistoryRowKind.NOTE -> Triple(NoteUiStyle.Call.background, NoteUiStyle.Call.border, NoteUiStyle.Call.text)
-            row.kind == CallReportHistoryRowKind.SMS -> Triple(SMS_BACKGROUND, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
             else -> Triple(Color.WHITE, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
         }
         return LinearLayout(activity).apply {
@@ -263,11 +267,6 @@ internal class CallReportHistoryRowsUi(
                         onEditCallNote(editableNote)
                     }
                 }
-                !foreignRecord && row.kind == CallReportHistoryRowKind.SMS && row.localSms != null -> {
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener { onEditSms(row.localSms, row.companyId) }
-                }
             }
             addView(metaView(row, muted = readOnlyNote))
             companyLabel(row.companyId, companyNames, muted = readOnlyNote)?.let(::addView)
@@ -280,6 +279,52 @@ internal class CallReportHistoryRowsUi(
             if (readOnlyNote) addView(authorText(row.authorName.ifBlank { "друг потребител" }))
             if (!foreignRecord && remoteEnabled && row.serverNewer) addView(serverNewerText())
         }
+    }
+
+    /** Uses the same icon, metadata, contact title and body layout as the Call Log SMS cards. */
+    private fun smsHistoryRow(
+        row: CallReportHistoryRow,
+        onEditSms: (SmsMessageRecord, String) -> Unit,
+        remoteEnabled: Boolean,
+        companyNames: Map<String, String>,
+    ): View {
+        val foreignRecord = remoteEnabled && row.authorIsOtherBroker
+        val displayName = row.serverEvent?.contactName.orEmpty().trim()
+            .ifBlank { ContactGroupFilter.resolveDisplayName(activity, row.phone).orEmpty() }
+        val message = PhoneCallRecord(
+            number = row.phone,
+            name = displayName,
+            direction = if (row.direction == "out" || row.direction == "sms_out") "sms_out" else "sms_in",
+            startedAt = row.timeMs,
+            durationSeconds = 0L,
+            smsBody = row.text,
+            providerId = row.localSms?.providerId.orEmpty(),
+        )
+        val colors = SmsTimelineCard.Colors(
+            background = if (foreignRecord) FOREIGN_BACKGROUND else SMS_BACKGROUND,
+            border = if (foreignRecord) FOREIGN_BORDER else Color.rgb(226, 232, 240),
+            title = if (foreignRecord) FOREIGN_TEXT else Color.rgb(30, 41, 59),
+            meta = if (foreignRecord) FOREIGN_TEXT else Color.rgb(71, 85, 105),
+            body = if (foreignRecord) FOREIGN_TEXT else Color.rgb(30, 41, 59),
+        )
+        return SmsTimelineCard.create(
+            activity = activity,
+            dp = dp,
+            message = message,
+            displayName = message.displayName,
+            colors = colors,
+            metaTrailingIconRes = if (remoteEnabled && row.hasServerCopy) R.drawable.ic_cloud_note else 0,
+            beforeBody = { column ->
+                companyLabel(row.companyId, companyNames, muted = foreignRecord)?.let(column::addView)
+            },
+            afterBody = { column ->
+                if (foreignRecord) column.addView(authorText(row.authorName.ifBlank { "друг потребител" }))
+                if (!foreignRecord && remoteEnabled && row.serverNewer) column.addView(serverNewerText())
+            },
+            onClick = row.localSms?.takeIf { !foreignRecord }?.let { sms ->
+                { onEditSms(sms, row.companyId) }
+            },
+        )
     }
 
     private fun companyLabel(
