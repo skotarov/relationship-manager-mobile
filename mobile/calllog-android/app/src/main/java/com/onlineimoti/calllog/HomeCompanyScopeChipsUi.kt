@@ -22,6 +22,7 @@ internal class HomeCompanyScopeChipsUi(
     fun create(
         labels: List<HomeCompanyScopeLabel>?,
         crmClient: Boolean,
+        onClick: (() -> Unit)? = null,
     ): HorizontalScrollView {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -45,6 +46,12 @@ internal class HomeCompanyScopeChipsUi(
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
             addView(row)
+            if (onClick != null) {
+                isClickable = true
+                isFocusable = true
+                contentDescription = "Отвори историята на контакта"
+                setOnClickListener { onClick() }
+            }
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
