@@ -4,18 +4,25 @@ import android.content.Intent
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.view.View
-import android.widget.PopupMenu
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 
 /** Keeps HomeActivity focused on state coordination rather than menu plumbing. */
 internal object HomeOverflowMenu {
     fun show(activity: AppCompatActivity, anchor: View, openSettings: () -> Unit) {
         PopupMenu(activity, anchor).apply {
+            // AppCompat allows consistently visible menu icons across Android skins.
+            setForceShowIcon(true)
             menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
+                .setIcon(R.drawable.ic_menu_call_history)
             menu.add(0, MENU_CONTACTS, 20, "Контакти")
+                .setIcon(R.drawable.ic_menu_contacts)
             menu.add(0, MENU_SMS, 30, "SMS")
+                .setIcon(R.drawable.ic_menu_sms)
             menu.add(0, MENU_CALENDAR, 40, "Календар")
+                .setIcon(R.drawable.ic_menu_calendar)
             menu.add(0, MENU_SETTINGS, 50, activity.getString(R.string.home_overflow_settings))
+                .setIcon(R.drawable.ic_menu_settings)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_PHONE_CALL_LOG -> {
