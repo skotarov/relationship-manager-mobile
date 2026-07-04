@@ -28,6 +28,7 @@ internal class MainSettingsNavigationController(
         binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.CALLS) }
         binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.CONTACTS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
+        binding.settingsMenuGroup.settingsRegistrationButton.setOnClickListener { showSection(SettingsSection.REGISTRATION) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_AND_BACKUP) }
         binding.settingsMenuGroup.settingsGeneralButton.setOnClickListener { showSection(SettingsSection.LANGUAGE) }
         if (BuildConfig.DEBUG) {
@@ -132,6 +133,7 @@ internal class MainSettingsNavigationController(
         CALLS(R.string.settings_popup_section),
         CONTACTS(R.string.settings_crm_section),
         SERVER(R.string.settings_server_section),
+        REGISTRATION(R.string.settings_registration_section),
         DATA_AND_BACKUP(R.string.settings_storage_section),
         LANGUAGE(R.string.settings_language_section),
         DEBUG(R.string.settings_debug_section);
@@ -142,6 +144,7 @@ internal class MainSettingsNavigationController(
                 CALLS -> binding.settingsPopupGroup.root
                 CONTACTS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
+                REGISTRATION -> binding.settingsRegistrationGroup.root
                 DATA_AND_BACKUP -> binding.settingsDataArchiveGroup.root
                 LANGUAGE -> binding.settingsGeneralGroup.root
                 DEBUG -> binding.settingsDebugGroup.root
