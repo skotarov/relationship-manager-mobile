@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Optional post-call UI. It is off by default and never required for the core call log. -->
@@ -40,7 +41,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.accounts.AccountAuthenticator"
-                android:resource="@xml/callreport_syncadapter" />
+                android:resource="@xml/callreport_authenticator" />
             <meta-data
                 android:name="android.provider.CONTACTS_STRUCTURE"
                 android:resource="@xml/callreport_contacts" />
@@ -124,6 +125,9 @@
             android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
         <activity
             android:name=".ContactNotesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SmsHistoryActivity"
             android:exported="false" />
         <activity
             android:name=".RecentCallsActivity"
