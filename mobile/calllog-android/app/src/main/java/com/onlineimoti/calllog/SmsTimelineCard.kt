@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.app.Activity
 import android.graphics.Color
 import android.text.TextUtils
-import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -57,8 +56,11 @@ internal object SmsTimelineCard {
             body = activity.getColor(R.color.calllog_text),
         )
         val outgoing = isOutgoing(message)
-        val title = displayName.toString().trim().ifBlank { message.number }
-        val resolvedMeta = metaText ?: defaultMeta(message, title, outgoing)
+        val titleText: CharSequence = displayName.takeIf { it.toString().trim().isNotBlank() } ?: message.number
+        val titleForMeta = titleText.toString().trim()
+        val resolvedMeta = metaText ?: defaultMeta(message, titleForMeta, outgoing)
+        val resolvedBody: CharSequence = bodyText.takeIf { it.toString().isNotBlank() }
+            ?: activity.getString(R.string.dynamic_sms_empty_body)
 
         return MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
@@ -78,7 +80,7 @@ internal object SmsTimelineCard {
 
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(dp(10), dp(8), dp(10), dp(8))
 
                 addView(ImageView(activity).apply {
@@ -104,7 +106,7 @@ internal object SmsTimelineCard {
                 })
                 if (showTitle) {
                     textColumn.addView(TextView(activity).apply {
-                        text = title
+                        text = titleText
                         textSize = 15f
                         setTypeface(typeface, android.graphics.Typeface.BOLD)
                         setTextColor(palette.title)
@@ -115,7 +117,7 @@ internal object SmsTimelineCard {
                 }
                 beforeBody?.invoke(textColumn)
                 textColumn.addView(TextView(activity).apply {
-                    text = bodyText.toString().ifBlank { activity.getString(R.string.dynamic_sms_empty_body) }
+                    text = resolvedBody
                     textSize = 13f
                     setTextColor(palette.body)
                     maxLines = maxBodyLines.coerceAtLeast(1)
@@ -128,7 +130,7 @@ internal object SmsTimelineCard {
                 if (actions.isNotEmpty()) {
                     addView(LinearLayout(activity).apply {
                         orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER
+                        gravity = android.view.Gravity.CENTER
                         layoutParams = LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT,
