@@ -240,6 +240,10 @@ internal class FilteredFullLogController(
 
     private fun rowView(phone: String, entry: FullLogEntry, remoteEnabled: Boolean): MaterialCardView {
         val row = entry.row
+        if (row.kind == CallReportHistoryRowKind.SMS) {
+            return smsRowView(entry, remoteEnabled)
+        }
+
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
         val localCall = row.localCall
         val localNote = row.localNote
@@ -330,6 +334,42 @@ internal class FilteredFullLogController(
             card.addView(column)
         }
         return card
+    }
+
+    private fun smsRowView(entry: FullLogEntry, remoteEnabled: Boolean): MaterialCardView {
+        val row = entry.row
+        val foreignRecord = remoteEnabled && row.authorIsOtherBroker
+        val displayName = ContactGroupFilter.resolveDisplayName(activity, row.phone).orEmpty()
+        val sms = PhoneCallRecord(
+            number = row.phone,
+            name = displayName,
+            direction = if (row.direction == "out") "sms_out" else "sms_in",
+            startedAt = row.timeMs,
+            durationSeconds = 0L,
+            smsBody = row.text,
+            providerId = row.localSms?.providerId.orEmpty(),
+        )
+        val palette = SmsTimelineCard.Colors(
+            background = if (foreignRecord) FOREIGN_BACKGROUND else activity.getColor(R.color.calllog_surface),
+            border = if (foreignRecord) FOREIGN_BORDER else activity.getColor(R.color.calllog_border),
+            title = if (foreignRecord) FOREIGN_TEXT else activity.getColor(R.color.calllog_text),
+            meta = if (foreignRecord) FOREIGN_TEXT else activity.getColor(R.color.calllog_muted_text),
+            body = if (foreignRecord) FOREIGN_TEXT else activity.getColor(R.color.calllog_text),
+        )
+        return SmsTimelineCard.create(
+            activity = activity,
+            dp = dp,
+            message = sms,
+            displayName = sms.displayName,
+            colors = palette,
+            metaTrailingIconRes = if (remoteEnabled && row.hasServerCopy) R.drawable.ic_cloud_note else 0,
+            afterBody = { column ->
+                if (remoteEnabled) {
+                    addServerAuthor(column, row)
+                    addServerVersionNotice(column, row)
+                }
+            },
+        )
     }
 
     private fun attachedNoteView(phone: String, note: CallReportHistoryRow, remoteEnabled: Boolean): LinearLayout {
