@@ -7,6 +7,17 @@ import androidx.appcompat.app.AppCompatActivity
 
 /** Keeps HomeActivity focused on state coordination rather than menu plumbing. */
 internal object HomeOverflowMenu {
+    fun show(activity: AppCompatActivity, anchor: View, openSettings: () -> Unit) {
+        show(
+            activity = activity,
+            anchor = anchor,
+            openSettings = openSettings,
+            openCompanyAccount = {
+                activity.startActivity(Intent(activity, CompanyAccountActivity::class.java))
+            },
+        )
+    }
+
     fun show(
         activity: AppCompatActivity,
         anchor: View,
