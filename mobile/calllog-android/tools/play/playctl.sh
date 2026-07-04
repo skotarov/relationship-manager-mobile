@@ -9,7 +9,7 @@ IFS=$'\n\t'
 readonly PACKAGE_ID="${RELATIONSHIP_MANAGER_PLAY_PACKAGE_ID:-com.onlineimoti.relationshipmanager}"
 readonly PRODUCT_ID="${RELATIONSHIP_MANAGER_PLAY_PRODUCT_ID:-rm_company_license}"
 readonly API_BASE="https://androidpublisher.googleapis.com/androidpublisher/v3"
-readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 readonly APP_DIR="$REPO_ROOT/mobile/calllog-android"
 
 TEMP_GCLOUD_CONFIG=""
@@ -159,6 +159,7 @@ create_service_account() {
   require_command gcloud
   require_command jq
   require_command install
+  require_command python3
 
   note "Checking Google Cloud login"
   if ! gcloud auth list --filter='status:ACTIVE' --format='value(account)' | grep -q .; then
@@ -224,7 +225,7 @@ verify_play_access() {
   note "Checking Play Developer API access for $PACKAGE_ID"
   local response
   response="$(api_call GET "$API_BASE/applications/$PACKAGE_ID/inappproducts")"
-  printf '%s\n' "$response" | jq '{access: "ok", package: "'"$PACKAGE_ID"'", products: (.inappproduct // [] | map(.sku))}'
+  printf '%s\n' "$response" | jq --arg package "$PACKAGE_ID" '{access: "ok", package: $package, products: (.inappproduct // [] | map(.sku))}'
 }
 
 price_to_micros() {
@@ -247,6 +248,7 @@ create_company_license_product() {
   local price_bgn="${2:-}"
   [[ -n "$key_file" && -n "$price_bgn" ]] || fail "Usage: create-company-license-product <service-account-json> <price-bgn>"
   require_command jq
+  require_command python3
   local price_micros
   price_micros="$(price_to_micros "$price_bgn")" || fail "Invalid BGN price: $price_bgn"
   start_service_account_session "$key_file"
@@ -288,6 +290,7 @@ generate_upload_key() {
   local secure_dir="${1:-$HOME/.local/share/relationship-manager/play-signing}"
   require_command keytool
   require_command python3
+  require_command install
   secure_dir="$(python3 - "$secure_dir" <<'PY'
 import os, sys
 print(os.path.abspath(os.path.expanduser(sys.argv[1])))
@@ -305,17 +308,17 @@ PY
   read -r -p "Two-letter country code [BG]: " country
   country="${country:-BG}"
 
-  local store_secret key_secret
+  local store_secret
   store_secret="$(random_hex)"
-  key_secret="$(random_hex)"
   install -d -m 700 "$secure_dir"
   umask 077
+  # PKCS12 uses the same password for the keystore and the private key.
   keytool -genkeypair \
     -keystore "$keystore" \
     -storetype PKCS12 \
     -storepass "$store_secret" \
     -alias relationship-manager-upload \
-    -keypass "$key_secret" \
+    -keypass "$store_secret" \
     -keyalg RSA \
     -keysize 4096 \
     -validity 10000 \
@@ -326,7 +329,7 @@ PY
 storeFile=$keystore
 storeSecret=$store_secret
 keyAlias=relationship-manager-upload
-keySecret=$key_secret
+keySecret=$store_secret
 EOF
   chmod 600 "$properties"
   cat > "$secrets" <<EOF
@@ -335,7 +338,7 @@ Relationship Manager upload-key recovery information
 Keystore: $keystore
 Alias: relationship-manager-upload
 Store password: $store_secret
-Key password: $key_secret
+Key password: $store_secret
 
 Back up this file and the .jks file offline. Do not commit, email or upload them.
 EOF
@@ -400,10 +403,12 @@ publish_internal() {
 prepare_server_env() {
   local remote_key_path="${1:-}"
   local data_dir="${2:-}"
-  local output_file="${3:-$REPO_ROOT/relationship-manager-play.env}"
+  local output_file="${3:-$HOME/.config/relationship-manager/relationship-manager-play.env}"
   [[ -n "$remote_key_path" && -n "$data_dir" ]] || fail "Usage: prepare-server-env <remote-service-account-json-path> <data-directory> [output-file]"
   [[ "$remote_key_path" = /* ]] || fail "remote-service-account-json-path must be an absolute server path."
   [[ "$data_dir" = /* ]] || fail "data-directory must be an absolute server path."
+  require_command install
+  install -d -m 700 "$(dirname "$output_file")"
   umask 077
   cat > "$output_file" <<EOF
 RELATIONSHIP_MANAGER_DATA_DIR=$data_dir
