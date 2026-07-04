@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.content.Context
 import org.json.JSONObject
 import java.io.File
-import java.util.Locale
 
 internal data class StoredNoteSearchResult(
     val phone: String,
@@ -28,11 +27,11 @@ internal object StoredNoteSearchProvider {
     private var cachedAtMs = 0L
 
     fun search(context: Context, query: String): List<StoredNoteSearchResult> {
-        val lowerQuery = query.trim().lowercase(Locale.getDefault())
-        if (lowerQuery.isBlank()) return emptyList()
+        val terms = SearchQueryTerms.from(query)
+        if (terms.isEmpty) return emptyList()
         return allNotes(context)
             .asSequence()
-            .filter { result -> result.note.lowercase(Locale.getDefault()).contains(lowerQuery) }
+            .filter { result -> terms.matches(result.note, result.phone, result.phoneKey) }
             .sortedByDescending { it.noteAt.takeIf { at -> at > 0L } ?: it.callAt }
             .toList()
     }
