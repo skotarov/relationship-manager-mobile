@@ -2,14 +2,10 @@ package com.onlineimoti.calllog
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -18,7 +14,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 import java.util.concurrent.Executors
 
 /** Device-wide chronological SMS list opened from the Call Log overflow menu. */
@@ -159,13 +154,16 @@ class SmsHistoryActivity : AppCompatActivity() {
                 offset = requestedPage * pageSize,
                 limit = pageSize + 1,
             )
+            val displayNames = loaded.associate { message ->
+                message.providerId to ContactGroupFilter.resolveDisplayName(applicationContext, message.address).orEmpty()
+            }
             runOnUiThread {
                 if (isFinishing || isDestroyed || requestedPage != pageIndex) return@runOnUiThread
                 loading = false
                 progress.visibility = View.GONE
                 val hasNext = loaded.size > pageSize
                 val messages = loaded.take(pageSize)
-                renderRows(messages)
+                renderRows(messages, displayNames)
                 val first = requestedPage * pageSize + 1
                 val last = requestedPage * pageSize + messages.size
                 statusText.text = when {
@@ -203,61 +201,31 @@ class SmsHistoryActivity : AppCompatActivity() {
         })
     }
 
-    private fun renderRows(messages: List<SmsTimelineMessage>) {
+    private fun renderRows(messages: List<SmsTimelineMessage>, displayNames: Map<String, String>) {
         listContainer.removeAllViews()
-        messages.forEach { message -> listContainer.addView(smsRow(message)) }
+        messages.forEach { message ->
+            listContainer.addView(smsRow(message, displayNames[message.providerId].orEmpty()))
+        }
     }
 
-    private fun smsRow(message: SmsTimelineMessage): MaterialCardView {
-        val card = MaterialCardView(this).apply {
-            radius = dp(12).toFloat()
-            strokeWidth = dp(1)
-            setStrokeColor(getColor(R.color.calllog_border))
-            setCardBackgroundColor(Color.rgb(248, 250, 252))
-            cardElevation = 0f
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(8) }
-        }
-        card.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            addView(LinearLayout(this@SmsHistoryActivity).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                orientation = LinearLayout.HORIZONTAL
-                addView(ImageView(this@SmsHistoryActivity).apply {
-                    setImageResource(if (message.isOutgoing) R.drawable.ic_sms_bubble_left else R.drawable.ic_sms_bubble_right)
-                    contentDescription = message.directionLabel
-                    scaleType = ImageView.ScaleType.CENTER
-                }, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(6) })
-                addView(TextView(this@SmsHistoryActivity).apply {
-                    text = "${message.directionLabel.replaceFirstChar { it.titlecase() }} • ${PhoneCallReader.formatStartedAt(message.timestampMs)}"
-                    textSize = 12.5f
-                    setTextColor(getColor(R.color.calllog_muted_text))
-                }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            })
-            addView(TextView(this@SmsHistoryActivity).apply {
-                text = message.address.ifBlank { "Неизвестен номер" }
-                textSize = 15f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setTextColor(getColor(R.color.calllog_text))
-                setPadding(0, dp(4), 0, 0)
-            })
-            addView(TextView(this@SmsHistoryActivity).apply {
-                text = message.body.ifBlank { "(празно SMS)" }
-                textSize = 14f
-                setTextColor(getColor(R.color.calllog_text))
-                setPadding(0, dp(5), 0, 0)
-            })
-        })
-        return card
-    }
+    private fun smsRow(message: SmsTimelineMessage, displayName: String) = SmsTimelineCard.create(
+        activity = this,
+        dp = ::dp,
+        message = PhoneCallRecord(
+            number = message.address,
+            name = displayName,
+            direction = if (message.isOutgoing) "sms_out" else "sms_in",
+            startedAt = message.timestampMs,
+            durationSeconds = 0L,
+            smsBody = message.body,
+            providerId = message.providerId,
+        ),
+    )
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     private fun hasSmsPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        return SmsMessageReader.hasReadSmsPermission(this)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
