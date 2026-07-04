@@ -79,6 +79,9 @@ internal class ContactNegotiationPhaseUi(
             isSelected = selected
             setOnClickListener {
                 CompanyNegotiationPhaseStore.togglePhase(activity, phone, companyId, phase.number)
+                // A phase filter may have cached this phone before the local value
+                // is uploaded. Force its next render to read the fresh server state.
+                HomeCrmPhaseLookup.invalidate()
                 onChanged()
             }
         }
@@ -86,7 +89,10 @@ internal class ContactNegotiationPhaseUi(
 
     private fun reconcileWithServer(phone: String, companyId: String, onChanged: () -> Unit) {
         CompanyNegotiationPhaseSyncDispatcher.synchronize(activity, phone, companyId) { changed ->
-            if (changed && !activity.isFinishing && !activity.isDestroyed) onChanged()
+            if (changed && !activity.isFinishing && !activity.isDestroyed) {
+                HomeCrmPhaseLookup.invalidate()
+                onChanged()
+            }
         }
     }
 
