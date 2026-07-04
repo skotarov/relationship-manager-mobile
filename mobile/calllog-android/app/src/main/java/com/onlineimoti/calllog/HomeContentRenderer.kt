@@ -285,8 +285,10 @@ internal class HomeContentRenderer(
 
     private fun updateCrmModeControls() {
         val serverEnabled = HomeCrmModeStore.isAvailable(activity)
-        binding.crmControlsScroll.visibility = if (serverEnabled) View.VISIBLE else View.GONE
-        if (!serverEnabled) return
+        val phoneFilterActive = activePhoneFilter().isNotBlank()
+        val visible = serverEnabled && !phoneFilterActive
+        binding.crmControlsScroll.visibility = if (visible) View.VISIBLE else View.GONE
+        if (!visible) return
         val active = isCrmModeEnabled()
         val fill = if (active) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
         val border = if (active) activity.getColor(R.color.callreport_icon_background) else Color.rgb(203, 213, 225)
