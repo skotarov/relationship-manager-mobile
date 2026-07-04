@@ -25,13 +25,13 @@ internal object ContactSearchProvider {
     private var cachedAtMs = 0L
 
     fun search(context: Context, query: String): List<ContactSearchResult> {
-        val trimmed = query.trim()
-        if (trimmed.isBlank()) return emptyList()
-        val lowerQuery = trimmed.lowercase(Locale.getDefault())
-        val digitsQuery = trimmed.filter { it.isDigit() }
+        val terms = SearchQueryTerms.from(query)
+        if (terms.isEmpty) return emptyList()
         return allContacts(context)
             .asSequence()
-            .filter { result -> matches(result.name, result.phone, result.normalizedPhone, lowerQuery, digitsQuery) }
+            // Every separated word/number is required, but it can be found in a
+            // different field: e.g. "Иван 897" matches name + phone together.
+            .filter { result -> terms.matches(result.name, result.phone, result.normalizedPhone) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
             .toList()
     }
@@ -91,12 +91,6 @@ internal object ContactSearchProvider {
             }
         }
         return results.values.toList()
-    }
-
-    private fun matches(name: String, number: String, normalized: String, lowerQuery: String, digitsQuery: String): Boolean {
-        if (name.lowercase(Locale.getDefault()).contains(lowerQuery)) return true
-        if (digitsQuery.length < 3) return false
-        return number.filter { it.isDigit() }.contains(digitsQuery) || normalized.filter { it.isDigit() }.contains(digitsQuery)
     }
 
     private fun noteKey(number: String): String {
