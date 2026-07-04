@@ -16,12 +16,15 @@ internal object CompanyNegotiationPhaseSync {
         val hasCompanyState = CompanyNegotiationPhaseStore.hasSavedState(appContext, phone, companyId)
         val before = CompanyNegotiationPhaseStore.state(appContext, phone, companyId)
         val server = CompanyNegotiationPhaseRemoteClient.fetch(config, phone, companyId)
-        val resolved = if (hasCompanyState && before.updatedAtMs > server.updatedAtMs) {
+        val uploaded = hasCompanyState && before.updatedAtMs > server.updatedAtMs
+        val resolved = if (uploaded) {
             CompanyNegotiationPhaseRemoteClient.update(config, phone, companyId, before)
         } else {
             server
         }
         val after = CompanyNegotiationPhaseStore.applyServerState(appContext, phone, companyId, resolved)
-        return after != before
+        // Uploading a local phase does not necessarily change the local object,
+        // but it does change what Home's server-backed phase filter must show.
+        return uploaded || after != before
     }
 }
