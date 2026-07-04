@@ -153,12 +153,6 @@ internal class HomeContentRenderer(
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(dp(10), dp(6), dp(10), dp(6))
-            background = roundedRect(
-                Color.rgb(241, 245, 249),
-                dp(10),
-                Color.rgb(203, 213, 225),
-                dp(1),
-            )
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
