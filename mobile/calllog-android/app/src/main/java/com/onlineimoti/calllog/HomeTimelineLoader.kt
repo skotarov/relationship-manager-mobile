@@ -10,6 +10,7 @@ import android.content.Context
 internal object HomeTimelineLoader {
     private const val CALL_BATCH_SIZE = 500
     private const val SMS_BATCH_SIZE = 100
+    private const val CRM_TIMELINE_SCAN_LIMIT = 1_000
 
     fun page(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val safePageIndex = pageIndex.coerceAtLeast(0)
@@ -17,9 +18,20 @@ internal object HomeTimelineLoader {
         val endExclusive = ((safePageIndex + 1).toLong() * safePageSize.toLong())
             .coerceAtMost(Int.MAX_VALUE.toLong())
             .toInt()
-        val timeline = (readCalls(context, endExclusive) + readSms(context, endExclusive))
-            .sortedByDescending { it.startedAt }
+        val timeline = mergedRows(context, endExclusive)
         return timeline.drop(safePageIndex * safePageSize).take(safePageSize)
+    }
+
+    /** Same chronological data set for CRM before its existing filters are applied. */
+    fun crmCandidates(context: Context): List<PhoneCallRecord> {
+        val timeline = mergedRows(context, CRM_TIMELINE_SCAN_LIMIT)
+        val eligibleKeys = HomeCallPageLoader.crmEligiblePhoneKeys(context, timeline.map { it.number })
+        return timeline.filter { call -> HomeCallPageLoader.noteKey(call.number) in eligibleKeys }
+    }
+
+    private fun mergedRows(context: Context, wanted: Int): List<PhoneCallRecord> {
+        return (readCalls(context, wanted) + readSms(context, wanted))
+            .sortedByDescending { it.startedAt }
     }
 
     private fun readCalls(context: Context, wanted: Int): List<PhoneCallRecord> {
