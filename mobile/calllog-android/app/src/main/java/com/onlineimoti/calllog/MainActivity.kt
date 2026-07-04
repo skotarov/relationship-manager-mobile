@@ -192,6 +192,15 @@ class MainActivity : AppCompatActivity() {
             refreshPermissionSummary()
             serverSyncQueueStatusController.refresh()
         }
+        binding.settingsRegistrationGroup.registrationCompanyAccountButton.setOnClickListener {
+            RegistrationActions.openCompanyAccount(this)
+        }
+        binding.settingsRegistrationGroup.registrationJoinCompanyButton.setOnClickListener {
+            RegistrationActions.showJoinDialog(this)
+        }
+        binding.settingsRegistrationGroup.registrationInviteColleagueButton.setOnClickListener {
+            RegistrationActions.showInviteDialog(this)
+        }
         binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
             createArchiveLauncher.launch(MainArchiveActions.archiveFileName())
         }
