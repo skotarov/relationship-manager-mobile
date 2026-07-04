@@ -43,6 +43,11 @@
     <string name="settings_crm_section">Контакти и CRM</string>
     <string name="settings_permissions_section">Разрешения</string>
     <string name="settings_server_section">Сървърна връзка</string>
+    <string name="settings_registration_section">Регистрация</string>
+    <string name="settings_registration_description">Управлявай фирмения профил, поканите и достъпа на колеги.</string>
+    <string name="settings_registration_company_account">Фирмен профил и лиценз</string>
+    <string name="settings_registration_join">Присъедини се по покана</string>
+    <string name="settings_registration_invite">Покани колега</string>
     <string name="settings_debug_section">Тестове за разработка</string>
     <string name="settings_debug_description">Тези бутони са само за проверка дали popup-ите, сървърната връзка и WebView екраните работят правилно.</string>
 
