@@ -84,7 +84,13 @@ internal object CompanyAccountApi {
                 throw IllegalStateException(error?.optString("message").orEmpty().ifBlank { "Неуспешна заявка към фирмения сървър." })
             }
             if (response.optBoolean("selection_required", false)) {
-                throw IllegalStateException("Този профил има повече от една организация. Изборът на организация ще бъде добавен в следващата версия.")
+                // The server returns organizations alphabetically. Until the dedicated
+                // chooser screen is added, login continues with the first permitted one.
+                val organizations = response.optJSONArray("organizations")
+                val selectedId = organizations?.optJSONObject(0)?.optString("id").orEmpty().trim()
+                require(selectedId.isNotBlank()) { "Няма достъпна организация за този профил." }
+                val retry = JSONObject(payload.toString()).put("organization_id", selectedId)
+                return@runCatching post(context, retry).getOrThrow()
             }
             val accessToken = response.optString("access_token").trim()
             require(accessToken.isNotBlank()) { "Сървърът не върна валиден access token." }
