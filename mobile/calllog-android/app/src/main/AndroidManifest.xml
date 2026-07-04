@@ -131,6 +131,12 @@
         <activity
             android:name=".WebViewActivity"
             android:exported="false" />
+        <activity
+            android:name=".CompanyLicenseActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CompanyAccountActivity"
+            android:exported="false" />
 
         <activity
             android:name=".ContactShareActivity"
