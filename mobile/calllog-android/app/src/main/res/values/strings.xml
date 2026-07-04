@@ -43,6 +43,11 @@
     <string name="settings_crm_section">Contacts &amp; CRM</string>
     <string name="settings_permissions_section">Permissions</string>
     <string name="settings_server_section">Server connection</string>
+    <string name="settings_registration_section">Registration</string>
+    <string name="settings_registration_description">Manage your company profile, invitation and colleague access.</string>
+    <string name="settings_registration_company_account">Company profile &amp; license</string>
+    <string name="settings_registration_join">Join by invitation</string>
+    <string name="settings_registration_invite">Invite colleague</string>
     <string name="settings_debug_section">Developer tests</string>
     <string name="settings_debug_description">These buttons are only for checking whether popups, cloud connection and WebView screens work correctly.</string>
 
