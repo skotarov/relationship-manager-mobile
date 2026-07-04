@@ -42,8 +42,14 @@ data class PhoneCallRecord(
 }
 
 object PhoneCallReader {
-    fun hasCallLogPermission(context: Context): Boolean {
+    /** Raw Android permission state, used only for settings/permission summaries. */
+    fun hasRawCallLogPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /** System call history is available only inside an authenticated company CRM session. */
+    fun hasCallLogPermission(context: Context): Boolean {
+        return hasRawCallLogPermission(context) && CorporateAccess.isActive(context)
     }
 
     fun latestCall(context: Context): PhoneCallRecord? {
