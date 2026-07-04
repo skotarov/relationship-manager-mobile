@@ -70,32 +70,34 @@ internal object SmsMessageReader {
     }
 
     /**
-     * Searches the device SMS store by message text and sender/recipient number.
-     * It uses provider filtering and then normalizes digits locally so formatted
-     * Bulgarian phone numbers can still be found by a plain numeric query.
+     * Searches the device SMS store by independent text/number terms. A query
+     * such as "оглед Петров" requires both terms but they may occur anywhere
+     * and in any order, including one in the SMS and one in the phone number.
      */
     fun searchMessages(context: Context, query: String, limit: Int): List<SmsTimelineMessage> {
-        val trimmedQuery = query.trim()
-        if (trimmedQuery.isBlank() || !canReadSms(context)) return emptyList()
+        val terms = SearchQueryTerms.from(query)
+        if (terms.isEmpty || !canReadSms(context)) return emptyList()
         val safeLimit = limit.coerceIn(1, 500)
-        val digits = trimmedQuery.filter(Char::isDigit)
-        val addressNeedle = when {
-            digits.length >= 9 -> digits.takeLast(9)
-            digits.isNotBlank() -> digits
-            else -> trimmedQuery
+
+        // Use the message provider to narrow ordinary text searches, while pure
+        // numeric terms are validated after the rows are read. This preserves
+        // matching across phone formats such as 08… and +359….
+        val selectionArgs = mutableListOf<String>()
+        val clauses = terms.textTerms().map { term ->
+            selectionArgs += "%$term%"
+            selectionArgs += "%$term%"
+            "(${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?)"
         }
-        val selection = "${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?"
-        val selectionArgs = arrayOf("%$trimmedQuery%", "%$addressNeedle%")
+        val selection = clauses.joinToString(" AND ").ifBlank { "1=1" }
+
         return runCatching {
             queryTimelineMessages(
                 context = context,
                 selection = selection,
-                selectionArgs = selectionArgs,
+                selectionArgs = selectionArgs.toTypedArray(),
                 limit = safeLimit,
             ).filter { message ->
-                message.body.contains(trimmedQuery, ignoreCase = true) ||
-                    (digits.isNotBlank() && message.address.filter(Char::isDigit).contains(digits)) ||
-                    (digits.isBlank() && message.address.contains(trimmedQuery, ignoreCase = true))
+                terms.matches(message.body, message.address)
             }
         }.getOrDefault(emptyList())
     }
