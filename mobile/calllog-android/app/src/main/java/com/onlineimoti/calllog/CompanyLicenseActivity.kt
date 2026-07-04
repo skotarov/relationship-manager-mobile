@@ -23,317 +23,228 @@ import com.android.billingclient.api.QueryPurchasesParams
 import com.google.android.material.button.MaterialButton
 import java.security.MessageDigest
 import java.util.UUID
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-/**
- * Google Play one-time company-license purchase and restore screen.
- * The purchase is useful only after the server validates its purchase token and
- * stores a short-lived company-creation activation.
- */
 class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
-    private val executor: ExecutorService = Executors.newSingleThreadExecutor()
-    private lateinit var billingClient: BillingClient
-    private var billingReady = false
-    private var currentProduct: ProductDetails? = null
+    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var client: BillingClient
+    private var connected = false
+    private var product: ProductDetails? = null
+    private var offerToken = ""
 
-    private lateinit var statusText: TextView
-    private lateinit var priceText: TextView
-    private lateinit var progress: ProgressBar
-    private lateinit var buyButton: MaterialButton
-    private lateinit var restoreButton: MaterialButton
-    private lateinit var createCompanyButton: MaterialButton
-    private lateinit var settingsButton: MaterialButton
+    private lateinit var status: TextView
+    private lateinit var price: TextView
+    private lateinit var spinner: ProgressBar
+    private lateinit var buy: MaterialButton
+    private lateinit var restore: MaterialButton
+    private lateinit var create: MaterialButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         title = "Фирмен лиценз"
-        setContentView(createContent())
-        refreshActivationUi()
-
+        setContentView(content())
+        refresh()
         if (!BuildConfig.PLAY_BILLING_ENABLED) {
-            setStatus("Фирмен лиценз се купува през версията на приложението от Google Play.")
-            buyButton.isEnabled = false
-            restoreButton.isEnabled = false
+            status.text = "Фирмен лиценз се купува през версията от Google Play."
             return
         }
         if (ConfigStore.load(this).baseUrl.isBlank()) {
-            setStatus("Преди покупка въведи Server URL в Настройки, за да бъде лицензът потвърден към фирмения профил.")
-            buyButton.isEnabled = false
-            restoreButton.isEnabled = false
+            status.text = "Преди покупка въведи Server URL в Настройки."
             return
         }
-        startBilling()
+        connect()
     }
 
     override fun onDestroy() {
-        if (::billingClient.isInitialized) billingClient.endConnection()
+        if (::client.isInitialized) client.endConnection()
         executor.shutdownNow()
         super.onDestroy()
     }
 
-    override fun onPurchasesUpdated(billingResult: BillingResult, purchases: MutableList<Purchase>?) {
-        when (billingResult.responseCode) {
-            BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach(::processPurchase)
-            BillingClient.BillingResponseCode.USER_CANCELED -> setStatus("Покупката беше отменена.")
-            else -> setStatus("Google Play не можа да завърши покупката: ${billingResult.debugMessage.ifBlank { "непозната грешка" }}")
+    override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
+        when (result.responseCode) {
+            BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach(::process)
+            BillingClient.BillingResponseCode.USER_CANCELED -> status.text = "Покупката беше отменена."
+            else -> status.text = "Google Play не можа да завърши покупката: ${result.debugMessage.ifBlank { "опитай отново" }}"
         }
     }
 
-    private fun createContent(): View {
-        val density = resources.displayMetrics.density
-        fun dp(value: Int) = (value * density).toInt()
-        val padding = dp(20)
+    private fun content(): View {
+        val d = resources.displayMetrics.density
+        fun dp(v: Int) = (v * d).toInt()
         val root = ScrollView(this)
-        val column = LinearLayout(this).apply {
+        val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, dp(28))
+            setPadding(dp(20), dp(20), dp(20), dp(28))
         }
-        root.addView(column)
-
-        column.addView(TextView(this).apply {
-            text = "Създай своя фирма"
-            textSize = 24f
-        })
-        column.addView(TextView(this).apply {
-            text = "Еднократният фирмен лиценз отключва създаване на една организация. Поканените колеги влизат без отделна покупка."
+        root.addView(box)
+        box.addView(TextView(this).apply { text = "Създай своя фирма"; textSize = 24f })
+        box.addView(TextView(this).apply {
+            text = "Еднократният фирмен лиценз отключва една организация. Поканените колеги влизат без отделна покупка."
             textSize = 16f
             setPadding(0, dp(8), 0, dp(18))
         })
-        priceText = TextView(this).apply {
-            text = "Проверяваме цената в Google Play…"
-            textSize = 18f
-            setPadding(0, 0, 0, dp(12))
-        }
-        column.addView(priceText)
-
-        progress = ProgressBar(this).apply {
-            visibility = View.GONE
-        }
-        column.addView(progress, LinearLayout.LayoutParams(dp(42), dp(42)).apply { gravity = Gravity.CENTER_HORIZONTAL })
-
-        buyButton = MaterialButton(this).apply {
-            text = "Купи фирмен лиценз"
-            isEnabled = false
-            setOnClickListener { launchPurchase() }
-        }
-        column.addView(buyButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(12)
-        })
-
-        restoreButton = MaterialButton(this).apply {
-            text = "Възстанови покупка"
-            isEnabled = false
-            setOnClickListener { restorePurchases() }
-        }
-        column.addView(restoreButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(8)
-        })
-
-        createCompanyButton = MaterialButton(this).apply {
+        price = TextView(this).apply { text = "Проверяваме цената в Google Play…"; textSize = 18f }
+        box.addView(price)
+        spinner = ProgressBar(this).apply { visibility = View.GONE }
+        box.addView(spinner, LinearLayout.LayoutParams(dp(42), dp(42)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        buy = MaterialButton(this).apply { text = "Купи фирмен лиценз"; isEnabled = false; setOnClickListener { launch() } }
+        box.addView(buy, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+        restore = MaterialButton(this).apply { text = "Възстанови покупка"; isEnabled = false; setOnClickListener { restore() } }
+        box.addView(restore, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        create = MaterialButton(this).apply {
             text = "Създай фирма"
             visibility = View.GONE
             setOnClickListener {
-                startActivity(Intent(this@CompanyLicenseActivity, CompanyAccountActivity::class.java).apply {
-                    putExtra(CompanyAccountActivity.EXTRA_MODE, CompanyAccountActivity.MODE_REGISTER)
-                })
+                startActivity(Intent(this@CompanyLicenseActivity, CompanyAccountActivity::class.java).putExtra(CompanyAccountActivity.EXTRA_MODE, CompanyAccountActivity.MODE_REGISTER))
             }
         }
-        column.addView(createCompanyButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(18)
-        })
-
-        settingsButton = MaterialButton(this).apply {
+        box.addView(create, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(18) })
+        box.addView(MaterialButton(this).apply {
             text = "Отвори настройки"
             setOnClickListener { startActivity(Intent(this@CompanyLicenseActivity, MainActivity::class.java)) }
-        }
-        column.addView(settingsButton, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            topMargin = dp(8)
-        })
-
-        statusText = TextView(this).apply {
-            textSize = 15f
-            setPadding(0, dp(18), 0, 0)
-        }
-        column.addView(statusText)
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        status = TextView(this).apply { textSize = 15f; setPadding(0, dp(18), 0, 0) }
+        box.addView(status)
         return root
     }
 
-    private fun startBilling() {
-        billingClient = BillingClient.newBuilder(this)
+    private fun connect() {
+        client = BillingClient.newBuilder(this)
             .setListener(this)
-            .enablePendingPurchases(
-                PendingPurchasesParams.newBuilder()
-                    .enableOneTimeProducts()
-                    .build(),
-            )
+            .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
             .enableAutoServiceReconnection()
             .build()
-        showProgress(true)
-        billingClient.startConnection(object : BillingClientStateListener {
-            override fun onBillingSetupFinished(billingResult: BillingResult) {
-                billingReady = billingResult.responseCode == BillingClient.BillingResponseCode.OK
-                if (!billingReady) {
-                    showProgress(false)
-                    setStatus("Неуспешна връзка с Google Play: ${billingResult.debugMessage.ifBlank { "опитай отново" }}")
+        loading(true)
+        client.startConnection(object : BillingClientStateListener {
+            override fun onBillingSetupFinished(result: BillingResult) {
+                connected = result.responseCode == BillingClient.BillingResponseCode.OK
+                if (!connected) {
+                    loading(false)
+                    status.text = "Неуспешна връзка с Google Play: ${result.debugMessage.ifBlank { "опитай отново" }}"
                     return
                 }
-                queryLicenseProduct()
-                restorePurchases(silent = true)
+                loadProduct()
+                restore(silent = true)
             }
-
             override fun onBillingServiceDisconnected() {
-                billingReady = false
-                buyButton.isEnabled = false
-                restoreButton.isEnabled = false
-                setStatus("Връзката с Google Play е прекъсната. Отвори екрана отново.")
+                connected = false
+                buy.isEnabled = false
+                restore.isEnabled = false
             }
         })
     }
 
-    private fun queryLicenseProduct() {
-        if (!billingReady) return
-        val product = QueryProductDetailsParams.Product.newBuilder()
+    private fun loadProduct() {
+        val item = QueryProductDetailsParams.Product.newBuilder()
             .setProductId(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID)
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
-        val params = QueryProductDetailsParams.newBuilder()
-            .setProductList(listOf(product))
-            .build()
-        billingClient.queryProductDetailsAsync(params) { billingResult, result ->
-            showProgress(false)
-            currentProduct = result.productDetailsList.firstOrNull()
-            val details = currentProduct
-            if (billingResult.responseCode != BillingClient.BillingResponseCode.OK || details == null) {
-                buyButton.isEnabled = false
-                priceText.text = "Фирменият лиценз още не е наличен в Google Play."
-                setStatus("Създай еднократен продукт с ID ${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID} в Play Console и го активирай за този тест/релийз.")
+        client.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(listOf(item)).build()) { result, detailsResult ->
+            loading(false)
+            product = detailsResult.productDetailsList.firstOrNull()
+            val details = product
+            if (result.responseCode != BillingClient.BillingResponseCode.OK || details == null) {
+                offerToken = ""
+                price.text = "Фирменият лиценз още не е наличен в Google Play."
+                status.text = "Създай и активирай продукт ${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID} в Play Console."
                 return@queryProductDetailsAsync
             }
-            val price = details.oneTimePurchaseOfferDetails?.formattedPrice.orEmpty()
-            priceText.text = if (price.isBlank()) "Еднократен фирмен лиценз" else "Цена: $price"
-            buyButton.isEnabled = CompanyLicenseStore.loadValid(this) == null
-            restoreButton.isEnabled = true
-            if (CompanyLicenseStore.loadValid(this) == null) {
-                setStatus("Лицензът се потвърждава от сървъра преди да можеш да създадеш фирма.")
+            val offer = details.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: details.oneTimePurchaseOfferDetails
+            offerToken = offer?.offerToken.orEmpty()
+            if (offerToken.isBlank()) {
+                buy.isEnabled = false
+                price.text = "Няма достъпна оферта за този профил."
+                status.text = "Провери настройките и тестовия профил в Google Play."
+                return@queryProductDetailsAsync
             }
+            price.text = offer?.formattedPrice?.let { "Цена: $it" } ?: "Еднократен фирмен лиценз"
+            buy.isEnabled = CompanyLicenseStore.loadValid(this) == null
+            restore.isEnabled = true
+            if (CompanyLicenseStore.loadValid(this) == null) status.text = "Лицензът се потвърждава от сървъра."
         }
     }
 
-    private fun launchPurchase() {
-        val product = currentProduct ?: run {
-            setStatus("Лицензът още не е зареден от Google Play.")
-            return
-        }
-        val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
-            .setProductDetails(product)
+    private fun launch() {
+        val details = product ?: run { status.text = "Лицензът още не е зареден."; return }
+        if (offerToken.isBlank()) { status.text = "Няма валидна оферта за покупка."; return }
+        val params = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(details)
+            .setOfferToken(offerToken)
             .build()
-        val flowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(listOf(productParams))
+        val result = client.launchBillingFlow(this, BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(listOf(params))
             .setObfuscatedAccountId(obfuscatedInstallationId())
-            .build()
-        val result = billingClient.launchBillingFlow(this, flowParams)
-        if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-            setStatus("Google Play не можа да отвори плащането: ${result.debugMessage.ifBlank { "опитай отново" }}")
+            .build())
+        if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Google Play не можа да отвори плащането: ${result.debugMessage.ifBlank { "опитай отново" }}"
+    }
+
+    private fun restore(silent: Boolean = false) {
+        if (!connected) return
+        loading(true)
+        client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result, purchases ->
+            loading(false)
+            if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                if (!silent) status.text = "Неуспешно възстановяване: ${result.debugMessage.ifBlank { "опитай отново" }}"
+                return@queryPurchasesAsync
+            }
+            val licenses = purchases.filter { it.products.contains(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID) }
+            if (licenses.isEmpty() && !silent) status.text = "Няма намерен фирмен лиценз за този Google Play профил."
+            licenses.forEach(::process)
         }
     }
 
-    private fun restorePurchases(silent: Boolean = false) {
-        if (!billingReady) {
-            if (!silent) setStatus("Google Play още не е готов.")
-            return
-        }
-        showProgress(true)
-        val params = QueryPurchasesParams.newBuilder()
-            .setProductType(BillingClient.ProductType.INAPP)
-            .build()
-        billingClient.queryPurchasesAsync(params) { billingResult, purchases ->
-            showProgress(false)
-            if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
-                if (!silent) setStatus("Неуспешно възстановяване на покупката: ${billingResult.debugMessage.ifBlank { "опитай отново" }}")
-                return@queryPurchasesAsync
-            }
-            val licenses = purchases.filter { purchase ->
-                purchase.products.contains(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID)
-            }
-            if (licenses.isEmpty()) {
-                if (!silent) setStatus("Няма намерен фирмен лиценз за този Google Play профил.")
-                return@queryPurchasesAsync
-            }
-            licenses.forEach(::processPurchase)
-        }
-    }
-
-    private fun processPurchase(purchase: Purchase) {
+    private fun process(purchase: Purchase) {
         when (purchase.purchaseState) {
-            Purchase.PurchaseState.PURCHASED -> verifyWithServer(purchase)
-            Purchase.PurchaseState.PENDING -> setStatus("Плащането се обработва от Google Play. Лицензът ще се активира след потвърждение.")
-            else -> setStatus("Покупката не е завършена.")
+            Purchase.PurchaseState.PURCHASED -> verify(purchase)
+            Purchase.PurchaseState.PENDING -> status.text = "Плащането се обработва от Google Play."
+            else -> status.text = "Покупката не е завършена."
         }
     }
 
-    private fun verifyWithServer(purchase: Purchase) {
-        showProgress(true)
-        buyButton.isEnabled = false
+    private fun verify(purchase: Purchase) {
+        loading(true)
+        buy.isEnabled = false
         executor.execute {
-            val result = CompanyLicenseApi.verifyPurchase(
-                context = applicationContext,
-                productId = BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID,
-                purchaseToken = purchase.purchaseToken,
-            )
+            val result = CompanyLicenseApi.verifyPurchase(applicationContext, BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID, purchase.purchaseToken)
             runOnUiThread {
                 result.onSuccess { activation ->
                     CompanyLicenseStore.save(applicationContext, activation.activationToken, activation.expiresAtMs, activation.productId)
-                    acknowledgePurchase(purchase)
-                    showProgress(false)
-                    refreshActivationUi()
-                    setStatus("Лицензът е потвърден. Вече можеш да създадеш фирма.")
+                    acknowledge(purchase)
+                    loading(false)
+                    refresh()
+                    status.text = "Лицензът е потвърден. Вече можеш да създадеш фирма."
                 }.onFailure { error ->
-                    showProgress(false)
-                    buyButton.isEnabled = currentProduct != null
-                    setStatus("Покупката е направена, но сървърната проверка не успя: ${error.message ?: "опитай Възстанови покупка"}")
+                    loading(false)
+                    buy.isEnabled = product != null && offerToken.isNotBlank()
+                    status.text = "Покупката е направена, но проверката не успя: ${error.message ?: "опитай Възстанови покупка"}"
                 }
             }
         }
     }
 
-    private fun acknowledgePurchase(purchase: Purchase) {
-        if (purchase.isAcknowledged || !billingReady) return
-        val params = AcknowledgePurchaseParams.newBuilder()
-            .setPurchaseToken(purchase.purchaseToken)
-            .build()
-        billingClient.acknowledgePurchase(params) { result ->
-            if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-                setStatus("Лицензът е потвърден, но Google Play acknowledgement ще бъде повторен при Възстанови покупка.")
-            }
+    private fun acknowledge(purchase: Purchase) {
+        if (purchase.isAcknowledged || !connected) return
+        client.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()) { result ->
+            if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Лицензът е потвърден; acknowledgement ще бъде повторен при възстановяване."
         }
     }
 
-    private fun refreshActivationUi() {
+    private fun refresh() {
         val activation = CompanyLicenseStore.loadValid(this)
-        createCompanyButton.visibility = if (activation == null) View.GONE else View.VISIBLE
+        create.visibility = if (activation == null) View.GONE else View.VISIBLE
         if (activation != null) {
-            priceText.text = "Фирменият лиценз е потвърден до ${android.text.format.DateFormat.format("dd.MM.yyyy HH:mm", activation.expiresAtMs)}"
-            buyButton.isEnabled = false
+            price.text = "Фирменият лиценз е потвърден до ${android.text.format.DateFormat.format("dd.MM.yyyy HH:mm", activation.expiresAtMs)}"
+            buy.isEnabled = false
         }
     }
 
-    private fun setStatus(value: String) {
-        statusText.text = value
-    }
-
-    private fun showProgress(show: Boolean) {
-        progress.visibility = if (show) View.VISIBLE else View.GONE
-    }
+    private fun loading(value: Boolean) { spinner.visibility = if (value) View.VISIBLE else View.GONE }
 
     private fun obfuscatedInstallationId(): String {
         val prefs = getSharedPreferences("relationship_manager_billing", MODE_PRIVATE)
-        val raw = prefs.getString("installation_id", null) ?: UUID.randomUUID().toString().also { id ->
-            prefs.edit().putString("installation_id", id).apply()
-        }
-        return MessageDigest.getInstance("SHA-256")
-            .digest(raw.toByteArray(Charsets.UTF_8))
-            .joinToString("") { byte -> "%02x".format(byte) }
+        val raw = prefs.getString("installation_id", null) ?: UUID.randomUUID().toString().also { prefs.edit().putString("installation_id", it).apply() }
+        return MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
     }
 }
