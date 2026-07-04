@@ -71,6 +71,15 @@ class RecentCallsActivity : AppCompatActivity() {
     }
 
     private fun callCard(call: PhoneCallRecord): MaterialCardView {
+        if (call.isSms) {
+            return SmsTimelineCard.create(
+                activity = this,
+                dp = ::dp,
+                message = call,
+                displayName = call.displayName,
+            )
+        }
+
         val card = MaterialCardView(this).apply {
             radius = dp(18).toFloat()
             strokeWidth = dp(1)
@@ -97,45 +106,26 @@ class RecentCallsActivity : AppCompatActivity() {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         content.addView(TextView(this).apply {
-            text = if (call.isSms) {
-                listOf(
-                    call.number,
-                    PhoneCallReader.formatStartedAt(call.startedAt),
-                    call.smsDirectionLabel,
-                ).filter { it.isNotBlank() }.joinToString(" • ")
-            } else {
-                listOf(
-                    call.number,
-                    PhoneCallReader.formatStartedAt(call.startedAt),
-                    PhoneCallReader.directionLabel(call.direction),
-                    PhoneCallReader.formatDuration(call.durationSeconds),
-                ).filter { it.isNotBlank() }.joinToString(" • ")
-            }
+            text = listOf(
+                call.number,
+                PhoneCallReader.formatStartedAt(call.startedAt),
+                PhoneCallReader.directionLabel(call.direction),
+                PhoneCallReader.formatDuration(call.durationSeconds),
+            ).filter { it.isNotBlank() }.joinToString(" • ")
             setTextColor(getColor(R.color.calllog_muted_text))
             textSize = 14f
             setPadding(0, dp(6), 0, 0)
         })
-        if (call.isSms) {
-            content.addView(TextView(this).apply {
-                text = call.smsBody.ifBlank { getString(R.string.dynamic_sms_empty_body) }
-                setTextColor(getColor(R.color.calllog_text))
-                textSize = 14f
-                maxLines = 4
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(8), 0, 0)
-            })
-        } else {
-            content.addView(MaterialButton(this).apply {
-                text = getString(R.string.recent_calls_write_note)
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    topMargin = dp(12)
-                }
-                setOnClickListener { openPromptForCall(call) }
-            })
-        }
+        content.addView(MaterialButton(this).apply {
+            text = getString(R.string.recent_calls_write_note)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(12)
+            }
+            setOnClickListener { openPromptForCall(call) }
+        })
 
         card.addView(content)
         return card
