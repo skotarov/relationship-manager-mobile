@@ -8,7 +8,13 @@ import android.content.Context
  */
 object CorporateAccess {
     fun isActive(context: Context): Boolean {
-        val config = ConfigStore.load(context.applicationContext)
-        return config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
+        val appContext = context.applicationContext
+        val config = ConfigStore.load(appContext)
+        val configured = config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
+        if (!configured) return false
+        // Existing sideloaded/internal installations keep their legacy device-token
+        // compatibility. The Play product additionally requires a token produced
+        // by the company login or invitation flow on this device.
+        return !BuildConfig.PLAY_BILLING_ENABLED || CompanySessionStore.isCurrent(appContext, config.accessToken)
     }
 }
