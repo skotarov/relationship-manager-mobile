@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
@@ -51,7 +52,6 @@ internal class IncomingCallLookupCoordinator(
         }
 
         val lookupQueued = submit(::loadLookup)
-        submit(::loadHistoryRows)
         if (!lookupQueued) {
             synchronized(lock) {
                 lookupResult = fallbackLookup(resolvedContact)
@@ -59,7 +59,13 @@ internal class IncomingCallLookupCoordinator(
             }
             publishCurrent()
             finishOnce()
+            return
         }
+
+        // A slow known-contact lookup must never leave the initial loading popup
+        // on screen indefinitely. The server result may still replace this safe
+        // fallback later when it arrives.
+        scheduleLookupFallback(resolvedContact)
     }
 
     private fun loadLocalRows() {
@@ -73,7 +79,7 @@ internal class IncomingCallLookupCoordinator(
     private fun loadLookup() {
         val contact = synchronized(lock) { contactInfo } ?: return
         val fallback = fallbackLookup(contact)
-        val result = runCatching {
+        val attempt = runCatching {
             CallReportRuntime.fetchLookup(
                 config = config,
                 phone = phone,
@@ -83,12 +89,20 @@ internal class IncomingCallLookupCoordinator(
                     contactName = contact.displayName.orEmpty(),
                 ),
             )
-        }.getOrElse { fallback }
+        }
+        val result = attempt.getOrElse { fallback }
         synchronized(lock) {
             lookupResult = result
             lookupFinished = true
         }
         publishCurrent()
+
+        // The initial lookup and full server history used to run together. For a
+        // known number this could create two expensive server scans at the same
+        // time. Start the secondary history enrichment only after lookup.php has
+        // answered, and request a compact preview rather than a 200-record log.
+        if (attempt.isSuccess) submit(::loadHistoryRows)
+
         // BroadcastReceiver work ends after lookup.php. Server history may still
         // populate the already-open overlay without holding the receiver alive.
         finishOnce()
@@ -97,12 +111,32 @@ internal class IncomingCallLookupCoordinator(
     private fun loadHistoryRows() {
         val rows = runCatching {
             PostCallLookupRemoteRows.fromHistory(
-                history = CallReportHistoryLookupClient.lookup(config, phone),
+                history = CallReportHistoryLookupClient.lookup(config, phone, limit = POPUP_HISTORY_LIMIT),
                 phone = phone,
             )
         }.getOrDefault(emptyList())
         IncomingLookupPopupRowsCache.putRemoteRows(phone, rows)
         publishCurrent()
+    }
+
+    private fun scheduleLookupFallback(contact: IncomingCallContactInfo) {
+        LOOKUP_TIMEOUT_EXECUTOR.schedule({
+            val timedOut = synchronized(lock) {
+                if (lookupFinished) {
+                    false
+                } else {
+                    lookupResult = fallbackLookup(contact).copy(
+                        lines = listOf("Call Report отговаря бавно. Показана е наличната локална информация."),
+                    )
+                    lookupFinished = true
+                    true
+                }
+            }
+            if (timedOut) {
+                publishCurrent()
+                finishOnce()
+            }
+        }, LOOKUP_DEADLINE_MS, TimeUnit.MILLISECONDS)
     }
 
     private fun publishCurrent() {
@@ -130,6 +164,8 @@ internal class IncomingCallLookupCoordinator(
             fullscreen = fullscreen && remote == null && !snapshot.lookupFinished,
             phone = phone,
             direction = direction,
+            // The coordinator owns the optional history request. Do not let the
+            // overlay create a second competing lookup while the call is active.
             remoteRowsArePreloaded = true,
         )
     }
@@ -168,6 +204,8 @@ internal class IncomingCallLookupCoordinator(
 
     private companion object {
         private const val MAX_PENDING_TASKS = 24
+        private const val LOOKUP_DEADLINE_MS = 4_500L
+        private const val POPUP_HISTORY_LIMIT = 20
         private val EXECUTOR = ThreadPoolExecutor(
             4,
             4,
@@ -176,5 +214,8 @@ internal class IncomingCallLookupCoordinator(
             ArrayBlockingQueue(MAX_PENDING_TASKS),
             ThreadPoolExecutor.AbortPolicy(),
         )
+        private val LOOKUP_TIMEOUT_EXECUTOR = ScheduledThreadPoolExecutor(1).apply {
+            removeOnCancelPolicy = true
+        }
     }
 }
