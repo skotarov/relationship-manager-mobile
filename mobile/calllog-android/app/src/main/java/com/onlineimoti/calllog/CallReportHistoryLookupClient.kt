@@ -44,11 +44,17 @@ internal data class CallReportHistoryLookupResult(
 
 internal object CallReportHistoryLookupClient {
     private const val PATH = "/relationship-manager/history_lookup.php"
+    private const val DEFAULT_LIMIT = 200
+    private const val MAX_LIMIT = 200
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
-    fun lookup(config: AppConfig, phone: String): CallReportHistoryLookupResult {
+    fun lookup(
+        config: AppConfig,
+        phone: String,
+        limit: Int = DEFAULT_LIMIT,
+    ): CallReportHistoryLookupResult {
         if (!isReady(config) || phone.isBlank()) return CallReportHistoryLookupResult()
-        return request(config, listOf(phone)).also { result ->
+        return request(config, listOf(phone), limit).also { result ->
             updateGeneralNoteServerPresence(phone, result.events)
         }
     }
@@ -62,7 +68,7 @@ internal object CallReportHistoryLookupClient {
             .distinctBy(::phoneKey)
             .take(50)
         if (requestedPhones.isEmpty()) return CallReportHistoryLookupResult()
-        return request(config, requestedPhones)
+        return request(config, requestedPhones, DEFAULT_LIMIT)
     }
 
     /** Server presence of the main contact note, independent of this installation's client_event_id. */
@@ -78,12 +84,17 @@ internal object CallReportHistoryLookupClient {
         }
     }
 
-    private fun request(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
+    private fun request(
+        config: AppConfig,
+        phones: List<String>,
+        limit: Int,
+    ): CallReportHistoryLookupResult {
+        val safeLimit = limit.coerceIn(1, MAX_LIMIT)
         val singlePhone = phones.singleOrNull()
         val url = if (singlePhone != null) {
-            buildEndpoint(config.baseUrl, PATH, linkedMapOf("phone" to singlePhone, "limit" to "200"))
+            buildEndpoint(config.baseUrl, PATH, linkedMapOf("phone" to singlePhone, "limit" to safeLimit.toString()))
         } else {
-            buildEndpoint(config.baseUrl, PATH, linkedMapOf("limit" to "200"))
+            buildEndpoint(config.baseUrl, PATH, linkedMapOf("limit" to safeLimit.toString()))
         }
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
