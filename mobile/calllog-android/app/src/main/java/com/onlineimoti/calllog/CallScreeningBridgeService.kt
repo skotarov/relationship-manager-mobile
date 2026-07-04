@@ -18,6 +18,10 @@ class CallScreeningBridgeService : CallScreeningService() {
                 .build()
         )
 
+        // The service remains neutral for everyone. CRM processing begins only
+        // after the device has a signed-in company session.
+        if (!CorporateAccess.isActive(this)) return
+
         val handle: Uri = callDetails.handle ?: return
         val number = handle.schemeSpecificPart?.trim().orEmpty()
         if (number.isBlank()) return
