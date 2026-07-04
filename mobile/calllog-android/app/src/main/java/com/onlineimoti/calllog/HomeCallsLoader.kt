@@ -30,14 +30,14 @@ internal class HomeCallsLoader(
     fun renderLocalCalls(pageSize: Int) {
         val phoneFilter = activePhoneFilter()
         val searchQuery = activeSearchQuery()
-        val calls = if (phoneFilter.isBlank() && searchQuery.isBlank()) {
-            HomeTimelineLoader.page(
+        val calls = when {
+            phoneFilter.isBlank() && searchQuery.isBlank() -> HomeTimelineLoader.page(
                 context = activity,
                 pageIndex = pageIndex(),
                 pageSize = pageSize,
             )
-        } else {
-            HomeCallPageLoader.calls(
+            searchQuery.isNotBlank() -> searchResultsWithSms(phoneFilter, searchQuery, pageSize)
+            else -> HomeCallPageLoader.calls(
                 context = activity,
                 activePhoneFilter = phoneFilter,
                 searchQuery = searchQuery,
@@ -64,6 +64,56 @@ internal class HomeCallsLoader(
         onRenderComplete()
     }
 
+    /** Searches notes/contacts through the existing index and adds matching SMS rows. */
+    private fun searchResultsWithSms(
+        phoneFilter: String,
+        query: String,
+        pageSize: Int,
+    ): List<PhoneCallRecord> {
+        if (HomeCallPageLoader.isSearchTooShort(query)) return emptyList()
+        val baseResults = HomeCallPageLoader.calls(
+            context = activity,
+            activePhoneFilter = phoneFilter,
+            searchQuery = query,
+            pageIndex = 0,
+            pageSize = SEARCH_RESULT_SCAN_LIMIT,
+            crmMode = false,
+        )
+        val selectedPhoneKey = HomeCallPageLoader.noteKey(phoneFilter)
+        val smsResults = SmsMessageReader.searchMessages(activity, query, SEARCH_RESULT_SCAN_LIMIT)
+            .asSequence()
+            .filter { message -> selectedPhoneKey.isBlank() || HomeCallPageLoader.noteKey(message.address) == selectedPhoneKey }
+            .mapNotNull { message ->
+                message.address.takeIf { it.isNotBlank() }?.let { address ->
+                    PhoneCallRecord(
+                        number = address,
+                        name = "",
+                        direction = if (message.isOutgoing) "sms_out" else "sms_in",
+                        startedAt = message.timestampMs,
+                        durationSeconds = 0L,
+                        smsBody = message.body,
+                        providerId = message.providerId,
+                    )
+                }
+            }
+            .toList()
+        val seen = linkedSetOf<String>()
+        val combined = (baseResults + smsResults)
+            .filter { row -> seen.add(searchResultKey(row)) }
+            .sortedByDescending { row -> row.startedAt }
+        val offset = (pageIndex().toLong() * pageSize.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return combined.drop(offset).take(pageSize)
+    }
+
+    private fun searchResultKey(row: PhoneCallRecord): String {
+        if (row.isSms) {
+            val fallback = "${row.number}:${row.startedAt}:${row.smsBody.hashCode()}"
+            return "sms:${row.providerId.ifBlank { fallback }}"
+        }
+        val fallback = "${row.number}:${row.startedAt}:${row.direction}"
+        return "call:${row.providerId.ifBlank { fallback }}"
+    }
+
     fun renderCrmCallsAsync(pageSize: Int, expectedGeneration: Int) {
         val filterState = crmFilters.state()
         if (contentRenderer.currentCalls.isEmpty()) contentRenderer.showCrmLoading()
@@ -73,7 +123,7 @@ internal class HomeCallsLoader(
             val data = runCatching {
                 val localFiltered = HomeCrmFilterEngine.filterLocal(
                     context = appContext,
-                    calls = HomeCallPageLoader.crmCandidateCalls(appContext),
+                    calls = HomeTimelineLoader.crmCandidates(appContext),
                     state = filterState,
                 )
                 val companyFiltered = if (filterState.isCompanyFiltered) {
@@ -115,5 +165,9 @@ internal class HomeCallsLoader(
                 onRenderComplete()
             }
         }
+    }
+
+    private companion object {
+        const val SEARCH_RESULT_SCAN_LIMIT = 500
     }
 }
