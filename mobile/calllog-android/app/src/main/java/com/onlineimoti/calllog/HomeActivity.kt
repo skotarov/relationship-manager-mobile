@@ -294,6 +294,9 @@ class HomeActivity : AppCompatActivity() {
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
         HomeCrmPhaseLookup.invalidate()
+        CallReportNoteOutboxScheduler.enqueue(this, reason = "home_pull_refresh")
+        CallReportTopicNoteOutbox.requestSyncNow(this)
+        CallReportSyncScheduler.enqueueCatchUp(this, reason = "home_pull_refresh")
         renderCalls()
         if (isFilteredFullLogMode()) {
             handler.removeCallbacks(filteredFullLogRefreshWatcher)
