@@ -1,7 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -12,7 +12,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import java.util.concurrent.Executors
 
@@ -208,10 +207,8 @@ class SmsHistoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun smsRow(message: SmsTimelineMessage, displayName: String) = SmsTimelineCard.create(
-        activity = this,
-        dp = ::dp,
-        message = PhoneCallRecord(
+    private fun smsRow(message: SmsTimelineMessage, displayName: String): View {
+        val sms = PhoneCallRecord(
             number = message.address,
             name = displayName,
             direction = if (message.isOutgoing) "sms_out" else "sms_in",
@@ -219,14 +216,44 @@ class SmsHistoryActivity : AppCompatActivity() {
             durationSeconds = 0L,
             smsBody = message.body,
             providerId = message.providerId,
-        ),
-    )
+        )
+        return SmsTimelineCard.create(
+            activity = this,
+            dp = ::dp,
+            message = sms,
+            displayName = sms.displayName,
+            actions = listOf(
+                SmsTimelineCard.Action(
+                    drawableRes = R.drawable.ic_filter_calls,
+                    contentDescription = getString(R.string.dynamic_action_filter),
+                    onClick = { openFilteredCallLog(sms.number) },
+                ),
+            ),
+            onClick = { openContactNotes(sms) },
+        )
+    }
+
+    private fun openFilteredCallLog(phone: String) {
+        startActivity(
+            Intent(this, HomeActivity::class.java)
+                .putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+        finish()
+    }
+
+    private fun openContactNotes(sms: PhoneCallRecord) {
+        startActivity(
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, sms.number)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, sms.displayName)
+                .putExtra(ContactNotesActivity.EXTRA_BACK_TARGETS_UNFILTERED_HOME, true),
+        )
+    }
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
-    private fun hasSmsPermission(): Boolean {
-        return SmsMessageReader.hasReadSmsPermission(this)
-    }
+    private fun hasSmsPermission(): Boolean = SmsMessageReader.hasReadSmsPermission(this)
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
