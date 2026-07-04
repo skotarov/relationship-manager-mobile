@@ -40,6 +40,11 @@ internal class MainPermissionFlowController(
 
     fun start() {
         if (isRunning) return
+        if (!CorporateAccess.isActive(activity)) {
+            setStatus("Влез във фирмен профил, преди да активираш служебна история на разговорите.")
+            refreshPermissionSummary()
+            return
+        }
         isRunning = true
         requestNextStep()
     }
@@ -51,6 +56,11 @@ internal class MainPermissionFlowController(
      */
     fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
         isRunning = false
+        if (isCorporateTelephonyPermission(permission) && !CorporateAccess.isActive(activity)) {
+            setStatus("Влез във фирмен профил, преди да разрешиш $label.")
+            refreshPermissionSummary()
+            return
+        }
         val localizedLabel = permissionLabel(permission, label)
         if (hasPermission(permission)) {
             setStatus(activity.getString(R.string.permission_flow_already_enabled, localizedLabel))
@@ -184,6 +194,12 @@ internal class MainPermissionFlowController(
     }
 
     fun requestNextStep() {
+        if (!CorporateAccess.isActive(activity)) {
+            isRunning = false
+            setStatus("Влез във фирмен профил, преди да активираш служебна история на разговорите.")
+            refreshPermissionSummary()
+            return
+        }
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
                 requestRuntimePermission(
@@ -222,6 +238,11 @@ internal class MainPermissionFlowController(
     }
 
     fun requestCallScreeningRoleIfNeeded() {
+        if (!CorporateAccess.isActive(activity)) {
+            setStatus("Влез във фирмен профил, преди да активираш разпознаване на служебни разговори.")
+            refreshPermissionSummary()
+            return
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || hasCallScreeningRole()) {
             finishFlowWithoutStatus()
             return
@@ -306,6 +327,10 @@ internal class MainPermissionFlowController(
         Manifest.permission.READ_CONTACTS -> activity.getString(R.string.permission_label_contacts_read)
         Manifest.permission.WRITE_CONTACTS -> activity.getString(R.string.permission_label_contacts_write)
         else -> fallback
+    }
+
+    private fun isCorporateTelephonyPermission(permission: String): Boolean {
+        return permission == Manifest.permission.READ_PHONE_STATE || permission == Manifest.permission.READ_CALL_LOG
     }
 
     private fun overlayPopupsSelected(): Boolean = ConfigStore.load(activity).useOverlayPopups
