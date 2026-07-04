@@ -9,6 +9,9 @@ import android.view.Gravity
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 /** Renders the Notes and SMS card; loading and remote state stay in its controller. */
 internal class CallReportHistoryRowsUi(
@@ -17,6 +20,8 @@ internal class CallReportHistoryRowsUi(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
     private val paginationUi by lazy { CallReportHistoryPaginationUi(activity, dp, roundedRect) }
+    private val dayMonthFormatter = SimpleDateFormat("d MMMM", Locale("bg", "BG"))
+    private val dayMonthYearFormatter = SimpleDateFormat("d MMMM yyyy", Locale("bg", "BG"))
 
     fun addSection(
         root: LinearLayout,
@@ -57,7 +62,17 @@ internal class CallReportHistoryRowsUi(
             latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
                 addView(addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) })
             }
-            page.rows.forEach { row -> addView(historyRow(phone, row, onEditCallNote, onEditSms, remoteEnabled, companyNames)) }
+            val currentWeekSerial = weekStartSerial(System.currentTimeMillis())
+            var previousWeekSerial: Long? = null
+            page.rows.forEach { row ->
+                val rowWeekSerial = weekStartSerial(row.timeMs)
+                if (rowWeekSerial != null && rowWeekSerial != previousWeekSerial) {
+                    val relativeWeeks = currentWeekSerial?.let { (it - rowWeekSerial) / DAYS_PER_WEEK } ?: 0L
+                    addView(weekSeparator(row.timeMs, relativeWeeks))
+                    previousWeekSerial = rowWeekSerial
+                }
+                addView(historyRow(phone, row, onEditCallNote, onEditSms, remoteEnabled, companyNames))
+            }
             paginationUi.addNavigation(this, page, onPageChanged)
             addStatus(
                 container = this,
@@ -162,9 +177,6 @@ internal class CallReportHistoryRowsUi(
         companyNames: Map<String, String>,
     ): LinearLayout {
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
-        // A row that cannot be edited is intentionally inert: its full text is
-        // already visible in History, so it must not launch a separate native
-        // viewer/editor when tapped.
         val readOnlyNote = row.kind == CallReportHistoryRowKind.NOTE && !row.editable
         val serverConfirmed = isServerConfirmed(phone, row)
         val localNote = row.localNote
@@ -309,6 +321,62 @@ internal class CallReportHistoryRowsUi(
         setPadding(0, dp(5), 0, 0)
     }
 
+    private fun weekSeparator(timestampMs: Long, relativeWeeks: Long): TextView {
+        return TextView(activity).apply {
+            text = "Седмица: ${weekDateRange(timestampMs)} (${relativeWeeksLabel(relativeWeeks)})"
+            textSize = 12.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(dp(10), dp(10), dp(10), dp(6))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = dp(6)
+                bottomMargin = dp(4)
+            }
+        }
+    }
+
+    private fun weekDateRange(timestampMs: Long): String {
+        val start = weekStartCalendar(timestampMs) ?: return ""
+        val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, DAYS_PER_WEEK.toInt() - 1) }
+        return if (start.get(Calendar.YEAR) == end.get(Calendar.YEAR)) {
+            "${dayMonthFormatter.format(start.time)} – ${dayMonthYearFormatter.format(end.time)}"
+        } else {
+            "${dayMonthYearFormatter.format(start.time)} – ${dayMonthYearFormatter.format(end.time)}"
+        }
+    }
+
+    private fun relativeWeeksLabel(weeks: Long): String = when {
+        weeks == 0L -> "преди 0 седмици"
+        weeks == 1L -> "преди 1 седмица"
+        weeks > 1L -> "преди $weeks седмици"
+        weeks == -1L -> "след 1 седмица"
+        else -> "след ${-weeks} седмици"
+    }
+
+    private fun weekStartSerial(timestampMs: Long): Long? = weekStartCalendar(timestampMs)?.let(::calendarDaySerial)
+
+    private fun weekStartCalendar(timestampMs: Long): Calendar? {
+        if (timestampMs <= 0L) return null
+        return Calendar.getInstance().apply {
+            timeInMillis = timestampMs
+            val daysSinceMonday = (get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + DAYS_PER_WEEK.toInt()) % DAYS_PER_WEEK.toInt()
+            add(Calendar.DAY_OF_YEAR, -daysSinceMonday)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    }
+
+    private fun calendarDaySerial(calendar: Calendar): Long {
+        val yearBefore = (calendar.get(Calendar.YEAR) - 1).toLong()
+        val daysBeforeYear = 365L * yearBefore + yearBefore / 4L - yearBefore / 100L + yearBefore / 400L
+        return daysBeforeYear + calendar.get(Calendar.DAY_OF_YEAR).toLong() - 1L
+    }
+
     private fun pendingCompanyChoiceText(): TextView = TextView(activity).apply {
         text = activity.getString(R.string.dynamic_note_pending_company_choice)
         textSize = 12f
@@ -406,6 +474,7 @@ internal class CallReportHistoryRowsUi(
     )
 
     private companion object {
+        const val DAYS_PER_WEEK = 7L
         val SMS_BACKGROUND: Int = Color.rgb(248, 250, 252)
         val FOREIGN_BACKGROUND: Int = Color.rgb(241, 245, 249)
         val FOREIGN_BORDER: Int = Color.rgb(203, 213, 225)
