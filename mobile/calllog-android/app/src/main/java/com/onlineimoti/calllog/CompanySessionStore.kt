@@ -4,7 +4,7 @@ import android.content.Context
 import java.security.MessageDigest
 
 /** Stores evidence that the configured device credential came from a company login flow. */
-object CompanySessionStore {
+internal object CompanySessionStore {
     private const val PREFS = "relationship_manager_company_session"
     private const val KEY_TOKEN_HASH = "token_hash"
     private const val KEY_USER_NAME = "user_name"
