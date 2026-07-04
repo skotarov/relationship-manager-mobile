@@ -212,7 +212,14 @@ internal class CallReportHistoryRowsUi(
                             })
                             return@setOnClickListener
                         }
-                        val source = row.localNote ?: ContactCallNote(
+                        val source = row.localNote?.let { localNote ->
+                            val serverClientEventId = row.serverEvent?.clientEventId.orEmpty()
+                            if (serverClientEventId.isBlank() || localNote.serverClientEventId == serverClientEventId) {
+                                localNote
+                            } else {
+                                localNote.copy(serverClientEventId = serverClientEventId)
+                            }
+                        } ?: ContactCallNote(
                             note = row.text,
                             callAt = row.timeMs,
                             savedAt = row.serverEvent?.updatedAtMs ?: row.timeMs,
@@ -220,15 +227,20 @@ internal class CallReportHistoryRowsUi(
                             durationSeconds = row.durationSeconds,
                             clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, row.timeMs, row.direction),
                             companyId = row.companyId,
+                            serverClientEventId = row.serverEvent?.clientEventId.orEmpty(),
                         )
                         val editableNote = if (remoteEnabled && row.serverNewer) {
                             source.copy(
                                 note = row.text,
                                 savedAt = maxOf(source.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
                                 companyId = row.companyId.ifBlank { source.companyId },
+                                serverClientEventId = row.serverEvent?.clientEventId.orEmpty().ifBlank { source.serverClientEventId },
                             )
                         } else {
-                            source.copy(companyId = row.companyId.ifBlank { source.companyId })
+                            source.copy(
+                                companyId = row.companyId.ifBlank { source.companyId },
+                                serverClientEventId = row.serverEvent?.clientEventId.orEmpty().ifBlank { source.serverClientEventId },
+                            )
                         }
                         onEditCallNote(editableNote)
                     }

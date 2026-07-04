@@ -28,7 +28,7 @@ internal class FilteredFullLogController(
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val openContactNotes: (PhoneCallRecord, String) -> Unit,
-    private val openCallNoteEditor: (PhoneCallRecord, String) -> Unit,
+    private val openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
     private val pageSize: () -> Int,
     private val onStateChanged: () -> Unit,
 ) {
@@ -305,7 +305,7 @@ internal class FilteredFullLogController(
             !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && localNote != null && row.editable -> {
                 card.isClickable = true
                 card.isFocusable = true
-                card.setOnClickListener { openNoteEditor(phone, localNote) }
+                card.setOnClickListener { openNoteEditor(phone, localNote.withServerClientEventId(row.serverEvent?.clientEventId.orEmpty())) }
             }
             !foreignRecord && row.kind == CallReportHistoryRowKind.PHONE && localCall != null -> {
                 card.isClickable = true
@@ -349,7 +349,7 @@ internal class FilteredFullLogController(
             if (!foreignRecord && localNote != null && note.editable) {
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { openNoteEditor(phone, localNote) }
+                setOnClickListener { openNoteEditor(phone, localNote.withServerClientEventId(note.serverEvent?.clientEventId.orEmpty())) }
             }
             addView(metaView(note, remoteEnabled))
             if (note.text.isNotBlank()) {
@@ -381,11 +381,13 @@ internal class FilteredFullLogController(
             setPadding(dp(6), dp(6), dp(6), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(8) }
             setOnClickListener {
-                val existingLocalNote = editableAttachedNote?.localNote
+                val existingLocalNote = editableAttachedNote?.localNote?.withServerClientEventId(
+                    editableAttachedNote.serverEvent?.clientEventId.orEmpty(),
+                )
                 if (existingLocalNote != null) {
                     openNoteEditor(call.number, existingLocalNote)
                 } else {
-                    openCallNoteEditor(call, call.displayName)
+                    openCallNoteEditor(call, call.displayName, null)
                 }
             }
         }
@@ -402,7 +404,23 @@ internal class FilteredFullLogController(
                 durationSeconds = note.durationSeconds,
             ),
             displayName,
+            HomeCallNote(
+                text = note.note,
+                updatedAtMs = maxOf(note.savedAt, note.callAt),
+                fromServer = note.serverClientEventId.isNotBlank(),
+                companyId = note.companyId,
+                serverClientEventId = note.serverClientEventId,
+            ),
         )
+    }
+
+    private fun ContactCallNote.withServerClientEventId(serverClientEventId: String): ContactCallNote {
+        val normalized = serverClientEventId.trim()
+        return if (normalized.isBlank() || this.serverClientEventId == normalized) {
+            this
+        } else {
+            copy(serverClientEventId = normalized)
+        }
     }
 
     private fun addServerAuthor(container: LinearLayout, row: CallReportHistoryRow) {

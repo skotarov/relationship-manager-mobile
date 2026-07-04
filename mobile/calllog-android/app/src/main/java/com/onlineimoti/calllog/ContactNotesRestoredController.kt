@@ -228,6 +228,7 @@ internal class ContactNotesRestoredController(
             durationSeconds = note.durationSeconds,
             companyId = note.companyId,
             initialNoteText = note.note,
+            serverClientEventId = note.serverClientEventId,
         )
     }
 

@@ -155,7 +155,9 @@ class HomeActivity : AppCompatActivity() {
             dp = uiGeometry::dp,
             roundedRect = uiGeometry::roundedRect,
             openContactNotes = homeActions::openContactNotesScreen,
-            openCallNoteEditor = homeActions::openContactNotePopupForCall,
+            openCallNoteEditor = { call, displayName, renderedNote ->
+                homeActions.openContactNotePopupForCall(call, displayName, renderedNote)
+            },
             pageSize = ::pageSize,
             onStateChanged = ::renderCalls,
         )
