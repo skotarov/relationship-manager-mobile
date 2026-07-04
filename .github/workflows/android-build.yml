@@ -149,13 +149,13 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:lintInternalDebug :app:lintPlayRelease 2>&1 | tee /tmp/relationship-manager-lint.log
-          gradle_status=${PIPESTATUS[0]}
+          gradle --no-daemon --console=plain :app:lintInternalDebug :app:lintPlayRelease > /tmp/relationship-manager-lint.log 2>&1
+          gradle_status=$?
 
           if [ "$gradle_status" -ne 0 ]; then
             echo
-            echo "========== ТОЧНИ ГРЕШКИ ОТ LINT / KOTLIN =========="
-            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-lint.log || true
+            echo "========== ТОЧНИ ГРЕШКИ ОТ LINT / KOTLIN (ПОСЛЕДНИ 250) =========="
+            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-lint.log | tail -n 250 || true
             echo "========== КРАЙ НА ГРЕШКИТЕ =========="
             exit "$gradle_status"
           fi
@@ -165,16 +165,27 @@ jobs:
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:assembleInternalDebug 2>&1 | tee /tmp/relationship-manager-gradle.log
-          gradle_status=${PIPESTATUS[0]}
+          gradle --no-daemon --console=plain :app:assembleInternalDebug > /tmp/relationship-manager-gradle.log 2>&1
+          gradle_status=$?
 
           if [ "$gradle_status" -ne 0 ]; then
             echo
-            echo "========== ТОЧНИ ГРЕШКИ ОТ КОМПИЛАЦИЯТА =========="
-            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-gradle.log || true
+            echo "========== ТОЧНИ ГРЕШКИ ОТ КОМПИЛАЦИЯТА (ПОСЛЕДНИ 250) =========="
+            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-gradle.log | tail -n 250 || true
             echo "========== КРАЙ НА ГРЕШКИТЕ =========="
             exit "$gradle_status"
           fi
+
+      - name: Upload complete build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relationship-manager-build-logs
+          path: |
+            /tmp/relationship-manager-lint.log
+            /tmp/relationship-manager-gradle.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload internal Relationship Manager APK
         uses: actions/upload-artifact@v4
