@@ -177,7 +177,9 @@ object HomeCallPageLoader {
             ordered.add(bestCallForPhone(recentCalls, note.phone, note.phone, note.callAt, note.direction))
         }
         val filtered = if (crmMode) filterCrmEligible(context, ordered) else ordered
-        return filtered.page(pageIndex, pageSize)
+        // Search may collect contacts and notes in relevance order. Home is a
+        // timeline, so establish the same newest-first order before pagination.
+        return filtered.sortedByDescending { item -> item.startedAt }.page(pageIndex, pageSize)
     }
 
     /** The three data sources are independent; run them concurrently without reducing scope. */
