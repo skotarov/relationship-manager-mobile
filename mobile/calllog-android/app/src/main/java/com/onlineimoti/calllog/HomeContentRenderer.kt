@@ -152,22 +152,16 @@ internal class HomeContentRenderer(
             text = label
             textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+            setTextColor(activity.getColor(R.color.callreport_icon_background))
             gravity = Gravity.CENTER_VERTICAL
-            // Match the blue rounded CRM badge used by the History week groups.
-            background = roundedRect(
-                activity.getColor(R.color.callreport_icon_background),
-                dp(10),
-                Color.TRANSPARENT,
-                0,
-            )
+            background = null
             setPadding(dp(10), dp(6), dp(10), dp(6))
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(10)
-                bottomMargin = dp(6)
+                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(8)
+                bottomMargin = dp(4)
             }
         }
     }
