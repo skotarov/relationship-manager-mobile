@@ -348,35 +348,43 @@ internal class HomeCallRowRenderer(
     }
 
     private fun highlightedText(value: String, query: String, textColor: Int): CharSequence {
-        val trimmedQuery = query.trim()
-        if (value.isBlank() || trimmedQuery.isBlank()) return value
+        if (value.isBlank()) return value
+        val terms = SearchQueryTerms.from(query)
+        if (terms.isEmpty) return value
         val spannable = SpannableString(value)
-        applyTextHighlight(spannable, value, trimmedQuery, textColor)
-        applyDigitHighlight(spannable, value, trimmedQuery, textColor)
+        // The search itself treats whitespace-separated input as independent
+        // terms. Use the same rule for presentation so every matching word (or
+        // digit fragment) is visibly highlighted instead of searching for the
+        // original phrase including its spaces.
+        terms.textTerms().forEach { term ->
+            applyTextHighlight(spannable, value, term, textColor)
+        }
+        terms.digitTerms().forEach { term ->
+            applyDigitHighlight(spannable, value, term, textColor)
+        }
         return spannable
     }
 
-    private fun applyTextHighlight(spannable: SpannableString, value: String, query: String, textColor: Int) {
+    private fun applyTextHighlight(spannable: SpannableString, value: String, term: String, textColor: Int) {
         val lowerValue = value.lowercase()
-        val lowerQuery = query.lowercase()
-        var start = lowerValue.indexOf(lowerQuery)
+        val lowerTerm = term.lowercase()
+        var start = lowerValue.indexOf(lowerTerm)
         while (start >= 0) {
-            applyHighlightSpan(spannable, start, start + query.length, textColor)
-            start = lowerValue.indexOf(lowerQuery, start + query.length)
+            applyHighlightSpan(spannable, start, start + term.length, textColor)
+            start = lowerValue.indexOf(lowerTerm, start + term.length)
         }
     }
 
-    private fun applyDigitHighlight(spannable: SpannableString, value: String, query: String, textColor: Int) {
-        val queryDigits = query.filter { it.isDigit() }
-        if (queryDigits.length < 3) return
+    private fun applyDigitHighlight(spannable: SpannableString, value: String, term: String, textColor: Int) {
+        if (term.length < 3) return
         val digitCharIndexes = value.mapIndexedNotNull { index, char -> index.takeIf { char.isDigit() } }
         val valueDigits = digitCharIndexes.map { value[it] }.joinToString("")
-        var digitStart = valueDigits.indexOf(queryDigits)
+        var digitStart = valueDigits.indexOf(term)
         while (digitStart >= 0) {
             val charStart = digitCharIndexes.getOrNull(digitStart) ?: break
-            val charEnd = (digitCharIndexes.getOrNull(digitStart + queryDigits.length - 1) ?: break) + 1
+            val charEnd = (digitCharIndexes.getOrNull(digitStart + term.length - 1) ?: break) + 1
             applyHighlightSpan(spannable, charStart, charEnd, textColor)
-            digitStart = valueDigits.indexOf(queryDigits, digitStart + queryDigits.length)
+            digitStart = valueDigits.indexOf(term, digitStart + term.length)
         }
     }
 
