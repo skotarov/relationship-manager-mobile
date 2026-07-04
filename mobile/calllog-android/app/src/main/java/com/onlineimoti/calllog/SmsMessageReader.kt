@@ -38,6 +38,10 @@ internal data class SmsTimelineMessage(
 internal object SmsMessageReader {
     private const val MAX_MESSAGES_PER_CONTACT = 150
 
+    fun hasReadSmsPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+    }
+
     fun messagesForPhone(context: Context, phone: String, limit: Int = MAX_MESSAGES_PER_CONTACT): List<SmsMessageRecord> {
         val targetPhone = PhoneNormalizer.normalize(phone)
         if (targetPhone.isBlank() || !canReadSms(context)) return emptyList()
@@ -231,7 +235,5 @@ internal object SmsMessageReader {
         }.filter { it.isNotBlank() }
     }
 
-    private fun canReadSms(context: Context): Boolean {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun canReadSms(context: Context): Boolean = hasReadSmsPermission(context)
 }
