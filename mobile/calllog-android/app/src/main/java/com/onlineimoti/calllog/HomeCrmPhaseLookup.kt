@@ -62,6 +62,10 @@ internal object CompanyNegotiationPhaseBatchRemoteClient {
             connection.doOutput = true
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            // The single-record phase client sends both headers. The batch lookup
+            // must authenticate identically, otherwise selecting a phase silently
+            // yields no CRM rows on installations still validating Callreport auth.
+            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
             val payload = JSONObject().put("phones", JSONArray().apply { requested.values.forEach(::put) }).toString()
             connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
