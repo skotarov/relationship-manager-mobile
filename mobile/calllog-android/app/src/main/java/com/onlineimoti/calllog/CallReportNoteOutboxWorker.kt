@@ -27,7 +27,9 @@ class CallReportNoteOutboxWorker(
                 val candidates = CallReportNoteOutbox.takeBatch(applicationContext, MAX_BATCH_SIZE)
                 if (candidates.isEmpty()) break
                 val batch = candidates.filter { operation ->
-                    operation.isGeneralNote || CrmContactSyncStore.isEnabled(applicationContext, operation.phone)
+                    operation.isGeneralNote ||
+                        operation.editExistingServerNote ||
+                        CrmContactSyncStore.isEnabled(applicationContext, operation.phone)
                 }
                 val skipped = candidates.map { it.clientEventId }.toSet() - batch.map { it.clientEventId }.toSet()
                 if (skipped.isNotEmpty()) CallReportNoteOutbox.acknowledge(applicationContext, skipped)
