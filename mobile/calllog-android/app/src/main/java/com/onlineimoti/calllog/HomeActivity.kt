@@ -1,9 +1,11 @@
 package com.onlineimoti.calllog
 
+import android.Manifest
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
@@ -16,6 +18,14 @@ class HomeActivity : AppCompatActivity() {
     /** Two workers let the current query start even while an older provider read is unwinding. */
     private val searchExecutor = Executors.newFixedThreadPool(2)
     private val searchGeneration = AtomicInteger(0)
+    private var smsPermissionPromptShownThisSession = false
+    private var smsPermissionRequestInFlight = false
+    private val readSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        smsPermissionRequestInFlight = false
+        HomeCallPageLoader.clearSearchCache()
+        filteredFullLogController.invalidate()
+        if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
+    }
     private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
     private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
         HomeNoteSavedReceiverController(this) {
@@ -283,10 +293,25 @@ class HomeActivity : AppCompatActivity() {
         }
         when {
             activeSearchQuery.isNotBlank() -> searchController.renderSearchCallsAsync()
-            activePhoneFilter.isNotBlank() -> filteredFullLogController.render(activePhoneFilter)
+            activePhoneFilter.isNotBlank() -> {
+                requestSmsPermissionForFilteredHistoryIfNeeded()
+                filteredFullLogController.render(activePhoneFilter)
+            }
             crmModeEnabled -> callsLoader.renderCrmCallsAsync(size, renderGeneration)
             else -> callsLoader.renderLocalCalls(size)
         }
+    }
+
+    private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
+        if (SmsMessageReader.hasReadSmsPermission(this) ||
+            smsPermissionRequestInFlight ||
+            smsPermissionPromptShownThisSession
+        ) {
+            return
+        }
+        smsPermissionPromptShownThisSession = true
+        smsPermissionRequestInFlight = true
+        readSmsPermissionLauncher.launch(Manifest.permission.READ_SMS)
     }
 
     private fun refreshFromPull() {
