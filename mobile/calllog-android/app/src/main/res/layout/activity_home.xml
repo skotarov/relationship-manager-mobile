@@ -102,12 +102,12 @@
 
         <ImageButton
             android:id="@+id/clearFilterButton"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:layout_marginEnd="4dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/clear_filter_content_description"
-            android:padding="3dp"
+            android:padding="1dp"
             android:scaleType="center"
             android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
