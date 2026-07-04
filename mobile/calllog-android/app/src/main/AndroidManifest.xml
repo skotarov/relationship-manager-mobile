@@ -13,6 +13,11 @@
     <!-- Optional post-call UI. It is off by default and never required for the core call log. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Telephony-based features are unavailable on ChromeOS/tablets but must not block installation. -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
