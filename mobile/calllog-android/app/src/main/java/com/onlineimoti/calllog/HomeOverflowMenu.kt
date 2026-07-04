@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.view.View
 import android.widget.PopupMenu
@@ -13,7 +14,8 @@ internal object HomeOverflowMenu {
             menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
             menu.add(0, MENU_CONTACTS, 20, "Контакти")
             menu.add(0, MENU_SMS, 30, "SMS")
-            menu.add(0, MENU_SETTINGS, 40, activity.getString(R.string.home_overflow_settings))
+            menu.add(0, MENU_CALENDAR, 40, "Календар")
+            menu.add(0, MENU_SETTINGS, 50, activity.getString(R.string.home_overflow_settings))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_PHONE_CALL_LOG -> {
@@ -29,6 +31,10 @@ internal object HomeOverflowMenu {
                     }
                     MENU_SMS -> {
                         activity.startActivity(Intent(activity, SmsHistoryActivity::class.java))
+                        true
+                    }
+                    MENU_CALENDAR -> {
+                        openDefaultCalendar(activity)
                         true
                     }
                     MENU_SETTINGS -> {
@@ -49,8 +55,16 @@ internal object HomeOverflowMenu {
             .recoverCatching { activity.startActivity(fallbackIntent) }
     }
 
+    private fun openDefaultCalendar(activity: AppCompatActivity) {
+        val calendarIntent = Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI)
+        val fallbackIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
+        runCatching { activity.startActivity(calendarIntent) }
+            .recoverCatching { activity.startActivity(fallbackIntent) }
+    }
+
     private const val MENU_PHONE_CALL_LOG = 1
     private const val MENU_CONTACTS = 2
     private const val MENU_SMS = 3
-    private const val MENU_SETTINGS = 4
+    private const val MENU_CALENDAR = 4
+    private const val MENU_SETTINGS = 5
 }
