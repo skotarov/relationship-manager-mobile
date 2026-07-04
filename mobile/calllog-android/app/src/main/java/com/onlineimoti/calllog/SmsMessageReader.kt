@@ -19,6 +19,21 @@ internal data class SmsMessageRecord(
         get() = if (isOutgoing) "изпратено" else "получено"
 }
 
+/** A single row from the device-wide SMS timeline. */
+internal data class SmsTimelineMessage(
+    val address: String,
+    val body: String,
+    val timestampMs: Long,
+    val type: Int,
+    val providerId: String,
+) {
+    val isOutgoing: Boolean
+        get() = type == Telephony.Sms.MESSAGE_TYPE_SENT || type == Telephony.Sms.MESSAGE_TYPE_OUTBOX
+
+    val directionLabel: String
+        get() = if (isOutgoing) "изпратено" else "получено"
+}
+
 /** Reads only the SMS rows for the requested number; it never walks the whole SMS inbox on the UI path. */
 internal object SmsMessageReader {
     private const val MAX_MESSAGES_PER_CONTACT = 150
@@ -47,6 +62,55 @@ internal object SmsMessageReader {
                     limit = limit,
                 )
             }
+        }.getOrDefault(emptyList())
+    }
+
+    /**
+     * Reads a single chronological window from the device SMS store. The caller
+     * requests one extra row to determine whether a next page exists.
+     */
+    fun recentMessages(context: Context, offset: Int, limit: Int): List<SmsTimelineMessage> {
+        if (!canReadSms(context)) return emptyList()
+        val safeOffset = offset.coerceAtLeast(0)
+        val safeLimit = limit.coerceIn(1, 101)
+        return runCatching {
+            val projection = arrayOf(
+                Telephony.Sms._ID,
+                Telephony.Sms.ADDRESS,
+                Telephony.Sms.BODY,
+                Telephony.Sms.DATE,
+                Telephony.Sms.TYPE,
+            )
+            val rows = mutableListOf<SmsTimelineMessage>()
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC",
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val typeIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                var skipped = 0
+                while (cursor.moveToNext()) {
+                    if (skipped < safeOffset) {
+                        skipped++
+                        continue
+                    }
+                    rows += SmsTimelineMessage(
+                        address = cursor.getString(addressIndex).orEmpty(),
+                        body = cursor.getString(bodyIndex).orEmpty().trim(),
+                        timestampMs = cursor.getLong(dateIndex),
+                        type = cursor.getInt(typeIndex),
+                        providerId = cursor.getLong(idIndex).toString(),
+                    )
+                    if (rows.size >= safeLimit) break
+                }
+            }
+            rows
         }.getOrDefault(emptyList())
     }
 
