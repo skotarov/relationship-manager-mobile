@@ -155,8 +155,12 @@ jobs:
           if [ "$gradle_status" -ne 0 ]; then
             echo
             echo "========== ТОЧНИ ГРЕШКИ ОТ LINT / KOTLIN (ПОСЛЕДНИ 250) =========="
-            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-lint.log | tail -n 250 || true
-            echo "========== КРАЙ НА ГРЕШКИТЕ =========="
+            grep -E '(^e: |(^|:) Error:|(^|:) error:|Unresolved reference:|Redeclaration:|Lint found|Execution failed for task|FAILURE: Build failed)' /tmp/relationship-manager-lint.log | tail -n 250 || true
+            echo "========== КРАЙ НА ИЗВЛЕЧЕНИТЕ ГРЕШКИ =========="
+            echo
+            echo "========== КРАЙ НА ПЪЛНИЯ LINT LOG (ПОСЛЕДНИ 250) =========="
+            tail -n 250 /tmp/relationship-manager-lint.log || true
+            echo "========== КРАЙ НА ПЪЛНИЯ LINT LOG =========="
             exit "$gradle_status"
           fi
 
@@ -171,8 +175,12 @@ jobs:
           if [ "$gradle_status" -ne 0 ]; then
             echo
             echo "========== ТОЧНИ ГРЕШКИ ОТ КОМПИЛАЦИЯТА (ПОСЛЕДНИ 250) =========="
-            grep -E '(^e: |\.kt:[0-9]+:[0-9]+|\.xml:[0-9]+:[0-9]+|Unresolved reference:|Redeclaration:|error:)' /tmp/relationship-manager-gradle.log | tail -n 250 || true
-            echo "========== КРАЙ НА ГРЕШКИТЕ =========="
+            grep -E '(^e: |(^|:) Error:|(^|:) error:|Unresolved reference:|Redeclaration:|Execution failed for task|FAILURE: Build failed)' /tmp/relationship-manager-gradle.log | tail -n 250 || true
+            echo "========== КРАЙ НА ИЗВЛЕЧЕНИТЕ ГРЕШКИ =========="
+            echo
+            echo "========== КРАЙ НА ПЪЛНИЯ GRADLE LOG (ПОСЛЕДНИ 250) =========="
+            tail -n 250 /tmp/relationship-manager-gradle.log || true
+            echo "========== КРАЙ НА ПЪЛНИЯ GRADLE LOG =========="
             exit "$gradle_status"
           fi
 
