@@ -27,14 +27,15 @@ internal class HomeCompanyScopeChipsUi(
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
+            bindHistoryClick(onClick, "Отвори историята на контакта")
         }
         var hasPrevious = false
         if (crmClient) {
-            row.addView(crmLabel())
+            row.addView(crmLabel(onClick))
             hasPrevious = true
         }
         labels.orEmpty().forEach { label ->
-            row.addView(chip(label), LinearLayout.LayoutParams(
+            row.addView(chip(label, onClick), LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
@@ -46,12 +47,7 @@ internal class HomeCompanyScopeChipsUi(
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
             addView(row)
-            if (onClick != null) {
-                isClickable = true
-                isFocusable = true
-                contentDescription = "Отвори историята на контакта"
-                setOnClickListener { onClick() }
-            }
+            bindHistoryClick(onClick, "Отвори историята на контакта")
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -59,7 +55,7 @@ internal class HomeCompanyScopeChipsUi(
         }
     }
 
-    private fun crmLabel(): TextView = TextView(activity).apply {
+    private fun crmLabel(onClick: (() -> Unit)?): TextView = TextView(activity).apply {
         text = "CRM"
         textSize = 12f
         setTypeface(typeface, Typeface.BOLD)
@@ -71,10 +67,10 @@ internal class HomeCompanyScopeChipsUi(
             Color.TRANSPARENT,
             0,
         )
-        contentDescription = "CRM"
+        bindHistoryClick(onClick, "CRM. Отвори историята на контакта")
     }
 
-    private fun chip(label: HomeCompanyScopeLabel): TextView {
+    private fun chip(label: HomeCompanyScopeLabel, onClick: (() -> Unit)?): TextView {
         val hasPhase = label.phase in 1..4
         val colors = if (label.hasGeneralNote) {
             ChipColors(
@@ -104,13 +100,21 @@ internal class HomeCompanyScopeChipsUi(
         }
         return TextView(activity).apply {
             text = styledText
-            contentDescription = label.companyName
             setTextColor(colors.text)
             textSize = 12f
             maxLines = 1
             setPadding(dp(7), dp(4), dp(7), dp(4))
             background = roundedRect(colors.background, dp(9), colors.border, dp(1))
+            bindHistoryClick(onClick, "${label.companyName}. Отвори историята на контакта")
         }
+    }
+
+    private fun View.bindHistoryClick(onClick: (() -> Unit)?, description: String) {
+        if (onClick == null) return
+        isClickable = true
+        isFocusable = true
+        contentDescription = description
+        setOnClickListener { onClick() }
     }
 
     private fun phaseColor(phase: Int): Int = when (phase) {
