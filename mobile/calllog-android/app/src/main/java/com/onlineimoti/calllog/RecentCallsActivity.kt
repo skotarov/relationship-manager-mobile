@@ -13,6 +13,7 @@ import com.onlineimoti.calllog.databinding.ActivityRecentCallsBinding
 class RecentCallsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityRecentCallsBinding
     private var phoneFilter: String = ""
+    private val contactNameCache = mutableMapOf<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -76,7 +77,7 @@ class RecentCallsActivity : AppCompatActivity() {
                 activity = this,
                 dp = ::dp,
                 message = call,
-                displayName = call.displayName,
+                displayName = resolveContactName(call.number).ifBlank { call.displayName },
             )
         }
 
@@ -129,6 +130,13 @@ class RecentCallsActivity : AppCompatActivity() {
 
         card.addView(content)
         return card
+    }
+
+    private fun resolveContactName(number: String): String {
+        val key = PhoneNormalizer.normalize(number).ifBlank { number.trim() }
+        return contactNameCache.getOrPut(key) {
+            ContactGroupFilter.resolveDisplayName(this, number).orEmpty()
+        }
     }
 
     private fun openPromptForCall(call: PhoneCallRecord) {
