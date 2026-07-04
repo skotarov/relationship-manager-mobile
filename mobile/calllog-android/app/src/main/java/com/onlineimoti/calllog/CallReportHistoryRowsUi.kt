@@ -162,7 +162,10 @@ internal class CallReportHistoryRowsUi(
         companyNames: Map<String, String>,
     ): LinearLayout {
         val foreignRecord = remoteEnabled && row.authorIsOtherBroker
-        val readOnlyForeignNote = foreignRecord && row.kind == CallReportHistoryRowKind.NOTE
+        // A row that cannot be edited is intentionally inert: its full text is
+        // already visible in History, so it must not launch a separate native
+        // viewer/editor when tapped.
+        val readOnlyNote = row.kind == CallReportHistoryRowKind.NOTE && !row.editable
         val serverConfirmed = isServerConfirmed(phone, row)
         val localNote = row.localNote
         val pendingGenericSync = !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE && localNote?.let {
@@ -175,7 +178,7 @@ internal class CallReportHistoryRowsUi(
             CallReportDeferredCompanyAssignmentStore.isCallPending(activity, phone, it.direction, it.callAt)
         } == true
         val colors = when {
-            foreignRecord -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
+            readOnlyNote -> Triple(FOREIGN_BACKGROUND, FOREIGN_BORDER, FOREIGN_TEXT)
             row.kind == CallReportHistoryRowKind.NOTE -> Triple(NoteUiStyle.Call.background, NoteUiStyle.Call.border, NoteUiStyle.Call.text)
             row.kind == CallReportHistoryRowKind.SMS -> Triple(SMS_BACKGROUND, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
             else -> Triple(Color.WHITE, Color.rgb(226, 232, 240), Color.rgb(30, 41, 59))
@@ -184,17 +187,20 @@ internal class CallReportHistoryRowsUi(
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             background = roundedRect(colors.first, dp(12), colors.second, dp(1))
-            if (readOnlyForeignNote) {
-                contentDescription = "Само за преглед. Чужда бележка."
+            if (readOnlyNote) {
+                val author = row.authorName.ifBlank { "друг потребител" }
+                contentDescription = "Неактивна бележка. Записал: $author."
                 isClickable = false
                 isFocusable = false
+                isLongClickable = false
+                setOnClickListener(null)
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
             when {
-                !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && row.editable -> {
+                row.kind == CallReportHistoryRowKind.NOTE && row.editable -> {
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
@@ -251,35 +257,43 @@ internal class CallReportHistoryRowsUi(
                     setOnClickListener { onEditSms(row.localSms, row.companyId) }
                 }
             }
-            addView(metaView(row))
-            companyLabel(row.companyId, companyNames)?.let(::addView)
+            addView(metaView(row, muted = readOnlyNote))
+            companyLabel(row.companyId, companyNames, muted = readOnlyNote)?.let(::addView)
             if (row.text.isNotBlank()) addView(noteText(row.text, colors.third))
             when {
                 pendingCompanyChoice -> addView(pendingCompanyChoiceText())
                 pendingCompanySync -> addView(pendingSyncText(CallReportTopicNoteOutbox.lastFailure(activity)))
                 pendingGenericSync && !serverConfirmed -> addView(pendingSyncText(CallReportNoteOutbox.lastFailure(activity)))
             }
-            if (readOnlyForeignNote) addView(readOnlyNoteBadge())
+            if (readOnlyNote) addView(authorText(row.authorName.ifBlank { "друг потребител" }))
             if (!foreignRecord && remoteEnabled && row.serverNewer) addView(serverNewerText())
-            if (row.authorIsOtherBroker && row.authorName.isNotBlank()) addView(authorText(row.authorName))
         }
     }
 
-    private fun companyLabel(companyId: String, companyNames: Map<String, String>): TextView? {
+    private fun companyLabel(
+        companyId: String,
+        companyNames: Map<String, String>,
+        muted: Boolean = false,
+    ): TextView? {
         val id = companyId.trim()
         if (id.isBlank()) return null
         val name = companyNames[id].orEmpty().ifBlank { id }
         return TextView(activity).apply {
             text = name
             textSize = 11.5f
-            setTextColor(Color.rgb(71, 85, 105))
+            setTextColor(if (muted) FOREIGN_TEXT else Color.rgb(71, 85, 105))
             setPadding(dp(7), dp(3), dp(7), dp(3))
             activity.getDrawable(R.drawable.ic_cloud_note)?.apply {
                 setBounds(0, 0, dp(14), dp(14))
                 setCompoundDrawables(this, null, null, null)
                 compoundDrawablePadding = dp(4)
             }
-            background = roundedRect(Color.rgb(241, 245, 249), dp(8), Color.TRANSPARENT, 0)
+            background = roundedRect(
+                if (muted) FOREIGN_BADGE_BACKGROUND else Color.rgb(241, 245, 249),
+                dp(8),
+                Color.TRANSPARENT,
+                0,
+            )
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -313,19 +327,6 @@ internal class CallReportHistoryRowsUi(
         setPadding(0, dp(6), 0, 0)
     }
 
-    private fun readOnlyNoteBadge(): TextView = TextView(activity).apply {
-        text = "Само за преглед"
-        textSize = 11.5f
-        typeface = Typeface.DEFAULT_BOLD
-        setTextColor(FOREIGN_TEXT)
-        setPadding(dp(8), dp(4), dp(8), dp(4))
-        background = roundedRect(FOREIGN_BADGE_BACKGROUND, dp(8), Color.TRANSPARENT, 0)
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { topMargin = dp(8) }
-    }
-
     private fun serverNewerText(): TextView = TextView(activity).apply {
         text = "По-нова версия на сървъра"
         textSize = 12f
@@ -350,7 +351,7 @@ internal class CallReportHistoryRowsUi(
         CallReportHistoryRowKind.PHONE -> false
     }
 
-    private fun metaView(row: CallReportHistoryRow): TextView {
+    private fun metaView(row: CallReportHistoryRow, muted: Boolean = false): TextView {
         val kindText = when (row.kind) {
             CallReportHistoryRowKind.SMS -> "SMS"
             CallReportHistoryRowKind.NOTE -> "Бележка"
@@ -360,7 +361,7 @@ internal class CallReportHistoryRowsUi(
             text = listOf(kindText, PhoneCallReader.formatStartedAt(row.timeMs), directionLabel(row.direction))
                 .filter { it.isNotBlank() }.joinToString(" • ")
             textSize = 12.5f
-            setTextColor(if (row.authorIsOtherBroker) FOREIGN_TEXT else Color.rgb(71, 85, 105))
+            setTextColor(if (muted || row.authorIsOtherBroker) FOREIGN_TEXT else Color.rgb(71, 85, 105))
         }
     }
 
