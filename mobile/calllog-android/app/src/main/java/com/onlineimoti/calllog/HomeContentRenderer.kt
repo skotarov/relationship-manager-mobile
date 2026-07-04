@@ -4,6 +4,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -151,14 +152,22 @@ internal class HomeContentRenderer(
             text = label
             textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(71, 85, 105))
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER_VERTICAL
+            // Match the blue rounded CRM badge used by the History week groups.
+            background = roundedRect(
+                activity.getColor(R.color.callreport_icon_background),
+                dp(10),
+                Color.TRANSPARENT,
+                0,
+            )
             setPadding(dp(10), dp(6), dp(10), dp(6))
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(8)
-                bottomMargin = dp(4)
+                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(10)
+                bottomMargin = dp(6)
             }
         }
     }
