@@ -60,6 +60,7 @@ internal object CompanyAccountApi {
                 accessToken = session.accessToken,
             ),
         )
+        CompanySessionStore.save(context, session)
     }
 
     private fun post(context: Context, payload: JSONObject): Result<Session> = runCatching {
