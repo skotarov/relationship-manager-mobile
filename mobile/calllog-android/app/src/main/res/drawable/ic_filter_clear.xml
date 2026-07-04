@@ -10,6 +10,6 @@
         android:height="16dp"
         android:gravity="bottom|end"
         android:bottom="0dp"
-        android:right="-1dp"
+        android:right="0dp"
         android:drawable="@drawable/ic_filter_clear_mark" />
 </layer-list>
