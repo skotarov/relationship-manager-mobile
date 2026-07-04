@@ -326,22 +326,16 @@ internal class CallReportHistoryRowsUi(
             text = "Седмица: ${weekDateRange(timestampMs)} (${relativeWeeksLabel(relativeWeeks)})"
             textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
+            setTextColor(activity.getColor(R.color.callreport_icon_background))
             gravity = Gravity.CENTER_VERTICAL
-            // Match the blue rounded CRM label used in the contact-history header.
-            background = roundedRect(
-                activity.getColor(R.color.callreport_icon_background),
-                dp(10),
-                Color.TRANSPARENT,
-                0,
-            )
-            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = null
+            setPadding(dp(10), dp(10), dp(10), dp(6))
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
-                topMargin = dp(10)
-                bottomMargin = dp(6)
+                topMargin = dp(6)
+                bottomMargin = dp(4)
             }
         }
     }
