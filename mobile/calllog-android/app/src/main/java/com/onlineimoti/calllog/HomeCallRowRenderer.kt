@@ -111,7 +111,11 @@ internal class HomeCallRowRenderer(
             CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
             CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
         if (crmClient) {
-            textColumn.addView(companyScopeChipsUi.create(companyGeneralNoteLabels, crmClient = true))
+            textColumn.addView(companyScopeChipsUi.create(
+                labels = companyGeneralNoteLabels,
+                crmClient = true,
+                onClick = { openContactNotesScreen(call, displayName) },
+            ))
         }
 
         if (call.isSms) {
