@@ -9,6 +9,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /** Owns Home's rendered call rows, status text and CRM presentation controls. */
 internal class HomeContentRenderer(
@@ -28,6 +32,7 @@ internal class HomeContentRenderer(
     var currentCalls: List<PhoneCallRecord> = emptyList()
         private set
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
+    private val dateFormatter = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("bg", "BG"))
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) {
         currentCalls = calls
@@ -102,14 +107,24 @@ internal class HomeContentRenderer(
         pageSize: Int,
         refreshCompanyLabels: Boolean,
     ) {
-        currentCalls = renderData.calls
+        // Home is always a chronological call log. Keep the same newest-first
+        // ordering for normal view, CRM, a phone filter and search results.
+        val chronologicalCalls = renderData.calls.sortedByDescending { call -> call.startedAt }
+        currentCalls = chronologicalCalls
         currentCallNotesByCall = renderData.callNotesByCall
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
         val phoneFiltered = activePhoneFilter().isNotBlank()
-        val companyLabels = if (phoneFiltered) emptyMap() else companyGeneralNotes.labelsFor(renderData.calls)
-        renderData.calls.forEach { call ->
+        val companyLabels = if (phoneFiltered) emptyMap() else companyGeneralNotes.labelsFor(chronologicalCalls)
+        val todaySerial = localDaySerial(System.currentTimeMillis())
+        var previousDaySerial: Long? = null
+        chronologicalCalls.forEach { call ->
+            val daySerial = localDaySerial(call.startedAt)
+            if (daySerial != null && daySerial != previousDaySerial) {
+                binding.homeCallsContainer.addView(dateSeparator(call.startedAt, todaySerial - daySerial))
+                previousDaySerial = daySerial
+            }
             val key = HomeCallPageLoader.noteKey(call.number)
             val callNote = renderData.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
             binding.homeCallsContainer.addView(
@@ -126,7 +141,48 @@ internal class HomeContentRenderer(
                 ),
             )
         }
-        if (!phoneFiltered && refreshCompanyLabels) companyGeneralNotes.refresh(renderData.calls)
+        if (!phoneFiltered && refreshCompanyLabels) companyGeneralNotes.refresh(chronologicalCalls)
+    }
+
+    /** A date line is shown before the first call of every local calendar day. */
+    private fun dateSeparator(timestampMs: Long, relativeDays: Long): TextView {
+        val label = "${dateFormatter.format(Date(timestampMs))} (${relativeDaysLabel(relativeDays)})"
+        return TextView(activity).apply {
+            text = label
+            textSize = 12.5f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(71, 85, 105))
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            background = roundedRect(
+                Color.rgb(241, 245, 249),
+                dp(10),
+                Color.rgb(203, 213, 225),
+                dp(1),
+            )
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(8)
+                bottomMargin = dp(4)
+            }
+        }
+    }
+
+    private fun relativeDaysLabel(days: Long): String = when {
+        days == 0L -> "преди 0 дни"
+        days == 1L -> "преди 1 ден"
+        days > 1L -> "преди $days дни"
+        days == -1L -> "след 1 ден"
+        else -> "след ${-days} дни"
+    }
+
+    /** Calendar-day serial avoids daylight-saving-time errors around midnight. */
+    private fun localDaySerial(timestampMs: Long): Long {
+        val calendar = Calendar.getInstance().apply { timeInMillis = timestampMs }
+        val yearBefore = (calendar.get(Calendar.YEAR) - 1).toLong()
+        val daysBeforeYear = 365L * yearBefore + yearBefore / 4L - yearBefore / 100L + yearBefore / 400L
+        return daysBeforeYear + calendar.get(Calendar.DAY_OF_YEAR).toLong() - 1L
     }
 
     private fun renderFilteredContactSummary() {
