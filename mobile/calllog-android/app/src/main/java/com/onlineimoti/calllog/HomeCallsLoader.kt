@@ -28,14 +28,24 @@ internal class HomeCallsLoader(
     }
 
     fun renderLocalCalls(pageSize: Int) {
-        val calls = HomeCallPageLoader.calls(
-            context = activity,
-            activePhoneFilter = activePhoneFilter(),
-            searchQuery = activeSearchQuery(),
-            pageIndex = pageIndex(),
-            pageSize = pageSize,
-            crmMode = false,
-        )
+        val phoneFilter = activePhoneFilter()
+        val searchQuery = activeSearchQuery()
+        val calls = if (phoneFilter.isBlank() && searchQuery.isBlank()) {
+            HomeTimelineLoader.page(
+                context = activity,
+                pageIndex = pageIndex(),
+                pageSize = pageSize,
+            )
+        } else {
+            HomeCallPageLoader.calls(
+                context = activity,
+                activePhoneFilter = phoneFilter,
+                searchQuery = searchQuery,
+                pageIndex = pageIndex(),
+                pageSize = pageSize,
+                crmMode = false,
+            )
+        }
         if (calls.isEmpty()) {
             contentRenderer.renderEmptyState()
             onRenderComplete()
