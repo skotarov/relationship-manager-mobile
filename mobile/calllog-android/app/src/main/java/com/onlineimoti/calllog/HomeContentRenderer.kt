@@ -117,7 +117,7 @@ internal class HomeContentRenderer(
         renderStatusAndPagination(pageSize)
         val phoneFiltered = activePhoneFilter().isNotBlank()
         val companyLabels = if (phoneFiltered) emptyMap() else companyGeneralNotes.labelsFor(chronologicalCalls)
-        val todaySerial = localDaySerial(System.currentTimeMillis())
+        val todaySerial = localDaySerial(System.currentTimeMillis()) ?: 0L
         var previousDaySerial: Long? = null
         chronologicalCalls.forEach { call ->
             val daySerial = localDaySerial(call.startedAt)
@@ -178,7 +178,8 @@ internal class HomeContentRenderer(
     }
 
     /** Calendar-day serial avoids daylight-saving-time errors around midnight. */
-    private fun localDaySerial(timestampMs: Long): Long {
+    private fun localDaySerial(timestampMs: Long): Long? {
+        if (timestampMs <= 0L) return null
         val calendar = Calendar.getInstance().apply { timeInMillis = timestampMs }
         val yearBefore = (calendar.get(Calendar.YEAR) - 1).toLong()
         val daysBeforeYear = 365L * yearBefore + yearBefore / 4L - yearBefore / 100L + yearBefore / 400L
