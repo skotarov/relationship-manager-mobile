@@ -17,6 +17,9 @@ import java.util.concurrent.TimeUnit
 class CallStateReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
+        // Do not turn the Play app into a free personal call tracker. Call-state
+        // processing starts only after the user has a signed-in company CRM session.
+        if (!CorporateAccess.isActive(context)) return
 
         val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
         val hasCallLog = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
