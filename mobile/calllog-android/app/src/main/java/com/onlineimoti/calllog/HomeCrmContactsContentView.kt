@@ -21,6 +21,17 @@ internal class HomeCrmContactsContentView(
         currentData = null
     }
 
+    fun showLoading() {
+        timelineToggle.prepare(visible = true, contactsMode = true)
+        binding.homeStatusText.text = if (AppLocaleText.isBulgarian()) {
+            "Зареждане на CRM контакти…"
+        } else {
+            "Loading CRM contacts…"
+        }
+        binding.fullLogProgress.visibility = View.VISIBLE
+        binding.paginationContainer.visibility = View.GONE
+    }
+
     fun render(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean = true) {
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
