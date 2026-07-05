@@ -57,15 +57,6 @@ internal class HomeCrmContactRowRenderer(
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 addView(titleView(title, highlightQuery, companyLabels))
                 addView(numberView(contact.number, highlightQuery))
-                if (!companyLabels.isNullOrEmpty()) {
-                    addView(scopeChipsUi.create(
-                        labels = companyLabels,
-                        crmClient = false,
-                        onClick = { openContactNotes(contact, title) },
-                        showCrmLabel = false,
-                        showPhaseDots = false,
-                    ))
-                }
                 notesUi.addGeneralContactNote(
                     column = this,
                     contactNote = contactNote,
