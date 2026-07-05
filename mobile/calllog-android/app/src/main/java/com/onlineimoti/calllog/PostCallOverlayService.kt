@@ -14,8 +14,8 @@ import android.view.WindowManager
 class PostCallOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val state = PostCallOverlayState()
-    private val ui by lazy { PostCallOverlayUi(this) }
-    private val noteEditor by lazy {
+    private val ui: PostCallOverlayUi by lazy { PostCallOverlayUi(this) }
+    private val noteEditor: PostCallNoteEditor by lazy {
         PostCallNoteEditor(
             service = this,
             ui = ui,
@@ -43,7 +43,7 @@ class PostCallOverlayService : Service() {
             stopOverlay = { stopSelf() },
         )
     }
-    private val generalNoteEditor by lazy {
+    private val generalNoteEditor: PostCallGeneralNoteEditor by lazy {
         PostCallGeneralNoteEditor(
             service = this,
             ui = ui,
@@ -64,7 +64,7 @@ class PostCallOverlayService : Service() {
             stopOverlay = { stopSelf() },
         )
     }
-    private val lookupPopup by lazy {
+    private val lookupPopup: PostCallLookupPopup by lazy {
         PostCallLookupPopup(
             service = this,
             ui = ui,
@@ -80,7 +80,7 @@ class PostCallOverlayService : Service() {
             timeoutMs = LOOKUP_POPUP_TIMEOUT_MS,
         )
     }
-    private val loadingPopup by lazy {
+    private val loadingPopup: PostCallLoadingPopup by lazy {
         PostCallLoadingPopup(
             service = this,
             ui = ui,
@@ -94,7 +94,7 @@ class PostCallOverlayService : Service() {
             timeoutMs = LOADING_POPUP_TIMEOUT_MS,
         )
     }
-    private val bubble by lazy {
+    private val bubble: PostCallBubble by lazy {
         PostCallBubble(
             service = this,
             ui = ui,
@@ -104,7 +104,7 @@ class PostCallOverlayService : Service() {
             openConfiguredAction = ::openConfiguredPostCallAction,
         )
     }
-    private val calendarActions by lazy {
+    private val calendarActions: PostCallCalendarActions by lazy {
         PostCallCalendarActions(
             service = this,
             phone = { state.phone },
@@ -112,7 +112,7 @@ class PostCallOverlayService : Service() {
             stopOverlay = { stopSelf() },
         )
     }
-    private val navigationActions by lazy {
+    private val navigationActions: PostCallNavigationActions by lazy {
         PostCallNavigationActions(
             service = this,
             handler = handler,
@@ -122,7 +122,7 @@ class PostCallOverlayService : Service() {
             stopOverlay = { stopSelf() },
         )
     }
-    private val windowController by lazy {
+    private val windowController: PostCallOverlayWindowController by lazy {
         PostCallOverlayWindowController(
             service = this,
             handler = handler,
