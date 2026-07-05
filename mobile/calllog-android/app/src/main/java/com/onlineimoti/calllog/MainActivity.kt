@@ -16,20 +16,22 @@ class MainActivity : AppCompatActivity() {
     private var suppressAutoSave = false
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
 
-    private val contactsCleanupController by lazy {
+    private val contactsCleanupController: MainContactsCleanupController by lazy {
         MainContactsCleanupController(this, binding, executor, ::setStatus, ::dp)
     }
-    private val settingsNavigationController by lazy {
+    private val settingsNavigationController: MainSettingsNavigationController by lazy {
         MainSettingsNavigationController(this, binding, translationSettingsController::onSectionVisible)
     }
-    private val settingsAutoSaveController by lazy {
+    private val settingsAutoSaveController: MainSettingsAutoSaveController by lazy {
         MainSettingsAutoSaveController(binding, ::autoSaveSettings, ::applyLanguageIfChanged)
     }
-    private val translationSettingsController by lazy { TranslationSettingsController(this, binding) }
-    private val serverSyncQueueStatusController by lazy {
+    private val translationSettingsController: TranslationSettingsController by lazy {
+        TranslationSettingsController(this, binding)
+    }
+    private val serverSyncQueueStatusController: ServerSyncQueueStatusController by lazy {
         ServerSyncQueueStatusController(this, binding, ::saveConfig, ::setStatus)
     }
-    private val defaultSmsSettingsController by lazy {
+    private val defaultSmsSettingsController: DefaultSmsSettingsController by lazy {
         DefaultSmsSettingsController(this, binding, ::requestDefaultSmsRole, ::requestSmsPermissions, ::setStatus)
     }
     private val permissionFlowController: MainPermissionFlowController by lazy {
