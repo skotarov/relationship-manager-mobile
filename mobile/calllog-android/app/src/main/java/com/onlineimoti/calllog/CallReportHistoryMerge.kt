@@ -19,6 +19,8 @@ internal data class CallReportHistoryRow(
     val serverEvent: CallReportHistoryEvent? = null,
     /** Selected company/case of this concrete conversation. */
     val companyId: String = "",
+    /** Display name resolved from the authenticated server principal. */
+    val companyName: String = "",
     /** Persisted acknowledgement from a prior successful sync; independent of current lookup. */
     val locallyConfirmedOnServer: Boolean = false,
     val serverNewer: Boolean = false,
@@ -54,6 +56,10 @@ internal object CallReportHistoryMerge {
         val serverByClientId = serverEvents
             .filter { it.clientEventId.isNotBlank() }
             .associateBy { it.clientEventId }
+        val companyNamesById = principal.companies.associate { company ->
+            company.id.trim() to company.name.trim().ifBlank { company.id.trim() }
+        }
+        fun companyNameFor(companyId: String): String = companyNamesById[companyId.trim()].orEmpty()
         val usedServerIds = linkedSetOf<String>()
         val usedServerIndexes = linkedSetOf<Int>()
         val rows = mutableListOf<CallReportHistoryRow>()
@@ -66,6 +72,7 @@ internal object CallReportHistoryMerge {
             val match = serverByClientId[expectedId]
                 ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "phone", call.direction, call.startedAt)
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
+            val companyId = match?.companyId.orEmpty()
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.PHONE,
                 timeMs = call.startedAt,
@@ -75,7 +82,8 @@ internal object CallReportHistoryMerge {
                 durationSeconds = call.durationSeconds.takeIf { it > 0L } ?: match?.durationSeconds.orEmpty(),
                 localCall = call,
                 serverEvent = match,
-                companyId = match?.companyId.orEmpty(),
+                companyId = companyId,
+                companyName = companyNameFor(companyId),
                 locallyConfirmedOnServer = localConfirmed,
                 authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
@@ -90,6 +98,9 @@ internal object CallReportHistoryMerge {
             val match = serverByClientId[expectedId]
                 ?: fallbackMatch(serverEvents, usedServerIndexes, phone, "sms", direction, sms.timestampMs)
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
+            val companyId = match?.companyId.orEmpty().ifBlank {
+                SmsCompanyAssignmentStore.companyIdFor(context, phone, sms.providerId)
+            }
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.SMS,
                 timeMs = sms.timestampMs,
@@ -99,9 +110,8 @@ internal object CallReportHistoryMerge {
                 text = sms.body,
                 localSms = sms,
                 serverEvent = match,
-                companyId = match?.companyId.orEmpty().ifBlank {
-                    SmsCompanyAssignmentStore.companyIdFor(context, phone, sms.providerId)
-                },
+                companyId = companyId,
+                companyName = companyNameFor(companyId),
                 locallyConfirmedOnServer = localConfirmed,
                 authorIsOtherBroker = isOtherBrokerAuthor(match, principal),
             )
@@ -118,6 +128,7 @@ internal object CallReportHistoryMerge {
             if (match != null) markUsed(match, serverEvents, usedServerIds, usedServerIndexes)
             val foreignAuthor = isOtherBrokerAuthor(match, principal)
             val serverNewer = match != null && note.savedAt > 0L && match.updatedAtMs > note.savedAt && match.note != note.note
+            val companyId = match?.companyId.orEmpty().ifBlank { note.companyId }
             rows += CallReportHistoryRow(
                 kind = CallReportHistoryRowKind.NOTE,
                 timeMs = maxOf(note.callAt.takeIf { it > 0L } ?: note.savedAt, match?.occurredAtMs ?: 0L),
@@ -127,7 +138,8 @@ internal object CallReportHistoryMerge {
                 text = if (serverNewer) match?.note.orEmpty() else note.note,
                 localNote = note,
                 serverEvent = match,
-                companyId = match?.companyId.orEmpty().ifBlank { note.companyId },
+                companyId = companyId,
+                companyName = companyNameFor(companyId),
                 locallyConfirmedOnServer = localConfirmed,
                 serverNewer = serverNewer,
                 editable = !foreignAuthor,
@@ -154,6 +166,7 @@ internal object CallReportHistoryMerge {
                 text = event.note,
                 serverEvent = event,
                 companyId = event.companyId,
+                companyName = companyNameFor(event.companyId),
                 // Every non-foreign timeline note returned by history_lookup has a
                 // timestamp. Its original client_event_id is preserved by the UI
                 // and server editor, so no duplicate note is inserted.
