@@ -9,6 +9,8 @@ internal data class HomeCompanyScopeLabel(
     val companyName: String,
     val hasGeneralNote: Boolean,
     val phase: Int,
+    /** Latest visible company-scoped main note; blank when the label is phase-only. */
+    val generalNote: String = "",
 )
 
 /**
@@ -53,17 +55,24 @@ internal object HomeCompanyGeneralNoteLabels {
                 event.clientEventId.contains(":note:general:") ||
                 (event.communicationType.equals("note", ignoreCase = true) &&
                     event.direction.isBlank() && event.durationSeconds <= 0L)
-            if (isGeneralNote) labelFor(phoneKey, event.companyId).hasGeneralNote = true
+            if (isGeneralNote) {
+                labelFor(phoneKey, event.companyId).setServerGeneralNote(
+                    text = event.note,
+                    changedAtMs = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs),
+                )
+            }
         }
 
         // A locally saved company note is useful immediately, before the durable
-        // topic outbox has completed its server round trip.
+        // topic outbox has completed its server round trip. It intentionally wins
+        // over the server copy because it may be the newer unsynced edit.
         for (phone in requestedPhones) {
             val phoneKey = HomeCallPageLoader.noteKey(phone)
             if (phoneKey !in scopedPhoneKeys) continue
             for (company in result.principal.companies) {
-                if (CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id).isNotBlank()) {
-                    labelFor(phoneKey, company.id).hasGeneralNote = true
+                val localNote = CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id)
+                if (localNote.isNotBlank()) {
+                    labelFor(phoneKey, company.id).setLocalGeneralNote(localNote)
                 }
             }
         }
@@ -123,6 +132,7 @@ internal object HomeCompanyGeneralNoteLabels {
                         companyName = label.companyName,
                         hasGeneralNote = label.hasGeneralNote,
                         phase = label.phase,
+                        generalNote = label.generalNote,
                     )
                 }
         }.filterValues { it.isNotEmpty() }
@@ -133,7 +143,27 @@ internal object HomeCompanyGeneralNoteLabels {
         val companyName: String,
         var hasGeneralNote: Boolean = false,
         var phase: Int = ContactNegotiationPhaseStore.NONE,
-    )
+        var generalNote: String = "",
+        private var generalNoteChangedAtMs: Long = 0L,
+    ) {
+        fun setServerGeneralNote(text: String, changedAtMs: Long) {
+            val value = text.trim()
+            if (value.isBlank()) return
+            hasGeneralNote = true
+            if (generalNote.isBlank() || changedAtMs >= generalNoteChangedAtMs) {
+                generalNote = value
+                generalNoteChangedAtMs = changedAtMs
+            }
+        }
+
+        fun setLocalGeneralNote(text: String) {
+            val value = text.trim()
+            if (value.isBlank()) return
+            hasGeneralNote = true
+            generalNote = value
+            generalNoteChangedAtMs = Long.MAX_VALUE
+        }
+    }
 
     private data class PhaseRequest(
         val phone: String,
