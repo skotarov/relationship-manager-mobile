@@ -49,6 +49,7 @@ internal class HomeCallRowRenderer(
             call, displayName, contactNote, companyGeneralNoteLabels, callNote,
             highlightQuery, showContactIdentity, showGeneralContactNote, showQuickActions,
         )
+        val crmClient = isCrmClient(call, showGeneralContactNote)
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
@@ -74,8 +75,10 @@ internal class HomeCallRowRenderer(
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         column.addView(callMetaText(call, displayName, highlightQuery, showContactIdentity))
-        if (showContactIdentity) column.addView(mainNameRow(call, displayName, highlightQuery))
-        addCrmStatus(column, call, displayName, companyGeneralNoteLabels, showGeneralContactNote)
+        if (showContactIdentity) {
+            column.addView(mainNameRow(call, displayName, highlightQuery, crmClient, companyGeneralNoteLabels))
+        }
+        addCompanyScopes(column, call, displayName, companyGeneralNoteLabels, crmClient)
         addGeneralNote(column, contactNote, highlightQuery, showGeneralContactNote)
         notesUi.addCompanyGeneralNotes(
             column = column,
@@ -83,11 +86,23 @@ internal class HomeCallRowRenderer(
             highlightQuery = highlightQuery,
             visible = showGeneralContactNote,
         )
-        addCallNote(column, call, callNote, highlightQuery)
+        notesUi.addCallNote(
+            column = column,
+            call = call,
+            callNote = callNote,
+            highlightQuery = highlightQuery,
+            statusForCall = ::noteSyncStatus,
+            companyLabels = companyGeneralNoteLabels,
+        )
         row.addView(column)
         row.addView(actions(call, displayName, callNote, showQuickActions))
         card.addView(row)
         return card
+    }
+
+    private fun isCrmClient(call: PhoneCallRecord, visible: Boolean): Boolean {
+        return visible && CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
+            CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
     }
 
     private fun callStatusButton(call: PhoneCallRecord) = ImageButton(activity).apply {
@@ -117,19 +132,21 @@ internal class HomeCallRowRenderer(
         }
     }
 
-    private fun addCrmStatus(
+    private fun addCompanyScopes(
         column: LinearLayout,
         call: PhoneCallRecord,
         displayName: String,
         labels: List<HomeCompanyScopeLabel>?,
-        visible: Boolean,
+        crmClient: Boolean,
     ) {
-        val crmClient = visible && CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
-            CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
-        if (!crmClient) return
-        column.addView(companyScopeChipsUi.create(labels, crmClient = true) {
-            openContactNotesScreen(call, displayName)
-        })
+        if (!crmClient || labels.isNullOrEmpty()) return
+        column.addView(companyScopeChipsUi.create(
+            labels = labels,
+            crmClient = false,
+            onClick = { openContactNotesScreen(call, displayName) },
+            showCrmLabel = false,
+            showPhaseDots = false,
+        ))
     }
 
     private fun addGeneralNote(column: LinearLayout, note: String?, query: String, visible: Boolean) {
@@ -149,37 +166,6 @@ internal class HomeCallRowRenderer(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(5) }
         })
-    }
-
-    private fun addCallNote(column: LinearLayout, call: PhoneCallRecord, callNote: HomeCallNote?, query: String) {
-        val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
-        val colors = NoteUiStyle.Call
-        column.addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(note.text, query, colors.text)
-            val drawable = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
-                R.drawable.ic_cloud_note
-            } else R.drawable.ic_chat_note
-            val icon = activity.getDrawable(drawable)?.apply { setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP)) }
-            setCompoundDrawables(icon, null, null, null)
-            compoundDrawablePadding = dp(5)
-            setTextColor(colors.text)
-            textSize = 12.5f
-            maxLines = 3
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        })
-        noteSyncStatus(call)?.let { status ->
-            column.addView(TextView(activity).apply {
-                text = status
-                textSize = 11.5f
-                setTextColor(Color.rgb(146, 64, 14))
-                setPadding(dp(8), dp(4), dp(8), 0)
-            })
-        }
     }
 
     private fun actions(call: PhoneCallRecord, name: String, note: HomeCallNote?, quick: Boolean) = LinearLayout(activity).apply {
@@ -212,13 +198,20 @@ internal class HomeCallRowRenderer(
         else activity.getString(R.string.dynamic_note_pending_server_sync_failed, failure)
     }
 
-    private fun mainNameRow(call: PhoneCallRecord, displayName: String, query: String) = LinearLayout(activity).apply {
+    private fun mainNameRow(
+        call: PhoneCallRecord,
+        displayName: String,
+        query: String,
+        crmClient: Boolean,
+        labels: List<HomeCompanyScopeLabel>?,
+    ) = LinearLayout(activity).apply {
         val color = activity.getColor(R.color.calllog_text)
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(0, dp(2), 0, 0)
         addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(displayName.ifBlank { call.number }, query, color)
+            val identity = SearchTextHighlighter.highlightedText(displayName.ifBlank { call.number }, query, color)
+            text = companyScopeChipsUi.inlineCrmIdentity(identity, labels, crmClient)
             setTextColor(color)
             textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
@@ -253,6 +246,4 @@ internal class HomeCallRowRenderer(
             else -> R.drawable.ic_call_incoming
         }
     }
-
-    private companion object { const val NOTE_ICON_SIZE_DP = 18 }
 }
