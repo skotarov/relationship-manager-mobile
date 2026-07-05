@@ -54,13 +54,12 @@ class ContactNotesHeaderUi(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(iconButton(R.drawable.ic_arrow_back, activity.getString(R.string.dynamic_action_back), goBack).apply {
+                addView(backButton(
+                    goBack = goBack,
+                    openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
+                ).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
-                if (showRmCallLogButton) {
-                    addView(iconButton(R.drawable.ic_system_call_log, activity.getString(R.string.dynamic_action_all_calls), openRmCallLog))
-                    addView(verticalDivider())
-                }
                 if (showCrmSyncButton) {
                     addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
                 }
@@ -208,16 +207,6 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun verticalDivider(): View {
-        return View(activity).apply {
-            setBackgroundColor(Color.rgb(203, 213, 225))
-            layoutParams = LinearLayout.LayoutParams(dp(1), dp(28)).apply {
-                marginStart = dp(4)
-                marginEnd = dp(12)
-            }
-        }
-    }
-
     private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): LinearLayout {
         val iconColor = if (enabled) Color.WHITE else Color.BLACK
         val description = when {
@@ -288,6 +277,30 @@ class ContactNotesHeaderUi(
         }
     }
 
+    private fun backButton(
+        goBack: () -> Unit,
+        openCleanCallList: (() -> Unit)?,
+    ): ImageButton {
+        val button = iconButton(
+            R.drawable.ic_arrow_back,
+            activity.getString(R.string.dynamic_action_back),
+            goBack,
+        )
+        if (openCleanCallList == null) return button
+        button.setOnLongClickListener {
+            PopupMenu(activity, button).apply {
+                menu.add(0, MENU_CLEAN_CALL_LIST, 0, activity.getString(R.string.dynamic_action_all_calls))
+                setOnMenuItemClickListener { item ->
+                    if (item.itemId == MENU_CLEAN_CALL_LIST) openCleanCallList()
+                    true
+                }
+                show()
+            }
+            true
+        }
+        return button
+    }
+
     private fun contactMenuButton(
         description: String,
         openDefaultContact: () -> Unit,
@@ -341,5 +354,6 @@ class ContactNotesHeaderUi(
     private companion object {
         const val MENU_PHONE_CONTACT = 1
         const val MENU_RM_CONTACT = 2
+        const val MENU_CLEAN_CALL_LIST = 3
     }
 }
