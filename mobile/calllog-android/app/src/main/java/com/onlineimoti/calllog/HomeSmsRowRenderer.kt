@@ -1,11 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 
 /** Renders SMS timeline cards shown within the combined Call Log. */
@@ -19,6 +15,8 @@ internal class HomeSmsRowRenderer(
     private val togglePhoneFilter: (String) -> Unit,
     private val noteSyncStatus: (PhoneCallRecord) -> String?,
 ) {
+    private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
+
     fun compactRow(
         call: PhoneCallRecord,
         displayName: String,
@@ -74,78 +72,21 @@ internal class HomeSmsRowRenderer(
                 }
             },
             afterBody = { textColumn ->
-                addGeneralNote(textColumn, contactNote, highlightQuery, showGeneralContactNote)
-                addCallNote(textColumn, call, callNote, highlightQuery)
+                notesUi.addGeneralContactNote(
+                    column = textColumn,
+                    contactNote = contactNote,
+                    highlightQuery = highlightQuery,
+                    visible = showGeneralContactNote,
+                )
+                notesUi.addCallNote(
+                    column = textColumn,
+                    call = call,
+                    callNote = callNote,
+                    highlightQuery = highlightQuery,
+                    statusForCall = noteSyncStatus,
+                )
             },
             onClick = { openContactNotesScreen(call, displayName) },
         )
-    }
-
-    private fun addGeneralNote(
-        column: LinearLayout,
-        contactNote: String?,
-        highlightQuery: String,
-        showGeneralContactNote: Boolean,
-    ) {
-        if (!showGeneralContactNote || contactNote.isNullOrBlank()) return
-        val colors = NoteUiStyle.General
-        column.addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(contactNote, highlightQuery, colors.text)
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-            compoundDrawablePadding = dp(4)
-            setTextColor(colors.text)
-            textSize = 12.5f
-            maxLines = 2
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        })
-    }
-
-    private fun addCallNote(
-        column: LinearLayout,
-        call: PhoneCallRecord,
-        callNote: HomeCallNote?,
-        highlightQuery: String,
-    ) {
-        val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
-        val colors = NoteUiStyle.Call
-        column.addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(note.text, highlightQuery, colors.text)
-            val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
-                R.drawable.ic_cloud_note
-            } else {
-                R.drawable.ic_chat_note
-            }
-            val icon = activity.getDrawable(iconRes)?.apply {
-                setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
-            }
-            setCompoundDrawables(icon, null, null, null)
-            compoundDrawablePadding = dp(5)
-            setTextColor(colors.text)
-            textSize = 12.5f
-            maxLines = 3
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        })
-        noteSyncStatus(call)?.let { status ->
-            column.addView(TextView(activity).apply {
-                text = status
-                textSize = 11.5f
-                setTextColor(Color.rgb(146, 64, 14))
-                setPadding(dp(8), dp(4), dp(8), 0)
-            })
-        }
-    }
-
-    private companion object {
-        const val NOTE_ICON_SIZE_DP = 18
     }
 }
