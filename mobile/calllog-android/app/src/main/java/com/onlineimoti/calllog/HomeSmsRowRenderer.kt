@@ -71,17 +71,6 @@ internal class HomeSmsRowRenderer(
             } else {
                 emptyList()
             },
-            beforeBody = { textColumn ->
-                if (crmClient && !companyGeneralNoteLabels.isNullOrEmpty()) {
-                    textColumn.addView(companyScopeChipsUi.create(
-                        labels = companyGeneralNoteLabels,
-                        crmClient = false,
-                        onClick = { openContactNotesScreen(call, displayName) },
-                        showCrmLabel = false,
-                        showPhaseDots = false,
-                    ))
-                }
-            },
             afterBody = { textColumn ->
                 notesUi.addGeneralContactNote(
                     column = textColumn,
