@@ -79,8 +79,8 @@ internal class FilteredFullLogController(
         binding.paginationContainer.visibility = View.VISIBLE
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, size)
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, size)
-        binding.previousCallsButton.isEnabled = !loading && pageIndex > 0
-        binding.nextCallsButton.isEnabled = !loading && pageIndex < pageCount - 1
+        PaginationButtonAppearance.apply(binding.previousCallsButton, !loading && pageIndex > 0)
+        PaginationButtonAppearance.apply(binding.nextCallsButton, !loading && pageIndex < pageCount - 1)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex + 1)
         binding.homeStatusText.text = statusText(remoteEnabled, pageEntries)
         pageEntries.forEach { binding.homeCallsContainer.addView(rowRenderer.rowView(phone, it, remoteEnabled)) }
