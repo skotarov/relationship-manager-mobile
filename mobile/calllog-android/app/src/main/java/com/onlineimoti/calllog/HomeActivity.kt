@@ -21,6 +21,7 @@ class HomeActivity : AppCompatActivity() {
     private var pageIndex = 0
     private var activePhoneFilter = ""
     private var activeSearchQuery = ""
+    private var crmContactsMode = false
 
     private val readSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         smsPermissionRequestInFlight = false
@@ -34,6 +35,7 @@ class HomeActivity : AppCompatActivity() {
             HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
+            crmContactsContentView.invalidate()
             renderCalls()
         }
     }
@@ -42,6 +44,7 @@ class HomeActivity : AppCompatActivity() {
             HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
+            crmContactsContentView.invalidate()
         }, ::renderCalls)
     }
     private val homeActions: HomeActions by lazy {
@@ -49,10 +52,16 @@ class HomeActivity : AppCompatActivity() {
             activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         }
     }
+    private val crmTimelineToggle: HomeCrmTimelineModeToggle by lazy {
+        HomeCrmTimelineModeToggle(this, binding, uiGeometry::dp) {
+            timelineCoordinator.toggleCrmContactsMode()
+        }
+    }
     private val companyGeneralNotesController: HomeCompanyGeneralNotesController by lazy {
         HomeCompanyGeneralNotesController(this, handler) {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) {
-                homeContentRenderer.renderCurrentRowsAfterCompanyLabels(pageSize())
+                if (isCrmContactsMode()) crmContactsContentView.renderCurrentRowsAfterCompanyLabels(pageSize())
+                else homeContentRenderer.renderCurrentRowsAfterCompanyLabels(pageSize())
             }
         }
     }
@@ -62,6 +71,7 @@ class HomeActivity : AppCompatActivity() {
     private val crmFiltersController: HomeCrmFiltersController by lazy {
         HomeCrmFiltersController(this, binding, handler, uiGeometry::dp, uiGeometry::roundedRect) {
             homeContentRenderer.clearCalls()
+            crmContactsContentView.invalidate()
             pageIndex = 0
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
@@ -78,12 +88,34 @@ class HomeActivity : AppCompatActivity() {
             homeActions::openDialer, { timelineCoordinator.togglePhoneFilter(it) },
         )
     }
+    private val crmContactRowRenderer: HomeCrmContactRowRenderer by lazy {
+        HomeCrmContactRowRenderer(
+            this,
+            uiGeometry::dp,
+            uiGeometry::roundedRect,
+            filteredContactSummaryChipsUi,
+            homeActions::openContactNotesScreen,
+            homeActions::openDialer,
+        )
+    }
     private val homeContentRenderer: HomeContentRenderer by lazy {
         HomeContentRenderer(
             this, binding, { activePhoneFilter }, { activeSearchQuery }, { pageIndex },
             ::isCrmModeEnabled, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
             uiGeometry::roundedRect, homeCallRowRenderer, companyGeneralNotesController,
             filteredContactSummaryChipsUi,
+        )
+    }
+    private val crmContactsContentView: HomeCrmContactsContentView by lazy {
+        HomeCrmContactsContentView(
+            this,
+            binding,
+            { pageIndex },
+            homeContentRenderer,
+            companyGeneralNotesController,
+            crmContactRowRenderer,
+            crmTimelineToggle,
+            { crmFiltersController.hasActiveFilters() },
         )
     }
     private val pullRefreshController: HomePullRefreshController by lazy {
@@ -95,6 +127,24 @@ class HomeActivity : AppCompatActivity() {
         HomeCallsLoader(
             this, handler, homeContentRenderer, crmFiltersController, serverCallNotesController,
             { activePhoneFilter }, { activeSearchQuery }, { pageIndex }, ::isCrmModeEnabled,
+            pullRefreshController::complete,
+            onCrmCallsRendered = { count ->
+                crmTimelineToggle.showRange(false, pageIndex, pageSize(), count)
+            },
+            onCrmCallsEmpty = { crmTimelineToggle.showEmpty(false) },
+        )
+    }
+    private val crmContactsLoader: HomeCrmContactsLoader by lazy {
+        HomeCrmContactsLoader(
+            this,
+            handler,
+            crmContactsContentView,
+            crmFiltersController,
+            { activePhoneFilter },
+            { activeSearchQuery },
+            { pageIndex },
+            ::isCrmModeEnabled,
+            ::isCrmContactsMode,
             pullRefreshController::complete,
         )
     }
@@ -136,12 +186,14 @@ class HomeActivity : AppCompatActivity() {
         HomeTimelineCoordinator(
             activity = this,
             callsLoader = callsLoader,
+            contactsLoader = crmContactsLoader,
             serverCallNotes = serverCallNotesController,
             searchController = searchController,
             contentRenderer = homeContentRenderer,
             crmFilters = crmFiltersController,
             filteredFullLog = filteredFullLogController,
             pullRefresh = pullRefreshController,
+            timelineToggle = crmTimelineToggle,
             activePhoneFilter = { activePhoneFilter },
             setActivePhoneFilter = { activePhoneFilter = it },
             activeSearchQuery = { activeSearchQuery },
@@ -149,7 +201,12 @@ class HomeActivity : AppCompatActivity() {
             setPageIndex = { pageIndex = it },
             pageSize = ::pageSize,
             isCrmModeEnabled = ::isCrmModeEnabled,
-            onCrmModeChanged = companyGeneralNotesController::invalidate,
+            isCrmContactsMode = ::isCrmContactsMode,
+            setCrmContactsMode = { crmContactsMode = it },
+            onCrmModeChanged = {
+                companyGeneralNotesController.invalidate()
+                crmContactsContentView.invalidate()
+            },
             requestSmsPermission = ::requestSmsPermissionForFilteredHistoryIfNeeded,
         )
     }
@@ -159,6 +216,7 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        crmTimelineToggle
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         homeContentRenderer.prepareForRender(pageSize(), keepExistingRows = false)
@@ -188,6 +246,7 @@ class HomeActivity : AppCompatActivity() {
         pageIndex = 0
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
+        crmContactsContentView.invalidate()
         if (::binding.isInitialized) {
             searchInputController.resetText()
             renderCalls()
@@ -201,6 +260,7 @@ class HomeActivity : AppCompatActivity() {
         noteSavedReceiver.register()
         contactsSyncPreparer.prepareOnce()
         companyGeneralNotesController.invalidate()
+        crmContactsContentView.invalidate()
         HomeCrmPhaseLookup.invalidate()
         crmFiltersController.refreshCompaniesIfNeeded()
         renderCalls()
@@ -223,6 +283,7 @@ class HomeActivity : AppCompatActivity() {
         searchController.cancelActiveTask()
         searchExecutor.shutdownNow()
         callsLoader.release()
+        crmContactsLoader.release()
         serverCallNotesController.release()
         crmFiltersController.release()
         companyGeneralNotesController.release()
@@ -247,6 +308,7 @@ class HomeActivity : AppCompatActivity() {
         HomeCallPageLoader.clearSearchCache()
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
+        crmContactsContentView.invalidate()
         HomeCrmPhaseLookup.invalidate()
         CallReportNoteOutboxScheduler.enqueue(this, reason = "home_pull_refresh")
         CallReportTopicNoteOutbox.requestSyncNow(this)
@@ -255,6 +317,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
+    private fun isCrmContactsMode() = crmContactsMode
     private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     companion object {
