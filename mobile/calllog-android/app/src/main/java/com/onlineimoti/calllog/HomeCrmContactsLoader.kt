@@ -31,6 +31,7 @@ internal class HomeCrmContactsLoader(
         val filterState = crmFilters.state()
         val requestedPage = pageIndex()
         val appContext = activity.applicationContext
+        contactsContent.showLoading()
         executor.execute {
             val data = runCatching {
                 val contacts = ContactSearchProvider.crmEnabledContacts(appContext)
