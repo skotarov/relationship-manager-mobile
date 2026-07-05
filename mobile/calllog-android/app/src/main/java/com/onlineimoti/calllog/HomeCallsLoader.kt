@@ -16,6 +16,8 @@ internal class HomeCallsLoader(
     private val pageIndex: () -> Int,
     private val isCrmModeEnabled: () -> Boolean,
     private val onRenderComplete: () -> Unit,
+    private val onCrmCallsRendered: (Int) -> Unit = {},
+    private val onCrmCallsEmpty: () -> Unit = {},
 ) {
     private val crmExecutor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
@@ -156,8 +158,10 @@ internal class HomeCallsLoader(
                 if (!current) return@post
                 if (data.calls.isEmpty()) {
                     contentRenderer.renderEmptyState()
+                    onCrmCallsEmpty()
                 } else {
                     contentRenderer.applyRenderData(data, pageSize)
+                    onCrmCallsRendered(data.calls.size)
                     serverCallNotes.enrichAsync(data) { enriched ->
                         contentRenderer.applyRenderData(enriched, pageSize)
                     }
