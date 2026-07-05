@@ -22,8 +22,6 @@ internal class HomeCrmTimelineModeToggle(
     ).apply {
         minHeight = 0
         minWidth = 0
-        insetTop = 0
-        insetBottom = 0
         textAllCaps = false
         textSize = 12f
         setPadding(dp(8), 0, dp(8), 0)
