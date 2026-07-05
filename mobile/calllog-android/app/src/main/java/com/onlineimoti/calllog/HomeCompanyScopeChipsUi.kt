@@ -59,7 +59,7 @@ internal class HomeCompanyScopeChipsUi(
         }
     }
 
-    /** CRM and the relevant phase dot are placed directly before the name or phone. */
+    /** CRM and all available company phase dots are placed directly before the name or phone. */
     fun inlineCrmIdentity(
         identity: CharSequence,
         labels: List<HomeCompanyScopeLabel>?,
@@ -81,18 +81,19 @@ internal class HomeCompanyScopeChipsUi(
             builder.length,
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
         )
-        val phase = labels.orEmpty().firstOrNull { it.phase in 1..4 }?.phase
-        if (phase != null) {
-            builder.append(" ")
-            val dotStart = builder.length
-            builder.append("●")
-            builder.setSpan(
-                ForegroundColorSpan(phaseColor(phase)),
-                dotStart,
-                builder.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-            )
-        }
+        labels.orEmpty()
+            .filter { it.phase in 1..4 }
+            .forEach { label ->
+                builder.append(" ")
+                val dotStart = builder.length
+                builder.append("●")
+                builder.setSpan(
+                    ForegroundColorSpan(phaseColor(label.phase)),
+                    dotStart,
+                    builder.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
         builder.append(" ")
         builder.append(identity)
         return builder
