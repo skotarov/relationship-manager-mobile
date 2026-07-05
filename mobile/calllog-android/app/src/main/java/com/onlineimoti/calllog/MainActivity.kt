@@ -7,7 +7,6 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
@@ -18,57 +17,21 @@ class MainActivity : AppCompatActivity() {
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
 
     private val contactsCleanupController by lazy {
-        MainContactsCleanupController(
-            activity = this,
-            binding = binding,
-            executor = executor,
-            setStatus = ::setStatus,
-            dp = ::dp,
-        )
+        MainContactsCleanupController(this, binding, executor, ::setStatus, ::dp)
     }
-
     private val settingsNavigationController by lazy {
-        MainSettingsNavigationController(
-            activity = this,
-            binding = binding,
-            onLanguageSectionShown = translationSettingsController::onSectionVisible,
-        )
+        MainSettingsNavigationController(this, binding, translationSettingsController::onSectionVisible)
     }
-
     private val settingsAutoSaveController by lazy {
-        MainSettingsAutoSaveController(
-            binding = binding,
-            autoSaveSettings = ::autoSaveSettings,
-            applyLanguageIfChanged = ::applyLanguageIfChanged,
-        )
+        MainSettingsAutoSaveController(binding, ::autoSaveSettings, ::applyLanguageIfChanged)
     }
-
-    private val translationSettingsController by lazy {
-        TranslationSettingsController(
-            activity = this,
-            binding = binding,
-        )
-    }
-
+    private val translationSettingsController by lazy { TranslationSettingsController(this, binding) }
     private val serverSyncQueueStatusController by lazy {
-        ServerSyncQueueStatusController(
-            activity = this,
-            binding = binding,
-            saveConfig = ::saveConfig,
-            setStatus = ::setStatus,
-        )
+        ServerSyncQueueStatusController(this, binding, ::saveConfig, ::setStatus)
     }
-
     private val defaultSmsSettingsController by lazy {
-        DefaultSmsSettingsController(
-            activity = this,
-            binding = binding,
-            requestDefaultRole = ::requestDefaultSmsRole,
-            requestSmsPermissions = ::requestSmsPermissions,
-            setStatus = ::setStatus,
-        )
+        DefaultSmsSettingsController(this, binding, ::requestDefaultSmsRole, ::requestSmsPermissions, ::setStatus)
     }
-
     private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
@@ -88,36 +51,29 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private val singlePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+    private val singlePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         permissionFlowController.onPermissionResult()
     }
-
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onCallScreeningResult()
     }
-
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onStorageSettingsResult()
     }
-
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onSmsRoleResult()
         defaultSmsSettingsController.refresh()
     }
-
     private val smsPermissionsLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         permissionFlowController.onSmsPermissionsResult()
         defaultSmsSettingsController.refresh()
     }
-
     private val overlaySettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onOverlaySettingsResult()
     }
-
     private val createArchiveLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) MainArchiveActions.createArchive(this, uri, ::setStatus)
     }
-
     private val restoreArchiveLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) MainArchiveActions.askRestoreMode(this, uri, ::setStatus)
     }
@@ -128,7 +84,6 @@ class MainActivity : AppCompatActivity() {
         currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         syncPrivateNotesToSharedStorageWhenAvailable()
         CallReportRuntime.ensureNotificationChannel(this)
         hydrateFields()
@@ -139,22 +94,10 @@ class MainActivity : AppCompatActivity() {
         translationSettingsController.wire()
         serverSyncQueueStatusController.wire()
         serverSyncQueueStatusController.refresh()
-        if (BuildConfig.DEBUG) {
-            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.VISIBLE
-            defaultSmsSettingsController.wire()
-        } else {
-            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
-            binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root.visibility = android.view.View.GONE
-        }
+        configureBuildSpecificSettings()
         wireSettingsActions()
         if (BuildConfig.DEBUG) {
-            MainServerTestsController(
-                activity = this,
-                binding = binding,
-                executor = executor,
-                saveConfig = ::saveConfig,
-                setStatus = ::setStatus,
-            ).wire()
+            MainServerTestsController(this, binding, executor, ::saveConfig, ::setStatus).wire()
         }
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
@@ -179,46 +122,38 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun hydrateFields() {
-        MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
+    private fun configureBuildSpecificSettings() {
+        val permissionsSection = binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root
+        if (BuildConfig.DEBUG) {
+            permissionsSection.visibility = android.view.View.VISIBLE
+            defaultSmsSettingsController.wire()
+        } else {
+            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
+            permissionsSection.visibility = android.view.View.GONE
+        }
     }
 
+    private fun hydrateFields() = MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
+
     private fun wireSettingsActions() {
-        binding.backToHomeButton.setOnClickListener { openCallLogHome() }
-        binding.contactLinkSection.registerAllContactsButton.setOnClickListener { contactsCleanupController.syncAllRmContacts() }
-        binding.remoteSettingsSection.saveServerSettingsButton.setOnClickListener {
-            saveConfig()
-            setStatus(getString(R.string.settings_server_saved))
-            refreshPermissionSummary()
-            serverSyncQueueStatusController.refresh()
-        }
-        binding.settingsRegistrationGroup.registrationCompanyAccountButton.setOnClickListener {
-            RegistrationActions.openCompanyAccount(this)
-        }
-        binding.settingsRegistrationGroup.registrationJoinCompanyButton.setOnClickListener {
-            RegistrationActions.showJoinDialog(this)
-        }
-        binding.settingsRegistrationGroup.registrationInviteColleagueButton.setOnClickListener {
-            RegistrationActions.showInviteDialog(this)
-        }
-        binding.archiveSettingsSection.createArchiveButton.setOnClickListener {
-            createArchiveLauncher.launch(MainArchiveActions.archiveFileName())
-        }
-        binding.archiveSettingsSection.restoreArchiveButton.setOnClickListener {
-            restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
-        }
-        if (BuildConfig.DEBUG) {
-            val quickStartButton = findViewById<MaterialButton>(R.id.testStartPopupButton)
-            val quickEndButton = findViewById<MaterialButton>(R.id.testEndPopupButton)
-            quickStartButton.setOnClickListener {
-                saveConfig()
-                testStartPopup()
-            }
-            quickEndButton.setOnClickListener {
-                saveConfig()
-                testEndPopup()
-            }
-        }
+        MainSettingsActionBinder.wire(
+            activity = this,
+            binding = binding,
+            openHome = ::openCallLogHome,
+            syncContacts = contactsCleanupController::syncAllRmContacts,
+            saveServerSettings = ::saveServerSettings,
+            createArchive = { createArchiveLauncher.launch(MainArchiveActions.archiveFileName()) },
+            restoreArchive = { restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
+            testStart = if (BuildConfig.DEBUG) ({ saveConfig(); testStartPopup() }) else null,
+            testEnd = if (BuildConfig.DEBUG) ({ saveConfig(); testEndPopup() }) else null,
+        )
+    }
+
+    private fun saveServerSettings() {
+        saveConfig()
+        setStatus(getString(R.string.settings_server_saved))
+        refreshPermissionSummary()
+        serverSyncQueueStatusController.refresh()
     }
 
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
@@ -244,42 +179,37 @@ class MainActivity : AppCompatActivity() {
         permissionFlowController.requestCallScreeningRoleIfNeeded()
     }
 
-    private fun requestDefaultSmsRole() {
-        SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
-    }
+    private fun requestDefaultSmsRole() = SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
 
     private fun requestSmsPermissions() {
-        val missingPermissions = arrayOf(
+        val missing = arrayOf(
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_SMS,
             Manifest.permission.SEND_SMS,
         ).filterNot(::hasPermission).toTypedArray()
-        if (missingPermissions.isEmpty()) {
+        if (missing.isEmpty()) {
             permissionFlowController.onSmsPermissionsResult()
-            return
+        } else {
+            smsPermissionsLauncher.launch(missing)
         }
-        smsPermissionsLauncher.launch(missingPermissions)
     }
 
-    private fun hasSmsPermissions(): Boolean {
-        return !BuildConfig.DEBUG || arrayOf(
-            Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.READ_SMS,
-            Manifest.permission.SEND_SMS,
-        ).all(::hasPermission)
-    }
+    private fun hasSmsPermissions(): Boolean = !BuildConfig.DEBUG || arrayOf(
+        Manifest.permission.RECEIVE_SMS,
+        Manifest.permission.READ_SMS,
+        Manifest.permission.SEND_SMS,
+    ).all(::hasPermission)
 
     private fun autoSaveSettings(): AppConfig {
         if (suppressAutoSave) return ConfigStore.load(this)
-        val config = saveConfig()
-        refreshPermissionSummary()
-        serverSyncQueueStatusController.refresh()
-        return config
+        return saveConfig().also {
+            refreshPermissionSummary()
+            serverSyncQueueStatusController.refresh()
+        }
     }
 
     private fun saveConfig(): AppConfig {
-        val config = MainSettingsConfigUi.read(binding)
-        ConfigStore.save(this, config)
+        ConfigStore.save(this, MainSettingsConfigUi.read(binding))
         return ConfigStore.load(this)
     }
 
@@ -296,11 +226,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openCallLogHome() {
-        startActivity(
-            Intent(this, HomeActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            },
-        )
+        startActivity(Intent(this, HomeActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        })
         finish()
     }
 
@@ -309,9 +237,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncPrivateNotesToSharedStorageWhenAvailable() {
-        if (LocalNotesFileStore.canUsePublicFolder()) {
-            LocalNotesFileStore.migratePrivateToPublic(this)
-        }
+        if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
     }
 
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
