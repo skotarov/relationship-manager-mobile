@@ -55,13 +55,17 @@ internal class HomeCrmContactRowRenderer(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                addView(titleView(title, highlightQuery))
+                addView(titleView(title, highlightQuery, companyLabels))
                 addView(numberView(contact.number, highlightQuery))
-                addView(scopeChipsUi.create(
-                    labels = companyLabels,
-                    crmClient = true,
-                    onClick = { openContactNotes(contact, title) },
-                ))
+                if (!companyLabels.isNullOrEmpty()) {
+                    addView(scopeChipsUi.create(
+                        labels = companyLabels,
+                        crmClient = false,
+                        onClick = { openContactNotes(contact, title) },
+                        showCrmLabel = false,
+                        showPhaseDots = false,
+                    ))
+                }
                 notesUi.addGeneralContactNote(
                     column = this,
                     contactNote = contactNote,
@@ -91,10 +95,15 @@ internal class HomeCrmContactRowRenderer(
         setOnClickListener { openDialer(number) }
     }
 
-    private fun titleView(title: String, query: String): TextView {
+    private fun titleView(
+        title: String,
+        query: String,
+        labels: List<HomeCompanyScopeLabel>?,
+    ): TextView {
         val color = activity.getColor(R.color.calllog_text)
         return TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(title, query, color)
+            val identity = SearchTextHighlighter.highlightedText(title, query, color)
+            text = scopeChipsUi.inlineCrmIdentity(identity, labels, crmClient = true)
             setTextColor(color)
             textSize = 15.5f
             setTypeface(typeface, Typeface.BOLD)
