@@ -1,7 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.view.View
-import androidx.activity.result.ActivityResultLauncher
 import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
