@@ -53,6 +53,14 @@ internal class FilteredFullLogController(
         onStateChanged()
     }
 
+    fun isOnLaterPage(): Boolean = pageIndex > 0
+
+    fun goToFirstPage() {
+        if (loading || pageIndex <= 0) return
+        pageIndex = 0
+        onStateChanged()
+    }
+
     fun render(phone: String) {
         if (phone.isBlank()) return
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
