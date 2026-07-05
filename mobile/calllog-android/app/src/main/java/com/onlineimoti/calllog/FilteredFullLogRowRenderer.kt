@@ -157,13 +157,13 @@ internal class FilteredFullLogRowRenderer(
     private fun attachedNoteView(phone: String, note: CallReportHistoryRow, remoteEnabled: Boolean): LinearLayout {
         val foreignRecord = remoteEnabled && note.authorIsOtherBroker
         val localNote = note.localNote
-        val background = if (foreignRecord) FilteredFullLogStyle.foreignBackground else NoteUiStyle.Call.background
+        val backgroundColor = if (foreignRecord) FilteredFullLogStyle.foreignBackground else NoteUiStyle.Call.background
         val border = if (foreignRecord) FilteredFullLogStyle.foreignBorder else NoteUiStyle.Call.border
         val textColor = if (foreignRecord) FilteredFullLogStyle.foreignText else NoteUiStyle.Call.text
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = roundedRect(background, dp(10), border, dp(1))
+            background = roundedRect(backgroundColor, dp(10), border, dp(1))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
