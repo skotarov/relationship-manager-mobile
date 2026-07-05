@@ -4,7 +4,6 @@ import android.Manifest
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
@@ -15,19 +14,22 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
     private val handler = Handler(Looper.getMainLooper())
     private val uiGeometry: HomeUiGeometry by lazy { HomeUiGeometry(resources) }
-    /** Two workers let the current query start even while an older provider read is unwinding. */
     private val searchExecutor = Executors.newFixedThreadPool(2)
     private val searchGeneration = AtomicInteger(0)
     private var smsPermissionPromptShownThisSession = false
     private var smsPermissionRequestInFlight = false
-    private val readSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+    private var pageIndex = 0
+    private var activePhoneFilter = ""
+    private var activeSearchQuery = ""
+
+    private val readSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         smsPermissionRequestInFlight = false
         HomeCallPageLoader.clearSearchCache()
         filteredFullLogController.invalidate()
         if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
     }
-    private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
-    private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
+    private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
+    private val noteSavedReceiver by lazy {
         HomeNoteSavedReceiverController(this) {
             HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
@@ -35,7 +37,7 @@ class HomeActivity : AppCompatActivity() {
             renderCalls()
         }
     }
-    private val noteRefreshController: HomeNoteRefreshController by lazy {
+    private val noteRefreshController by lazy {
         HomeNoteRefreshController(
             handler = handler,
             onPrepare = {
@@ -46,22 +48,20 @@ class HomeActivity : AppCompatActivity() {
             onRefresh = ::renderCalls,
         )
     }
-    private val homeActions: HomeActions by lazy {
+    private val homeActions by lazy {
         HomeActions(this, binding, noteRefreshController::start) {
             activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         }
     }
-    private val companyGeneralNotesController: HomeCompanyGeneralNotesController by lazy {
+    private val companyGeneralNotesController by lazy {
         HomeCompanyGeneralNotesController(this, handler) {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) {
                 homeContentRenderer.renderCurrentRowsAfterCompanyLabels(pageSize())
             }
         }
     }
-    private val serverCallNotesController: HomeServerCallNotesController by lazy {
-        HomeServerCallNotesController(this, handler)
-    }
-    private val crmFiltersController: HomeCrmFiltersController by lazy {
+    private val serverCallNotesController by lazy { HomeServerCallNotesController(this, handler) }
+    private val crmFiltersController by lazy {
         HomeCrmFiltersController(
             activity = this,
             binding = binding,
@@ -77,10 +77,10 @@ class HomeActivity : AppCompatActivity() {
             },
         )
     }
-    private val filteredContactSummaryChipsUi: HomeCompanyScopeChipsUi by lazy {
+    private val filteredContactSummaryChipsUi by lazy {
         HomeCompanyScopeChipsUi(this, uiGeometry::dp, uiGeometry::roundedRect)
     }
-    private val homeCallRowRenderer: HomeCallRowRenderer by lazy {
+    private val homeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             activity = this,
             dp = uiGeometry::dp,
@@ -92,7 +92,7 @@ class HomeActivity : AppCompatActivity() {
             togglePhoneFilter = ::togglePhoneFilter,
         )
     }
-    private val homeContentRenderer: HomeContentRenderer by lazy {
+    private val homeContentRenderer by lazy {
         HomeContentRenderer(
             activity = this,
             binding = binding,
@@ -108,7 +108,10 @@ class HomeActivity : AppCompatActivity() {
             scopeChipsUi = filteredContactSummaryChipsUi,
         )
     }
-    private val callsLoader: HomeCallsLoader by lazy {
+    private val pullRefreshController by lazy {
+        HomePullRefreshController(binding, handler, ::isFilteredFullLogMode)
+    }
+    private val callsLoader by lazy {
         HomeCallsLoader(
             activity = this,
             handler = handler,
@@ -119,10 +122,10 @@ class HomeActivity : AppCompatActivity() {
             activeSearchQuery = { activeSearchQuery },
             pageIndex = { pageIndex },
             isCrmModeEnabled = ::isCrmModeEnabled,
-            onRenderComplete = ::completePullToRefresh,
+            onRenderComplete = pullRefreshController::complete,
         )
     }
-    private val searchController: HomeSearchController by lazy {
+    private val searchController by lazy {
         HomeSearchController(
             context = this,
             binding = binding,
@@ -138,10 +141,10 @@ class HomeActivity : AppCompatActivity() {
             setCurrentCalls = homeContentRenderer::replaceCurrentCalls,
             renderEmptyState = homeContentRenderer::renderEmptyState,
             applyRenderData = homeContentRenderer::applyRenderData,
-            onRenderComplete = ::completePullToRefresh,
+            onRenderComplete = pullRefreshController::complete,
         )
     }
-    private val searchInputController: HomeSearchInputController by lazy {
+    private val searchInputController by lazy {
         HomeSearchInputController(
             activity = this,
             binding = binding,
@@ -158,7 +161,7 @@ class HomeActivity : AppCompatActivity() {
             },
         )
     }
-    private val filteredFullLogController: FilteredFullLogController by lazy {
+    private val filteredFullLogController by lazy {
         FilteredFullLogController(
             activity = this,
             binding = binding,
@@ -172,21 +175,6 @@ class HomeActivity : AppCompatActivity() {
             onStateChanged = ::renderCalls,
         )
     }
-    private val filteredFullLogRefreshWatcher = object : Runnable {
-        override fun run() {
-            if (!pullRefreshInProgress || !::binding.isInitialized) return
-            if (binding.fullLogProgress.visibility == View.VISIBLE) {
-                handler.postDelayed(this, FILTERED_REFRESH_CHECK_DELAY_MS)
-            } else {
-                completePullToRefresh()
-            }
-        }
-    }
-
-    private var pageIndex = 0
-    private var activePhoneFilter = ""
-    private var activeSearchQuery = ""
-    private var pullRefreshInProgress = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -197,38 +185,25 @@ class HomeActivity : AppCompatActivity() {
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         homeContentRenderer.prepareForRender(pageSize(), keepExistingRows = false)
         searchInputController.bind()
-        binding.homeCallsRefreshLayout.setOnRefreshListener(::refreshFromPull)
-        binding.settingsButton.setOnClickListener {
-            HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() }
-        }
-        binding.crmModeButton.setOnClickListener { setCrmMode(!isCrmModeEnabled()) }
-        binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
-        binding.filteredDialButton.setOnClickListener { homeActions.openDialer(activePhoneFilter) }
-        binding.previousCallsButton.setOnClickListener {
-            if (isFilteredFullLogMode()) {
-                filteredFullLogController.previousPage()
-            } else if (pageIndex > 0) {
-                pageIndex--
-                renderCalls()
-            }
-        }
-        binding.nextCallsButton.setOnClickListener {
-            if (isFilteredFullLogMode()) {
-                filteredFullLogController.nextPage()
-            } else if (homeContentRenderer.currentCalls.size >= pageSize()) {
-                pageIndex++
-                renderCalls()
-            }
-        }
+        pullRefreshController.bind(::refreshFromPull)
+        HomeScreenActionBinder.wire(
+            activity = this,
+            binding = binding,
+            openOverflow = { HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() } },
+            isCrmModeEnabled = ::isCrmModeEnabled,
+            setCrmMode = ::setCrmMode,
+            clearPhoneFilter = ::clearPhoneFilter,
+            dialFilteredPhone = { homeActions.openDialer(activePhoneFilter) },
+            previousPage = ::previousPage,
+            nextPage = ::nextPage,
+        )
     }
 
     override fun onNewIntent(intent: android.content.Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
         val phone = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
-        activePhoneFilter = if (
-            isCrmModeEnabled() && phone.isNotBlank() && !HomeCallPageLoader.isCrmEligible(this, phone)
-        ) "" else phone
+        activePhoneFilter = if (isCrmModeEnabled() && phone.isNotBlank() && !HomeCallPageLoader.isCrmEligible(this, phone)) "" else phone
         activeSearchQuery = ""
         pageIndex = 0
         filteredFullLogController.invalidate()
@@ -254,10 +229,8 @@ class HomeActivity : AppCompatActivity() {
     override fun onPause() {
         if (::binding.isInitialized) {
             noteSavedReceiver.unregister()
-            pullRefreshInProgress = false
-            binding.homeCallsRefreshLayout.setRefreshing(false)
+            pullRefreshController.cancel()
         }
-        handler.removeCallbacks(filteredFullLogRefreshWatcher)
         noteRefreshController.cancel()
         searchInputController.cancelPending()
         searchController.cancelActiveTask()
@@ -266,6 +239,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
+        pullRefreshController.cancel()
         searchController.cancelActiveTask()
         searchExecutor.shutdownNow()
         callsLoader.release()
@@ -288,7 +262,7 @@ class HomeActivity : AppCompatActivity() {
         homeContentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
         if (!PhoneCallReader.hasCallLogPermission(this)) {
             homeContentRenderer.showMissingCallLogPermission()
-            completePullToRefresh()
+            pullRefreshController.complete()
             return
         }
         when {
@@ -302,21 +276,30 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
-        if (SmsMessageReader.hasReadSmsPermission(this) ||
-            smsPermissionRequestInFlight ||
-            smsPermissionPromptShownThisSession
-        ) {
-            return
+    private fun previousPage() {
+        if (isFilteredFullLogMode()) filteredFullLogController.previousPage()
+        else if (pageIndex > 0) {
+            pageIndex--
+            renderCalls()
         }
+    }
+
+    private fun nextPage() {
+        if (isFilteredFullLogMode()) filteredFullLogController.nextPage()
+        else if (homeContentRenderer.currentCalls.size >= pageSize()) {
+            pageIndex++
+            renderCalls()
+        }
+    }
+
+    private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
+        if (SmsMessageReader.hasReadSmsPermission(this) || smsPermissionRequestInFlight || smsPermissionPromptShownThisSession) return
         smsPermissionPromptShownThisSession = true
         smsPermissionRequestInFlight = true
         readSmsPermissionLauncher.launch(Manifest.permission.READ_SMS)
     }
 
     private fun refreshFromPull() {
-        if (pullRefreshInProgress) return
-        pullRefreshInProgress = true
         HomeCallPageLoader.clearSearchCache()
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
@@ -325,17 +308,6 @@ class HomeActivity : AppCompatActivity() {
         CallReportTopicNoteOutbox.requestSyncNow(this)
         CallReportSyncScheduler.enqueueCatchUp(this, reason = "home_pull_refresh")
         renderCalls()
-        if (isFilteredFullLogMode()) {
-            handler.removeCallbacks(filteredFullLogRefreshWatcher)
-            handler.post(filteredFullLogRefreshWatcher)
-        }
-    }
-
-    private fun completePullToRefresh() {
-        if (!pullRefreshInProgress || !::binding.isInitialized) return
-        pullRefreshInProgress = false
-        handler.removeCallbacks(filteredFullLogRefreshWatcher)
-        binding.homeCallsRefreshLayout.setRefreshing(false)
     }
 
     private fun isCrmModeEnabled(): Boolean = HomeCrmModeStore.isEnabled(this)
@@ -353,9 +325,7 @@ class HomeActivity : AppCompatActivity() {
     private fun togglePhoneFilter(number: String) {
         if (isCrmModeEnabled() && !HomeCallPageLoader.isCrmEligible(this, number)) return
         val key = HomeCallPageLoader.noteKey(number)
-        activePhoneFilter = if (
-            activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key
-        ) "" else number
+        activePhoneFilter = if (activePhoneFilter.isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter) == key) "" else number
         pageIndex = 0
         filteredFullLogController.invalidate()
         renderCalls()
@@ -369,13 +339,11 @@ class HomeActivity : AppCompatActivity() {
         renderCalls()
     }
 
-    private fun isFilteredFullLogMode(): Boolean = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
-
-    private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
+    private fun isFilteredFullLogMode() = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
+    private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
-        private const val FILTERED_REFRESH_CHECK_DELAY_MS = 80L
     }
 }
