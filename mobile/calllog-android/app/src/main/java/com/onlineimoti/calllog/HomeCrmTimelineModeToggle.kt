@@ -22,7 +22,7 @@ internal class HomeCrmTimelineModeToggle(
     ).apply {
         minHeight = 0
         minWidth = 0
-        textAllCaps = false
+        setSupportAllCaps(false)
         textSize = 12f
         setPadding(dp(8), 0, dp(8), 0)
         layoutParams = LinearLayout.LayoutParams(
