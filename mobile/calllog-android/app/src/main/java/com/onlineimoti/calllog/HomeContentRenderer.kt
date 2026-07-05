@@ -33,6 +33,7 @@ internal class HomeContentRenderer(
         private set
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
     private val dateFormatter = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("bg", "BG"))
+    private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) {
         currentCalls = calls
@@ -69,7 +70,11 @@ internal class HomeContentRenderer(
     }
 
     fun renderCurrentRowsAfterCompanyLabels(pageSize: Int) {
-        if (currentCalls.isEmpty() || activePhoneFilter().isNotBlank()) return
+        if (activePhoneFilter().isNotBlank()) {
+            renderFilteredContactSummary()
+            return
+        }
+        if (currentCalls.isEmpty()) return
         val calls = currentCalls
         applyRenderData(
             HomeRenderData(
@@ -180,9 +185,17 @@ internal class HomeContentRenderer(
             CrmContactSyncStore.isEnabled(activity.applicationContext, phone)
         val note = ContactNoteReader.generalNoteForPhone(activity, phone).orEmpty()
         container.visibility = View.VISIBLE
-        container.addView(summaryText(name.ifBlank { phone }, 18f, bold = true, bottom = dp(2)))
+        container.addView(summaryText(
+            value = scopeChipsUi.inlineCrmIdentity(
+                identity = name.ifBlank { phone },
+                labels = labels,
+                crmClient = crm,
+            ),
+            size = 18f,
+            bold = true,
+            bottom = dp(2),
+        ))
         if (name.isNotBlank()) container.addView(summaryText(phone, 14f, bold = false, bottom = dp(2)))
-        if (crm || !labels.isNullOrEmpty()) container.addView(scopeChipsUi.create(labels, crm))
         if (note.isNotBlank()) {
             val colors = NoteUiStyle.General
             container.addView(TextView(activity).apply {
@@ -200,10 +213,16 @@ internal class HomeContentRenderer(
                 ).apply { topMargin = dp(5) }
             })
         }
+        notesUi.addCompanyGeneralNotes(
+            column = container,
+            labels = labels,
+            highlightQuery = "",
+            visible = true,
+        )
         companyGeneralNotes.refresh(listOf(summary))
     }
 
-    private fun summaryText(value: String, size: Float, bold: Boolean, bottom: Int): TextView = TextView(activity).apply {
+    private fun summaryText(value: CharSequence, size: Float, bold: Boolean, bottom: Int): TextView = TextView(activity).apply {
         text = value
         setTextColor(if (size >= 18f) activity.getColor(R.color.calllog_text) else activity.getColor(R.color.calllog_muted_text))
         textSize = size
