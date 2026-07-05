@@ -140,12 +140,10 @@ class PostCallOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         state.readExtras(intent)
         state.hydrateLatestCallIfNeeded(this)
-
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
             return START_NOT_STICKY
         }
-
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
             MODE_LOADING -> loadingPopup.show()
             MODE_LOOKUP -> lookupPopup.show()
@@ -168,16 +166,12 @@ class PostCallOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showBubbleIfCallIsStillActive() {
-        if (CallLifecycleStore.isActive(this, state.phone)) {
-            showBubbleUntilCallEnds()
-        } else {
-            stopSelf()
-        }
+        if (CallLifecycleStore.isActive(this, state.phone)) showBubbleUntilCallEnds()
+        else stopSelf()
     }
 
     private fun showBubbleUntilCallEnds() {
-        if (!shouldShowBubble()) return
-        bubble.show()
+        if (shouldShowBubble()) bubble.show()
     }
 
     private fun showBubbleWithTimeout() {
@@ -217,17 +211,9 @@ class PostCallOverlayService : Service() {
         }
     }
 
-    private fun showNoteEditor() {
-        noteEditor.show()
-    }
-
-    private fun showGeneralNoteEditor() {
-        generalNoteEditor.show()
-    }
-
-    private fun openCalendarEvent(displayName: String) {
-        calendarActions.openCalendarEvent(displayName)
-    }
+    private fun showNoteEditor() = noteEditor.show()
+    private fun showGeneralNoteEditor() = generalNoteEditor.show()
+    private fun openCalendarEvent(displayName: String) = calendarActions.openCalendarEvent(displayName)
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs)
@@ -243,43 +229,16 @@ class PostCallOverlayService : Service() {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs, onTimeout)
     }
 
-    private fun callDirectionColor(directionValue: String): Int {
-        return when (directionValue) {
-            "out" -> Color.rgb(34, 197, 94)
-            "in" -> Color.rgb(59, 130, 246)
-            else -> Color.rgb(107, 114, 128)
-        }
+    private fun callDirectionColor(directionValue: String): Int = when (directionValue) {
+        "out" -> Color.rgb(34, 197, 94)
+        "in" -> Color.rgb(59, 130, 246)
+        else -> Color.rgb(107, 114, 128)
     }
 
-    private fun openContactNotesScreen() {
-        navigationActions.openContactNotesScreen()
-    }
+    private fun openContactNotesScreen() = navigationActions.openContactNotesScreen()
 
     private fun savePendingNoteChangesBeforeHistory(): Boolean {
-        var saved = true
-
-        state.pendingGeneralNote?.let { note ->
-            saved = CallNoteWriter.writeGeneral(this, state.phone, note).saved && saved
-        }
-
-        state.pendingCallNote?.let { note ->
-            saved = CallNoteWriter.writeCallOrGeneral(
-                context = this,
-                phone = state.phone,
-                text = note,
-                direction = state.direction,
-                callAt = state.callAt,
-                durationSeconds = state.durationSeconds,
-                actionIssuedAt = state.actionIssuedAt,
-            ).saved && saved
-        }
-
-        if (saved) {
-            state.clearPendingNotes()
-            notifyNotesChanged()
-        }
-
-        return saved
+        return PostCallPendingNoteSaver.save(this, state, ::notifyNotesChanged)
     }
 
     private fun notifyNotesChanged() {
