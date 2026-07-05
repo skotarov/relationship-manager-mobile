@@ -78,7 +78,6 @@ internal class HomeCallRowRenderer(
         if (showContactIdentity) {
             column.addView(mainNameRow(call, displayName, highlightQuery, crmClient, companyGeneralNoteLabels))
         }
-        addCompanyScopes(column, call, displayName, companyGeneralNoteLabels, crmClient)
         addGeneralNote(column, contactNote, highlightQuery, showGeneralContactNote)
         notesUi.addCompanyGeneralNotes(
             column = column,
@@ -130,23 +129,6 @@ internal class HomeCallRowRenderer(
             textSize = 12.5f
             maxLines = 1
         }
-    }
-
-    private fun addCompanyScopes(
-        column: LinearLayout,
-        call: PhoneCallRecord,
-        displayName: String,
-        labels: List<HomeCompanyScopeLabel>?,
-        crmClient: Boolean,
-    ) {
-        if (!crmClient || labels.isNullOrEmpty()) return
-        column.addView(companyScopeChipsUi.create(
-            labels = labels,
-            crmClient = false,
-            onClick = { openContactNotesScreen(call, displayName) },
-            showCrmLabel = false,
-            showPhaseDots = false,
-        ))
     }
 
     private fun addGeneralNote(column: LinearLayout, note: String?, query: String, visible: Boolean) {
