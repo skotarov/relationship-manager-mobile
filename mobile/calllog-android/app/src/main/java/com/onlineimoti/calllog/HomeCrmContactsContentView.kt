@@ -71,8 +71,8 @@ internal class HomeCrmContactsContentView(
             else -> "No contacts are marked as CRM."
         }
         timelineToggle.showEmpty(contactsMode = true)
-        binding.previousCallsButton.isEnabled = pageIndex() > 0
-        binding.nextCallsButton.isEnabled = false
+        PaginationButtonAppearance.apply(binding.previousCallsButton, pageIndex() > 0)
+        PaginationButtonAppearance.apply(binding.nextCallsButton, enabled = false)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex() + 1)
         binding.paginationContainer.visibility = View.VISIBLE
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
@@ -88,8 +88,8 @@ internal class HomeCrmContactsContentView(
         )
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, pageSize)
-        binding.previousCallsButton.isEnabled = pageIndex() > 0
-        binding.nextCallsButton.isEnabled = itemCount >= pageSize
+        PaginationButtonAppearance.apply(binding.previousCallsButton, pageIndex() > 0)
+        PaginationButtonAppearance.apply(binding.nextCallsButton, itemCount >= pageSize)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex() + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
