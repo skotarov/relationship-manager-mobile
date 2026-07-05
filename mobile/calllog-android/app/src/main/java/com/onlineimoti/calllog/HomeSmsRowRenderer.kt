@@ -78,6 +78,12 @@ internal class HomeSmsRowRenderer(
                     highlightQuery = highlightQuery,
                     visible = showGeneralContactNote,
                 )
+                notesUi.addCompanyGeneralNotes(
+                    column = textColumn,
+                    labels = companyGeneralNoteLabels,
+                    highlightQuery = highlightQuery,
+                    visible = showGeneralContactNote,
+                )
                 notesUi.addCallNote(
                     column = textColumn,
                     call = call,
