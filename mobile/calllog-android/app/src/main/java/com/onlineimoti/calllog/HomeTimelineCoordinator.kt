@@ -1,15 +1,17 @@
 package com.onlineimoti.calllog
 
-/** Coordinates Home paging, phone filtering, CRM mode and timeline rendering. */
+/** Coordinates Home paging, phone filtering, CRM calls and CRM contacts. */
 internal class HomeTimelineCoordinator(
     private val activity: HomeActivity,
     private val callsLoader: HomeCallsLoader,
+    private val contactsLoader: HomeCrmContactsLoader,
     private val serverCallNotes: HomeServerCallNotesController,
     private val searchController: HomeSearchController,
     private val contentRenderer: HomeContentRenderer,
     private val crmFilters: HomeCrmFiltersController,
     private val filteredFullLog: FilteredFullLogController,
     private val pullRefresh: HomePullRefreshController,
+    private val timelineToggle: HomeCrmTimelineModeToggle,
     private val activePhoneFilter: () -> String,
     private val setActivePhoneFilter: (String) -> Unit,
     private val activeSearchQuery: () -> String,
@@ -17,19 +19,25 @@ internal class HomeTimelineCoordinator(
     private val setPageIndex: (Int) -> Unit,
     private val pageSize: () -> Int,
     private val isCrmModeEnabled: () -> Boolean,
+    private val isCrmContactsMode: () -> Boolean,
+    private val setCrmContactsMode: (Boolean) -> Unit,
     private val onCrmModeChanged: () -> Unit,
     private val requestSmsPermission: () -> Unit,
 ) {
     fun renderCalls() {
-        val renderGeneration = callsLoader.invalidate()
+        val callsGeneration = callsLoader.invalidate()
+        val contactsGeneration = contactsLoader.invalidate()
         serverCallNotes.invalidate()
         if (activeSearchQuery().isBlank()) searchController.cancelActiveTask()
         val size = pageSize()
-        val crmModeEnabled = isCrmModeEnabled()
-        val showCrmFilters = crmModeEnabled && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
+        val crmEnabled = isCrmModeEnabled()
+        val contactsMode = crmEnabled && isCrmContactsMode()
+        val showCrmFilters = crmEnabled && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
+        timelineToggle.prepare(showCrmFilters, contactsMode)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
-        if (!PhoneCallReader.hasCallLogPermission(activity)) {
+        val contactsOnly = contactsMode && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
+        if (!contactsOnly && !PhoneCallReader.hasCallLogPermission(activity)) {
             contentRenderer.showMissingCallLogPermission()
             pullRefresh.complete()
             return
@@ -40,24 +48,23 @@ internal class HomeTimelineCoordinator(
                 requestSmsPermission()
                 filteredFullLog.render(activePhoneFilter())
             }
-            crmModeEnabled -> callsLoader.renderCrmCallsAsync(size, renderGeneration)
+            contactsMode -> contactsLoader.renderAsync(size, contactsGeneration)
+            crmEnabled -> callsLoader.renderCrmCallsAsync(size, callsGeneration)
             else -> callsLoader.renderLocalCalls(size)
         }
     }
 
     fun previousPage() {
-        if (isFilteredFullLogMode()) {
-            filteredFullLog.previousPage()
-        } else if (pageIndex() > 0) {
+        if (isFilteredFullLogMode()) filteredFullLog.previousPage()
+        else if (pageIndex() > 0) {
             setPageIndex(pageIndex() - 1)
             renderCalls()
         }
     }
 
     fun nextPage() {
-        if (isFilteredFullLogMode()) {
-            filteredFullLog.nextPage()
-        } else if (contentRenderer.currentCalls.size >= pageSize()) {
+        if (isFilteredFullLogMode()) filteredFullLog.nextPage()
+        else if (contentRenderer.currentCalls.size >= pageSize()) {
             setPageIndex(pageIndex() + 1)
             renderCalls()
         }
@@ -65,8 +72,19 @@ internal class HomeTimelineCoordinator(
 
     fun setCrmMode(enabled: Boolean) {
         if (!HomeCrmModeStore.setEnabled(activity, enabled)) return
+        if (!enabled) setCrmContactsMode(false)
         contentRenderer.clearCalls()
         setActivePhoneFilter("")
+        setPageIndex(0)
+        filteredFullLog.invalidate()
+        onCrmModeChanged()
+        renderCalls()
+    }
+
+    fun toggleCrmContactsMode() {
+        if (!isCrmModeEnabled()) return
+        setCrmContactsMode(!isCrmContactsMode())
+        contentRenderer.clearCalls()
         setPageIndex(0)
         filteredFullLog.invalidate()
         onCrmModeChanged()
@@ -92,7 +110,5 @@ internal class HomeTimelineCoordinator(
         renderCalls()
     }
 
-    private fun isFilteredFullLogMode(): Boolean {
-        return activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
-    }
+    private fun isFilteredFullLogMode(): Boolean = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
 }
