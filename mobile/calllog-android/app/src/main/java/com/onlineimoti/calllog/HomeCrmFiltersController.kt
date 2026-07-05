@@ -4,6 +4,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
+import android.view.Gravity
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.button.MaterialButton
@@ -38,6 +39,11 @@ internal class HomeCrmFiltersController(
     fun updateVisibility(crmModeEnabled: Boolean) {
         binding.crmPhaseFilterButton.visibility = if (crmModeEnabled) View.VISIBLE else View.GONE
         binding.crmCompanyFilterButton.visibility = if (crmModeEnabled) View.VISIBLE else View.GONE
+        binding.filteredStatusContainer.gravity = if (crmModeEnabled) {
+            Gravity.CENTER_VERTICAL or Gravity.END
+        } else {
+            Gravity.CENTER_VERTICAL
+        }
         if (!crmModeEnabled) return
         loadCachedCompanies()
         renderButtons()
