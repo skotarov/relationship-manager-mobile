@@ -38,12 +38,21 @@ internal class HomeSmsRowRenderer(
         val crmClient = showGeneralContactNote &&
             CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
             CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
+        val highlightedTitle = SearchTextHighlighter.highlightedText(
+            title,
+            highlightQuery,
+            activity.getColor(R.color.calllog_text),
+        )
 
         return SmsTimelineCard.create(
             activity = activity,
             dp = dp,
             message = call,
-            displayName = SearchTextHighlighter.highlightedText(title, highlightQuery, activity.getColor(R.color.calllog_text)),
+            displayName = companyScopeChipsUi.inlineCrmIdentity(
+                identity = highlightedTitle,
+                labels = companyGeneralNoteLabels,
+                crmClient = crmClient,
+            ),
             metaText = SearchTextHighlighter.highlightedText(metaText, highlightQuery, activity.getColor(R.color.calllog_muted_text)),
             bodyText = SearchTextHighlighter.highlightedText(
                 call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) },
@@ -63,11 +72,13 @@ internal class HomeSmsRowRenderer(
                 emptyList()
             },
             beforeBody = { textColumn ->
-                if (crmClient) {
+                if (crmClient && !companyGeneralNoteLabels.isNullOrEmpty()) {
                     textColumn.addView(companyScopeChipsUi.create(
                         labels = companyGeneralNoteLabels,
-                        crmClient = true,
+                        crmClient = false,
                         onClick = { openContactNotesScreen(call, displayName) },
+                        showCrmLabel = false,
+                        showPhaseDots = false,
                     ))
                 }
             },
@@ -90,6 +101,7 @@ internal class HomeSmsRowRenderer(
                     callNote = callNote,
                     highlightQuery = highlightQuery,
                     statusForCall = noteSyncStatus,
+                    companyLabels = companyGeneralNoteLabels,
                 )
             },
             onClick = { openContactNotesScreen(call, displayName) },
