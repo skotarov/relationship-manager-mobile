@@ -5,8 +5,10 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableString
+import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
@@ -23,6 +25,8 @@ internal class HomeCompanyScopeChipsUi(
         labels: List<HomeCompanyScopeLabel>?,
         crmClient: Boolean,
         onClick: (() -> Unit)? = null,
+        showCrmLabel: Boolean = true,
+        showPhaseDots: Boolean = true,
     ): HorizontalScrollView {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -30,12 +34,12 @@ internal class HomeCompanyScopeChipsUi(
             bindHistoryClick(onClick, "Отвори историята на контакта")
         }
         var hasPrevious = false
-        if (crmClient) {
+        if (crmClient && showCrmLabel) {
             row.addView(crmLabel(onClick))
             hasPrevious = true
         }
         labels.orEmpty().forEach { label ->
-            row.addView(chip(label, onClick), LinearLayout.LayoutParams(
+            row.addView(chip(label, onClick, showPhaseDots), LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply {
@@ -55,6 +59,45 @@ internal class HomeCompanyScopeChipsUi(
         }
     }
 
+    /** CRM and the relevant phase dot are placed directly before the name or phone. */
+    fun inlineCrmIdentity(
+        identity: CharSequence,
+        labels: List<HomeCompanyScopeLabel>?,
+        crmClient: Boolean,
+    ): CharSequence {
+        if (!crmClient) return identity
+        val builder = SpannableStringBuilder()
+        val crmStart = builder.length
+        builder.append("CRM")
+        builder.setSpan(
+            ForegroundColorSpan(activity.getColor(R.color.callreport_icon_background)),
+            crmStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        builder.setSpan(
+            StyleSpan(Typeface.BOLD),
+            crmStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        val phase = labels.orEmpty().firstOrNull { it.phase in 1..4 }?.phase
+        if (phase != null) {
+            builder.append(" ")
+            val dotStart = builder.length
+            builder.append("●")
+            builder.setSpan(
+                ForegroundColorSpan(phaseColor(phase)),
+                dotStart,
+                builder.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
+        builder.append(" ")
+        builder.append(identity)
+        return builder
+    }
+
     private fun crmLabel(onClick: (() -> Unit)?): TextView = TextView(activity).apply {
         text = "CRM"
         textSize = 12f
@@ -70,8 +113,12 @@ internal class HomeCompanyScopeChipsUi(
         bindHistoryClick(onClick, "CRM. Отвори историята на контакта")
     }
 
-    private fun chip(label: HomeCompanyScopeLabel, onClick: (() -> Unit)?): TextView {
-        val hasPhase = label.phase in 1..4
+    private fun chip(
+        label: HomeCompanyScopeLabel,
+        onClick: (() -> Unit)?,
+        showPhaseDot: Boolean,
+    ): TextView {
+        val hasPhase = showPhaseDot && label.phase in 1..4
         val colors = if (label.hasGeneralNote) {
             ChipColors(
                 background = NoteUiStyle.General.background,
