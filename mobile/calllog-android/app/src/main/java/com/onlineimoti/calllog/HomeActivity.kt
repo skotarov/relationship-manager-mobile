@@ -232,6 +232,8 @@ class HomeActivity : AppCompatActivity() {
             { homeActions.openDialer(activePhoneFilter) },
             timelineCoordinator::previousPage,
             timelineCoordinator::nextPage,
+            timelineCoordinator::isOnLaterPage,
+            timelineCoordinator::goToFirstPage,
         )
     }
 
