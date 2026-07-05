@@ -52,7 +52,9 @@ internal class FilteredFullLogMetadataUi(
             setTextColor(if (row.authorIsOtherBroker) FilteredFullLogStyle.foreignText else Color.rgb(71, 85, 105))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             val leftIcon = if (row.kind == CallReportHistoryRowKind.PHONE) callStatusIcon(row) else 0
-            val rightIcon = if (remoteEnabled && row.hasServerCopy) R.drawable.ic_cloud_note else 0
+            val rightIcon = if (
+                remoteEnabled && row.hasServerCopy && row.kind != CallReportHistoryRowKind.NOTE
+            ) R.drawable.ic_cloud_note else 0
             if (leftIcon != 0 || rightIcon != 0) {
                 setCompoundDrawablesWithIntrinsicBounds(leftIcon, 0, rightIcon, 0)
                 compoundDrawablePadding = dp(6)
