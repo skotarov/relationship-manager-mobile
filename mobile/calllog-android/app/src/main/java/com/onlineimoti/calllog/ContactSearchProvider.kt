@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
-import java.util.Locale
 
 internal data class ContactSearchResult(
     val phone: String,
@@ -34,6 +33,15 @@ internal object ContactSearchProvider {
             .filter { result -> terms.matches(result.name, result.phone, result.normalizedPhone) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
             .toList()
+    }
+
+    /** Contacts with the explicit local CRM switch enabled; unknown numbers are excluded. */
+    fun crmEnabledContacts(context: Context): List<ContactSearchResult> {
+        val enabledKeys = CrmContactSyncStore.enabledPhoneKeys(context.applicationContext)
+        if (enabledKeys.isEmpty()) return emptyList()
+        return allContacts(context)
+            .filter { contact -> noteKey(contact.phone) in enabledKeys }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
     }
 
     fun invalidate() {
