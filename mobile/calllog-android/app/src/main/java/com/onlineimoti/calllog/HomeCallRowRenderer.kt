@@ -5,11 +5,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.provider.CallLog
-import android.text.SpannableString
-import android.text.Spanned
 import android.text.TextUtils
-import android.text.style.BackgroundColorSpan
-import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageButton
@@ -18,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 
+/** Renders phone-call rows in the combined Call Log timeline. */
 internal class HomeCallRowRenderer(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -30,6 +27,18 @@ internal class HomeCallRowRenderer(
 ) {
     private val companyScopeChipsUi by lazy {
         HomeCompanyScopeChipsUi(activity, dp, roundedRect)
+    }
+    private val smsRowRenderer by lazy {
+        HomeSmsRowRenderer(
+            activity = activity,
+            dp = dp,
+            noteKey = noteKey,
+            roundedRect = roundedRect,
+            companyScopeChipsUi = companyScopeChipsUi,
+            openContactNotesScreen = openContactNotesScreen,
+            togglePhoneFilter = togglePhoneFilter,
+            noteSyncStatus = ::noteSyncStatus,
+        )
     }
 
     fun compactCallRow(
@@ -44,7 +53,7 @@ internal class HomeCallRowRenderer(
         showQuickActions: Boolean = true,
     ): MaterialCardView {
         if (call.isSms) {
-            return compactSmsRow(
+            return smsRowRenderer.compactRow(
                 call = call,
                 displayName = displayName,
                 contactNote = contactNote,
@@ -77,242 +86,164 @@ internal class HomeCallRowRenderer(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
-
-        row.addView(ImageButton(activity).apply {
-            setImageResource(callStatusIcon(call))
-            contentDescription = activity.getString(R.string.dynamic_action_call)
-            background = null
-            setBackgroundColor(Color.TRANSPARENT)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
-            setOnClickListener { openDialer(call.number) }
-        })
+        row.addView(callStatusButton(call))
 
         val textColumn = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        textColumn.addView(TextView(activity).apply {
-            val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
-            val metaText = listOf(
-                PhoneCallReader.formatStartedAt(call.startedAt),
-                PhoneCallReader.formatDuration(call.durationSeconds),
-                call.number.takeIf { hasContactName },
-            ).filter { !it.isNullOrBlank() }.joinToString(" • ")
-            val mutedTextColor = activity.getColor(R.color.calllog_muted_text)
-            text = highlightedText(metaText, highlightQuery, mutedTextColor)
+        textColumn.addView(callMetaText(call, displayName, highlightQuery, showContactIdentity))
+        if (showContactIdentity) textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+        addCrmStatus(textColumn, call, displayName, companyGeneralNoteLabels, showGeneralContactNote)
+        addGeneralNote(textColumn, contactNote, highlightQuery, showGeneralContactNote)
+        addCallNote(textColumn, call, callNote, highlightQuery)
+
+        row.addView(textColumn)
+        row.addView(actions(call, displayName, callNote, showQuickActions))
+        card.addView(row)
+        return card
+    }
+
+    private fun callStatusButton(call: PhoneCallRecord): ImageButton = ImageButton(activity).apply {
+        setImageResource(callStatusIcon(call))
+        contentDescription = activity.getString(R.string.dynamic_action_call)
+        background = null
+        setBackgroundColor(Color.TRANSPARENT)
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        setPadding(dp(7), dp(7), dp(7), dp(7))
+        layoutParams = LinearLayout.LayoutParams(dp(32), dp(36)).apply { marginEnd = dp(6) }
+        setOnClickListener { openDialer(call.number) }
+    }
+
+    private fun callMetaText(
+        call: PhoneCallRecord,
+        displayName: String,
+        highlightQuery: String,
+        showContactIdentity: Boolean,
+    ): TextView {
+        val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
+        val metaText = listOf(
+            PhoneCallReader.formatStartedAt(call.startedAt),
+            PhoneCallReader.formatDuration(call.durationSeconds),
+            call.number.takeIf { hasContactName },
+        ).filter { !it.isNullOrBlank() }.joinToString(" • ")
+        val mutedTextColor = activity.getColor(R.color.calllog_muted_text)
+        return TextView(activity).apply {
+            text = SearchTextHighlighter.highlightedText(metaText, highlightQuery, mutedTextColor)
             setTextColor(mutedTextColor)
             textSize = 12.5f
             maxLines = 1
-        })
-        if (showContactIdentity) textColumn.addView(mainNameRow(call, displayName, highlightQuery))
+        }
+    }
 
-        // CRM status belongs on its own lower line. When the server is disabled,
-        // no CRM marker or server-backed company information is rendered.
+    private fun addCrmStatus(
+        column: LinearLayout,
+        call: PhoneCallRecord,
+        displayName: String,
+        companyGeneralNoteLabels: List<HomeCompanyScopeLabel>?,
+        showGeneralContactNote: Boolean,
+    ) {
         val crmClient = showGeneralContactNote &&
             CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
             CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
-        if (crmClient) {
-            textColumn.addView(companyScopeChipsUi.create(
-                labels = companyGeneralNoteLabels,
-                crmClient = true,
-                onClick = { openContactNotesScreen(call, displayName) },
-            ))
-        }
+        if (!crmClient) return
+        column.addView(companyScopeChipsUi.create(
+            labels = companyGeneralNoteLabels,
+            crmClient = true,
+            onClick = { openContactNotesScreen(call, displayName) },
+        ))
+    }
 
-        if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
-            val colors = NoteUiStyle.General
-            textColumn.addView(TextView(activity).apply {
-                text = highlightedText(contactNote, highlightQuery, colors.text)
-                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-                compoundDrawablePadding = dp(4)
-                setTextColor(colors.text)
-                textSize = 12.5f
-                maxLines = 2
-                setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(5) }
-            })
-        }
-        callNote?.takeIf { it.text.isNotBlank() }?.let { note ->
-            val colors = NoteUiStyle.Call
-            textColumn.addView(TextView(activity).apply {
-                text = highlightedText(note.text, highlightQuery, colors.text)
-                // A confirmed server record is the canonical shared note. Show a
-                // cloud instead of the local conversation bubble, at the exact
-                // same 18dp bounds so neither source changes the row layout.
-                val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
-                    R.drawable.ic_cloud_note
-                } else {
-                    R.drawable.ic_chat_note
-                }
-                val icon = activity.getDrawable(iconRes)?.apply {
-                    setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
-                }
-                setCompoundDrawables(icon, null, null, null)
-                compoundDrawablePadding = dp(5)
-                setTextColor(colors.text)
-                textSize = 12.5f
-                maxLines = 3
-                setPadding(dp(8), dp(5), dp(8), dp(5))
-                background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(5) }
-            })
-            noteSyncStatus(call)?.let { status ->
-                textColumn.addView(TextView(activity).apply {
-                    text = status
-                    textSize = 11.5f
-                    setTextColor(Color.rgb(146, 64, 14))
-                    setPadding(dp(8), dp(4), dp(8), 0)
-                })
-            }
-        }
-
-        row.addView(textColumn)
-
-        val actions = LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
+    private fun addGeneralNote(
+        column: LinearLayout,
+        contactNote: String?,
+        highlightQuery: String,
+        showGeneralContactNote: Boolean,
+    ) {
+        if (!showGeneralContactNote || contactNote.isNullOrBlank()) return
+        val colors = NoteUiStyle.General
+        column.addView(TextView(activity).apply {
+            text = SearchTextHighlighter.highlightedText(contactNote, highlightQuery, colors.text)
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
+            compoundDrawablePadding = dp(4)
+            setTextColor(colors.text)
+            textSize = 12.5f
+            maxLines = 2
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { leftMargin = dp(3) }
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(5) }
+        })
+    }
+
+    private fun addCallNote(
+        column: LinearLayout,
+        call: PhoneCallRecord,
+        callNote: HomeCallNote?,
+        highlightQuery: String,
+    ) {
+        val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
+        val colors = NoteUiStyle.Call
+        column.addView(TextView(activity).apply {
+            text = SearchTextHighlighter.highlightedText(note.text, highlightQuery, colors.text)
+            val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
+                R.drawable.ic_cloud_note
+            } else {
+                R.drawable.ic_chat_note
+            }
+            val icon = activity.getDrawable(iconRes)?.apply {
+                setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
+            }
+            setCompoundDrawables(icon, null, null, null)
+            compoundDrawablePadding = dp(5)
+            setTextColor(colors.text)
+            textSize = 12.5f
+            maxLines = 3
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(5) }
+        })
+        noteSyncStatus(call)?.let { status ->
+            column.addView(TextView(activity).apply {
+                text = status
+                textSize = 11.5f
+                setTextColor(Color.rgb(146, 64, 14))
+                setPadding(dp(8), dp(4), dp(8), 0)
+            })
         }
+    }
+
+    private fun actions(
+        call: PhoneCallRecord,
+        displayName: String,
+        callNote: HomeCallNote?,
+        showQuickActions: Boolean,
+    ): LinearLayout = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { leftMargin = dp(3) }
         if (showQuickActions) {
-            actions.addView(iconButton(
+            addView(iconButton(
                 drawableRes = R.drawable.ic_filter_calls,
                 description = activity.getString(R.string.dynamic_action_filter),
                 action = { togglePhoneFilter(call.number) },
             ))
         }
         val noteEditable = callNote?.editable != false
-        actions.addView(iconButton(
+        addView(iconButton(
             drawableRes = R.drawable.ic_chat_note,
             description = if (noteEditable) activity.getString(R.string.dynamic_action_note) else "Само за преглед",
             action = { openContactNotePopupForCall(call, displayName, callNote) },
             enabled = noteEditable,
         ))
-        row.addView(actions)
-
-        card.addView(row)
-        return card
-    }
-
-    private fun compactSmsRow(
-        call: PhoneCallRecord,
-        displayName: String,
-        contactNote: String?,
-        companyGeneralNoteLabels: List<HomeCompanyScopeLabel>?,
-        callNote: HomeCallNote?,
-        highlightQuery: String,
-        showContactIdentity: Boolean,
-        showGeneralContactNote: Boolean,
-        showQuickActions: Boolean,
-    ): MaterialCardView {
-        val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
-        val title = displayName.ifBlank { call.number }
-        val metaText = listOf(
-            PhoneCallReader.formatStartedAt(call.startedAt),
-            call.smsDirectionLabel,
-            call.number.takeIf { hasContactName },
-        ).filter { !it.isNullOrBlank() }.joinToString(" • ")
-        val crmClient = showGeneralContactNote &&
-            CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
-            CrmContactSyncStore.isEnabled(activity.applicationContext, call.number)
-
-        return SmsTimelineCard.create(
-            activity = activity,
-            dp = dp,
-            message = call,
-            displayName = highlightedText(title, highlightQuery, activity.getColor(R.color.calllog_text)),
-            metaText = highlightedText(metaText, highlightQuery, activity.getColor(R.color.calllog_muted_text)),
-            bodyText = highlightedText(
-                call.smsBody.ifBlank { activity.getString(R.string.dynamic_sms_empty_body) },
-                highlightQuery,
-                activity.getColor(R.color.calllog_text),
-            ),
-            showTitle = showContactIdentity,
-            actions = if (showQuickActions) {
-                listOf(
-                    SmsTimelineCard.Action(
-                        drawableRes = R.drawable.ic_filter_calls,
-                        contentDescription = activity.getString(R.string.dynamic_action_filter),
-                        onClick = { togglePhoneFilter(call.number) },
-                    ),
-                )
-            } else {
-                emptyList()
-            },
-            beforeBody = { textColumn ->
-                if (crmClient) {
-                    textColumn.addView(companyScopeChipsUi.create(
-                        labels = companyGeneralNoteLabels,
-                        crmClient = true,
-                        onClick = { openContactNotesScreen(call, displayName) },
-                    ))
-                }
-            },
-            afterBody = { textColumn ->
-                if (showGeneralContactNote && !contactNote.isNullOrBlank()) {
-                    val colors = NoteUiStyle.General
-                    textColumn.addView(TextView(activity).apply {
-                        text = highlightedText(contactNote, highlightQuery, colors.text)
-                        setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-                        compoundDrawablePadding = dp(4)
-                        setTextColor(colors.text)
-                        textSize = 12.5f
-                        maxLines = 2
-                        setPadding(dp(8), dp(5), dp(8), dp(5))
-                        background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                        ).apply { topMargin = dp(5) }
-                    })
-                }
-                callNote?.takeIf { it.text.isNotBlank() }?.let { note ->
-                    val colors = NoteUiStyle.Call
-                    textColumn.addView(TextView(activity).apply {
-                        text = highlightedText(note.text, highlightQuery, colors.text)
-                        val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
-                            R.drawable.ic_cloud_note
-                        } else {
-                            R.drawable.ic_chat_note
-                        }
-                        val icon = activity.getDrawable(iconRes)?.apply {
-                            setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
-                        }
-                        setCompoundDrawables(icon, null, null, null)
-                        compoundDrawablePadding = dp(5)
-                        setTextColor(colors.text)
-                        textSize = 12.5f
-                        maxLines = 3
-                        setPadding(dp(8), dp(5), dp(8), dp(5))
-                        background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                        ).apply { topMargin = dp(5) }
-                    })
-                    noteSyncStatus(call)?.let { status ->
-                        textColumn.addView(TextView(activity).apply {
-                            text = status
-                            textSize = 11.5f
-                            setTextColor(Color.rgb(146, 64, 14))
-                            setPadding(dp(8), dp(4), dp(8), 0)
-                        })
-                    }
-                }
-            },
-            onClick = { openContactNotesScreen(call, displayName) },
-        )
     }
 
     private fun noteSyncStatus(call: PhoneCallRecord): String? {
@@ -336,7 +267,7 @@ internal class HomeCallRowRenderer(
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(2), 0, 0)
             addView(TextView(activity).apply {
-                text = highlightedText(titleValue, highlightQuery, mainTextColor)
+                text = SearchTextHighlighter.highlightedText(titleValue, highlightQuery, mainTextColor)
                 setTextColor(mainTextColor)
                 textSize = 15f
                 setTypeface(typeface, Typeface.BOLD)
@@ -347,71 +278,22 @@ internal class HomeCallRowRenderer(
         }
     }
 
-    private fun highlightedText(value: String, query: String, textColor: Int): CharSequence {
-        if (value.isBlank()) return value
-        val terms = SearchQueryTerms.from(query)
-        if (terms.isEmpty) return value
-        val spannable = SpannableString(value)
-        // The search itself treats whitespace-separated input as independent
-        // terms. Use the same rule for presentation so every matching word (or
-        // digit fragment) is visibly highlighted instead of searching for the
-        // original phrase including its spaces.
-        terms.textTerms().forEach { term ->
-            applyTextHighlight(spannable, value, term, textColor)
-        }
-        terms.digitTerms().forEach { term ->
-            applyDigitHighlight(spannable, value, term, textColor)
-        }
-        return spannable
-    }
-
-    private fun applyTextHighlight(spannable: SpannableString, value: String, term: String, textColor: Int) {
-        val lowerValue = value.lowercase()
-        val lowerTerm = term.lowercase()
-        var start = lowerValue.indexOf(lowerTerm)
-        while (start >= 0) {
-            applyHighlightSpan(spannable, start, start + term.length, textColor)
-            start = lowerValue.indexOf(lowerTerm, start + term.length)
-        }
-    }
-
-    private fun applyDigitHighlight(spannable: SpannableString, value: String, term: String, textColor: Int) {
-        if (term.length < 3) return
-        val digitCharIndexes = value.mapIndexedNotNull { index, char -> index.takeIf { char.isDigit() } }
-        val valueDigits = digitCharIndexes.map { value[it] }.joinToString("")
-        var digitStart = valueDigits.indexOf(term)
-        while (digitStart >= 0) {
-            val charStart = digitCharIndexes.getOrNull(digitStart) ?: break
-            val charEnd = (digitCharIndexes.getOrNull(digitStart + term.length - 1) ?: break) + 1
-            applyHighlightSpan(spannable, charStart, charEnd, textColor)
-            digitStart = valueDigits.indexOf(term, digitStart + term.length)
-        }
-    }
-
-    private fun applyHighlightSpan(spannable: SpannableString, start: Int, end: Int, textColor: Int) {
-        if (start < 0 || end <= start || end > spannable.length) return
-        spannable.setSpan(BackgroundColorSpan(textColor), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        spannable.setSpan(ForegroundColorSpan(Color.WHITE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    }
-
     private fun iconButton(
         drawableRes: Int,
         description: String,
         action: () -> Unit,
         enabled: Boolean = true,
-    ): ImageButton {
-        return ImageButton(activity).apply {
-            setImageResource(drawableRes)
-            contentDescription = description
-            background = null
-            setBackgroundColor(Color.TRANSPARENT)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            isEnabled = enabled
-            alpha = if (enabled) 1f else 0.38f
-            layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
-            setOnClickListener { if (enabled) action() }
-        }
+    ): ImageButton = ImageButton(activity).apply {
+        setImageResource(drawableRes)
+        contentDescription = description
+        background = null
+        setBackgroundColor(Color.TRANSPARENT)
+        scaleType = ImageView.ScaleType.CENTER
+        setPadding(dp(6), dp(6), dp(6), dp(6))
+        isEnabled = enabled
+        alpha = if (enabled) 1f else 0.38f
+        layoutParams = LinearLayout.LayoutParams(dp(32), dp(36))
+        setOnClickListener { if (enabled) action() }
     }
 
     private fun callStatusIcon(call: PhoneCallRecord): Int = when (call.callType) {
@@ -421,8 +303,6 @@ internal class HomeCallRowRenderer(
         CallLog.Calls.BLOCKED_TYPE -> R.drawable.ic_call_rejected
         CallLog.Calls.OUTGOING_TYPE -> R.drawable.ic_call_outgoing
         CallLog.Calls.INCOMING_TYPE -> R.drawable.ic_call_incoming
-        // A synthetic or legacy row has no provider status. Preserve the prior
-        // duration-based fallback only for those records.
         else -> when {
             call.direction == "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_rejected
             call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
