@@ -79,7 +79,7 @@ internal class FilteredFullLogRowRenderer(
             addView(metadataUi.metaView(row, remoteEnabled))
             if (row.text.isNotBlank()) {
                 addView(TextView(activity).apply {
-                    text = row.text
+                    text = if (row.kind == CallReportHistoryRowKind.NOTE) noteText(row) else row.text
                     textSize = 14.5f
                     setTextColor(when {
                         foreignRecord -> FilteredFullLogStyle.foreignText
@@ -173,14 +173,12 @@ internal class FilteredFullLogRowRenderer(
                 isFocusable = true
                 setOnClickListener { openNoteEditor(phone, localNote.withServerClientEventId(note.serverEvent?.clientEventId.orEmpty())) }
             }
-            addView(metadataUi.metaView(note, remoteEnabled))
             if (note.text.isNotBlank()) {
                 addView(TextView(activity).apply {
-                    text = note.text
+                    text = noteText(note)
                     textSize = 14f
                     setTextColor(textColor)
                     setTypeface(typeface, Typeface.BOLD)
-                    setPadding(0, dp(4), 0, 0)
                 })
             }
             if (remoteEnabled) {
@@ -188,6 +186,25 @@ internal class FilteredFullLogRowRenderer(
                 metadataUi.addServerVersionNotice(this, note)
             }
         }
+    }
+
+    private fun noteText(row: CallReportHistoryRow): String {
+        val text = row.text.trim()
+        val companyName = row.companyName.trim().ifBlank { cachedCompanyName(row.companyId) }
+        return if (companyName.isBlank()) text else "[ $companyName ] $text"
+    }
+
+    private fun cachedCompanyName(companyId: String): String {
+        val id = companyId.trim()
+        if (id.isBlank()) return ""
+        val config = ConfigStore.load(activity.applicationContext)
+        return CallReportTopicCompaniesCache.read(activity.applicationContext, config)
+            ?.companies
+            ?.firstOrNull { it.id == id }
+            ?.name
+            ?.trim()
+            ?.ifBlank { id }
+            ?: id
     }
 
     private fun noteActionButton(call: PhoneCallRecord, editableAttachedNote: CallReportHistoryRow?): ImageButton {
