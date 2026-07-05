@@ -28,8 +28,8 @@ class HomeActivity : AppCompatActivity() {
         filteredFullLogController.invalidate()
         if (::binding.isInitialized && !isFinishing && !isDestroyed) renderCalls()
     }
-    private val contactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
-    private val noteSavedReceiver by lazy {
+    private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
+    private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
         HomeNoteSavedReceiverController(this) {
             HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
@@ -37,27 +37,29 @@ class HomeActivity : AppCompatActivity() {
             renderCalls()
         }
     }
-    private val noteRefreshController by lazy {
+    private val noteRefreshController: HomeNoteRefreshController by lazy {
         HomeNoteRefreshController(handler, {
             HomeCallPageLoader.clearSearchCache()
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
         }, ::renderCalls)
     }
-    private val homeActions by lazy {
+    private val homeActions: HomeActions by lazy {
         HomeActions(this, binding, noteRefreshController::start) {
             activePhoneFilter.isBlank() && activeSearchQuery.isBlank()
         }
     }
-    private val companyGeneralNotesController by lazy {
+    private val companyGeneralNotesController: HomeCompanyGeneralNotesController by lazy {
         HomeCompanyGeneralNotesController(this, handler) {
             if (::binding.isInitialized && !isFinishing && !isDestroyed) {
                 homeContentRenderer.renderCurrentRowsAfterCompanyLabels(pageSize())
             }
         }
     }
-    private val serverCallNotesController by lazy { HomeServerCallNotesController(this, handler) }
-    private val crmFiltersController by lazy {
+    private val serverCallNotesController: HomeServerCallNotesController by lazy {
+        HomeServerCallNotesController(this, handler)
+    }
+    private val crmFiltersController: HomeCrmFiltersController by lazy {
         HomeCrmFiltersController(this, binding, handler, uiGeometry::dp, uiGeometry::roundedRect) {
             homeContentRenderer.clearCalls()
             pageIndex = 0
@@ -66,17 +68,17 @@ class HomeActivity : AppCompatActivity() {
             renderCalls()
         }
     }
-    private val filteredContactSummaryChipsUi by lazy {
+    private val filteredContactSummaryChipsUi: HomeCompanyScopeChipsUi by lazy {
         HomeCompanyScopeChipsUi(this, uiGeometry::dp, uiGeometry::roundedRect)
     }
-    private val homeCallRowRenderer by lazy {
+    private val homeCallRowRenderer: HomeCallRowRenderer by lazy {
         HomeCallRowRenderer(
             this, uiGeometry::dp, HomeCallPageLoader::noteKey, uiGeometry::roundedRect,
             homeActions::openContactNotesScreen, homeActions::openContactNotePopupForCall,
             homeActions::openDialer, { timelineCoordinator.togglePhoneFilter(it) },
         )
     }
-    private val homeContentRenderer by lazy {
+    private val homeContentRenderer: HomeContentRenderer by lazy {
         HomeContentRenderer(
             this, binding, { activePhoneFilter }, { activeSearchQuery }, { pageIndex },
             ::isCrmModeEnabled, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
@@ -84,19 +86,19 @@ class HomeActivity : AppCompatActivity() {
             filteredContactSummaryChipsUi,
         )
     }
-    private val pullRefreshController by lazy {
+    private val pullRefreshController: HomePullRefreshController by lazy {
         HomePullRefreshController(binding, handler) {
             activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
         }
     }
-    private val callsLoader by lazy {
+    private val callsLoader: HomeCallsLoader by lazy {
         HomeCallsLoader(
             this, handler, homeContentRenderer, crmFiltersController, serverCallNotesController,
             { activePhoneFilter }, { activeSearchQuery }, { pageIndex }, ::isCrmModeEnabled,
             pullRefreshController::complete,
         )
     }
-    private val searchController by lazy {
+    private val searchController: HomeSearchController by lazy {
         HomeSearchController(
             this, binding, handler, searchExecutor, searchGeneration, serverCallNotesController,
             ::pageSize, { activePhoneFilter }, { activeSearchQuery }, ::isCrmModeEnabled, { pageIndex },
@@ -104,7 +106,7 @@ class HomeActivity : AppCompatActivity() {
             homeContentRenderer::applyRenderData, pullRefreshController::complete,
         )
     }
-    private val searchInputController by lazy {
+    private val searchInputController: HomeSearchInputController by lazy {
         HomeSearchInputController(
             this, binding, handler,
             { query ->
@@ -119,7 +121,7 @@ class HomeActivity : AppCompatActivity() {
             },
         )
     }
-    private val filteredFullLogController by lazy {
+    private val filteredFullLogController: FilteredFullLogController by lazy {
         FilteredFullLogController(
             this, binding, uiGeometry::dp, uiGeometry::roundedRect,
             homeActions::openContactNotesScreen,
@@ -130,7 +132,7 @@ class HomeActivity : AppCompatActivity() {
             ::renderCalls,
         )
     }
-    private val timelineCoordinator by lazy {
+    private val timelineCoordinator: HomeTimelineCoordinator by lazy {
         HomeTimelineCoordinator(
             activity = this,
             callsLoader = callsLoader,
