@@ -17,6 +17,10 @@ internal class HomeCrmContactsContentView(
 ) {
     private var currentData: HomeRenderData? = null
 
+    fun invalidate() {
+        currentData = null
+    }
+
     fun render(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean = true) {
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
