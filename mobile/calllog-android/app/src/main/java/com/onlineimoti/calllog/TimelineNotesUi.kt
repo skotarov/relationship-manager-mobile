@@ -53,35 +53,11 @@ internal class TimelineNotesUi(
             .forEach { label ->
                 val colors = NoteUiStyle.General
                 val companyName = label.companyName.ifBlank { label.companyId }
-                val prefix = "$companyName: "
-                val rawText = prefix + label.generalNote.trim()
-                val styledText = SpannableString(
-                    SearchTextHighlighter.highlightedText(rawText, highlightQuery, colors.text),
-                ).apply {
-                    setSpan(
-                        StyleSpan(Typeface.BOLD),
-                        0,
-                        prefix.length.coerceAtMost(length),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                    )
-                }
-                column.addView(TextView(activity).apply {
-                    text = styledText
-                    val icon = activity.getDrawable(R.drawable.ic_cloud_note)?.apply {
-                        setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
-                    }
-                    setCompoundDrawables(icon, null, null, null)
-                    compoundDrawablePadding = dp(5)
-                    setTextColor(colors.text)
-                    textSize = 12.5f
-                    maxLines = 3
-                    setPadding(dp(8), dp(5), dp(8), dp(5))
-                    background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ).apply { topMargin = dp(5) }
-                })
+                column.addView(noteCard(
+                    text = companyScopedText(companyName, label.generalNote, highlightQuery, colors.text),
+                    colors = colors,
+                    maxLines = 3,
+                ))
             }
     }
 
@@ -91,31 +67,20 @@ internal class TimelineNotesUi(
         callNote: HomeCallNote?,
         highlightQuery: String,
         statusForCall: (PhoneCallRecord) -> String?,
+        companyLabels: List<HomeCompanyScopeLabel>? = null,
     ) {
         val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
         val colors = NoteUiStyle.Call
-        column.addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(note.text, highlightQuery, colors.text)
-            val iconRes = if (ServerRecordIndex.isCallNoteConfirmed(activity, call.number, call.startedAt, call.direction)) {
-                R.drawable.ic_cloud_note
+        val companyName = companyNameFor(note.companyId, companyLabels)
+        column.addView(noteCard(
+            text = if (companyName.isBlank()) {
+                SearchTextHighlighter.highlightedText(note.text, highlightQuery, colors.text)
             } else {
-                R.drawable.ic_chat_note
-            }
-            val icon = activity.getDrawable(iconRes)?.apply {
-                setBounds(0, 0, dp(NOTE_ICON_SIZE_DP), dp(NOTE_ICON_SIZE_DP))
-            }
-            setCompoundDrawables(icon, null, null, null)
-            compoundDrawablePadding = dp(5)
-            setTextColor(colors.text)
-            textSize = 12.5f
-            maxLines = 3
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        })
+                companyScopedText(companyName, note.text, highlightQuery, colors.text)
+            },
+            colors = colors,
+            maxLines = 3,
+        ))
         statusForCall(call)?.let { status ->
             column.addView(TextView(activity).apply {
                 text = status
@@ -126,7 +91,57 @@ internal class TimelineNotesUi(
         }
     }
 
-    private companion object {
-        const val NOTE_ICON_SIZE_DP = 18
+    private fun noteCard(text: CharSequence, colors: NoteCardColors, maxLines: Int): TextView {
+        return TextView(activity).apply {
+            this.text = text
+            setTextColor(colors.text)
+            textSize = 12.5f
+            this.maxLines = maxLines
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(5) }
+        }
+    }
+
+    private fun companyScopedText(
+        companyName: String,
+        note: String,
+        highlightQuery: String,
+        textColor: Int,
+    ): CharSequence {
+        val prefix = "[ ${companyName.trim()} ] "
+        val rawText = prefix + note.trim()
+        return SpannableString(
+            SearchTextHighlighter.highlightedText(rawText, highlightQuery, textColor),
+        ).apply {
+            setSpan(
+                StyleSpan(Typeface.BOLD),
+                0,
+                prefix.length.coerceAtMost(length),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+        }
+    }
+
+    private fun companyNameFor(
+        companyId: String,
+        labels: List<HomeCompanyScopeLabel>?,
+    ): String {
+        val id = companyId.trim()
+        if (id.isBlank()) return ""
+        labels.orEmpty().firstOrNull { it.companyId == id }?.companyName?.trim()?.takeIf { it.isNotBlank() }?.let {
+            return it
+        }
+        val config = ConfigStore.load(activity.applicationContext)
+        return CallReportTopicCompaniesCache.read(activity.applicationContext, config)
+            ?.companies
+            ?.firstOrNull { it.id == id }
+            ?.name
+            ?.trim()
+            ?.ifBlank { id }
+            ?: id
     }
 }
