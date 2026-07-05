@@ -101,8 +101,8 @@ internal class HomeContentRenderer(
             else -> activity.getString(R.string.dynamic_home_no_more_calls)
         }
         updatePhoneFilterStatusStyle()
-        binding.previousCallsButton.isEnabled = currentPage > 0
-        binding.nextCallsButton.isEnabled = false
+        PaginationButtonAppearance.apply(binding.previousCallsButton, currentPage > 0)
+        PaginationButtonAppearance.apply(binding.nextCallsButton, enabled = false)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, currentPage + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
@@ -253,8 +253,8 @@ internal class HomeContentRenderer(
             else -> activity.getString(R.string.dynamic_home_status_calls, start, end)
         }
         updatePhoneFilterStatusStyle()
-        binding.previousCallsButton.isEnabled = currentPage > 0
-        binding.nextCallsButton.isEnabled = currentCalls.size >= pageSize
+        PaginationButtonAppearance.apply(binding.previousCallsButton, currentPage > 0)
+        PaginationButtonAppearance.apply(binding.nextCallsButton, currentCalls.size >= pageSize)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, currentPage + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
