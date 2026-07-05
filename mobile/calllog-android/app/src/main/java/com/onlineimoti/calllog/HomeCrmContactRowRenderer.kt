@@ -68,6 +68,12 @@ internal class HomeCrmContactRowRenderer(
                     highlightQuery = highlightQuery,
                     visible = true,
                 )
+                notesUi.addCompanyGeneralNotes(
+                    column = this,
+                    labels = companyLabels,
+                    highlightQuery = highlightQuery,
+                    visible = true,
+                )
             })
             addView(historyButton(contact, title))
         })
