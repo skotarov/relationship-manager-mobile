@@ -70,6 +70,21 @@ internal class HomeTimelineCoordinator(
         }
     }
 
+    fun isOnLaterPage(): Boolean = if (isFilteredFullLogMode()) {
+        filteredFullLog.isOnLaterPage()
+    } else {
+        pageIndex() > 0
+    }
+
+    fun goToFirstPage() {
+        if (isFilteredFullLogMode()) {
+            filteredFullLog.goToFirstPage()
+        } else if (pageIndex() > 0) {
+            setPageIndex(0)
+            renderCalls()
+        }
+    }
+
     fun setCrmMode(enabled: Boolean) {
         if (!HomeCrmModeStore.setEnabled(activity, enabled)) return
         if (!enabled) setCrmContactsMode(false)
