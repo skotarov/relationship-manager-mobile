@@ -26,6 +26,7 @@ internal class HomeCallRowRenderer(
     private val togglePhoneFilter: (String) -> Unit = {},
 ) {
     private val companyScopeChipsUi by lazy { HomeCompanyScopeChipsUi(activity, dp, roundedRect) }
+    private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
     private val smsRowRenderer by lazy {
         HomeSmsRowRenderer(
             activity, dp, noteKey, roundedRect, companyScopeChipsUi,
@@ -76,6 +77,12 @@ internal class HomeCallRowRenderer(
         if (showContactIdentity) column.addView(mainNameRow(call, displayName, highlightQuery))
         addCrmStatus(column, call, displayName, companyGeneralNoteLabels, showGeneralContactNote)
         addGeneralNote(column, contactNote, highlightQuery, showGeneralContactNote)
+        notesUi.addCompanyGeneralNotes(
+            column = column,
+            labels = companyGeneralNoteLabels,
+            highlightQuery = highlightQuery,
+            visible = showGeneralContactNote,
+        )
         addCallNote(column, call, callNote, highlightQuery)
         row.addView(column)
         row.addView(actions(call, displayName, callNote, showQuickActions))
