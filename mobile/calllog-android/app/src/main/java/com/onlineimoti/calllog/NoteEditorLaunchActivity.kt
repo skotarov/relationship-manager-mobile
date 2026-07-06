@@ -25,8 +25,20 @@ class NoteEditorLaunchActivity : Activity() {
         val callAt = source.getLongExtra(PostCallOverlayService.EXTRA_CALL_AT, 0L)
         val duration = source.getLongExtra(PostCallOverlayService.EXTRA_DURATION, 0L)
         val actionIssuedAt = source.getLongExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, 0L)
-        val config = ConfigStore.load(this)
 
+        if (mode == MODE_SMS_REPLY) {
+            SmsComposeDialog(this, ::dp).show(
+                phone = phone,
+                title = title.ifBlank { phone },
+                onDismiss = {
+                    finish()
+                    overridePendingTransition(0, 0)
+                },
+            )
+            return
+        }
+
+        val config = ConfigStore.load(this)
         if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(this)) {
             startService(
                 CallNoteEditorLauncher.overlayIntent(
@@ -38,7 +50,7 @@ class NoteEditorLaunchActivity : Activity() {
                     callAt = callAt,
                     durationSeconds = duration,
                     actionIssuedAt = actionIssuedAt,
-                )
+                ),
             )
         } else {
             CallNoteEditorLauncher.startEditor(
@@ -57,7 +69,10 @@ class NoteEditorLaunchActivity : Activity() {
         overridePendingTransition(0, 0)
     }
 
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
     companion object {
+        const val MODE_SMS_REPLY = "sms_reply"
         private const val LOOKUP_NOTIFICATION_ID = 2001
         private const val POST_CALL_NOTIFICATION_ID = 2002
     }
