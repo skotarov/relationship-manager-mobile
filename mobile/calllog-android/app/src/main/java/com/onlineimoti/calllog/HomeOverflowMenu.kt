@@ -10,19 +10,35 @@ import androidx.appcompat.widget.PopupMenu
 
 /** Keeps HomeActivity focused on state coordination rather than menu plumbing. */
 internal object HomeOverflowMenu {
-    fun show(activity: AppCompatActivity, anchor: View, openSettings: () -> Unit) {
+    fun show(
+        activity: AppCompatActivity,
+        anchor: View,
+        openSettings: () -> Unit,
+        isCrmModeEnabled: () -> Boolean,
+        isCrmContactsMode: () -> Boolean,
+        toggleCrmContactsMode: () -> Unit,
+    ) {
         PopupMenu(activity, anchor).apply {
             // AppCompat allows consistently visible menu icons across Android skins.
             setForceShowIcon(true)
             menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
                 .setIcon(R.drawable.ic_menu_call_history)
-            menu.add(0, MENU_CONTACTS, 20, "Контакти")
+            if (isCrmModeEnabled()) {
+                val contactsMode = isCrmContactsMode()
+                menu.add(
+                    0,
+                    MENU_CRM_TIMELINE,
+                    20,
+                    if (contactsMode) "CRM разговори" else "CRM контакти",
+                ).setIcon(if (contactsMode) R.drawable.ic_menu_call_history else R.drawable.ic_menu_contacts)
+            }
+            menu.add(0, MENU_PHONE_CONTACTS, 30, "Телефонни контакти")
                 .setIcon(R.drawable.ic_menu_contacts)
-            menu.add(0, MENU_SMS, 30, "SMS")
+            menu.add(0, MENU_SMS, 40, "SMS")
                 .setIcon(R.drawable.ic_menu_sms)
-            menu.add(0, MENU_CALENDAR, 40, "Календар")
+            menu.add(0, MENU_CALENDAR, 50, "Календар")
                 .setIcon(R.drawable.ic_menu_calendar)
-            menu.add(0, MENU_SETTINGS, 50, activity.getString(R.string.home_overflow_settings))
+            menu.add(0, MENU_SETTINGS, 60, activity.getString(R.string.home_overflow_settings))
                 .setIcon(R.drawable.ic_menu_settings)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
@@ -33,7 +49,11 @@ internal object HomeOverflowMenu {
                         )
                         true
                     }
-                    MENU_CONTACTS -> {
+                    MENU_CRM_TIMELINE -> {
+                        toggleCrmContactsMode()
+                        true
+                    }
+                    MENU_PHONE_CONTACTS -> {
                         openDefaultContacts(activity)
                         true
                     }
@@ -87,8 +107,9 @@ internal object HomeOverflowMenu {
     }.getOrDefault(false)
 
     private const val MENU_PHONE_CALL_LOG = 1
-    private const val MENU_CONTACTS = 2
-    private const val MENU_SMS = 3
-    private const val MENU_CALENDAR = 4
-    private const val MENU_SETTINGS = 5
+    private const val MENU_CRM_TIMELINE = 2
+    private const val MENU_PHONE_CONTACTS = 3
+    private const val MENU_SMS = 4
+    private const val MENU_CALENDAR = 5
+    private const val MENU_SETTINGS = 6
 }
