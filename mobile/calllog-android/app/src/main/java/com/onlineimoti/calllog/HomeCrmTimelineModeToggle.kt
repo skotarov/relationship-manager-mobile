@@ -50,11 +50,9 @@ internal class HomeCrmTimelineModeToggle(
         else -> "Calls"
     }
 
-    private companion object {
-        var activeInstance = WeakReference<HomeCrmTimelineModeToggle>(null)
-    }
-
     companion object {
+        private var activeInstance = WeakReference<HomeCrmTimelineModeToggle>(null)
+
         fun isOverflowActionVisible(): Boolean = activeInstance.get()?.visibleInOverflow == true
 
         fun isContactsMode(): Boolean = activeInstance.get()?.contactsMode == true
