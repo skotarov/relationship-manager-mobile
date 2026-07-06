@@ -143,7 +143,7 @@ class HomeActivity : AppCompatActivity() {
             { activePhoneFilter },
             { activeSearchQuery },
             { pageIndex },
-            ::isCrmModeEnabled,
+            ::isServerReady,
             ::isCrmContactsMode,
             pullRefreshController::complete,
         )
@@ -319,6 +319,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
+    private fun isServerReady() = CallReportRemoteAccess.isReady(ConfigStore.load(this))
     private fun isCrmContactsMode() = crmContactsMode
     private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
