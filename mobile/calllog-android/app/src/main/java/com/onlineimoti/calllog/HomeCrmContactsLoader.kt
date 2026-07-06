@@ -4,7 +4,11 @@ import android.os.Handler
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Loads explicitly enabled CRM contacts and applies the same phase/company filters as CRM calls. */
+/**
+ * Loads all saved phone contacts explicitly marked CRM, plus CRM-marked unknown
+ * numbers from the last two weeks of the call log. Both groups use the same
+ * phase/company filters before paging.
+ */
 internal class HomeCrmContactsLoader(
     private val activity: HomeActivity,
     private val handler: Handler,
@@ -34,8 +38,7 @@ internal class HomeCrmContactsLoader(
         contactsContent.showLoading()
         executor.execute {
             val data = runCatching {
-                val contacts = ContactSearchProvider.crmEnabledContacts(appContext)
-                    .map { PhoneCallRecord(it.phone, it.name, "", 0L, 0L) }
+                val contacts = HomeCrmContactCandidates.load(appContext)
                 val phaseFiltered = HomeCrmFilterEngine.filterLocal(appContext, contacts, filterState)
                 val companyFiltered = if (filterState.isCompanyFiltered) {
                     val memberships = HomeCrmCompanyMembershipStore.resolve(
@@ -52,7 +55,7 @@ internal class HomeCrmContactsLoader(
                     phaseFiltered
                 }
                 val page = companyFiltered
-                    .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName.ifBlank { it.number } })
+                    .sortedWith(contactListOrder)
                     .drop(requestedPage * pageSize)
                     .take(pageSize)
                 HomeRenderData(
@@ -75,6 +78,22 @@ internal class HomeCrmContactsLoader(
                 if (data.calls.isEmpty()) contactsContent.renderEmpty(pageSize)
                 else contactsContent.render(data, pageSize)
                 onRenderComplete()
+            }
+        }
+    }
+
+    private companion object {
+        /** Saved contacts stay alphabetic; unsaved leads follow, newest call first. */
+        val contactListOrder = Comparator<PhoneCallRecord> { left, right ->
+            val leftUnknownLead = left.startedAt > 0L
+            val rightUnknownLead = right.startedAt > 0L
+            when {
+                leftUnknownLead != rightUnknownLead -> if (leftUnknownLead) 1 else -1
+                leftUnknownLead -> right.startedAt.compareTo(left.startedAt)
+                else -> String.CASE_INSENSITIVE_ORDER.compare(
+                    left.displayName.ifBlank { left.number },
+                    right.displayName.ifBlank { right.number },
+                )
             }
         }
     }
