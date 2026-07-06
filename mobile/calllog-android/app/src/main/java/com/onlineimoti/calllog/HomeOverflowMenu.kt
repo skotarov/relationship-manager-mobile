@@ -4,6 +4,7 @@ import android.content.Intent
 import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 
@@ -62,12 +63,28 @@ internal object HomeOverflowMenu {
             .recoverCatching { activity.startActivity(fallbackIntent) }
     }
 
+    /** Opens the system/default calendar directly on today's date. */
     private fun openDefaultCalendar(activity: AppCompatActivity) {
-        val calendarIntent = Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI)
-        val fallbackIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
-        runCatching { activity.startActivity(calendarIntent) }
-            .recoverCatching { activity.startActivity(fallbackIntent) }
+        val todayIntent = Intent(Intent.ACTION_VIEW).setData(
+            CalendarContract.CONTENT_URI.buildUpon()
+                .appendPath("time")
+                .appendPath(System.currentTimeMillis().toString())
+                .build(),
+        )
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
+        val legacyIntent = Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI)
+        val opened = tryStart(activity, todayIntent) ||
+            tryStart(activity, launcherIntent) ||
+            tryStart(activity, legacyIntent)
+        if (!opened) {
+            Toast.makeText(activity, "Няма налично приложение за календар", Toast.LENGTH_SHORT).show()
+        }
     }
+
+    private fun tryStart(activity: AppCompatActivity, intent: Intent): Boolean = runCatching {
+        activity.startActivity(intent)
+        true
+    }.getOrDefault(false)
 
     private const val MENU_PHONE_CALL_LOG = 1
     private const val MENU_CONTACTS = 2
