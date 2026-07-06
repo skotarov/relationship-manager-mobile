@@ -14,11 +14,12 @@ internal object HomeOverflowMenu {
         PopupMenu(activity, anchor).apply {
             // AppCompat allows consistently visible menu icons across Android skins.
             setForceShowIcon(true)
-            menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
-                .setIcon(R.drawable.ic_menu_call_history)
-            if (HomeCrmTimelineModeToggle.isOverflowActionVisible() &&
-                !HomeCrmTimelineModeToggle.isContactsMode()
-            ) {
+            val contactsMode = HomeCrmTimelineModeToggle.isContactsMode()
+            if (!contactsMode) {
+                menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
+                    .setIcon(R.drawable.ic_menu_call_history)
+            }
+            if (HomeCrmTimelineModeToggle.isOverflowActionVisible() && !contactsMode) {
                 menu.add(0, MENU_CRM_TIMELINE, 20, "CRM контакти")
                     .setIcon(R.drawable.ic_menu_contacts)
             }
