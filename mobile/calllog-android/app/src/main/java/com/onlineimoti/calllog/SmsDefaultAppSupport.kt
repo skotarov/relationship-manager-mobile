@@ -130,7 +130,11 @@ internal object SmsProviderStore {
     }
 }
 
-class SmsDeliverReceiver : BroadcastReceiver() {
+/**
+ * Kept for compatibility with the older support module. The active manifest
+ * receiver is the dedicated SmsDeliverReceiver source.
+ */
+class SmsDefaultAppDeliveryBridge : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION || !SmsRoleController.isDefaultSmsApp(context)) return
 
