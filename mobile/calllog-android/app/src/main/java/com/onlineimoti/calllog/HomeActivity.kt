@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
@@ -206,6 +207,7 @@ class HomeActivity : AppCompatActivity() {
             onCrmModeChanged = {
                 companyGeneralNotesController.invalidate()
                 crmContactsContentView.invalidate()
+                updateCrmContactsHeader()
             },
             requestSmsPermission = ::requestSmsPermissionForFilteredHistoryIfNeeded,
         )
@@ -216,7 +218,9 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.crmContactsBackButton.setOnClickListener { timelineCoordinator.returnToCallLog() }
         crmTimelineToggle
+        updateCrmContactsHeader()
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         homeContentRenderer.prepareForRender(pageSize(), keepExistingRows = false)
@@ -294,7 +298,17 @@ class HomeActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    private fun renderCalls() = timelineCoordinator.renderCalls()
+    private fun renderCalls() {
+        updateCrmContactsHeader()
+        timelineCoordinator.renderCalls()
+    }
+
+    private fun updateCrmContactsHeader() {
+        if (!::binding.isInitialized) return
+        val contactsVisible = crmContactsMode && isServerReady()
+        binding.relationshipManagerWordmark.visibility = if (contactsVisible) View.GONE else View.VISIBLE
+        binding.crmContactsHeader.visibility = if (contactsVisible) View.VISIBLE else View.GONE
+    }
 
     private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
         if (SmsMessageReader.hasReadSmsPermission(this) ||
