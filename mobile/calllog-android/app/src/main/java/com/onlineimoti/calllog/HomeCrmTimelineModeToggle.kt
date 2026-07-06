@@ -1,7 +1,9 @@
 package com.onlineimoti.calllog
 
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
+import java.lang.ref.WeakReference
 
 /**
  * Keeps the CRM calls/contacts range visible without placing another control in
@@ -9,13 +11,21 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
  * three-dot overflow menu.
  */
 internal class HomeCrmTimelineModeToggle(
+    @Suppress("unused") private val activity: AppCompatActivity,
     private val binding: ActivityHomeBinding,
+    @Suppress("unused") private val dp: (Int) -> Int,
+    private val onToggle: () -> Unit,
 ) {
+    private var visibleInOverflow = false
+    private var contactsMode = false
+
+    init {
+        activeInstance = WeakReference(this)
+    }
+
     fun prepare(visible: Boolean, contactsMode: Boolean) {
-        if (!visible) {
-            binding.homeStatusText.visibility = View.VISIBLE
-            return
-        }
+        visibleInOverflow = visible
+        this.contactsMode = contactsMode
         binding.homeStatusText.visibility = View.VISIBLE
     }
 
@@ -38,5 +48,22 @@ internal class HomeCrmTimelineModeToggle(
         contactsMode -> "Contacts"
         AppLocaleText.isBulgarian() -> "Разговори"
         else -> "Calls"
+    }
+
+    private companion object {
+        var activeInstance = WeakReference<HomeCrmTimelineModeToggle>(null)
+    }
+
+    companion object {
+        fun isOverflowActionVisible(): Boolean = activeInstance.get()?.visibleInOverflow == true
+
+        fun isContactsMode(): Boolean = activeInstance.get()?.contactsMode == true
+
+        fun toggleFromOverflow() {
+            activeInstance.get()
+                ?.takeIf { it.visibleInOverflow }
+                ?.onToggle
+                ?.invoke()
+        }
     }
 }
