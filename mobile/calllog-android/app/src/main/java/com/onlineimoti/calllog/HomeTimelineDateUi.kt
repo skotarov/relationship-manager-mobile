@@ -1,15 +1,16 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import java.util.Calendar
 
 /** Calendar-safe labels used by the Home call timeline. */
 internal object HomeTimelineDateUi {
-    fun relativeDaysLabel(days: Long): String = when {
-        days == 0L -> "преди 0 дни"
-        days == 1L -> "преди 1 ден"
-        days > 1L -> "преди $days дни"
-        days == -1L -> "след 1 ден"
-        else -> "след ${-days} дни"
+    fun relativeDaysLabel(context: Context, days: Long): String = when {
+        days == 0L -> context.getString(R.string.runtime_timeline_today)
+        days == 1L -> context.getString(R.string.runtime_timeline_yesterday)
+        days > 1L -> context.getString(R.string.runtime_timeline_days_ago, days)
+        days == -1L -> context.getString(R.string.runtime_timeline_tomorrow)
+        else -> context.getString(R.string.runtime_timeline_in_days, -days)
     }
 
     /** Calendar-day serial avoids daylight-saving-time errors around midnight. */
