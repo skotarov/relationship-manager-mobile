@@ -5,7 +5,7 @@ import android.provider.CallLog
 
 /**
  * Contacts-mode source: every saved phone contact explicitly marked CRM, plus
- * unknown CRM-marked numbers that appeared in the phone call log during the
+ * CRM-marked unknown numbers that appeared in the phone call log during the
  * latest two weeks. Unknown numbers are kept only once, at their newest call.
  */
 internal object HomeCrmContactCandidates {
