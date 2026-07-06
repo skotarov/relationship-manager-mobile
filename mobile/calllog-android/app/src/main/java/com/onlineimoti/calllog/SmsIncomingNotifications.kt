@@ -13,12 +13,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
 /**
- * Adapts an incoming device SMS to the app's existing SMS inbox and composer.
- * It deliberately does not create a second conversation UI.
+ * Adapts an incoming device SMS to the existing SMS inbox.
+ * It does not introduce a second conversation interface.
  */
 internal object SmsIncomingNotifications {
     private const val CHANNEL_ID = "relationship_manager_sms"
     private const val CHANNEL_NAME = "SMS"
+    private const val ACTION_OPEN_SMS = "com.onlineimoti.calllog.OPEN_SMS"
 
     fun show(context: Context, phone: String, body: String) {
         if (!canPostNotifications(context) || phone.isBlank()) return
@@ -30,17 +31,7 @@ internal object SmsIncomingNotifications {
             context,
             notificationId,
             Intent(context, SmsHistoryActivity::class.java)
-                .setAction(SmsHistoryActivity.ACTION_OPEN_SMS)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val reply = PendingIntent.getActivity(
-            context,
-            notificationId xor 0x4F1BBCDC,
-            Intent(context, SmsHistoryActivity::class.java)
-                .setAction(SmsHistoryActivity.ACTION_REPLY_SMS)
-                .putExtra(SmsHistoryActivity.EXTRA_REPLY_PHONE, phone)
-                .putExtra(SmsHistoryActivity.EXTRA_REPLY_TITLE, title)
+                .setAction(ACTION_OPEN_SMS)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -54,7 +45,6 @@ internal object SmsIncomingNotifications {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(openInbox)
-            .addAction(R.drawable.ic_menu_sms, "Отговори", reply)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
