@@ -74,7 +74,7 @@ internal object HomeCrmPhaseLookup {
 
         requested.forEach { (phoneKey, rawPhone) ->
             val phases = result.getValue(phoneKey)
-            companyIds.forEach { companyId ->
+            companyIds.forEach companyLoop@{ companyId ->
                 val hasLocalCompanyState = CompanyNegotiationPhaseStore.hasSavedState(
                     context,
                     rawPhone,
@@ -87,7 +87,7 @@ internal object HomeCrmPhaseLookup {
                     } else {
                         phases.remove(companyId)
                     }
-                    return@forEach
+                    return@companyLoop
                 }
 
                 // Retain the old phone-wide phase as a fallback only where the
