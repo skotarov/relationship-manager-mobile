@@ -8,9 +8,9 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 /**
- * Produces the incoming-call popup progressively. Contact policy, local call
- * history, lookup.php and server history run independently, so the first useful
- * UI does not wait for the slowest source.
+ * Produces the incoming-call popup progressively. A preliminary popup is shown
+ * immediately, then local contact/history data and server data replace it as
+ * each source becomes available.
  */
 internal class IncomingCallLookupCoordinator(
     context: Context,
@@ -29,9 +29,15 @@ internal class IncomingCallLookupCoordinator(
     private var finishedCallbackSent = false
 
     fun start() {
-        val policyQueued = submit(::resolveContactAndStartLookups)
-        submit(::loadLocalRows)
-        if (!policyQueued) finishOnce()
+        // Do not wait for Contacts, Call Log or the network before replacing the
+        // loading card. This matches the Settings test: show a usable popup first.
+        publishInitial()
+        val policyQueued = submit(CONTACT_EXECUTOR, ::resolveContactAndStartLookups)
+        if (!policyQueued) {
+            finishOnce()
+            return
+        }
+        submit(LOCAL_ROWS_EXECUTOR, ::loadLocalRows)
     }
 
     private fun resolveContactAndStartLookups() {
@@ -51,7 +57,7 @@ internal class IncomingCallLookupCoordinator(
             return
         }
 
-        val lookupQueued = submit(::loadLookup)
+        val lookupQueued = submit(LOOKUP_EXECUTOR, ::loadLookup)
         if (!lookupQueued) {
             synchronized(lock) {
                 lookupResult = fallbackLookup(resolvedContact)
@@ -62,9 +68,8 @@ internal class IncomingCallLookupCoordinator(
             return
         }
 
-        // A slow known-contact lookup must never leave the initial loading popup
-        // on screen indefinitely. The server result may still replace this safe
-        // fallback later when it arrives.
+        // A slow known-contact lookup must never leave the preliminary popup on
+        // screen indefinitely. A late server response may still replace it.
         scheduleLookupFallback(resolvedContact)
     }
 
@@ -97,11 +102,9 @@ internal class IncomingCallLookupCoordinator(
         }
         publishCurrent()
 
-        // The initial lookup and full server history used to run together. For a
-        // known number this could create two expensive server scans at the same
-        // time. Start the secondary history enrichment only after lookup.php has
-        // answered, and request a compact preview rather than a 200-record log.
-        if (attempt.isSuccess) submit(::loadHistoryRows)
+        // Server history is useful enrichment, but it must never occupy the
+        // same queue as contact resolution or the primary lookup request.
+        if (attempt.isSuccess) submit(HISTORY_EXECUTOR, ::loadHistoryRows)
 
         // BroadcastReceiver work ends after lookup.php. Server history may still
         // populate the already-open overlay without holding the receiver alive.
@@ -139,10 +142,27 @@ internal class IncomingCallLookupCoordinator(
         }, LOOKUP_DEADLINE_MS, TimeUnit.MILLISECONDS)
     }
 
+    private fun publishInitial() {
+        LookupPopupPresenter.show(
+            context = appContext,
+            result = LookupResult(
+                title = phone,
+                subtitle = "Проверявам контакта и историята…",
+                lines = listOf("Зареждам наличната информация…"),
+                openFormUrl = "",
+            ),
+            fullscreen = fullscreen,
+            phone = phone,
+            direction = direction,
+            // The coordinator fills both local and remote rows in the background.
+            remoteRowsArePreloaded = true,
+        )
+    }
+
     private fun publishCurrent() {
         val snapshot = synchronized(lock) {
-            val contact = contactInfo ?: return
-            if (!contact.shouldNotify) return
+            val contact = contactInfo
+            if (contact?.shouldNotify == false) return
             Snapshot(contact, lookupResult, lookupFinished)
         }
         val fallback = fallbackLookup(snapshot.contact)
@@ -153,7 +173,7 @@ internal class IncomingCallLookupCoordinator(
             )
         } else {
             remote.copy(
-                title = snapshot.contact.displayName
+                title = snapshot.contact?.displayName
                     ?.takeIf { it.isNotBlank() }
                     ?: remote.title.ifBlank { phone },
             )
@@ -170,16 +190,16 @@ internal class IncomingCallLookupCoordinator(
         )
     }
 
-    private fun fallbackLookup(contact: IncomingCallContactInfo): LookupResult = LookupResult(
-        title = contact.displayName?.takeIf { it.isNotBlank() } ?: phone,
+    private fun fallbackLookup(contact: IncomingCallContactInfo? = null): LookupResult = LookupResult(
+        title = contact?.displayName?.takeIf { it.isNotBlank() } ?: phone,
         subtitle = phone,
         lines = emptyList(),
         openFormUrl = "",
     )
 
-    private fun submit(block: () -> Unit): Boolean {
+    private fun submit(executor: ThreadPoolExecutor, block: () -> Unit): Boolean {
         return try {
-            EXECUTOR.execute(block)
+            executor.execute(block)
             true
         } catch (_: RejectedExecutionException) {
             false
@@ -197,21 +217,51 @@ internal class IncomingCallLookupCoordinator(
     }
 
     private data class Snapshot(
-        val contact: IncomingCallContactInfo,
+        val contact: IncomingCallContactInfo?,
         val lookup: LookupResult?,
         val lookupFinished: Boolean,
     )
 
     private companion object {
-        private const val MAX_PENDING_TASKS = 24
+        private const val CONTACT_QUEUE_SIZE = 8
+        private const val LOCAL_ROWS_QUEUE_SIZE = 8
+        private const val LOOKUP_QUEUE_SIZE = 12
+        private const val HISTORY_QUEUE_SIZE = 12
         private const val LOOKUP_DEADLINE_MS = 4_500L
         private const val POPUP_HISTORY_LIMIT = 20
-        private val EXECUTOR = ThreadPoolExecutor(
-            4,
-            4,
+
+        // Contact name/group checks run in a dedicated queue so a slow server
+        // history request can never postpone the first local correction.
+        private val CONTACT_EXECUTOR = ThreadPoolExecutor(
+            1,
+            1,
             20L,
             TimeUnit.SECONDS,
-            ArrayBlockingQueue(MAX_PENDING_TASKS),
+            ArrayBlockingQueue(CONTACT_QUEUE_SIZE),
+            ThreadPoolExecutor.AbortPolicy(),
+        )
+        private val LOCAL_ROWS_EXECUTOR = ThreadPoolExecutor(
+            1,
+            1,
+            20L,
+            TimeUnit.SECONDS,
+            ArrayBlockingQueue(LOCAL_ROWS_QUEUE_SIZE),
+            ThreadPoolExecutor.AbortPolicy(),
+        )
+        private val LOOKUP_EXECUTOR = ThreadPoolExecutor(
+            2,
+            2,
+            20L,
+            TimeUnit.SECONDS,
+            ArrayBlockingQueue(LOOKUP_QUEUE_SIZE),
+            ThreadPoolExecutor.AbortPolicy(),
+        )
+        private val HISTORY_EXECUTOR = ThreadPoolExecutor(
+            1,
+            1,
+            20L,
+            TimeUnit.SECONDS,
+            ArrayBlockingQueue(HISTORY_QUEUE_SIZE),
             ThreadPoolExecutor.AbortPolicy(),
         )
         private val LOOKUP_TIMEOUT_EXECUTOR = ScheduledThreadPoolExecutor(1).apply {
