@@ -2,21 +2,24 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 
-/** CRM Home filters. Empty sets mean "All" for that filter. */
+/**
+ * CRM Home filters. Selecting one or more phases shows those phases; with no
+ * phase button selected, only records without an assigned phase are shown.
+ */
 internal data class HomeCrmFilterState(
     val phases: Set<Int> = emptySet(),
     val companyIds: Set<String> = emptySet(),
 ) {
-    val hasPhaseFilter: Boolean get() = phases.isNotEmpty()
+    val hasSelectedPhase: Boolean get() = phases.isNotEmpty()
+    val hasPhaseFilter: Boolean get() = true
     val hasCompanyFilter: Boolean get() = companyIds.isNotEmpty()
-    val isActive: Boolean get() = hasPhaseFilter || hasCompanyFilter
+    val isActive: Boolean get() = true
 
     /**
-     * When phases are selected as well, [HomeCrmFilterEngine] evaluates the
-     * company + phase pair in one pass. A membership-only lookup is needed only
-     * for a firm-only filter.
+     * When no phase is selected, the company membership lookup still narrows
+     * unphased records to the selected firm(s).
      */
-    val isCompanyFiltered: Boolean get() = hasCompanyFilter && !hasPhaseFilter
+    val isCompanyFiltered: Boolean get() = hasCompanyFilter && !hasSelectedPhase
 }
 
 /** Keeps the CRM selections after the app is reopened. */
@@ -68,7 +71,7 @@ internal object HomeCrmFilterEngine {
         calls: List<PhoneCallRecord>,
         state: HomeCrmFilterState,
     ): List<PhoneCallRecord> {
-        if (!state.hasPhaseFilter || calls.isEmpty()) return calls
+        if (calls.isEmpty()) return emptyList()
         val phasesByCompanyByPhone = HomeCrmPhaseLookup.resolveEffectiveCompanyPhases(
             context = context.applicationContext,
             config = ConfigStore.load(context.applicationContext),
@@ -76,8 +79,17 @@ internal object HomeCrmFilterEngine {
         )
         return calls.filter { call ->
             val phasesByCompany = phasesByCompanyByPhone[HomeCallPageLoader.noteKey(call.number)].orEmpty()
-            phasesByCompany.any { (companyId, phase) ->
-                phase in state.phases && (!state.hasCompanyFilter || companyId in state.companyIds)
+            val scopedPhases = if (state.hasCompanyFilter) {
+                phasesByCompany.filterKeys { it in state.companyIds }
+            } else {
+                phasesByCompany
+            }
+            if (state.hasSelectedPhase) {
+                scopedPhases.values.any { phase -> phase in state.phases }
+            } else {
+                scopedPhases.values.none { phase ->
+                    phase in ContactNegotiationPhaseStore.PHASE_1..ContactNegotiationPhaseStore.PHASE_4
+                }
             }
         }
     }
