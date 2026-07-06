@@ -103,8 +103,8 @@ class HomeActivity : AppCompatActivity() {
         HomeContentRenderer(
             this, binding, { activePhoneFilter }, { activeSearchQuery }, { pageIndex },
             ::isCrmModeEnabled, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
-            uiGeometry::roundedRect, homeCallRowRenderer, companyGeneralNotesController,
-            filteredContactSummaryChipsUi,
+            uiGeometry::roundedRect, homeCallRowRenderer, homeActions::openDialer,
+            companyGeneralNotesController, filteredContactSummaryChipsUi,
         )
     }
     private val crmContactsContentView: HomeCrmContactsContentView by lazy {
@@ -218,10 +218,13 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.crmContactsBackButton.setOnClickListener { timelineCoordinator.returnToCallLog() }
+        binding.crmContactsBackButton.setOnClickListener {
+            if (isFilteredFullLogMode()) timelineCoordinator.clearPhoneFilter()
+            else timelineCoordinator.returnToCallLog()
+        }
         crmTimelineToggle
-        updateCrmContactsHeader()
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
+        updateCrmContactsHeader()
         crmFiltersController.updateVisibility(isCrmModeEnabled() && activePhoneFilter.isBlank())
         homeContentRenderer.prepareForRender(pageSize(), keepExistingRows = false)
         searchInputController.bind()
@@ -303,11 +306,19 @@ class HomeActivity : AppCompatActivity() {
         timelineCoordinator.renderCalls()
     }
 
+    /** Reuses the compact back-and-title header for both Contacts and a filtered full log. */
     private fun updateCrmContactsHeader() {
         if (!::binding.isInitialized) return
         val contactsVisible = crmContactsMode && isServerReady()
-        binding.relationshipManagerWordmark.visibility = if (contactsVisible) View.GONE else View.VISIBLE
-        binding.crmContactsHeader.visibility = if (contactsVisible) View.VISIBLE else View.GONE
+        val fullLogVisible = !contactsVisible && isFilteredFullLogMode()
+        val customHeaderVisible = contactsVisible || fullLogVisible
+        binding.relationshipManagerWordmark.visibility = if (customHeaderVisible) View.GONE else View.VISIBLE
+        binding.crmContactsHeader.visibility = if (customHeaderVisible) View.VISIBLE else View.GONE
+        binding.crmContactsTitleText.text = when {
+            fullLogVisible -> getString(R.string.open_full_log)
+            contactsVisible -> "Клиенти"
+            else -> ""
+        }
     }
 
     private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
@@ -335,6 +346,7 @@ class HomeActivity : AppCompatActivity() {
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
     private fun isServerReady() = CallReportRemoteAccess.isReady(ConfigStore.load(this))
     private fun isCrmContactsMode() = crmContactsMode
+    private fun isFilteredFullLogMode() = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
     private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
     companion object {
