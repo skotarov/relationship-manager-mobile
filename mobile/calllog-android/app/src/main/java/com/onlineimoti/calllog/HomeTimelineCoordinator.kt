@@ -99,8 +99,24 @@ internal class HomeTimelineCoordinator(
 
     fun toggleCrmContactsMode() {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) return
-        setCrmContactsMode(!isCrmContactsMode())
+        if (isCrmContactsMode()) {
+            returnToCallLog()
+            return
+        }
+        setCrmContactsMode(true)
         contentRenderer.clearCalls()
+        setPageIndex(0)
+        filteredFullLog.invalidate()
+        onCrmModeChanged()
+        renderCalls()
+    }
+
+    /** Leaves the server contacts screen and restores the regular Home call log. */
+    fun returnToCallLog() {
+        if (!isCrmContactsMode()) return
+        setCrmContactsMode(false)
+        contentRenderer.clearCalls()
+        setActivePhoneFilter("")
         setPageIndex(0)
         filteredFullLog.invalidate()
         onCrmModeChanged()
