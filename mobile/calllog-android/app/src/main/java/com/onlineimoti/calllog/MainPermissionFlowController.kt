@@ -45,6 +45,12 @@ internal class MainPermissionFlowController(
             refreshPermissionSummary()
             return
         }
+        if (DistributionCapabilities.isPlayBusinessBuild) {
+            isRunning = false
+            setStatus(activity.getString(R.string.runtime_play_corporate_crm_ready))
+            refreshPermissionSummary()
+            return
+        }
         isRunning = true
         requestNextStep()
     }
@@ -56,6 +62,11 @@ internal class MainPermissionFlowController(
      */
     fun requestAppPermissionOrOpenSettings(permission: String, label: String) {
         isRunning = false
+        if (DistributionCapabilities.isPlayBusinessBuild && isCorporateTelephonyPermission(permission)) {
+            setStatus(activity.getString(R.string.runtime_play_local_feature_unavailable))
+            refreshPermissionSummary()
+            return
+        }
         if (isCorporateTelephonyPermission(permission) && !CorporateAccess.isActive(activity)) {
             setStatus("Влез във фирмен профил, преди да разрешиш $label.")
             refreshPermissionSummary()
@@ -200,6 +211,12 @@ internal class MainPermissionFlowController(
             refreshPermissionSummary()
             return
         }
+        if (DistributionCapabilities.isPlayBusinessBuild) {
+            isRunning = false
+            setStatus(activity.getString(R.string.runtime_play_corporate_crm_ready))
+            refreshPermissionSummary()
+            return
+        }
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasPermission(Manifest.permission.POST_NOTIFICATIONS) -> {
                 requestRuntimePermission(
@@ -238,6 +255,11 @@ internal class MainPermissionFlowController(
     }
 
     fun requestCallScreeningRoleIfNeeded() {
+        if (DistributionCapabilities.isPlayBusinessBuild) {
+            setStatus(activity.getString(R.string.runtime_play_local_feature_unavailable))
+            refreshPermissionSummary()
+            return
+        }
         if (!CorporateAccess.isActive(activity)) {
             setStatus("Влез във фирмен профил, преди да активираш разпознаване на служебни разговори.")
             refreshPermissionSummary()
@@ -259,6 +281,11 @@ internal class MainPermissionFlowController(
     }
 
     fun requestOverlayPermissionIfNeeded() {
+        if (DistributionCapabilities.isPlayBusinessBuild) {
+            setStatus(activity.getString(R.string.runtime_play_local_feature_unavailable))
+            refreshPermissionSummary()
+            return
+        }
         if (Settings.canDrawOverlays(activity)) {
             setStatus(activity.getString(R.string.permission_flow_overlay_already_allowed))
             refreshPermissionSummary()
