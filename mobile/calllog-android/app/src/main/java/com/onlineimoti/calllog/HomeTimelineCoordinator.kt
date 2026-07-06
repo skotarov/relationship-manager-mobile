@@ -131,6 +131,7 @@ internal class HomeTimelineCoordinator(
         )
         setPageIndex(0)
         filteredFullLog.invalidate()
+        onCrmModeChanged()
         renderCalls()
     }
 
@@ -139,6 +140,9 @@ internal class HomeTimelineCoordinator(
         setActivePhoneFilter("")
         setPageIndex(0)
         filteredFullLog.invalidate()
+        // The full-log back arrow changes only the filter state. Notify the
+        // header immediately instead of waiting for the next call-list render.
+        onCrmModeChanged()
         renderCalls()
     }
 
