@@ -4,7 +4,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
-/** Draws the Customers RM planning list while retaining Home's existing paging controls. */
+/** Draws the customers planning list while retaining Home's existing paging controls. */
 internal class HomeCrmContactsContentView(
     private val activity: AppCompatActivity,
     private val binding: ActivityHomeBinding,
@@ -100,6 +100,6 @@ internal class HomeCrmContactsContentView(
     /** This list is independent from the local CRM-mode switch. */
     private fun prepareCustomersHeader() {
         binding.crmControlsScroll.visibility = View.GONE
-        binding.crmContactsTitleText.text = "Customers RM"
+        binding.crmContactsTitleText.text = "Клиенти"
     }
 }
