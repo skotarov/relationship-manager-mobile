@@ -4,21 +4,15 @@ import android.content.Context
 import android.provider.CallLog
 
 /**
- * Contacts-mode source: every saved phone contact explicitly marked CRM, plus
- * CRM-marked unknown numbers that appeared in the phone call log during the
- * latest two weeks. Unknown numbers are kept only once, at their newest call.
+ * Contacts mode is sourced from the authenticated CRM server account. The old
+ * local call-log helper remains below only for backward-compatible code paths.
  */
 internal object HomeCrmContactCandidates {
     private const val UNKNOWN_CRM_LOOKBACK_MS = 14L * 24L * 60L * 60L * 1_000L
 
     fun load(context: Context, nowMs: Long = System.currentTimeMillis()): List<PhoneCallRecord> {
         val appContext = context.applicationContext
-        val knownContacts = ContactSearchProvider.crmEnabledContacts(appContext)
-            .map { contact -> PhoneCallRecord(contact.phone, contact.name, "", 0L, 0L) }
-        val knownKeys = knownContacts.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }
-        val unknownRecent = recentUnknownCrmCalls(appContext, nowMs)
-            .filter { call -> HomeCallPageLoader.noteKey(call.number) !in knownKeys }
-        return knownContacts + unknownRecent
+        return HomeCrmContactCandidatesServer.load(appContext)
     }
 
     private fun recentUnknownCrmCalls(context: Context, nowMs: Long): List<PhoneCallRecord> {
