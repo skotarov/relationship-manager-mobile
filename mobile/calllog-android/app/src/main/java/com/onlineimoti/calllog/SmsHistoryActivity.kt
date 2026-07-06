@@ -38,6 +38,14 @@ class SmsHistoryActivity : AppCompatActivity() {
         renderPage()
     }
 
+    /** A second tap on a new-SMS notification must show the latest page immediately. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pageIndex = 0
+        if (::listContainer.isInitialized && !loading) renderPage()
+    }
+
     override fun onResume() {
         super.onResume()
         if (::listContainer.isInitialized && !loading) renderPage()
