@@ -31,10 +31,11 @@ internal class HomeTimelineCoordinator(
         if (activeSearchQuery().isBlank()) searchController.cancelActiveTask()
         val size = pageSize()
         val crmEnabled = isCrmModeEnabled()
-        val contactsMode = crmEnabled && isCrmContactsMode()
+        val remoteReady = CallReportRemoteAccess.isReady(ConfigStore.load(activity))
+        val contactsMode = remoteReady && isCrmContactsMode()
         val showCrmFilters = crmEnabled && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
-        timelineToggle.prepare(showCrmFilters, contactsMode)
+        timelineToggle.prepare(remoteReady, contactsMode)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
         val contactsOnly = contactsMode && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         if (!contactsOnly && !PhoneCallReader.hasCallLogPermission(activity)) {
@@ -87,7 +88,6 @@ internal class HomeTimelineCoordinator(
 
     fun setCrmMode(enabled: Boolean) {
         if (!HomeCrmModeStore.setEnabled(activity, enabled)) return
-        if (!enabled) setCrmContactsMode(false)
         contentRenderer.clearCalls()
         setActivePhoneFilter("")
         setPageIndex(0)
@@ -97,7 +97,7 @@ internal class HomeTimelineCoordinator(
     }
 
     fun toggleCrmContactsMode() {
-        if (!isCrmModeEnabled()) return
+        if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) return
         setCrmContactsMode(!isCrmContactsMode())
         contentRenderer.clearCalls()
         setPageIndex(0)
