@@ -219,8 +219,7 @@ class HomeActivity : AppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.crmContactsBackButton.setOnClickListener {
-            if (isFilteredFullLogMode()) timelineCoordinator.clearPhoneFilter()
-            else timelineCoordinator.returnToCallLog()
+            if (!timelineCoordinator.returnFromFullLog()) timelineCoordinator.returnToCallLog()
         }
         crmTimelineToggle
         activePhoneFilter = intent.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
@@ -242,6 +241,11 @@ class HomeActivity : AppCompatActivity() {
             timelineCoordinator::isOnLaterPage,
             timelineCoordinator::goToFirstPage,
         )
+    }
+
+    override fun onBackPressed() {
+        if (timelineCoordinator.returnFromFullLog()) return
+        super.onBackPressed()
     }
 
     override fun onNewIntent(intent: android.content.Intent?) {
