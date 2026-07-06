@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -30,6 +31,76 @@ internal object HomeCrmPhaseLookup {
         val missing = requested.filterKeys { cache["$scope|$it"] == null }.values.toList()
         if (missing.isNotEmpty()) fetchMissing(scope, config, missing)
         return requested.keys.mapNotNull { key -> cache["$scope|$key"]?.let { key to it } }.toMap()
+    }
+
+    /**
+     * Phase filtering must also see a just-edited local phase before its server
+     * round-trip completes. The ordinary batch lookup remains canonical for
+     * server data; local company state fills only absent server entries.
+     */
+    fun resolveEffectiveCompanyPhases(
+        context: Context,
+        config: AppConfig,
+        phones: List<String>,
+    ): Map<String, Map<String, Int>> {
+        val requested = linkedMapOf<String, String>()
+        phones.forEach { phone ->
+            HomeCallPageLoader.noteKey(phone).takeIf { it.isNotBlank() }?.let { requested.putIfAbsent(it, phone) }
+        }
+        if (requested.isEmpty()) return emptyMap()
+
+        // A temporary endpoint/network issue should not discard locally assigned
+        // phases and turn the selected phase filter into an empty list.
+        val remote = runCatching { resolveCompanyPhases(config, requested.values.toList()) }
+            .getOrDefault(emptyMap())
+        val result = requested.keys.associateWithTo(linkedMapOf()) { phoneKey ->
+            remote[phoneKey].orEmpty().toMutableMap()
+        }
+
+        val companyIds = linkedSetOf<String>()
+        remote.values.forEach { phases -> companyIds += phases.keys.filter { it.isNotBlank() } }
+        val cachedCompanies = CallReportTopicCompaniesCache
+            .read(context.applicationContext, config)
+            ?.companies
+            .orEmpty()
+        companyIds += cachedCompanies.map { it.id.trim() }.filter { it.isNotBlank() }
+        if (companyIds.isEmpty() && CallReportRemoteAccess.isReady(config)) {
+            val loadedCompanies = runCatching {
+                CallReportTopicCompaniesRepository.load(context.applicationContext, config).companies
+            }.getOrDefault(emptyList())
+            companyIds += loadedCompanies.map { it.id.trim() }.filter { it.isNotBlank() }
+        }
+        if (companyIds.isEmpty()) return result.filterValues { it.isNotEmpty() }
+
+        requested.forEach { (phoneKey, rawPhone) ->
+            val phases = result.getValue(phoneKey)
+            companyIds.forEach { companyId ->
+                val hasLocalCompanyState = CompanyNegotiationPhaseStore.hasSavedState(
+                    context,
+                    rawPhone,
+                    companyId,
+                )
+                if (hasLocalCompanyState) {
+                    val localPhase = CompanyNegotiationPhaseStore.state(context, rawPhone, companyId).phase
+                    if (localPhase in ContactNegotiationPhaseStore.PHASE_1..ContactNegotiationPhaseStore.PHASE_4) {
+                        phases[companyId] = localPhase
+                    } else {
+                        phases.remove(companyId)
+                    }
+                    return@forEach
+                }
+
+                // Retain the old phone-wide phase as a fallback only where the
+                // server did not already return a company-scoped phase.
+                if (companyId !in phases) {
+                    val legacyPhase = ContactNegotiationPhaseStore.state(context, rawPhone).phase
+                    if (legacyPhase in ContactNegotiationPhaseStore.PHASE_1..ContactNegotiationPhaseStore.PHASE_4) {
+                        phases[companyId] = legacyPhase
+                    }
+                }
+            }
+        }
+        return result.filterValues { it.isNotEmpty() }
     }
 
     private fun fetchMissing(scope: String, config: AppConfig, phones: List<String>) {
