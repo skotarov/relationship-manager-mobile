@@ -33,7 +33,8 @@ internal class HomeTimelineCoordinator(
         val crmEnabled = isCrmModeEnabled()
         val remoteReady = CallReportRemoteAccess.isReady(ConfigStore.load(activity))
         val contactsMode = remoteReady && isCrmContactsMode()
-        val showCrmFilters = crmEnabled && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
+        val showCrmFilters = (crmEnabled || contactsMode) &&
+            activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
         timelineToggle.prepare(remoteReady, contactsMode)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
