@@ -70,7 +70,6 @@ internal class HomeCrmContactRowRenderer(
                     visible = true,
                 )
             })
-            addView(historyButton(contact, title))
         })
         return card
     }
@@ -112,16 +111,5 @@ internal class HomeCrmContactRowRenderer(
             maxLines = 1
             setPadding(0, dp(2), 0, 0)
         }
-    }
-
-    private fun historyButton(contact: PhoneCallRecord, title: String): ImageButton = ImageButton(activity).apply {
-        setImageResource(R.drawable.ic_chat_note)
-        contentDescription = "Отвори историята на контакта"
-        background = null
-        setBackgroundColor(Color.TRANSPARENT)
-        scaleType = ImageView.ScaleType.CENTER
-        setPadding(dp(6), dp(6), dp(6), dp(6))
-        layoutParams = LinearLayout.LayoutParams(dp(34), dp(40)).apply { marginStart = dp(3) }
-        setOnClickListener { openContactNotes(contact, title) }
     }
 }
