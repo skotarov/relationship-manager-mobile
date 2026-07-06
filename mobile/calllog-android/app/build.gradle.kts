@@ -88,14 +88,6 @@ android {
         }
     }
 
-    // SmsDefaultAppSupport.kt already provides the active SmsDeliverReceiver.
-    // Keep the accidental duplicate source out of both build variants.
-    sourceSets {
-        getByName("main") {
-            java.exclude("**/SmsDeliverReceiver.kt")
-        }
-    }
-
     signingConfigs {
         getByName("debug") {
             storeFile = ensureFixedDebugKeystore()
