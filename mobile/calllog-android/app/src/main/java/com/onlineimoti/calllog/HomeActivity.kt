@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -216,8 +217,17 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
+        if (DistributionCapabilities.isPlayBusinessBuild && !CorporateAccess.isActive(this)) {
+            startActivity(Intent(this, CompanyAccountActivity::class.java).apply {
+                putExtra(CompanyAccountActivity.EXTRA_MODE, CompanyAccountActivity.MODE_LOGIN)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
+            finish()
+            return
+        }
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        crmContactsMode = DistributionCapabilities.isPlayBusinessBuild
         binding.crmContactsBackButton.setOnClickListener {
             if (!timelineCoordinator.returnFromFullLog()) timelineCoordinator.returnToCallLog()
         }
@@ -241,6 +251,7 @@ class HomeActivity : AppCompatActivity() {
             timelineCoordinator::isOnLaterPage,
             timelineCoordinator::goToFirstPage,
         )
+        if (DistributionCapabilities.isPlayBusinessBuild) binding.crmModeButton.visibility = View.GONE
     }
 
     override fun onBackPressed() {
@@ -313,20 +324,21 @@ class HomeActivity : AppCompatActivity() {
     /** Reuses the compact back-and-title header for both Contacts and a filtered full log. */
     private fun updateCrmContactsHeader() {
         if (!::binding.isInitialized) return
-        val contactsVisible = crmContactsMode && isServerReady()
+        val contactsVisible = isCrmContactsMode() && isServerReady()
         val fullLogVisible = !contactsVisible && isFilteredFullLogMode()
         val customHeaderVisible = contactsVisible || fullLogVisible
         binding.relationshipManagerWordmark.visibility = if (customHeaderVisible) View.GONE else View.VISIBLE
         binding.crmContactsHeader.visibility = if (customHeaderVisible) View.VISIBLE else View.GONE
         binding.crmContactsTitleText.text = when {
             fullLogVisible -> getString(R.string.open_full_log)
-            contactsVisible -> "Клиенти"
+            contactsVisible -> getString(R.string.runtime_crm_clients)
             else -> ""
         }
     }
 
     private fun requestSmsPermissionForFilteredHistoryIfNeeded() {
-        if (SmsMessageReader.hasReadSmsPermission(this) ||
+        if (!DistributionCapabilities.supportsLocalDeviceData ||
+            SmsMessageReader.hasReadSmsPermission(this) ||
             smsPermissionRequestInFlight ||
             smsPermissionPromptShownThisSession
         ) return
@@ -349,7 +361,7 @@ class HomeActivity : AppCompatActivity() {
 
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
     private fun isServerReady() = CallReportRemoteAccess.isReady(ConfigStore.load(this))
-    private fun isCrmContactsMode() = crmContactsMode
+    private fun isCrmContactsMode() = DistributionCapabilities.isPlayBusinessBuild || crmContactsMode
     private fun isFilteredFullLogMode() = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
     private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
