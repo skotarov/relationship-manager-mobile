@@ -17,7 +17,7 @@ internal class HomeCrmTimelineModeToggle(
     init { activeInstance = WeakReference(this) }
 
     fun prepare(visible: Boolean, contactsMode: Boolean) {
-        visibleInOverflow = visible
+        visibleInOverflow = visible && !DistributionCapabilities.isPlayBusinessBuild
         this.contactsMode = contactsMode
         if (contactsMode) binding.crmContactsTitleText.text = activity.getString(R.string.runtime_crm_clients)
         binding.homeStatusText.visibility = View.VISIBLE
