@@ -4,7 +4,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
-/** Draws the CRM contacts planning list while retaining Home's existing paging controls. */
+/** Draws the Customers RM planning list while retaining Home's existing paging controls. */
 internal class HomeCrmContactsContentView(
     private val activity: AppCompatActivity,
     private val binding: ActivityHomeBinding,
@@ -22,19 +22,19 @@ internal class HomeCrmContactsContentView(
     }
 
     fun showLoading() {
-        hideLocalCrmModeButton()
+        prepareCustomersHeader()
         timelineToggle.prepare(visible = true, contactsMode = true)
         binding.homeStatusText.text = if (AppLocaleText.isBulgarian()) {
-            "Зареждане на CRM контакти…"
+            "Зареждане на клиенти…"
         } else {
-            "Loading CRM contacts…"
+            "Loading customers…"
         }
         binding.fullLogProgress.visibility = View.VISIBLE
         binding.paginationContainer.visibility = View.GONE
     }
 
     fun render(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean = true) {
-        hideLocalCrmModeButton()
+        prepareCustomersHeader()
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
         binding.homeCallsContainer.removeAllViews()
@@ -62,16 +62,16 @@ internal class HomeCrmContactsContentView(
     }
 
     fun renderEmpty(pageSize: Int) {
-        hideLocalCrmModeButton()
+        prepareCustomersHeader()
         currentData = null
         contentRenderer.clearCalls()
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.homeStatusText.text = when {
-            hasActiveCrmFilters() && AppLocaleText.isBulgarian() -> "Няма CRM контакти за избраните филтри."
-            hasActiveCrmFilters() -> "No CRM contacts match the selected filters."
-            AppLocaleText.isBulgarian() -> "Няма контакти, отбелязани като CRM."
-            else -> "No contacts are marked as CRM."
+            hasActiveCrmFilters() && AppLocaleText.isBulgarian() -> "Няма клиенти за избраните филтри."
+            hasActiveCrmFilters() -> "No customers match the selected filters."
+            AppLocaleText.isBulgarian() -> "Няма клиенти в RM."
+            else -> "No customers in RM."
         }
         timelineToggle.showEmpty(contactsMode = true)
         PaginationButtonAppearance.apply(binding.previousCallsButton, pageIndex() > 0)
@@ -97,8 +97,9 @@ internal class HomeCrmContactsContentView(
         binding.paginationContainer.visibility = View.VISIBLE
     }
 
-    /** The CRM mode switch is relevant only to the local call-log view. */
-    private fun hideLocalCrmModeButton() {
+    /** This list is independent from the local CRM-mode switch. */
+    private fun prepareCustomersHeader() {
         binding.crmControlsScroll.visibility = View.GONE
+        binding.crmContactsTitleText.text = "Customers RM"
     }
 }
