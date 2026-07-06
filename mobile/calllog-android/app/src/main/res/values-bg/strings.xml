@@ -26,6 +26,10 @@
     <string name="crm_filter_direction_outgoing">Изходящи</string>
     <string name="crm_filter_direction_missed">Пропуснати</string>
     <string name="crm_filter_direction_sms">SMS</string>
+    <string name="crm_phase_filter_1">Фаза 1</string>
+    <string name="crm_phase_filter_2">Фаза 2</string>
+    <string name="crm_phase_filter_3">Фаза 3</string>
+    <string name="crm_phase_filter_4">Фаза 4</string>
     <string name="dynamic_home_no_crm_filter_results">Няма CRM разговори за избраните филтри.</string>
 
     <string name="settings_title">Настройки</string>
