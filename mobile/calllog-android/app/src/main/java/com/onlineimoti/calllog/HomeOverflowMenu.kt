@@ -14,21 +14,24 @@ internal object HomeOverflowMenu {
         PopupMenu(activity, anchor).apply {
             // AppCompat allows consistently visible menu icons across Android skins.
             setForceShowIcon(true)
+            val localDeviceActions = DistributionCapabilities.supportsLocalDeviceData
             val contactsMode = HomeCrmTimelineModeToggle.isContactsMode()
-            if (!contactsMode) {
+            if (localDeviceActions && !contactsMode) {
                 menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
                     .setIcon(R.drawable.ic_menu_call_history)
             }
-            if (HomeCrmTimelineModeToggle.isOverflowActionVisible() && !contactsMode) {
+            if (localDeviceActions && HomeCrmTimelineModeToggle.isOverflowActionVisible() && !contactsMode) {
                 menu.add(0, MENU_CRM_TIMELINE, 20, activity.getString(R.string.runtime_crm_clients))
                     .setIcon(R.drawable.ic_menu_customers_euro)
             }
-            menu.add(0, MENU_PHONE_CONTACTS, 30, activity.getString(R.string.runtime_menu_phone_contacts))
-                .setIcon(R.drawable.ic_menu_contacts)
-            menu.add(0, MENU_SMS, 40, activity.getString(R.string.runtime_menu_sms))
-                .setIcon(R.drawable.ic_menu_sms)
-            menu.add(0, MENU_CALENDAR, 50, activity.getString(R.string.runtime_menu_calendar))
-                .setIcon(R.drawable.ic_menu_calendar)
+            if (localDeviceActions) {
+                menu.add(0, MENU_PHONE_CONTACTS, 30, activity.getString(R.string.runtime_menu_phone_contacts))
+                    .setIcon(R.drawable.ic_menu_contacts)
+                menu.add(0, MENU_SMS, 40, activity.getString(R.string.runtime_menu_sms))
+                    .setIcon(R.drawable.ic_menu_sms)
+                menu.add(0, MENU_CALENDAR, 50, activity.getString(R.string.runtime_menu_calendar))
+                    .setIcon(R.drawable.ic_menu_calendar)
+            }
             menu.add(0, MENU_SETTINGS, 60, activity.getString(R.string.home_overflow_settings))
                 .setIcon(R.drawable.ic_menu_settings)
             setOnMenuItemClickListener { item ->
