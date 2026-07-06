@@ -162,29 +162,10 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/crmPhaseFilterButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:maxWidth="78dp"
-                    android:minHeight="0dp"
-                    android:minWidth="0dp"
-                    android:paddingStart="7dp"
-                    android:paddingEnd="7dp"
-                    android:text="@string/crm_filter_phases_all"
-                    android:textAllCaps="false"
-                    android:textSize="12sp"
-                    android:visibility="gone"
-                    app:cornerRadius="16dp" />
-
-                <com.google.android.material.button.MaterialButton
                     android:id="@+id/crmCompanyFilterButton"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:layout_marginStart="4dp"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:maxWidth="104dp"
@@ -219,6 +200,82 @@
                 android:src="@drawable/ic_phone_call"
                 android:visibility="gone" />
         </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/crmPhaseFilterRow"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/crmPhase1Button"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="2dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/crm_phase_filter_1"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            app:cornerRadius="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/crmPhase2Button"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="2dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/crm_phase_filter_2"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            app:cornerRadius="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/crmPhase3Button"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="2dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/crm_phase_filter_3"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            app:cornerRadius="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/crmPhase4Button"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/crm_phase_filter_4"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            app:cornerRadius="0dp" />
     </LinearLayout>
 
     <LinearLayout
