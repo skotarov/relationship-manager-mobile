@@ -1,0 +1,42 @@
+name: Play Release Readiness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/calllog-android/**'
+      - '.github/workflows/play-release-readiness.yml'
+  pull_request:
+    paths:
+      - 'mobile/calllog-android/**'
+      - '.github/workflows/play-release-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  play-manifest-and-build:
+    name: Verify Play manifest and debug variant
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/calllog-android
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify merged public Play manifest
+        run: bash tools/play/verify-play-manifest.sh
+
+      - name: Compile Play debug variant
+        run: ./gradlew --no-daemon :app:assemblePlayDebug
