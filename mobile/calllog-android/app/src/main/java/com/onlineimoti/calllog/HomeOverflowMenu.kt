@@ -10,21 +10,14 @@ import androidx.appcompat.widget.PopupMenu
 
 /** Keeps HomeActivity focused on state coordination rather than menu plumbing. */
 internal object HomeOverflowMenu {
-    fun show(
-        activity: AppCompatActivity,
-        anchor: View,
-        openSettings: () -> Unit,
-        isCrmModeEnabled: () -> Boolean,
-        isCrmContactsMode: () -> Boolean,
-        toggleCrmContactsMode: () -> Unit,
-    ) {
+    fun show(activity: AppCompatActivity, anchor: View, openSettings: () -> Unit) {
         PopupMenu(activity, anchor).apply {
             // AppCompat allows consistently visible menu icons across Android skins.
             setForceShowIcon(true)
             menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
                 .setIcon(R.drawable.ic_menu_call_history)
-            if (isCrmModeEnabled()) {
-                val contactsMode = isCrmContactsMode()
+            if (HomeCrmTimelineModeToggle.isOverflowActionVisible()) {
+                val contactsMode = HomeCrmTimelineModeToggle.isContactsMode()
                 menu.add(
                     0,
                     MENU_CRM_TIMELINE,
@@ -50,7 +43,7 @@ internal object HomeOverflowMenu {
                         true
                     }
                     MENU_CRM_TIMELINE -> {
-                        toggleCrmContactsMode()
+                        HomeCrmTimelineModeToggle.toggleFromOverflow()
                         true
                     }
                     MENU_PHONE_CONTACTS -> {
