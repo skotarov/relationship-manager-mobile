@@ -13,7 +13,7 @@ import com.google.android.material.button.MaterialButton
 
 /**
  * Shared compact pager button for the Home screens. It uses the same filled,
- * 42dp Material-button treatment as the SMS page and moves the pager to the
+ * 28dp Material-button treatment as the SMS page and moves the pager to the
  * natural end of the scrolling list rather than pinning it to the screen.
  */
 class HomePaginationButton @JvmOverloads constructor(
@@ -132,7 +132,7 @@ class HomePaginationButton @JvmOverloads constructor(
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
-        const val PAGER_HEIGHT_DP = 42
+        const val PAGER_HEIGHT_DP = 28
         const val PAGER_TOP_MARGIN_DP = 8
         const val PAGER_BOTTOM_MARGIN_DP = 12
         const val PAGE_LABEL_WEIGHT = 0.8f
