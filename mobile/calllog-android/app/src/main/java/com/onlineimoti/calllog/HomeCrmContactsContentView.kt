@@ -22,6 +22,7 @@ internal class HomeCrmContactsContentView(
     }
 
     fun showLoading() {
+        hideLocalCrmModeButton()
         timelineToggle.prepare(visible = true, contactsMode = true)
         binding.homeStatusText.text = if (AppLocaleText.isBulgarian()) {
             "Зареждане на CRM контакти…"
@@ -33,6 +34,7 @@ internal class HomeCrmContactsContentView(
     }
 
     fun render(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean = true) {
+        hideLocalCrmModeButton()
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
         binding.homeCallsContainer.removeAllViews()
@@ -60,6 +62,7 @@ internal class HomeCrmContactsContentView(
     }
 
     fun renderEmpty(pageSize: Int) {
+        hideLocalCrmModeButton()
         currentData = null
         contentRenderer.clearCalls()
         binding.homeCallsContainer.removeAllViews()
@@ -92,5 +95,10 @@ internal class HomeCrmContactsContentView(
         PaginationButtonAppearance.apply(binding.nextCallsButton, itemCount >= pageSize)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex() + 1)
         binding.paginationContainer.visibility = View.VISIBLE
+    }
+
+    /** The CRM mode switch is relevant only to the local call-log view. */
+    private fun hideLocalCrmModeButton() {
+        binding.crmControlsScroll.visibility = View.GONE
     }
 }
