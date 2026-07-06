@@ -19,8 +19,6 @@ import androidx.core.content.ContextCompat
 internal object SmsIncomingNotifications {
     private const val CHANNEL_ID = "relationship_manager_sms"
     private const val CHANNEL_NAME = "SMS"
-    private const val ACTION_OPEN_SMS = "com.onlineimoti.calllog.OPEN_SMS"
-    private const val ACTION_REPLY_SMS = "com.onlineimoti.calllog.REPLY_SMS"
 
     fun show(context: Context, phone: String, body: String) {
         if (!canPostNotifications(context) || phone.isBlank()) return
@@ -32,17 +30,18 @@ internal object SmsIncomingNotifications {
             context,
             notificationId,
             Intent(context, SmsHistoryActivity::class.java)
-                .setAction(ACTION_OPEN_SMS)
+                .setAction(SmsHistoryActivity.ACTION_OPEN_SMS)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val reply = PendingIntent.getActivity(
             context,
             notificationId xor 0x4F1BBCDC,
-            Intent(context, SmsComposeLaunchActivity::class.java)
-                .setAction(ACTION_REPLY_SMS)
-                .putExtra(SmsComposeLaunchActivity.EXTRA_PHONE, phone)
-                .putExtra(SmsComposeLaunchActivity.EXTRA_TITLE, title),
+            Intent(context, SmsHistoryActivity::class.java)
+                .setAction(SmsHistoryActivity.ACTION_REPLY_SMS)
+                .putExtra(SmsHistoryActivity.EXTRA_REPLY_PHONE, phone)
+                .putExtra(SmsHistoryActivity.EXTRA_REPLY_TITLE, title)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val preview = body.trim().ifBlank { "Ново SMS" }
