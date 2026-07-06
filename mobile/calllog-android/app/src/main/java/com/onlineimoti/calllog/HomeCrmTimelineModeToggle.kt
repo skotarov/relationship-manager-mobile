@@ -36,9 +36,12 @@ internal class HomeCrmTimelineModeToggle(
         binding.homeStatusText.visibility = View.VISIBLE
     }
 
-    private fun modeLabel(contactsMode: Boolean) = activity.getString(
-        if (contactsMode) R.string.runtime_crm_clients else R.string.crm_filter_all,
-    )
+    private fun modeLabel(contactsMode: Boolean): String = when {
+        contactsMode && AppLocaleText.isBulgarian() -> "Контакти"
+        contactsMode -> "Contacts"
+        AppLocaleText.isBulgarian() -> "Разговори"
+        else -> "Calls"
+    }
 
     companion object {
         private var activeInstance: WeakReference<HomeCrmTimelineModeToggle>? = null
