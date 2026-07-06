@@ -20,14 +20,14 @@ internal object HomeOverflowMenu {
                     .setIcon(R.drawable.ic_menu_call_history)
             }
             if (HomeCrmTimelineModeToggle.isOverflowActionVisible() && !contactsMode) {
-                menu.add(0, MENU_CRM_TIMELINE, 20, "Клиенти")
+                menu.add(0, MENU_CRM_TIMELINE, 20, activity.getString(R.string.runtime_crm_clients))
                     .setIcon(R.drawable.ic_menu_customers_euro)
             }
-            menu.add(0, MENU_PHONE_CONTACTS, 30, "Телефонни контакти")
+            menu.add(0, MENU_PHONE_CONTACTS, 30, activity.getString(R.string.runtime_menu_phone_contacts))
                 .setIcon(R.drawable.ic_menu_contacts)
-            menu.add(0, MENU_SMS, 40, "SMS")
+            menu.add(0, MENU_SMS, 40, activity.getString(R.string.runtime_menu_sms))
                 .setIcon(R.drawable.ic_menu_sms)
-            menu.add(0, MENU_CALENDAR, 50, "Календар")
+            menu.add(0, MENU_CALENDAR, 50, activity.getString(R.string.runtime_menu_calendar))
                 .setIcon(R.drawable.ic_menu_calendar)
             menu.add(0, MENU_SETTINGS, 60, activity.getString(R.string.home_overflow_settings))
                 .setIcon(R.drawable.ic_menu_settings)
@@ -88,7 +88,7 @@ internal object HomeOverflowMenu {
             tryStart(activity, launcherIntent) ||
             tryStart(activity, legacyIntent)
         if (!opened) {
-            Toast.makeText(activity, "Няма налично приложение за календар", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, activity.getString(R.string.runtime_calendar_app_unavailable), Toast.LENGTH_SHORT).show()
         }
     }
 
