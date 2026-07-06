@@ -133,7 +133,15 @@
             android:exported="false" />
         <activity
             android:name=".SmsHistoryActivity"
-            android:exported="false" />
+            android:exported="true"
+            android:launchMode="singleTop">
+            <!-- A tap on the phone's messaging entry opens SMS, not the call-log home screen. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.APP_MESSAGING" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".RecentCallsActivity"
             android:exported="false" />
