@@ -21,7 +21,7 @@ internal object HomeOverflowMenu {
             }
             if (HomeCrmTimelineModeToggle.isOverflowActionVisible() && !contactsMode) {
                 menu.add(0, MENU_CRM_TIMELINE, 20, "Клиенти")
-                    .setIcon(R.drawable.ic_menu_contacts)
+                    .setIcon(R.drawable.ic_menu_customers_euro)
             }
             menu.add(0, MENU_PHONE_CONTACTS, 30, "Телефонни контакти")
                 .setIcon(R.drawable.ic_menu_contacts)
