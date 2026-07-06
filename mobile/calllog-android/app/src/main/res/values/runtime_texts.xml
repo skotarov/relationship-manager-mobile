@@ -1,0 +1,20 @@
+<resources>
+    <string name="runtime_crm_clients">Clients</string>
+    <string name="runtime_mode_calls">Calls</string>
+    <string name="runtime_menu_phone_contacts">Phone contacts</string>
+    <string name="runtime_menu_sms">SMS</string>
+    <string name="runtime_menu_calendar">Calendar</string>
+    <string name="runtime_calendar_app_unavailable">No calendar app available</string>
+    <string name="runtime_view_only">View only</string>
+    <string name="runtime_foreign_note_view_only">Another person’s note is view only</string>
+    <string name="runtime_open_crm_history_for">Open CRM history for %1$s</string>
+    <string name="runtime_open_contact_history">Open contact history</string>
+    <string name="runtime_configure_cloud_for_sms_company">Enable and configure Cloud sync to choose a company for SMS.</string>
+    <string name="runtime_crm_calls_loading">Loading CRM calls…</string>
+    <string name="runtime_dial_number">Call %1$s</string>
+    <string name="runtime_timeline_today">Today</string>
+    <string name="runtime_timeline_yesterday">Yesterday</string>
+    <string name="runtime_timeline_days_ago">%1$d days ago</string>
+    <string name="runtime_timeline_tomorrow">Tomorrow</string>
+    <string name="runtime_timeline_in_days">in %1$d days</string>
+</resources>

@@ -36,7 +36,7 @@ internal class HomeActions(
         renderedNote: HomeCallNote? = null,
     ) {
         if (renderedNote?.editable == false) {
-            binding.homeStatusText.text = "Чуждата бележка е само за преглед"
+            binding.homeStatusText.text = activity.getString(R.string.runtime_foreign_note_view_only)
             return
         }
         val config = ConfigStore.load(activity)

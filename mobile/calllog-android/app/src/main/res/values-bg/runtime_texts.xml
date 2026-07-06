@@ -1,0 +1,19 @@
+<resources>
+    <string name="runtime_crm_clients">Клиенти</string>
+    <string name="runtime_menu_phone_contacts">Телефонни контакти</string>
+    <string name="runtime_menu_sms">SMS</string>
+    <string name="runtime_menu_calendar">Календар</string>
+    <string name="runtime_calendar_app_unavailable">Няма налично приложение за календар</string>
+    <string name="runtime_view_only">Само за преглед</string>
+    <string name="runtime_foreign_note_view_only">Чуждата бележка е само за преглед</string>
+    <string name="runtime_open_crm_history_for">Отвори CRM историята на %1$s</string>
+    <string name="runtime_open_contact_history">Отвори историята на контакта</string>
+    <string name="runtime_configure_cloud_for_sms_company">За избор на фирма за SMS включи и настрой Cloud sync.</string>
+    <string name="runtime_crm_calls_loading">Зареждане на CRM разговори…</string>
+    <string name="runtime_dial_number">Набери %1$s</string>
+    <string name="runtime_timeline_today">Днес</string>
+    <string name="runtime_timeline_yesterday">Вчера</string>
+    <string name="runtime_timeline_days_ago">преди %1$d дни</string>
+    <string name="runtime_timeline_tomorrow">Утре</string>
+    <string name="runtime_timeline_in_days">след %1$d дни</string>
+</resources>
