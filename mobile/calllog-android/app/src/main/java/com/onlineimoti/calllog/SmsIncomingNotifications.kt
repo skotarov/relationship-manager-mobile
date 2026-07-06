@@ -13,8 +13,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
 /**
- * Adapts an incoming device SMS to the existing SMS inbox.
- * It does not introduce a second conversation interface.
+ * Adapts an incoming device SMS to the existing SMS inbox and existing composer.
+ * It deliberately does not create a second conversation interface.
  */
 internal object SmsIncomingNotifications {
     private const val CHANNEL_ID = "relationship_manager_sms"
@@ -35,6 +35,15 @@ internal object SmsIncomingNotifications {
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val reply = PendingIntent.getActivity(
+            context,
+            notificationId xor 0x4F1BBCDC,
+            Intent(context, NoteEditorLaunchActivity::class.java)
+                .putExtra(PostCallOverlayService.EXTRA_MODE, NoteEditorLaunchActivity.MODE_SMS_REPLY)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, title),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val preview = body.trim().ifBlank { "Ново SMS" }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_transparent)
@@ -45,6 +54,7 @@ internal object SmsIncomingNotifications {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(openInbox)
+            .addAction(R.drawable.ic_menu_sms, "Отговори", reply)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
