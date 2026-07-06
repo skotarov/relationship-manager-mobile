@@ -54,10 +54,6 @@ class HomePaginationButton @JvmOverloads constructor(
         val oldPagerParent = pager.parent as? ViewGroup ?: return
         val scrollContent = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = ScrollView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
         }
         scroll.removeView(list)
         oldPagerParent.removeView(pager)
@@ -78,7 +74,13 @@ class HomePaginationButton @JvmOverloads constructor(
                 bottomMargin = dp(PAGER_BOTTOM_MARGIN_DP)
             },
         )
-        scroll.addView(scrollContent)
+        scroll.addView(
+            scrollContent,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
     }
 
     private fun applyCompactPagerGeometry() {
