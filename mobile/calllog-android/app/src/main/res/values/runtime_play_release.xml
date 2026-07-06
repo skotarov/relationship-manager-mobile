@@ -1,0 +1,4 @@
+<resources>
+    <string name="runtime_play_corporate_crm_ready">Your company profile is active. The Google Play version uses the secure server CRM and does not request phone, SMS, contacts, or overlay permissions.</string>
+    <string name="runtime_play_local_feature_unavailable">This local device feature is available only in the internal company build.</string>
+</resources>
