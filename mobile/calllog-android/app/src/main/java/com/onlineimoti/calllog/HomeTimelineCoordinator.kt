@@ -24,6 +24,8 @@ internal class HomeTimelineCoordinator(
     private val onCrmModeChanged: () -> Unit,
     private val requestSmsPermission: () -> Unit,
 ) {
+    private var fullLogReturnState: FullLogReturnState? = null
+
     fun renderCalls() {
         val callsGeneration = callsLoader.invalidate()
         val contactsGeneration = contactsLoader.invalidate()
@@ -89,6 +91,7 @@ internal class HomeTimelineCoordinator(
 
     fun setCrmMode(enabled: Boolean) {
         if (!HomeCrmModeStore.setEnabled(activity, enabled)) return
+        fullLogReturnState = null
         contentRenderer.clearCalls()
         setActivePhoneFilter("")
         setPageIndex(0)
@@ -103,6 +106,7 @@ internal class HomeTimelineCoordinator(
             returnToCallLog()
             return
         }
+        fullLogReturnState = null
         setCrmContactsMode(true)
         contentRenderer.clearCalls()
         setPageIndex(0)
@@ -114,6 +118,7 @@ internal class HomeTimelineCoordinator(
     /** Leaves the server contacts screen and restores the regular Home call log. */
     fun returnToCallLog() {
         if (!isCrmContactsMode()) return
+        fullLogReturnState = null
         setCrmContactsMode(false)
         contentRenderer.clearCalls()
         setActivePhoneFilter("")
@@ -126,25 +131,55 @@ internal class HomeTimelineCoordinator(
     fun togglePhoneFilter(number: String) {
         if (isCrmModeEnabled() && !HomeCallPageLoader.isCrmEligible(activity, number)) return
         val key = HomeCallPageLoader.noteKey(number)
-        setActivePhoneFilter(
-            if (activePhoneFilter().isNotBlank() && HomeCallPageLoader.noteKey(activePhoneFilter()) == key) "" else number,
-        )
+        val currentPhone = activePhoneFilter()
+        if (currentPhone.isNotBlank() && HomeCallPageLoader.noteKey(currentPhone) == key) {
+            returnFromFullLog()
+            return
+        }
+        if (currentPhone.isBlank()) {
+            fullLogReturnState = FullLogReturnState(
+                pageIndex = pageIndex(),
+                crmContactsMode = isCrmContactsMode(),
+            )
+        }
+        setActivePhoneFilter(number)
         setPageIndex(0)
         filteredFullLog.invalidate()
         onCrmModeChanged()
         renderCalls()
     }
 
+    /**
+     * Returns from the filtered full-log screen to the exact Home list state from
+     * which it was opened. It is shared by the toolbar arrow and Android Back.
+     */
+    fun returnFromFullLog(): Boolean {
+        if (!isFilteredFullLogMode()) return false
+        val returnState = fullLogReturnState
+        fullLogReturnState = null
+        setActivePhoneFilter("")
+        setPageIndex(returnState?.pageIndex ?: 0)
+        returnState?.let { setCrmContactsMode(it.crmContactsMode) }
+        filteredFullLog.invalidate()
+        onCrmModeChanged()
+        renderCalls()
+        return true
+    }
+
     fun clearPhoneFilter() {
+        if (returnFromFullLog()) return
         if (activePhoneFilter().isBlank()) return
         setActivePhoneFilter("")
         setPageIndex(0)
         filteredFullLog.invalidate()
-        // The full-log back arrow changes only the filter state. Notify the
-        // header immediately instead of waiting for the next call-list render.
         onCrmModeChanged()
         renderCalls()
     }
 
     private fun isFilteredFullLogMode(): Boolean = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
+
+    private data class FullLogReturnState(
+        val pageIndex: Int,
+        val crmContactsMode: Boolean,
+    )
 }
