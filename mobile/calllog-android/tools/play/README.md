@@ -12,9 +12,11 @@ Use Bash on Linux, macOS, WSL or Termux. The helper requires `gcloud`, `jq`, `cu
 bash tools/play/playctl.sh --help
 ```
 
+For the owner-facing checklist for tomorrow, see [PLAY_CONSOLE_TOMORROW.md](PLAY_CONSOLE_TOMORROW.md).
+
 ## What cannot be automated
 
-The first Play Console app creation has legal declarations and owner-level acceptance, so create it once in Play Console before calling the API scripts:
+The first Play Console app creation has legal declarations and owner-level acceptance, so create it once in Play Console before using the API scripts:
 
 - app name: **Relationship Manager**
 - type: **App**
@@ -39,7 +41,21 @@ The command creates:
 
 Back up both the `.jks` and recovery file offline. Do not commit, email or upload them.
 
-### 2. Create the Google Cloud service account
+### 2. Build the first signed Play AAB
+
+The `versionCode` must be higher on every Google Play upload.
+
+```bash
+bash tools/play/playctl.sh build-play-aab 1000000001 1.0.0
+```
+
+The script prints the generated `.aab` path. It builds the public `playRelease` flavor, not the legacy internal APK.
+
+### 3. Create the Play Console app and upload the first AAB manually
+
+The app owner must create the app and finish Play Console's initial owner-only declarations. Upload the first signed AAB through **Testing → Internal testing**. This establishes the app and package in Play Console, after which a service account can be granted app-level access.
+
+### 4. Create the Google Cloud service account
 
 Choose a globally unique Google Cloud project ID, for example `onlineimoti-relationship-manager`.
 
@@ -49,9 +65,9 @@ bash tools/play/playctl.sh create-service-account \
   "$HOME/.config/relationship-manager/google-play-service-account.json"
 ```
 
-The script enables Android Publisher API and prints the exact service-account email. In Play Console, invite that email under **Users and permissions** and grant the permissions printed by the script. This owner/admin step cannot be bypassed by a local script.
+The script enables Android Publisher API and prints the exact service-account email. In Play Console, invite that email under **Users and permissions**, give it access to the Relationship Manager app, and grant the permissions printed by the script. This owner/admin step cannot be bypassed by a local script.
 
-### 3. Verify Play API access
+### 5. Verify Play API access
 
 After inviting the service account and giving it access to the app:
 
@@ -62,7 +78,7 @@ bash tools/play/playctl.sh verify-play-access \
 
 A successful command prints the package and the currently visible one-time products.
 
-### 4. Create the one-time company-license product
+### 6. Create the one-time company-license product
 
 Choose the price in BGN. This example creates it at 19.90 BGN:
 
@@ -74,17 +90,7 @@ bash tools/play/playctl.sh create-company-license-product \
 
 The command is safe to repeat: it checks whether `rm_company_license` already exists and does not overwrite it.
 
-### 5. Build a signed Play AAB
-
-The `versionCode` must be higher on every Google Play upload.
-
-```bash
-bash tools/play/playctl.sh build-play-aab 1000000001 1.0.0
-```
-
-The script prints the generated `.aab` path. It builds the public `playRelease` flavor, not the legacy internal APK.
-
-### 6. Upload to Internal testing
+### 7. Future uploads to Internal testing
 
 ```bash
 bash tools/play/playctl.sh publish-internal \
