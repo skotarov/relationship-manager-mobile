@@ -6,6 +6,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +28,7 @@ internal class HomeContentRenderer(
     private val dp: (Int) -> Int,
     private val roundedRect: (Int, Int, Int, Int) -> GradientDrawable,
     private val rowRenderer: HomeCallRowRenderer,
+    private val dialFilteredPhone: (String) -> Unit,
     private val companyGeneralNotes: HomeCompanyGeneralNotesController,
     private val scopeChipsUi: HomeCompanyScopeChipsUi,
 ) {
@@ -49,7 +52,7 @@ internal class HomeContentRenderer(
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, pageSize)
         if (!keepExistingRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
-        binding.clearFilterButton.visibility = if (activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
+        binding.clearFilterButton.visibility = if (isFilteredFullLogMode()) View.GONE else if (activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
         updateCrmModeControls()
         updatePhoneFilterStatusStyle()
         renderFilteredContactSummary()
@@ -184,17 +187,17 @@ internal class HomeContentRenderer(
         val crm = CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
             CrmContactSyncStore.isEnabled(activity.applicationContext, phone)
         val note = ContactNoteReader.generalNoteForPhone(activity, phone).orEmpty()
+        val identity = scopeChipsUi.inlineCrmIdentity(
+            identity = name.ifBlank { phone },
+            labels = labels,
+            crmClient = crm,
+        )
         container.visibility = View.VISIBLE
-        container.addView(summaryText(
-            value = scopeChipsUi.inlineCrmIdentity(
-                identity = name.ifBlank { phone },
-                labels = labels,
-                crmClient = crm,
-            ),
-            size = 18f,
-            bold = true,
-            bottom = dp(2),
-        ))
+        if (isFilteredFullLogMode()) {
+            container.addView(fullLogContactHeader(phone, identity))
+        } else {
+            container.addView(summaryText(identity, size = 18f, bold = true, bottom = dp(2)))
+        }
         if (name.isNotBlank()) container.addView(summaryText(phone, 14f, bold = false, bottom = dp(2)))
         if (note.isNotBlank()) {
             val colors = NoteUiStyle.General
@@ -220,6 +223,35 @@ internal class HomeContentRenderer(
             visible = true,
         )
         companyGeneralNotes.refresh(listOf(summary))
+    }
+
+    /** Full-log contact row: call action first, then the contact's identity. */
+    private fun fullLogContactHeader(phone: String, identity: CharSequence): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            addView(ImageButton(activity).apply {
+                setImageResource(R.drawable.ic_phone_call)
+                contentDescription = "Набери $phone"
+                background = null
+                setBackgroundColor(Color.TRANSPARENT)
+                scaleType = ImageView.ScaleType.CENTER
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+                layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(4) }
+                setOnClickListener { dialFilteredPhone(phone) }
+            })
+            addView(summaryText(identity, size = 18f, bold = true, bottom = dp(2)).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
+            })
+        }
     }
 
     private fun summaryText(value: CharSequence, size: Float, bold: Boolean, bottom: Int): TextView = TextView(activity).apply {
@@ -261,8 +293,10 @@ internal class HomeContentRenderer(
 
     private fun updatePhoneFilterStatusStyle() {
         val filtered = activePhoneFilter().isNotBlank()
-        binding.filteredDialButton.visibility = if (filtered) View.VISIBLE else View.GONE
-        if (filtered) {
+        val fullLog = isFilteredFullLogMode()
+        binding.homeStatusRow.visibility = if (fullLog) View.GONE else View.VISIBLE
+        binding.filteredDialButton.visibility = if (filtered && !fullLog) View.VISIBLE else View.GONE
+        if (filtered && !fullLog) {
             binding.filteredStatusContainer.background = roundedRect(
                 Color.rgb(255, 237, 213),
                 dp(12),
@@ -281,6 +315,9 @@ internal class HomeContentRenderer(
             binding.homeStatusText.setPadding(0, 0, 0, 0)
         }
     }
+
+    private fun isFilteredFullLogMode(): Boolean =
+        activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
 
     private fun updateCrmModeControls() {
         val serverEnabled = HomeCrmModeStore.isAvailable(activity)
