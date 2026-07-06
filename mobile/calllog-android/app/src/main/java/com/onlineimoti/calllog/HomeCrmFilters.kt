@@ -69,7 +69,8 @@ internal object HomeCrmFilterEngine {
         state: HomeCrmFilterState,
     ): List<PhoneCallRecord> {
         if (!state.hasPhaseFilter || calls.isEmpty()) return calls
-        val phasesByCompanyByPhone = HomeCrmPhaseLookup.resolveCompanyPhases(
+        val phasesByCompanyByPhone = HomeCrmPhaseLookup.resolveEffectiveCompanyPhases(
+            context = context.applicationContext,
             config = ConfigStore.load(context.applicationContext),
             phones = calls.map { it.number },
         )
