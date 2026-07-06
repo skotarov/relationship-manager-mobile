@@ -12,7 +12,7 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** CRM Home filter controls: multi-select phases and topics. */
+/** CRM Home filter controls: full-width phase buttons and a topic picker. */
 internal class HomeCrmFiltersController(
     private val activity: HomeActivity,
     private val binding: ActivityHomeBinding,
@@ -28,7 +28,10 @@ internal class HomeCrmFiltersController(
     private var lastRequestedAccount = ""
 
     init {
-        binding.crmPhaseFilterButton.setOnClickListener { showPhaseDialog() }
+        binding.crmPhase1Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_1) }
+        binding.crmPhase2Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_2) }
+        binding.crmPhase3Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_3) }
+        binding.crmPhase4Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_4) }
         binding.crmCompanyFilterButton.setOnClickListener { showCompanyDialog() }
     }
 
@@ -36,15 +39,15 @@ internal class HomeCrmFiltersController(
 
     fun hasActiveFilters(): Boolean = state.isActive
 
-    fun updateVisibility(crmModeEnabled: Boolean) {
-        binding.crmPhaseFilterButton.visibility = if (crmModeEnabled) View.VISIBLE else View.GONE
-        binding.crmCompanyFilterButton.visibility = if (crmModeEnabled) View.VISIBLE else View.GONE
-        binding.filteredStatusContainer.gravity = if (crmModeEnabled) {
+    fun updateVisibility(filtersEnabled: Boolean) {
+        binding.crmPhaseFilterRow.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
+        binding.crmCompanyFilterButton.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
+        binding.filteredStatusContainer.gravity = if (filtersEnabled) {
             Gravity.CENTER_VERTICAL or Gravity.END
         } else {
             Gravity.CENTER_VERTICAL
         }
-        if (!crmModeEnabled) return
+        if (!filtersEnabled) return
         loadCachedCompanies()
         renderButtons()
         refreshCompaniesIfNeeded()
@@ -82,42 +85,10 @@ internal class HomeCrmFiltersController(
         if (cached != companies) companies = cached
     }
 
-    private fun showPhaseDialog() {
-        val phases = listOf(
-            ContactNegotiationPhaseStore.PHASE_1,
-            ContactNegotiationPhaseStore.PHASE_2,
-            ContactNegotiationPhaseStore.PHASE_3,
-            ContactNegotiationPhaseStore.PHASE_4,
-        )
-        val labels = listOf(activity.getString(R.string.crm_filter_all)) + phases.map(::phaseLabel)
-        val selected = state.phases.toMutableSet()
-        val checked = BooleanArray(labels.size) { index ->
-            if (index == 0) selected.isEmpty() else phases[index - 1] in selected
-        }
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.crm_filter_select_phases)
-            .setMultiChoiceItems(labels.toTypedArray(), checked) { dialog, which, isChecked ->
-                val alert = dialog as? AlertDialog
-                when (which) {
-                    0 -> {
-                        if (isChecked || selected.isEmpty()) {
-                            selected.clear()
-                            for (index in 1 until labels.size) alert?.listView?.setItemChecked(index, false)
-                            alert?.listView?.setItemChecked(0, true)
-                        }
-                    }
-                    else -> {
-                        val phase = phases[which - 1]
-                        if (isChecked) selected.add(phase) else selected.remove(phase)
-                        alert?.listView?.setItemChecked(0, selected.isEmpty())
-                    }
-                }
-            }
-            .setNegativeButton(R.string.crm_filter_cancel, null)
-            .setPositiveButton(R.string.crm_filter_apply) { _, _ ->
-                updateState(state.copy(phases = selected.toSet()))
-            }
-            .show()
+    private fun togglePhase(phase: Int) {
+        val phases = state.phases.toMutableSet()
+        if (!phases.add(phase)) phases.remove(phase)
+        updateState(state.copy(phases = phases))
     }
 
     private fun showCompanyDialog() {
@@ -172,17 +143,31 @@ internal class HomeCrmFiltersController(
     }
 
     private fun renderButtons() {
-        binding.crmPhaseFilterButton.text = phaseButtonText()
         binding.crmCompanyFilterButton.text = companyButtonText()
-        styleFilterButton(binding.crmPhaseFilterButton, state.hasPhaseFilter)
         styleFilterButton(binding.crmCompanyFilterButton, state.hasCompanyFilter)
-    }
-
-    private fun phaseButtonText(): String {
-        if (!state.hasPhaseFilter) return activity.getString(R.string.crm_filter_phases_all)
-        return activity.getString(
-            R.string.crm_filter_phases_selected,
-            state.phases.sorted().joinToString(", "),
+        stylePhaseButton(
+            button = binding.crmPhase1Button,
+            phase = ContactNegotiationPhaseStore.PHASE_1,
+            activeColor = COLOR_GREEN,
+            activeTextColor = Color.WHITE,
+        )
+        stylePhaseButton(
+            button = binding.crmPhase2Button,
+            phase = ContactNegotiationPhaseStore.PHASE_2,
+            activeColor = COLOR_BLUE,
+            activeTextColor = Color.WHITE,
+        )
+        stylePhaseButton(
+            button = binding.crmPhase3Button,
+            phase = ContactNegotiationPhaseStore.PHASE_3,
+            activeColor = COLOR_YELLOW,
+            activeTextColor = COLOR_DARK_TEXT,
+        )
+        stylePhaseButton(
+            button = binding.crmPhase4Button,
+            phase = ContactNegotiationPhaseStore.PHASE_4,
+            activeColor = COLOR_RED,
+            activeTextColor = Color.WHITE,
         )
     }
 
@@ -196,21 +181,34 @@ internal class HomeCrmFiltersController(
         return activity.getString(R.string.crm_filter_companies_selected, state.companyIds.size)
     }
 
-    private fun phaseLabel(phase: Int): String = activity.getString(
-        when (phase) {
-            ContactNegotiationPhaseStore.PHASE_1 -> R.string.contact_phase_1
-            ContactNegotiationPhaseStore.PHASE_2 -> R.string.contact_phase_2
-            ContactNegotiationPhaseStore.PHASE_3 -> R.string.contact_phase_3
-            ContactNegotiationPhaseStore.PHASE_4 -> R.string.contact_phase_4
-            else -> R.string.crm_filter_phase_all
-        },
-    )
+    private fun stylePhaseButton(
+        button: MaterialButton,
+        phase: Int,
+        activeColor: Int,
+        activeTextColor: Int,
+    ) {
+        val selected = phase in state.phases
+        val color = if (selected) activeColor else COLOR_INACTIVE
+        button.isSelected = selected
+        button.backgroundTintList = ColorStateList.valueOf(color)
+        button.strokeColor = ColorStateList.valueOf(color)
+        button.setTextColor(if (selected) activeTextColor else COLOR_DARK_TEXT)
+    }
 
     private fun styleFilterButton(button: MaterialButton, active: Boolean) {
         val fill = if (active) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
-        val border = if (active) activity.getColor(R.color.callreport_icon_background) else Color.rgb(203, 213, 225)
+        val border = if (active) activity.getColor(R.color.callreport_icon_background) else COLOR_INACTIVE
         button.backgroundTintList = ColorStateList.valueOf(fill)
         button.strokeColor = ColorStateList.valueOf(border)
-        button.setTextColor(if (active) Color.WHITE else Color.rgb(51, 65, 85))
+        button.setTextColor(if (active) Color.WHITE else COLOR_DARK_TEXT)
+    }
+
+    private companion object {
+        val COLOR_INACTIVE: Int = Color.rgb(203, 213, 225)
+        val COLOR_DARK_TEXT: Int = Color.rgb(51, 65, 85)
+        val COLOR_GREEN: Int = Color.rgb(22, 163, 74)
+        val COLOR_BLUE: Int = Color.rgb(37, 99, 235)
+        val COLOR_YELLOW: Int = Color.rgb(250, 204, 21)
+        val COLOR_RED: Int = Color.rgb(220, 38, 38)
     }
 }
