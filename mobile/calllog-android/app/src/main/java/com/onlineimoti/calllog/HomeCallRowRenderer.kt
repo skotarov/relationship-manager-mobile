@@ -165,7 +165,7 @@ internal class HomeCallRowRenderer(
         val editable = note?.editable != false
         addView(iconButton(
             R.drawable.ic_chat_note,
-            if (editable) activity.getString(R.string.dynamic_action_note) else "Само за преглед",
+            if (editable) activity.getString(R.string.dynamic_action_note) else activity.getString(R.string.runtime_view_only),
             { openContactNotePopupForCall(call, name, note) }, editable,
         ))
     }
