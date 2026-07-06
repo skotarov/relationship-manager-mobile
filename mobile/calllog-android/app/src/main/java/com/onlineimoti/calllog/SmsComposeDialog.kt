@@ -28,13 +28,18 @@ internal class SmsComposeDialog(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val subscriptionChooser by lazy { SmsSubscriptionChooser(activity, dp, ::roundedRect) }
 
-    fun show(phone: String, title: String) {
-        if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) return
+    /** The optional callback is used only by transparent notification launchers. */
+    fun show(phone: String, title: String, onDismiss: (() -> Unit)? = null) {
+        if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) {
+            onDismiss?.invoke()
+            return
+        }
         runCatching {
             val dialog = Dialog(activity).apply { requestWindowFeature(Window.FEATURE_NO_TITLE) }
             val views = content(dialog, phone, title)
             dialog.setContentView(views.root)
             dialog.setOnShowListener { configureWindow(dialog, views.messageInput) }
+            dialog.setOnDismissListener { onDismiss?.invoke() }
             dialog.show()
         }.onFailure { error ->
             Toast.makeText(
@@ -42,6 +47,7 @@ internal class SmsComposeDialog(
                 error.message.orEmpty().ifBlank { activity.getString(R.string.dynamic_sms_open_failed) },
                 Toast.LENGTH_LONG,
             ).show()
+            onDismiss?.invoke()
         }
     }
 
