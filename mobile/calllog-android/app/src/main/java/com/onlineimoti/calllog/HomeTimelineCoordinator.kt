@@ -90,7 +90,7 @@ internal class HomeTimelineCoordinator(
     }
 
     fun setCrmMode(enabled: Boolean) {
-        if (!HomeCrmModeStore.setEnabled(activity, enabled)) return
+        if (DistributionCapabilities.isPlayBusinessBuild || !HomeCrmModeStore.setEnabled(activity, enabled)) return
         fullLogReturnState = null
         contentRenderer.clearCalls()
         setActivePhoneFilter("")
@@ -101,7 +101,7 @@ internal class HomeTimelineCoordinator(
     }
 
     fun toggleCrmContactsMode() {
-        if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) return
+        if (DistributionCapabilities.isPlayBusinessBuild || !CallReportRemoteAccess.isReady(ConfigStore.load(activity))) return
         if (isCrmContactsMode()) {
             returnToCallLog()
             return
@@ -117,7 +117,7 @@ internal class HomeTimelineCoordinator(
 
     /** Leaves the server contacts screen and restores the regular Home call log. */
     fun returnToCallLog() {
-        if (!isCrmContactsMode()) return
+        if (DistributionCapabilities.isPlayBusinessBuild || !isCrmContactsMode()) return
         fullLogReturnState = null
         setCrmContactsMode(false)
         contentRenderer.clearCalls()
@@ -129,7 +129,9 @@ internal class HomeTimelineCoordinator(
     }
 
     fun togglePhoneFilter(number: String) {
-        if (isCrmModeEnabled() && !HomeCallPageLoader.isCrmEligible(activity, number)) return
+        if (DistributionCapabilities.isPlayBusinessBuild ||
+            (isCrmModeEnabled() && !HomeCallPageLoader.isCrmEligible(activity, number))
+        ) return
         val key = HomeCallPageLoader.noteKey(number)
         val currentPhone = activePhoneFilter()
         if (currentPhone.isNotBlank() && HomeCallPageLoader.noteKey(currentPhone) == key) {
