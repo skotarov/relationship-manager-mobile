@@ -86,12 +86,12 @@ class MainActivity : AppCompatActivity() {
         currentLanguage = ConfigStore.load(this).appLanguage
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        syncPrivateNotesToSharedStorageWhenAvailable()
+        if (DistributionCapabilities.supportsLocalDeviceData) syncPrivateNotesToSharedStorageWhenAvailable()
         CallReportRuntime.ensureNotificationChannel(this)
         hydrateFields()
         refreshPermissionSummary()
         renderBuildVersion()
-        contactsCleanupController.addProgressBar()
+        if (DistributionCapabilities.supportsLocalDeviceData) contactsCleanupController.addProgressBar()
         settingsAutoSaveController.wire()
         translationSettingsController.wire()
         serverSyncQueueStatusController.wire()
@@ -109,9 +109,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        syncPrivateNotesToSharedStorageWhenAvailable()
-        contactsCleanupController.addProgressBar()
-        contactsCleanupController.refreshFromCurrentTask()
+        if (DistributionCapabilities.supportsLocalDeviceData) {
+            syncPrivateNotesToSharedStorageWhenAvailable()
+            contactsCleanupController.addProgressBar()
+            contactsCleanupController.refreshFromCurrentTask()
+        }
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
         if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
@@ -126,6 +128,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun configureBuildSpecificSettings() {
         val permissionsSection = binding.settingsApplicationGroup.permissionsSection.statusSmsPermissionsSection.root
+        if (DistributionCapabilities.isPlayBusinessBuild) {
+            binding.settingsMenuGroup.settingsApplicationButton.visibility = android.view.View.GONE
+            binding.settingsMenuGroup.settingsPopupButton.visibility = android.view.View.GONE
+            binding.settingsMenuGroup.settingsRmContactsButton.visibility = android.view.View.GONE
+            binding.settingsMenuGroup.settingsDataArchiveButton.visibility = android.view.View.GONE
+            binding.settingsApplicationGroup.root.visibility = android.view.View.GONE
+            binding.settingsPopupGroup.root.visibility = android.view.View.GONE
+            binding.settingsRmContactsGroup.root.visibility = android.view.View.GONE
+            binding.settingsDataArchiveGroup.root.visibility = android.view.View.GONE
+            return
+        }
         if (BuildConfig.DEBUG) {
             permissionsSection.visibility = android.view.View.VISIBLE
             defaultSmsSettingsController.wire()
