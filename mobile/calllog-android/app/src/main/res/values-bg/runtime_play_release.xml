@@ -1,0 +1,4 @@
+<resources>
+    <string name="runtime_play_corporate_crm_ready">Фирменият профил е активен. Версията от Google Play използва защитения сървърен CRM и не изисква разрешения за телефон, SMS, контакти или изскачащи прозорци.</string>
+    <string name="runtime_play_local_feature_unavailable">Тази локална функция на телефона е налична само във вътрешната фирмена версия.</string>
+</resources>
