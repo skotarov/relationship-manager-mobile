@@ -1,4 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      The public Google Play build is a server-backed business CRM. Local call-log,
+      SMS, overlay and contact-provider features stay in the separate internal APK.
+    -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
+
+    <application>
+        <service android:name=".CallReportAuthenticatorService" tools:node="remove" />
+        <service android:name=".CallReportSyncService" tools:node="remove" />
+        <service android:name=".CallReportTileService" tools:node="remove" />
+        <service android:name=".PostCallOverlayService" tools:node="remove" />
+        <service android:name=".CallScreeningBridgeService" tools:node="remove" />
+
+        <receiver android:name=".NotificationDismissReceiver" tools:node="remove" />
+        <receiver android:name=".NoteEditorReceiver" tools:node="remove" />
+        <receiver android:name=".InlineNoteReplyReceiver" tools:node="remove" />
+        <receiver android:name=".BulkContactsCancelReceiver" tools:node="remove" />
+        <receiver android:name=".SmsDeliverReceiver" tools:node="remove" />
+        <receiver android:name=".CallStateReceiver" tools:node="remove" />
+
+        <activity android:name=".NoteEditorLaunchActivity" tools:node="remove" />
+        <activity android:name=".SystemCallHistoryActivity" tools:node="remove" />
+        <activity android:name=".PostCallPromptActivity" tools:node="remove" />
+        <activity android:name=".ContactNoteEditActivity" tools:node="remove" />
+        <activity android:name=".ServerNoteEditActivity" tools:node="remove" />
+        <activity android:name=".ContactNotesActivity" tools:node="remove" />
+        <activity android:name=".SmsHistoryActivity" tools:node="remove" />
+        <activity android:name=".RecentCallsActivity" tools:node="remove" />
+        <activity android:name=".WebViewActivity" tools:node="remove" />
+        <activity android:name=".ContactShareActivity" tools:node="remove" />
+        <activity android:name=".PhoneNumberActionActivity" tools:node="remove" />
+    </application>
 </manifest>
