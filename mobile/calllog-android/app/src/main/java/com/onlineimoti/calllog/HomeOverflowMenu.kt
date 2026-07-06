@@ -16,14 +16,11 @@ internal object HomeOverflowMenu {
             setForceShowIcon(true)
             menu.add(0, MENU_PHONE_CALL_LOG, 10, activity.getString(R.string.home_overflow_phone_log))
                 .setIcon(R.drawable.ic_menu_call_history)
-            if (HomeCrmTimelineModeToggle.isOverflowActionVisible()) {
-                val contactsMode = HomeCrmTimelineModeToggle.isContactsMode()
-                menu.add(
-                    0,
-                    MENU_CRM_TIMELINE,
-                    20,
-                    if (contactsMode) "CRM разговори" else "CRM контакти",
-                ).setIcon(if (contactsMode) R.drawable.ic_menu_call_history else R.drawable.ic_menu_contacts)
+            if (HomeCrmTimelineModeToggle.isOverflowActionVisible() &&
+                !HomeCrmTimelineModeToggle.isContactsMode()
+            ) {
+                menu.add(0, MENU_CRM_TIMELINE, 20, "CRM контакти")
+                    .setIcon(R.drawable.ic_menu_contacts)
             }
             menu.add(0, MENU_PHONE_CONTACTS, 30, "Телефонни контакти")
                 .setIcon(R.drawable.ic_menu_contacts)
