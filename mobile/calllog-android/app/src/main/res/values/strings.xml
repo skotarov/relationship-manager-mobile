@@ -26,6 +26,10 @@
     <string name="crm_filter_direction_outgoing">Outgoing</string>
     <string name="crm_filter_direction_missed">Missed</string>
     <string name="crm_filter_direction_sms">SMS</string>
+    <string name="crm_phase_filter_1">Phase 1</string>
+    <string name="crm_phase_filter_2">Phase 2</string>
+    <string name="crm_phase_filter_3">Phase 3</string>
+    <string name="crm_phase_filter_4">Phase 4</string>
     <string name="dynamic_home_no_crm_filter_results">No CRM conversations match the selected filters.</string>
 
     <string name="settings_title">Settings</string>
