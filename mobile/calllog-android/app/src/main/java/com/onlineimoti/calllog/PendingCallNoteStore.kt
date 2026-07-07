@@ -10,6 +10,8 @@ internal data class PendingCallNote(
     val sessionStartedAt: Long,
     val savedAt: Long,
     val note: String,
+    /** Selected company for a call note that is waiting for the call-log row. */
+    val companyId: String = "",
 )
 
 internal object PendingCallNoteStore {
@@ -30,6 +32,7 @@ internal object PendingCallNoteStore {
         direction: String,
         sessionStartedAt: Long,
         text: String,
+        companyId: String = "",
     ): Boolean {
         val key = phoneKey(phone)
         if (key.isBlank()) return false
@@ -46,6 +49,7 @@ internal object PendingCallNoteStore {
             put("session_started_at", sessionStartedAt.takeIf { it > 0L } ?: now)
             put("saved_at", now)
             put("note", trimmed)
+            if (companyId.trim().isNotBlank()) put("company_id", companyId.trim())
         }
         prefs.edit().putString(key, record.toString()).apply()
         return true
@@ -71,6 +75,7 @@ internal object PendingCallNoteStore {
             sessionStartedAt = json.optLong("session_started_at", 0L),
             savedAt = savedAt,
             note = note,
+            companyId = json.optString("company_id").trim(),
         )
     }
 
@@ -103,15 +108,28 @@ internal object PendingCallNoteStore {
     fun reconcilePendingForPhone(context: Context, phone: String): Boolean {
         val pending = pendingForPhone(context, phone) ?: return false
         val call = findMatchingCall(context, pending) ?: return false
-        val result = CallNoteWriter.writeCallOrGeneral(
-            context = context,
-            phone = pending.phone,
-            text = pending.note,
-            direction = call.direction.ifBlank { pending.direction },
-            callAt = call.startedAt,
-            durationSeconds = call.durationSeconds,
-            actionIssuedAt = 0L,
-        )
+        val result = if (pending.companyId.isNotBlank()) {
+            CallNoteTopicWriter.writeCallOrGeneral(
+                context = context,
+                phone = pending.phone,
+                text = pending.note,
+                direction = call.direction.ifBlank { pending.direction },
+                callAt = call.startedAt,
+                durationSeconds = call.durationSeconds,
+                actionIssuedAt = 0L,
+                companyId = pending.companyId,
+            )
+        } else {
+            CallNoteWriter.writeCallOrGeneral(
+                context = context,
+                phone = pending.phone,
+                text = pending.note,
+                direction = call.direction.ifBlank { pending.direction },
+                callAt = call.startedAt,
+                durationSeconds = call.durationSeconds,
+                actionIssuedAt = 0L,
+            )
+        }
         if (result.saved && !result.savedAsPending) {
             clear(context, pending.phone)
             return true

@@ -42,24 +42,32 @@ internal object CallNoteTopicWriter {
         actionIssuedAt: Long,
         companyId: String,
     ): CallNoteWriteResult {
+        val target = targetFor(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
+        if (!target.hasCall) {
+            return saveAsPendingCallNote(
+                context = context,
+                phone = phone,
+                text = text,
+                direction = direction,
+                actionIssuedAt = actionIssuedAt,
+                companyId = companyId,
+            )
+        }
+
         // Keep any direct or stale invocation local unless the contact carries
-        // the explicit CRM marker.
+        // the explicit CRM marker. The resolved call target is passed through so
+        // a call note can never silently fall back into the general-note bucket.
         if (!CrmContactSyncStore.isEnabled(context, phone)) {
             return CallNoteWriter.writeCallOrGeneral(
                 context = context,
                 phone = phone,
                 text = text,
-                direction = direction,
-                callAt = callAt,
-                durationSeconds = durationSeconds,
-                actionIssuedAt = actionIssuedAt,
+                direction = target.direction,
+                callAt = target.callAt,
+                durationSeconds = target.durationSeconds,
+                actionIssuedAt = 0L,
                 syncToCrm = false,
             )
-        }
-
-        val target = targetFor(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
-        if (!target.hasCall) {
-            return writeGeneral(context, phone, text, companyId)
         }
 
         val saved = NotePersistence.saveOrDeleteCallNote(
@@ -89,6 +97,49 @@ internal object CallNoteTopicWriter {
             clientNoteId = clientNoteId,
         )
         return result
+    }
+
+    /**
+     * A note opened as a call note must never turn into a company main note merely
+     * because Android has not exposed the matching call-log row yet.
+     */
+    private fun saveAsPendingCallNote(
+        context: Context,
+        phone: String,
+        text: String,
+        direction: String,
+        actionIssuedAt: Long,
+        companyId: String,
+    ): CallNoteWriteResult {
+        val activeSession = PendingCallNoteStore.activeSessionForPhone(context, phone)
+        val shouldSavePending = activeSession != null || actionIssuedAt > 0L
+        if (!shouldSavePending) {
+            return CallNoteWriteResult(
+                saved = false,
+                savedAsGeneralNote = false,
+                target = CallNoteTarget(direction, 0L, 0L),
+            )
+        }
+
+        val pendingDirection = activeSession?.direction?.ifBlank { direction } ?: direction
+        val pendingStartedAt = activeSession?.sessionStartedAt ?: actionIssuedAt
+        val saved = PendingCallNoteStore.saveOrDelete(
+            context = context,
+            phone = phone,
+            direction = pendingDirection,
+            sessionStartedAt = pendingStartedAt,
+            text = text,
+            companyId = companyId,
+        )
+        if (saved && text.trim().isNotBlank() && activeSession == null) {
+            PendingCallNoteStore.reconcileSoon(context, phone)
+        }
+        return CallNoteWriteResult(
+            saved = saved,
+            savedAsGeneralNote = false,
+            target = CallNoteTarget(pendingDirection, 0L, 0L),
+            savedAsPending = saved,
+        )
     }
 
     private fun targetFor(
