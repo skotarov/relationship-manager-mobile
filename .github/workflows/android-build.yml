@@ -35,14 +35,33 @@ jobs:
         with:
           gradle-version: 8.10.2
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # android-actions/setup-android@v3 intermittently fails inside sdkmanager on
+      # Ubuntu runner images before any project build begins. Use the SDK already
+      # present on the hosted runner and resolve its tools explicitly instead.
+      - name: Configure Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          test -d "$sdk_root"
+          sdkmanager_path="$(find "$sdk_root/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -n 1)"
+          test -n "$sdkmanager_path"
+          test -x "$sdkmanager_path"
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
+          echo "$(dirname "$sdkmanager_path")" >> "$GITHUB_PATH"
+          echo "$sdk_root/platform-tools" >> "$GITHUB_PATH"
+          "$sdkmanager_path" --sdk_root="$sdk_root" --version
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses > /dev/null
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      # The hosted SDK is system-owned. Its preinstalled packages are sufficient
+      # for compileSdk 35; do not attempt to rewrite licenses or packages in it.
+      - name: Verify preinstalled Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
 
       - name: Install internal signing key
         run: |
