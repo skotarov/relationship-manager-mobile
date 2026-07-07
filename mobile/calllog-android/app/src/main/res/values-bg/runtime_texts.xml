@@ -11,6 +11,7 @@
     <string name="runtime_configure_cloud_for_sms_company">За избор на фирма за SMS включи и настрой Cloud sync.</string>
     <string name="runtime_crm_calls_loading">Зареждане на CRM разговори…</string>
     <string name="runtime_dial_number">Набери %1$s</string>
+    <string name="runtime_search_found_count">Намерени: %1$d</string>
     <string name="runtime_timeline_today">Днес</string>
     <string name="runtime_timeline_yesterday">Вчера</string>
     <string name="runtime_timeline_days_ago">преди %1$d дни</string>
