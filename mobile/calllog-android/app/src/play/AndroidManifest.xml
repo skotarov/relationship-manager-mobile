@@ -5,7 +5,13 @@
     <!--
       The public Google Play build is a server-backed business CRM. Local call-log,
       SMS, overlay and contact-provider features stay in the separate internal APK.
+      The optional telephony feature satisfies Android lint for the permission-removal
+      markers below; the public merged manifest contains none of these permissions.
     -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
+
     <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
