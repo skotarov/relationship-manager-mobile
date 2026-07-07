@@ -42,7 +42,9 @@ internal class HomeTimelineCoordinator(
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
         // Prepare after content controls so the CRM calls page can replace the brand group.
         timelineToggle.prepare(remoteReady, contactsMode)
-        val contactsOnly = contactsMode && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
+        // CRM Clients is server-backed and remains usable during a search even
+        // on the public Play build, which intentionally has no Call Log permission.
+        val contactsOnly = contactsMode && activePhoneFilter().isBlank()
         if (!contactsOnly && !PhoneCallReader.hasCallLogPermission(activity)) {
             contentRenderer.showMissingCallLogPermission()
             pullRefresh.complete()
