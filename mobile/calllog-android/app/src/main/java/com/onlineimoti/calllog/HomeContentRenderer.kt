@@ -20,6 +20,7 @@ internal class HomeContentRenderer(
     private val activity: AppCompatActivity, private val binding: ActivityHomeBinding,
     private val activePhoneFilter: () -> String, private val activeSearchQuery: () -> String,
     private val pageIndex: () -> Int, private val isCrmModeEnabled: () -> Boolean,
+    private val isCrmContactsMode: () -> Boolean,
     private val hasActiveCrmFilters: () -> Boolean, private val dp: (Int) -> Int,
     private val roundedRect: (Int, Int, Int, Int) -> GradientDrawable,
     private val rowRenderer: HomeCallRowRenderer, private val dialFilteredPhone: (String) -> Unit,
@@ -157,11 +158,13 @@ internal class HomeContentRenderer(
     }
     private fun isFilteredFullLogMode() = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
     private fun updateCrmModeControls() {
-        val visible = HomeCrmModeStore.isAvailable(activity) && activePhoneFilter().isBlank(); binding.crmControlsScroll.visibility = if (visible) View.VISIBLE else View.GONE
+        val visible = HomeCrmModeStore.isAvailable(activity) && activePhoneFilter().isBlank() && !isCrmContactsMode()
+        binding.crmControlsScroll.visibility = if (visible) View.VISIBLE else View.GONE
         if (!visible) return
-        val active = isCrmModeEnabled(); val fill = if (active) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
-        val border = if (active) activity.getColor(R.color.callreport_icon_background) else Color.rgb(203, 213, 225)
-        binding.crmModeButton.backgroundTintList = ColorStateList.valueOf(fill); binding.crmModeButton.strokeColor = ColorStateList.valueOf(border)
-        binding.crmModeButton.setTextColor(if (active) Color.WHITE else Color.rgb(51, 65, 85))
+        val fill = Color.WHITE
+        val border = Color.rgb(203, 213, 225)
+        binding.crmModeButton.backgroundTintList = ColorStateList.valueOf(fill)
+        binding.crmModeButton.strokeColor = ColorStateList.valueOf(border)
+        binding.crmModeButton.setTextColor(Color.rgb(51, 65, 85))
     }
 }

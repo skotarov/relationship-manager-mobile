@@ -1,6 +1,7 @@
 <resources>
     <string name="runtime_crm_clients">Clients</string>
     <string name="runtime_mode_calls">Calls</string>
+    <string name="runtime_menu_crm_calls">CRM calls</string>
     <string name="runtime_menu_phone_contacts">Phone contacts</string>
     <string name="runtime_menu_sms">SMS</string>
     <string name="runtime_menu_calendar">Calendar</string>
