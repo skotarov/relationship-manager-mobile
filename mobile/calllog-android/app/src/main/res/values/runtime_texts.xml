@@ -13,6 +13,7 @@
     <string name="runtime_configure_cloud_for_sms_company">Enable and configure Cloud sync to choose a company for SMS.</string>
     <string name="runtime_crm_calls_loading">Loading CRM calls…</string>
     <string name="runtime_dial_number">Call %1$s</string>
+    <string name="runtime_search_found_count">Found: %1$d</string>
     <string name="runtime_timeline_today">Today</string>
     <string name="runtime_timeline_yesterday">Yesterday</string>
     <string name="runtime_timeline_days_ago">%1$d days ago</string>

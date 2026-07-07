@@ -52,6 +52,28 @@ internal class HomeCrmFiltersController(
     fun state(): HomeCrmFilterState = state
     fun hasActiveFilters(): Boolean = state.isActive
 
+    /**
+     * Applies the active phase and company filters to an already searched result set.
+     * It deliberately does not run a new text search, so the previous result set and
+     * its rendered text highlights stay intact while the user toggles filters.
+     * This function is called on Home's background search executor.
+     */
+    fun filterSearchResults(calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
+        val filterState = state
+        val phaseFiltered = HomeCrmFilterEngine.filterLocal(activity.applicationContext, calls, filterState)
+        if (!filterState.isCompanyFiltered || phaseFiltered.isEmpty()) return phaseFiltered
+        val memberships = HomeCrmCompanyMembershipStore.resolve(
+            context = activity.applicationContext,
+            config = ConfigStore.load(activity.applicationContext),
+            phones = phaseFiltered.map { it.number },
+        )
+        return HomeCrmFilterEngine.filterByCompany(
+            calls = phaseFiltered,
+            state = filterState,
+            companyIdsByPhoneKey = memberships.companyIdsByPhoneKey,
+        )
+    }
+
     fun updateVisibility(filtersEnabled: Boolean) {
         binding.crmPhaseFilterRow.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
         binding.filteredStatusContainer.gravity = if (filtersEnabled) {
