@@ -158,7 +158,9 @@ internal class HomeContentRenderer(
     }
     private fun isFilteredFullLogMode() = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
     private fun updateCrmModeControls() {
-        val visible = HomeCrmModeStore.isAvailable(activity) && activePhoneFilter().isBlank() && !isCrmContactsMode()
+        val showBrandShortcut = activePhoneFilter().isBlank() && !isCrmContactsMode()
+        HomeScreenActionBinder.updateBrandShortcutVisibility(binding, showBrandShortcut)
+        val visible = HomeCrmModeStore.isAvailable(activity) && showBrandShortcut
         binding.crmControlsScroll.visibility = if (visible) View.VISIBLE else View.GONE
         if (!visible) return
         val fill = Color.WHITE
