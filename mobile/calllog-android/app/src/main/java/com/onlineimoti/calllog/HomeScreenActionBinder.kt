@@ -9,8 +9,7 @@ internal object HomeScreenActionBinder {
         activity: AppCompatActivity,
         binding: ActivityHomeBinding,
         openOverflow: () -> Unit,
-        isCrmModeEnabled: () -> Boolean,
-        setCrmMode: (Boolean) -> Unit,
+        openCrmContacts: () -> Unit,
         clearPhoneFilter: () -> Unit,
         dialFilteredPhone: () -> Unit,
         previousPage: () -> Unit,
@@ -19,7 +18,7 @@ internal object HomeScreenActionBinder {
         goToFirstPage: () -> Unit,
     ) {
         binding.settingsButton.setOnClickListener { openOverflow() }
-        binding.crmModeButton.setOnClickListener { setCrmMode(!isCrmModeEnabled()) }
+        binding.crmModeButton.setOnClickListener { openCrmContacts() }
         binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
         binding.filteredDialButton.setOnClickListener { dialFilteredPhone() }
         binding.previousCallsButton.setOnClickListener { previousPage() }
