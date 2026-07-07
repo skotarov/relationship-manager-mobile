@@ -71,12 +71,10 @@ internal object CallReportCompanyGeneralNotesClient {
             for (index in 0 until items.length()) {
                 val item = items.optJSONObject(index) ?: continue
                 val clientId = item.optString("client_event_id").trim()
-                val isGeneralNote = clientId.contains(":topic:general:") ||
-                    clientId.contains(":note:general:") ||
-                    (item.optString("communication_type").equals("note", ignoreCase = true) &&
-                        item.optString("direction").trim().isBlank() &&
-                        item.optLong("duration_seconds", item.optLong("duration", 0L)) <= 0L)
-                if (!isGeneralNote) continue
+                // Call metadata can be incomplete in a history response, therefore
+                // never infer a yellow main note from blank direction/duration.
+                // Company main notes are emitted by enqueueGeneral with this explicit id.
+                if (!isExplicitGeneralNoteId(clientId)) continue
                 if (phoneKey(item.optString("phone")) != requestedPhoneKey) continue
 
                 val companyId = item.optString("company_id").trim()
@@ -110,6 +108,10 @@ internal object CallReportCompanyGeneralNotesClient {
                 )
             }
             .sortedBy { it.companyName.lowercase() }
+    }
+
+    private fun isExplicitGeneralNoteId(clientEventId: String): Boolean {
+        return clientEventId.contains(":topic:general:") || clientEventId.contains(":note:general:")
     }
 
     private data class RemoteNote(val note: String, val updatedAtMs: Long)
