@@ -159,6 +159,15 @@ tasks.register("compileDebugKotlin") {
     dependsOn("compileInternalDebugKotlin", "compilePlayDebugKotlin")
 }
 
+// The same diagnostics workflow still calls :app:lintDebug. With two distribution
+// flavors that name became ambiguous, so keep an explicit compatibility task that
+// runs lint for both debug variants rather than skipping either one.
+tasks.register("lintDebug") {
+    group = "verification"
+    description = "Runs Android lint for internalDebug and playDebug."
+    dependsOn("lintInternalDebug", "lintPlayDebug")
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
