@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Call timeline -->
+    <path
+        android:fillColor="#475569"
+        android:pathData="M12,3a8,8 0,1 0,7.92 9.14h-2.08a6,6 0,1 1,-1.7 -4.24L12,12h7V5l-1.63,1.63A7.96,7.96 0,0 0,12,3zM11,7v5.5l3.85,2.28 1,-1.65 -2.85,-1.65V7z" />
+
+    <!-- CRM record badge -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M18.25,13a4.75,4.75 0,1 0,0 9.5,4.75,4.75 0,0 0,0 -9.5z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16.25,15.55h4v0.85h-4zM16.25,17.58h4v0.85h-4zM16.25,19.61h2.55v0.85h-2.55z" />
+</vector>
