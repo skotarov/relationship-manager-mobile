@@ -15,10 +15,12 @@ internal class HomeSearchController(
     private val searchExecutor: ExecutorService,
     private val searchGeneration: AtomicInteger,
     private val serverCallNotes: HomeServerCallNotesController,
+    private val crmFilters: HomeCrmFiltersController,
     private val pageSize: () -> Int,
     private val activePhoneFilter: () -> String,
     private val activeSearchQuery: () -> String,
     private val isCrmModeEnabled: () -> Boolean,
+    private val isCrmContactsMode: () -> Boolean,
     private val pageIndex: () -> Int,
     private val setCurrentCalls: (List<PhoneCallRecord>) -> Unit,
     private val renderEmptyState: () -> Unit,
@@ -26,6 +28,8 @@ internal class HomeSearchController(
     private val onRenderComplete: () -> Unit,
 ) {
     private var activeTask: Future<*>? = null
+    private val cachedSearchLock = Any()
+    private var cachedSearch: CachedSearch? = null
 
     fun renderSearchCallsAsync() {
         val query = activeSearchQuery()
@@ -46,23 +50,28 @@ internal class HomeSearchController(
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
         val crmMode = isCrmModeEnabled()
+        val crmContactsMode = isCrmContactsMode()
+        val usesCrmFilters = phoneFilter.isBlank() && (crmMode || crmContactsMode)
+        val filterState = if (usesCrmFilters) crmFilters.state() else null
         val page = pageIndex()
         binding.homeStatusText.text = context.getString(R.string.dynamic_home_searching, query.trim())
+        binding.homeStatusText.visibility = View.VISIBLE
         binding.previousCallsButton.isEnabled = false
         binding.nextCallsButton.isEnabled = false
         binding.paginationContainer.visibility = View.VISIBLE
 
         activeTask = searchExecutor.submit {
             if (Thread.currentThread().isInterrupted) return@submit
-            val calls = HomeCallPageLoader.calls(
-                context = context,
-                activePhoneFilter = phoneFilter,
-                searchQuery = query,
-                pageIndex = page,
-                pageSize = currentPageSize,
-                crmMode = crmMode,
+            val rawResults = searchResultsFor(
+                query = query,
+                phoneFilter = phoneFilter,
+                crmMode = crmMode || crmContactsMode,
             )
             if (Thread.currentThread().isInterrupted) return@submit
+            val filteredResults = if (usesCrmFilters) crmFilters.filterSearchResults(rawResults) else rawResults
+            val calls = filteredResults
+                .drop(page * currentPageSize)
+                .take(currentPageSize)
             val renderData = HomeRenderData(
                 calls = calls,
                 contactNotesByNumber = HomeCallPageLoader.contactNotes(context, calls),
@@ -76,7 +85,9 @@ internal class HomeSearchController(
                     query != activeSearchQuery() ||
                     phoneFilter != activePhoneFilter() ||
                     crmMode != isCrmModeEnabled() ||
-                    page != pageIndex()
+                    crmContactsMode != isCrmContactsMode() ||
+                    page != pageIndex() ||
+                    (usesCrmFilters && filterState != crmFilters.state())
                 ) {
                     return@post
                 }
@@ -92,13 +103,17 @@ internal class HomeSearchController(
                             query != activeSearchQuery() ||
                             phoneFilter != activePhoneFilter() ||
                             crmMode != isCrmModeEnabled() ||
-                            page != pageIndex()
+                            crmContactsMode != isCrmContactsMode() ||
+                            page != pageIndex() ||
+                            (usesCrmFilters && filterState != crmFilters.state())
                         ) {
                             return@enrichAsync
                         }
                         applyRenderData(enriched, currentPageSize)
+                        showSearchCount(filteredResults.size)
                     }
                 }
+                showSearchCount(filteredResults.size)
                 onRenderComplete()
             }
         }
@@ -110,6 +125,56 @@ internal class HomeSearchController(
         // Invalidate a callback that may have been posted immediately before
         // cancellation, such as when Home goes to the background.
         searchGeneration.incrementAndGet()
+    }
+
+    /**
+     * Search is the first operation. The cache retains that complete result set
+     * while the user changes CRM buttons; filters are reapplied later to this list.
+     */
+    private fun searchResultsFor(
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+    ): List<PhoneCallRecord> {
+        val key = SearchKey(query.trim(), phoneFilter, crmMode)
+        synchronized(cachedSearchLock) {
+            cachedSearch?.takeIf { it.key == key }?.let { return it.calls }
+        }
+        val loaded = HomeCallPageLoader.calls(
+            context = context,
+            activePhoneFilter = phoneFilter,
+            searchQuery = query,
+            pageIndex = 0,
+            // Search sources are already bounded internally. Load the complete
+            // bounded set once, then page after CRM filters have been applied.
+            pageSize = SEARCH_RESULT_SCAN_LIMIT,
+            crmMode = crmMode,
+        )
+        synchronized(cachedSearchLock) {
+            cachedSearch = CachedSearch(key, loaded)
+        }
+        return loaded
+    }
+
+    private fun showSearchCount(count: Int) {
+        if (activeSearchQuery().isBlank()) return
+        binding.homeStatusText.text = context.getString(R.string.runtime_search_found_count, count)
+        binding.homeStatusText.visibility = View.VISIBLE
+    }
+
+    private data class SearchKey(
+        val query: String,
+        val phoneFilter: String,
+        val crmMode: Boolean,
+    )
+
+    private data class CachedSearch(
+        val key: SearchKey,
+        val calls: List<PhoneCallRecord>,
+    )
+
+    private companion object {
+        const val SEARCH_RESULT_SCAN_LIMIT = 500
     }
 }
 
