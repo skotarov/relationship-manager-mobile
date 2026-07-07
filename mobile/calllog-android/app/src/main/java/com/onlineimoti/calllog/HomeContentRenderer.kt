@@ -142,11 +142,19 @@ internal class HomeContentRenderer(
             phone.isNotBlank() -> activity.getString(R.string.dynamic_home_status_filter, phone, start, end)
             else -> activity.getString(R.string.dynamic_home_status_calls, start, end)
         }
-        updatePhoneFilterStatusStyle(); PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0); PaginationButtonAppearance.apply(binding.nextCallsButton, currentCalls.size >= pageSize)
+        updatePhoneFilterStatusStyle(hidePlainTimelineRange = true); PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0); PaginationButtonAppearance.apply(binding.nextCallsButton, currentCalls.size >= pageSize)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1); binding.paginationContainer.visibility = View.VISIBLE
     }
-    private fun updatePhoneFilterStatusStyle() {
-        val filtered = activePhoneFilter().isNotBlank(); val fullLog = isFilteredFullLogMode(); binding.homeStatusRow.visibility = if (fullLog) View.GONE else View.VISIBLE
+    private fun updatePhoneFilterStatusStyle(hidePlainTimelineRange: Boolean = false) {
+        val filtered = activePhoneFilter().isNotBlank()
+        val fullLog = isFilteredFullLogMode()
+        val plainCallLogRange = hidePlainTimelineRange &&
+            activePhoneFilter().isBlank() &&
+            activeSearchQuery().isBlank() &&
+            !isCrmModeEnabled() &&
+            !isCrmContactsMode()
+        binding.homeStatusRow.visibility = if (fullLog || plainCallLogRange) View.GONE else View.VISIBLE
+        binding.homeStatusText.visibility = if (plainCallLogRange) View.GONE else View.VISIBLE
         binding.filteredDialButton.visibility = if (filtered && !fullLog) View.VISIBLE else View.GONE
         if (filtered && !fullLog) {
             binding.filteredStatusContainer.background = roundedRect(Color.rgb(255, 237, 213), dp(12), Color.rgb(251, 146, 60), dp(1)); binding.filteredStatusContainer.setPadding(dp(10), dp(2), dp(4), dp(2))
