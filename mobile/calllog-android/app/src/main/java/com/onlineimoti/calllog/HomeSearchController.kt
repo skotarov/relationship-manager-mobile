@@ -64,6 +64,7 @@ internal class HomeSearchController(
                 query = query,
                 phoneFilter = phoneFilter,
                 crmMode = crmMode || crmContactsMode,
+                crmContactsMode = crmContactsMode,
             )
             if (Thread.currentThread().isInterrupted) return@submit
             val filteredResults = if (filterState != null) filterCrmSearchResults(rawResults, filterState) else rawResults
@@ -133,25 +134,43 @@ internal class HomeSearchController(
         query: String,
         phoneFilter: String,
         crmMode: Boolean,
+        crmContactsMode: Boolean,
     ): List<PhoneCallRecord> {
-        val key = SearchKey(query.trim(), phoneFilter, crmMode)
+        val key = SearchKey(query.trim(), phoneFilter, crmMode, crmContactsMode)
         synchronized(cachedSearchLock) {
             cachedSearch?.takeIf { it.key == key }?.let { return it.calls }
         }
-        val loaded = HomeCallPageLoader.calls(
-            context = context,
-            activePhoneFilter = phoneFilter,
-            searchQuery = query,
-            pageIndex = 0,
-            // Search sources are already bounded internally. Load the complete
-            // bounded set once, then page after CRM filters have been applied.
-            pageSize = SEARCH_RESULT_SCAN_LIMIT,
-            crmMode = crmMode,
-        )
+        val loaded = when {
+            crmContactsMode && phoneFilter.isBlank() -> searchCrmContacts(query)
+            else -> HomeCallPageLoader.calls(
+                context = context,
+                activePhoneFilter = phoneFilter,
+                searchQuery = query,
+                pageIndex = 0,
+                // Search sources are already bounded internally. Load the complete
+                // bounded set once, then page after CRM filters have been applied.
+                pageSize = SEARCH_RESULT_SCAN_LIMIT,
+                crmMode = crmMode,
+            )
+        }
         synchronized(cachedSearchLock) {
             cachedSearch = CachedSearch(key, loaded)
         }
         return loaded
+    }
+
+    /** CRM Clients searches the authenticated server list, not Android's call log. */
+    private fun searchCrmContacts(query: String): List<PhoneCallRecord> {
+        val terms = SearchQueryTerms.from(query)
+        return HomeCrmContactCandidates.load(context.applicationContext)
+            .filter { contact ->
+                terms.matches(
+                    contact.displayName,
+                    contact.number,
+                    ContactNoteReader.generalNoteForPhone(context, contact.number),
+                )
+            }
+            .sortedByDescending { it.startedAt }
     }
 
     private fun filterCrmSearchResults(
@@ -183,6 +202,7 @@ internal class HomeSearchController(
         val query: String,
         val phoneFilter: String,
         val crmMode: Boolean,
+        val crmContactsMode: Boolean,
     )
 
     private data class CachedSearch(
