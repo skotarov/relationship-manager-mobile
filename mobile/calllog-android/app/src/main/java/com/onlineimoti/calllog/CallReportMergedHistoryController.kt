@@ -252,7 +252,7 @@ internal class CallReportMergedHistoryController(
 
     private data class LocalSnapshot(
         val latestCall: PhoneCallRecord? = null,
-        val localSms: List<SmsMessageRecord> = emptyList(),
+        val sms: List<SmsMessageRecord> = emptyList(),
         val notes: List<ContactCallNote> = emptyList(),
     )
 }
