@@ -15,7 +15,7 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** CRM Home filter controls: full-width phase buttons and in-row company toggles. */
+/** CRM Home filter controls: phase buttons and in-row company toggles. */
 internal class HomeCrmFiltersController(
     private val activity: HomeActivity,
     private val binding: ActivityHomeBinding,
@@ -37,13 +37,7 @@ internal class HomeCrmFiltersController(
     private val companyButtonsScroll = HorizontalScrollView(activity).apply {
         isHorizontalScrollBarEnabled = false
         overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
-        addView(
-            companyButtonsContainer,
-            HorizontalScrollView.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            ),
-        )
+        addView(companyButtonsContainer)
         visibility = View.GONE
     }
 
@@ -56,7 +50,6 @@ internal class HomeCrmFiltersController(
     }
 
     fun state(): HomeCrmFilterState = state
-
     fun hasActiveFilters(): Boolean = state.isActive
 
     fun updateVisibility(filtersEnabled: Boolean) {
@@ -129,7 +122,7 @@ internal class HomeCrmFiltersController(
     private fun toggleCompany(companyId: String) {
         val selected = state.companyIds.toMutableSet()
         if (!selected.add(companyId)) selected.remove(companyId)
-        // Empty selection intentionally means no company filter: show all companies.
+        // No selected companies means no company filter: all companies are shown.
         updateState(state.copy(companyIds = selected))
     }
 
@@ -153,30 +146,10 @@ internal class HomeCrmFiltersController(
 
     private fun renderButtons() {
         renderCompanyButtons()
-        stylePhaseButton(
-            button = binding.crmPhase1Button,
-            phase = ContactNegotiationPhaseStore.PHASE_1,
-            activeColor = COLOR_GREEN,
-            activeTextColor = Color.WHITE,
-        )
-        stylePhaseButton(
-            button = binding.crmPhase2Button,
-            phase = ContactNegotiationPhaseStore.PHASE_2,
-            activeColor = COLOR_BLUE,
-            activeTextColor = Color.WHITE,
-        )
-        stylePhaseButton(
-            button = binding.crmPhase3Button,
-            phase = ContactNegotiationPhaseStore.PHASE_3,
-            activeColor = COLOR_YELLOW,
-            activeTextColor = COLOR_DARK_TEXT,
-        )
-        stylePhaseButton(
-            button = binding.crmPhase4Button,
-            phase = ContactNegotiationPhaseStore.PHASE_4,
-            activeColor = COLOR_RED,
-            activeTextColor = Color.WHITE,
-        )
+        stylePhaseButton(binding.crmPhase1Button, ContactNegotiationPhaseStore.PHASE_1, COLOR_GREEN, Color.WHITE)
+        stylePhaseButton(binding.crmPhase2Button, ContactNegotiationPhaseStore.PHASE_2, COLOR_BLUE, Color.WHITE)
+        stylePhaseButton(binding.crmPhase3Button, ContactNegotiationPhaseStore.PHASE_3, COLOR_YELLOW, COLOR_DARK_TEXT)
+        stylePhaseButton(binding.crmPhase4Button, ContactNegotiationPhaseStore.PHASE_4, COLOR_RED, Color.WHITE)
     }
 
     private fun renderCompanyButtons() {
@@ -185,12 +158,8 @@ internal class HomeCrmFiltersController(
             .distinctBy { it.id }
             .sortedBy { it.name.lowercase() }
         companyButtonsContainer.removeAllViews()
-        available.forEach { company ->
-            companyButtonsContainer.addView(companyButton(company))
-        }
-        showCompanyButtons(
-            shouldShow = binding.crmPhaseFilterRow.visibility == View.VISIBLE && available.isNotEmpty(),
-        )
+        available.forEach { companyButtonsContainer.addView(companyButton(it)) }
+        showCompanyButtons(binding.crmPhaseFilterRow.visibility == View.VISIBLE && available.isNotEmpty())
     }
 
     private fun companyButton(company: CallReportTopicCompany): MaterialButton =
@@ -198,12 +167,12 @@ internal class HomeCrmFiltersController(
             text = company.name
             contentDescription = company.name
             isAllCaps = false
-            isSingleLine = true
+            setSingleLine()
             ellipsize = TextUtils.TruncateAt.END
-            maxWidth = dp(152)
+            setMaxWidth(dp(152))
             textSize = 12f
-            minHeight = 0
-            minWidth = 0
+            minimumHeight = 0
+            minimumWidth = 0
             insetTop = 0
             insetBottom = 0
             cornerRadius = dp(16)
@@ -219,22 +188,17 @@ internal class HomeCrmFiltersController(
     private fun showCompanyButtons(shouldShow: Boolean) {
         companyButtonsScroll.visibility = if (shouldShow) View.VISIBLE else View.GONE
         val parameters = binding.homeStatusText.layoutParams as? LinearLayout.LayoutParams ?: return
-        val expectedWidth = if (shouldShow) ViewGroup.LayoutParams.WRAP_CONTENT else 0
-        val expectedWeight = if (shouldShow) 0f else 1f
-        if (parameters.width != expectedWidth || parameters.weight != expectedWeight) {
-            parameters.width = expectedWidth
-            parameters.weight = expectedWeight
+        val width = if (shouldShow) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+        val weight = if (shouldShow) 0f else 1f
+        if (parameters.width != width || parameters.weight != weight) {
+            parameters.width = width
+            parameters.weight = weight
             binding.homeStatusText.layoutParams = parameters
         }
         binding.homeStatusText.maxWidth = if (shouldShow) dp(112) else Int.MAX_VALUE
     }
 
-    private fun stylePhaseButton(
-        button: MaterialButton,
-        phase: Int,
-        activeColor: Int,
-        activeTextColor: Int,
-    ) {
+    private fun stylePhaseButton(button: MaterialButton, phase: Int, activeColor: Int, activeTextColor: Int) {
         val selected = phase in state.phases
         val color = if (selected) activeColor else COLOR_INACTIVE
         button.isSelected = selected
