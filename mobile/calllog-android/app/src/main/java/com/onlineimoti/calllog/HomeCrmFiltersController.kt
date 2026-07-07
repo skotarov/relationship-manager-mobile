@@ -4,20 +4,23 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import androidx.appcompat.app.AlertDialog
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** CRM Home filter controls: full-width phase buttons and a topic picker. */
+/** CRM Home filter controls: full-width phase buttons and in-row company toggles. */
 internal class HomeCrmFiltersController(
     private val activity: HomeActivity,
     private val binding: ActivityHomeBinding,
     private val handler: Handler,
-    @Suppress("UNUSED_PARAMETER") dp: (Int) -> Int,
+    private val dp: (Int) -> Int,
     @Suppress("UNUSED_PARAMETER") roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val onFilterChanged: () -> Unit,
 ) {
@@ -27,12 +30,29 @@ internal class HomeCrmFiltersController(
     private var companies: List<CallReportTopicCompany> = emptyList()
     private var lastRequestedAccount = ""
 
+    private val companyButtonsContainer = LinearLayout(activity).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        orientation = LinearLayout.HORIZONTAL
+    }
+    private val companyButtonsScroll = HorizontalScrollView(activity).apply {
+        isHorizontalScrollBarEnabled = false
+        overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        addView(
+            companyButtonsContainer,
+            HorizontalScrollView.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        visibility = View.GONE
+    }
+
     init {
         binding.crmPhase1Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_1) }
         binding.crmPhase2Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_2) }
         binding.crmPhase3Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_3) }
         binding.crmPhase4Button.setOnClickListener { togglePhase(ContactNegotiationPhaseStore.PHASE_4) }
-        binding.crmCompanyFilterButton.setOnClickListener { showCompanyDialog() }
+        replaceCompanyPickerWithButtons()
     }
 
     fun state(): HomeCrmFilterState = state
@@ -41,13 +61,15 @@ internal class HomeCrmFiltersController(
 
     fun updateVisibility(filtersEnabled: Boolean) {
         binding.crmPhaseFilterRow.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
-        binding.crmCompanyFilterButton.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
         binding.filteredStatusContainer.gravity = if (filtersEnabled) {
             Gravity.CENTER_VERTICAL or Gravity.END
         } else {
             Gravity.CENTER_VERTICAL
         }
-        if (!filtersEnabled) return
+        if (!filtersEnabled) {
+            showCompanyButtons(false)
+            return
+        }
         loadCachedCompanies()
         renderButtons()
         refreshCompaniesIfNeeded()
@@ -79,6 +101,19 @@ internal class HomeCrmFiltersController(
         companyExecutor.shutdownNow()
     }
 
+    private fun replaceCompanyPickerWithButtons() {
+        val placeholder = binding.crmCompanyFilterButton.parent as? View ?: return
+        val statusContainer = placeholder.parent as? LinearLayout ?: return
+        val position = statusContainer.indexOfChild(placeholder)
+        if (position < 0) return
+        statusContainer.removeView(placeholder)
+        statusContainer.addView(
+            companyButtonsScroll,
+            position,
+            LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginStart = dp(4) },
+        )
+    }
+
     private fun loadCachedCompanies() {
         val config = ConfigStore.load(activity.applicationContext)
         val cached = CallReportTopicCompaniesCache.read(activity.applicationContext, config)?.companies.orEmpty()
@@ -91,37 +126,11 @@ internal class HomeCrmFiltersController(
         updateState(state.copy(phases = phases))
     }
 
-    private fun showCompanyDialog() {
-        val available = companies.sortedBy { it.name.lowercase() }
-        val labels = listOf(activity.getString(R.string.crm_filter_all)) + available.map { it.name }
+    private fun toggleCompany(companyId: String) {
         val selected = state.companyIds.toMutableSet()
-        val checked = BooleanArray(labels.size) { index ->
-            if (index == 0) selected.isEmpty() else available[index - 1].id in selected
-        }
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.crm_filter_select_companies)
-            .setMultiChoiceItems(labels.toTypedArray(), checked) { dialog, which, isChecked ->
-                val alert = dialog as? AlertDialog
-                when (which) {
-                    0 -> {
-                        if (isChecked || selected.isEmpty()) {
-                            selected.clear()
-                            for (index in 1 until labels.size) alert?.listView?.setItemChecked(index, false)
-                            alert?.listView?.setItemChecked(0, true)
-                        }
-                    }
-                    else -> {
-                        val companyId = available[which - 1].id
-                        if (isChecked) selected.add(companyId) else selected.remove(companyId)
-                        alert?.listView?.setItemChecked(0, selected.isEmpty())
-                    }
-                }
-            }
-            .setNegativeButton(R.string.crm_filter_cancel, null)
-            .setPositiveButton(R.string.crm_filter_apply) { _, _ ->
-                updateState(state.copy(companyIds = selected.toSet()))
-            }
-            .show()
+        if (!selected.add(companyId)) selected.remove(companyId)
+        // Empty selection intentionally means no company filter: show all companies.
+        updateState(state.copy(companyIds = selected))
     }
 
     private fun updateState(next: HomeCrmFilterState) {
@@ -143,8 +152,7 @@ internal class HomeCrmFiltersController(
     }
 
     private fun renderButtons() {
-        binding.crmCompanyFilterButton.text = companyButtonText()
-        styleFilterButton(binding.crmCompanyFilterButton, state.hasCompanyFilter)
+        renderCompanyButtons()
         stylePhaseButton(
             button = binding.crmPhase1Button,
             phase = ContactNegotiationPhaseStore.PHASE_1,
@@ -171,14 +179,54 @@ internal class HomeCrmFiltersController(
         )
     }
 
-    private fun companyButtonText(): String {
-        if (!state.hasCompanyFilter) return activity.getString(R.string.crm_filter_companies_all)
-        if (state.companyIds.size == 1) {
-            val id = state.companyIds.first()
-            val name = companies.firstOrNull { it.id == id }?.name.orEmpty().ifBlank { id }
-            return activity.getString(R.string.crm_filter_topic_named, name)
+    private fun renderCompanyButtons() {
+        val available = companies
+            .filter { it.id.isNotBlank() && it.name.isNotBlank() }
+            .distinctBy { it.id }
+            .sortedBy { it.name.lowercase() }
+        companyButtonsContainer.removeAllViews()
+        available.forEach { company ->
+            companyButtonsContainer.addView(companyButton(company))
         }
-        return activity.getString(R.string.crm_filter_companies_selected, state.companyIds.size)
+        showCompanyButtons(
+            shouldShow = binding.crmPhaseFilterRow.visibility == View.VISIBLE && available.isNotEmpty(),
+        )
+    }
+
+    private fun companyButton(company: CallReportTopicCompany): MaterialButton =
+        MaterialButton(activity, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            text = company.name
+            contentDescription = company.name
+            isAllCaps = false
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
+            maxWidth = dp(152)
+            textSize = 12f
+            minHeight = 0
+            minWidth = 0
+            insetTop = 0
+            insetBottom = 0
+            cornerRadius = dp(16)
+            setPadding(dp(9), 0, dp(9), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(36),
+            ).apply { marginEnd = dp(4) }
+            styleCompanyButton(this, company.id in state.companyIds)
+            setOnClickListener { toggleCompany(company.id) }
+        }
+
+    private fun showCompanyButtons(shouldShow: Boolean) {
+        companyButtonsScroll.visibility = if (shouldShow) View.VISIBLE else View.GONE
+        val parameters = binding.homeStatusText.layoutParams as? LinearLayout.LayoutParams ?: return
+        val expectedWidth = if (shouldShow) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+        val expectedWeight = if (shouldShow) 0f else 1f
+        if (parameters.width != expectedWidth || parameters.weight != expectedWeight) {
+            parameters.width = expectedWidth
+            parameters.weight = expectedWeight
+            binding.homeStatusText.layoutParams = parameters
+        }
+        binding.homeStatusText.maxWidth = if (shouldShow) dp(112) else Int.MAX_VALUE
     }
 
     private fun stylePhaseButton(
@@ -195,9 +243,10 @@ internal class HomeCrmFiltersController(
         button.setTextColor(if (selected) activeTextColor else COLOR_DARK_TEXT)
     }
 
-    private fun styleFilterButton(button: MaterialButton, active: Boolean) {
+    private fun styleCompanyButton(button: MaterialButton, active: Boolean) {
         val fill = if (active) activity.getColor(R.color.callreport_icon_background) else Color.WHITE
         val border = if (active) activity.getColor(R.color.callreport_icon_background) else COLOR_INACTIVE
+        button.isSelected = active
         button.backgroundTintList = ColorStateList.valueOf(fill)
         button.strokeColor = ColorStateList.valueOf(border)
         button.setTextColor(if (active) Color.WHITE else COLOR_DARK_TEXT)
