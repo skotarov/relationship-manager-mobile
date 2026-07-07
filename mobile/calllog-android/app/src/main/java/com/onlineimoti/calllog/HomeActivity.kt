@@ -56,7 +56,7 @@ class HomeActivity : AppCompatActivity() {
     }
     private val crmTimelineToggle: HomeCrmTimelineModeToggle by lazy {
         HomeCrmTimelineModeToggle(this, binding, uiGeometry::dp) {
-            timelineCoordinator.toggleCrmContactsMode()
+            timelineCoordinator.toggleCrmCallLogFromOverflow()
         }
     }
     private val companyGeneralNotesController: HomeCompanyGeneralNotesController by lazy {
@@ -103,7 +103,7 @@ class HomeActivity : AppCompatActivity() {
     private val homeContentRenderer: HomeContentRenderer by lazy {
         HomeContentRenderer(
             this, binding, { activePhoneFilter }, { activeSearchQuery }, { pageIndex },
-            ::isCrmModeEnabled, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
+            ::isCrmModeEnabled, ::isCrmContactsMode, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
             uiGeometry::roundedRect, homeCallRowRenderer, homeActions::openDialer,
             companyGeneralNotesController, filteredContactSummaryChipsUi,
         )
@@ -242,8 +242,7 @@ class HomeActivity : AppCompatActivity() {
             this,
             binding,
             { HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() } },
-            ::isCrmModeEnabled,
-            timelineCoordinator::setCrmMode,
+            timelineCoordinator::toggleCrmContactsMode,
             timelineCoordinator::clearPhoneFilter,
             { homeActions.openDialer(activePhoneFilter) },
             timelineCoordinator::previousPage,
