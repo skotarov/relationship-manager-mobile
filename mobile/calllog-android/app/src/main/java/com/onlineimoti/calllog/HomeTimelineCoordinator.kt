@@ -35,8 +35,9 @@ internal class HomeTimelineCoordinator(
         val crmEnabled = isCrmModeEnabled()
         val remoteReady = CallReportRemoteAccess.isReady(ConfigStore.load(activity))
         val contactsMode = remoteReady && isCrmContactsMode()
-        val showCrmFilters = (crmEnabled || contactsMode) &&
-            activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
+        // Search must not replace CRM filters. It searches first, then HomeSearchController
+        // reapplies these visible filters over the cached search result set.
+        val showCrmFilters = (crmEnabled || contactsMode) && activePhoneFilter().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
         // Prepare after content controls so the CRM calls page can replace the brand group.
