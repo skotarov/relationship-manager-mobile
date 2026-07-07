@@ -38,8 +38,9 @@ internal class HomeTimelineCoordinator(
         val showCrmFilters = (crmEnabled || contactsMode) &&
             activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
-        timelineToggle.prepare(remoteReady, contactsMode)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
+        // Prepare after content controls so the CRM calls page can replace the brand group.
+        timelineToggle.prepare(remoteReady, contactsMode)
         val contactsOnly = contactsMode && activePhoneFilter().isBlank() && activeSearchQuery().isBlank()
         if (!contactsOnly && !PhoneCallReader.hasCallLogPermission(activity)) {
             contentRenderer.showMissingCallLogPermission()
@@ -100,12 +101,7 @@ internal class HomeTimelineCoordinator(
         renderCalls()
     }
 
-    /**
-     * Opens the CRM call-log screen from the overflow menu. Outside Contacts it
-     * keeps the previous CRM button behavior and toggles CRM calls on/off. From
-     * Contacts it always returns to the CRM call log, rather than leaving the
-     * user on the Contacts screen.
-     */
+    /** Opens CRM calls from the overflow menu; it is now a link, not an on/off toggle. */
     fun toggleCrmCallLogFromOverflow() {
         if (DistributionCapabilities.isPlayBusinessBuild || !HomeCrmModeStore.isAvailable(activity)) return
         if (isCrmContactsMode()) {
@@ -114,7 +110,7 @@ internal class HomeTimelineCoordinator(
             setCrmMode(true)
             return
         }
-        setCrmMode(!isCrmModeEnabled())
+        if (!isCrmModeEnabled()) setCrmMode(true)
     }
 
     fun toggleCrmContactsMode() {
@@ -132,17 +128,25 @@ internal class HomeTimelineCoordinator(
         renderCalls()
     }
 
-    /** Leaves the server contacts screen and restores the regular Home call log. */
-    fun returnToCallLog() {
-        if (DistributionCapabilities.isPlayBusinessBuild || !isCrmContactsMode()) return
-        fullLogReturnState = null
-        setCrmContactsMode(false)
-        contentRenderer.clearCalls()
-        setActivePhoneFilter("")
-        setPageIndex(0)
-        filteredFullLog.invalidate()
-        onCrmModeChanged()
-        renderCalls()
+    /** Returns from CRM contacts or CRM calls to the regular Home call log. */
+    fun returnToCallLog(): Boolean {
+        if (DistributionCapabilities.isPlayBusinessBuild) return false
+        if (isCrmContactsMode()) {
+            fullLogReturnState = null
+            setCrmContactsMode(false)
+            contentRenderer.clearCalls()
+            setActivePhoneFilter("")
+            setPageIndex(0)
+            filteredFullLog.invalidate()
+            onCrmModeChanged()
+            renderCalls()
+            return true
+        }
+        if (isCrmModeEnabled()) {
+            setCrmMode(false)
+            return true
+        }
+        return false
     }
 
     fun togglePhoneFilter(number: String) {

@@ -22,7 +22,7 @@ internal object HomeOverflowMenu {
             }
             if (localDeviceActions && HomeCrmTimelineModeToggle.isOverflowActionVisible()) {
                 menu.add(0, MENU_CRM_TIMELINE, 20, activity.getString(R.string.runtime_menu_crm_calls))
-                    .setIcon(R.drawable.ic_menu_call_history)
+                    .setIcon(R.drawable.ic_menu_crm_calls)
             }
             if (localDeviceActions) {
                 menu.add(0, MENU_PHONE_CONTACTS, 30, activity.getString(R.string.runtime_menu_phone_contacts))
