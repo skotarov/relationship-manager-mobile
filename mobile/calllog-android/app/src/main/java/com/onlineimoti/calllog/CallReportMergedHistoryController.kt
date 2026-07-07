@@ -108,8 +108,10 @@ internal class CallReportMergedHistoryController(
         serverHistory.events.forEach { event ->
             if (!event.communicationType.equals("note", ignoreCase = true)) return@forEach
             if (event.companyId.isBlank() || HomeCallPageLoader.noteKey(event.phone) != phoneKey) return@forEach
-            if (event.direction.isNotBlank() || event.durationSeconds > 0L) return@forEach
-            if (event.clientEventId.isNotBlank() && !event.clientEventId.contains(":general:")) return@forEach
+            // Do not infer a main note from blank call metadata. Some server responses
+            // omit direction/duration for a conversation note; only the explicit
+            // topic/general record id is allowed to populate the yellow main-note card.
+            if (!isExplicitCompanyMainNote(event.clientEventId)) return@forEach
             val current = latestByCompany[event.companyId]
             if (current == null || event.updatedAtMs >= current.updatedAtMs) latestByCompany[event.companyId] = event
         }
@@ -244,9 +246,13 @@ internal class CallReportMergedHistoryController(
         return current
     }
 
+    private fun isExplicitCompanyMainNote(clientEventId: String): Boolean {
+        return clientEventId.contains(":topic:general:") || clientEventId.contains(":note:general:")
+    }
+
     private data class LocalSnapshot(
         val latestCall: PhoneCallRecord? = null,
-        val sms: List<SmsMessageRecord> = emptyList(),
+        val localSms: List<SmsMessageRecord> = emptyList(),
         val notes: List<ContactCallNote> = emptyList(),
     )
 }
