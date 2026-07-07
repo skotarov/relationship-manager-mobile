@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
+import android.view.View.MeasureSpec
 import androidx.appcompat.widget.AppCompatImageView
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -18,6 +19,43 @@ class RelationshipManagerWordmarkView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
 ) : AppCompatImageView(context, attrs, defStyleAttr) {
+    /**
+     * For wrap-content use the painted wordmark width instead of the much wider
+     * source SVG viewport. This lets the adjacent CRM button sit immediately
+     * after the final visible logo letter.
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val horizontalPadding = paddingLeft + paddingRight
+        val verticalPadding = paddingTop + paddingBottom
+        val fallbackContentHeight = (48f * resources.displayMetrics.density).roundToInt()
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+        val widthMode = MeasureSpec.getMode(widthMeasureSpec)
+        val widthSize = MeasureSpec.getSize(widthMeasureSpec)
+        var contentHeight = when (heightMode) {
+            MeasureSpec.EXACTLY -> (heightSize - verticalPadding).coerceAtLeast(0)
+            MeasureSpec.AT_MOST -> min(fallbackContentHeight, (heightSize - verticalPadding).coerceAtLeast(0))
+            else -> fallbackContentHeight
+        }
+        val visibleRatio = relationshipRight() / VIEWPORT_HEIGHT
+        var desiredWidth = horizontalPadding + (contentHeight * visibleRatio).roundToInt()
+        val measuredWidth = when (widthMode) {
+            MeasureSpec.EXACTLY -> widthSize
+            MeasureSpec.AT_MOST -> min(desiredWidth, widthSize)
+            else -> desiredWidth
+        }
+        if (heightMode != MeasureSpec.EXACTLY && measuredWidth < desiredWidth) {
+            contentHeight = ((measuredWidth - horizontalPadding).coerceAtLeast(0) / visibleRatio).roundToInt()
+            desiredWidth = horizontalPadding + (contentHeight * visibleRatio).roundToInt()
+        }
+        val measuredHeight = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> min(verticalPadding + contentHeight, heightSize)
+            else -> verticalPadding + contentHeight
+        }
+        setMeasuredDimension(measuredWidth.coerceAtLeast(0), measuredHeight.coerceAtLeast(0))
+    }
+
     override fun onDraw(canvas: Canvas) {
         val mark = drawable ?: return
         val availableWidth = width - paddingLeft - paddingRight
