@@ -142,6 +142,7 @@ internal class HomeSearchController(
         }
         val loaded = when {
             crmContactsMode && phoneFilter.isBlank() -> searchCrmContacts(query)
+            crmMode && phoneFilter.isBlank() -> searchCrmCalls(query)
             else -> HomeCallPageLoader.calls(
                 context = context,
                 activePhoneFilter = phoneFilter,
@@ -171,6 +172,27 @@ internal class HomeSearchController(
                 )
             }
             .sortedByDescending { it.startedAt }
+    }
+
+    /**
+     * CRM Calls searches the same complete bounded timeline that the CRM Calls
+     * page shows before company/phase buttons are applied. It does not consult the
+     * broad device contact/note index, so search results never leak in from another
+     * page or from non-CRM phone activity.
+     */
+    private fun searchCrmCalls(query: String): List<PhoneCallRecord> {
+        val terms = SearchQueryTerms.from(query)
+        val candidates = HomeTimelineLoader.crmCandidates(context.applicationContext)
+        val callNotes = HomeCallNotesResolver.localNotes(context, candidates)
+        return candidates.filter { call ->
+            terms.matches(
+                call.displayName,
+                call.number,
+                call.smsBody,
+                ContactNoteReader.generalNoteForPhone(context, call.number),
+                callNotes[HomeCallNotesResolver.keyFor(call)]?.text.orEmpty(),
+            )
+        }
     }
 
     private fun filterCrmSearchResults(
