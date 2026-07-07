@@ -23,24 +23,20 @@ internal class HomeCrmTimelineModeToggle(
         binding.homeStatusText.visibility = View.VISIBLE
     }
 
+    /**
+     * Paging remains available through the bottom controls, but the current range
+     * label ("Calls 1–20" / "Contacts 1–20") is intentionally not shown.
+     */
     fun showRange(contactsMode: Boolean, pageIndex: Int, pageSize: Int, itemCount: Int) {
         prepare(true, contactsMode)
         if (itemCount <= 0) return
-        val first = pageIndex * pageSize + 1
-        binding.homeStatusText.text = "${modeLabel(contactsMode)} $first–${first + itemCount - 1}"
-        binding.homeStatusText.visibility = View.VISIBLE
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
     }
 
     fun showEmpty(contactsMode: Boolean) {
         prepare(true, contactsMode)
         binding.homeStatusText.visibility = View.VISIBLE
-    }
-
-    private fun modeLabel(contactsMode: Boolean): String = when {
-        contactsMode && AppLocaleText.isBulgarian() -> "Контакти"
-        contactsMode -> "Contacts"
-        AppLocaleText.isBulgarian() -> "Разговори"
-        else -> "Calls"
     }
 
     companion object {
