@@ -15,12 +15,10 @@ internal class HomeSearchController(
     private val searchExecutor: ExecutorService,
     private val searchGeneration: AtomicInteger,
     private val serverCallNotes: HomeServerCallNotesController,
-    private val crmFilters: HomeCrmFiltersController,
     private val pageSize: () -> Int,
     private val activePhoneFilter: () -> String,
     private val activeSearchQuery: () -> String,
     private val isCrmModeEnabled: () -> Boolean,
-    private val isCrmContactsMode: () -> Boolean,
     private val pageIndex: () -> Int,
     private val setCurrentCalls: (List<PhoneCallRecord>) -> Unit,
     private val renderEmptyState: () -> Unit,
@@ -50,9 +48,9 @@ internal class HomeSearchController(
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
         val crmMode = isCrmModeEnabled()
-        val crmContactsMode = isCrmContactsMode()
+        val crmContactsMode = HomeCrmTimelineModeToggle.isContactsMode()
         val usesCrmFilters = phoneFilter.isBlank() && (crmMode || crmContactsMode)
-        val filterState = if (usesCrmFilters) crmFilters.state() else null
+        val filterState = if (usesCrmFilters) HomeCrmFilterStore.load(context) else null
         val page = pageIndex()
         binding.homeStatusText.text = context.getString(R.string.dynamic_home_searching, query.trim())
         binding.homeStatusText.visibility = View.VISIBLE
@@ -68,7 +66,7 @@ internal class HomeSearchController(
                 crmMode = crmMode || crmContactsMode,
             )
             if (Thread.currentThread().isInterrupted) return@submit
-            val filteredResults = if (usesCrmFilters) crmFilters.filterSearchResults(rawResults) else rawResults
+            val filteredResults = if (filterState != null) filterCrmSearchResults(rawResults, filterState) else rawResults
             val calls = filteredResults
                 .drop(page * currentPageSize)
                 .take(currentPageSize)
@@ -85,9 +83,9 @@ internal class HomeSearchController(
                     query != activeSearchQuery() ||
                     phoneFilter != activePhoneFilter() ||
                     crmMode != isCrmModeEnabled() ||
-                    crmContactsMode != isCrmContactsMode() ||
+                    crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
                     page != pageIndex() ||
-                    (usesCrmFilters && filterState != crmFilters.state())
+                    (filterState != null && filterState != HomeCrmFilterStore.load(context))
                 ) {
                     return@post
                 }
@@ -103,9 +101,9 @@ internal class HomeSearchController(
                             query != activeSearchQuery() ||
                             phoneFilter != activePhoneFilter() ||
                             crmMode != isCrmModeEnabled() ||
-                            crmContactsMode != isCrmContactsMode() ||
+                            crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
                             page != pageIndex() ||
-                            (usesCrmFilters && filterState != crmFilters.state())
+                            (filterState != null && filterState != HomeCrmFilterStore.load(context))
                         ) {
                             return@enrichAsync
                         }
@@ -154,6 +152,25 @@ internal class HomeSearchController(
             cachedSearch = CachedSearch(key, loaded)
         }
         return loaded
+    }
+
+    private fun filterCrmSearchResults(
+        calls: List<PhoneCallRecord>,
+        state: HomeCrmFilterState,
+    ): List<PhoneCallRecord> {
+        val phaseFiltered = HomeCrmFilterEngine.filterLocal(context, calls, state)
+        if (!state.isCompanyFiltered || phaseFiltered.isEmpty()) return phaseFiltered
+        val appContext = context.applicationContext
+        val memberships = HomeCrmCompanyMembershipStore.resolve(
+            context = appContext,
+            config = ConfigStore.load(appContext),
+            phones = phaseFiltered.map { it.number },
+        )
+        return HomeCrmFilterEngine.filterByCompany(
+            calls = phaseFiltered,
+            state = state,
+            companyIdsByPhoneKey = memberships.companyIdsByPhoneKey,
+        )
     }
 
     private fun showSearchCount(count: Int) {
