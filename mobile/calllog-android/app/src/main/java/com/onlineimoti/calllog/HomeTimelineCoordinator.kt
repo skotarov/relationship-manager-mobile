@@ -100,6 +100,23 @@ internal class HomeTimelineCoordinator(
         renderCalls()
     }
 
+    /**
+     * Opens the CRM call-log screen from the overflow menu. Outside Contacts it
+     * keeps the previous CRM button behavior and toggles CRM calls on/off. From
+     * Contacts it always returns to the CRM call log, rather than leaving the
+     * user on the Contacts screen.
+     */
+    fun toggleCrmCallLogFromOverflow() {
+        if (DistributionCapabilities.isPlayBusinessBuild || !HomeCrmModeStore.isAvailable(activity)) return
+        if (isCrmContactsMode()) {
+            fullLogReturnState = null
+            setCrmContactsMode(false)
+            setCrmMode(true)
+            return
+        }
+        setCrmMode(!isCrmModeEnabled())
+    }
+
     fun toggleCrmContactsMode() {
         if (DistributionCapabilities.isPlayBusinessBuild || !CallReportRemoteAccess.isReady(ConfigStore.load(activity))) return
         if (isCrmContactsMode()) {
