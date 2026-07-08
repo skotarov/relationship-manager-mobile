@@ -42,11 +42,12 @@ internal class HomeContentRenderer(
         updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
     }
     fun showMissingCallLogPermission() {
-        binding.homeStatusText.text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
+        val text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
+        if (isTopLevelCrmPage()) showResultsStatus(text) else binding.homeStatusText.text = text
         binding.paginationContainer.visibility = View.GONE
     }
     fun showCrmLoading() {
-        binding.homeStatusText.text = activity.getString(R.string.runtime_crm_calls_loading)
+        showResultsStatus(activity.getString(R.string.runtime_crm_calls_loading))
         binding.paginationContainer.visibility = View.GONE
     }
     fun applyRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(renderData, pageSize, true)
@@ -58,13 +59,14 @@ internal class HomeContentRenderer(
     fun renderEmptyState() {
         binding.fullLogProgress.visibility = View.GONE
         val phone = activePhoneFilter(); val query = activeSearchQuery(); val page = pageIndex()
-        binding.homeStatusText.text = when {
+        val message = when {
             query.isNotBlank() -> activity.getString(R.string.dynamic_home_no_search_results, query.trim())
             phone.isNotBlank() && page == 0 -> activity.getString(R.string.dynamic_home_filter_no_calls_or_sms, phone)
             isCrmModeEnabled() && hasActiveCrmFilters() -> activity.getString(R.string.dynamic_home_no_crm_filter_results)
             page == 0 -> activity.getString(R.string.dynamic_home_no_calls)
             else -> activity.getString(R.string.dynamic_home_no_more_calls)
         }
+        if (isTopLevelCrmPage()) showResultsStatus(message) else binding.homeStatusText.text = message
         updatePhoneFilterStatusStyle(); PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, false)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1)
@@ -148,13 +150,14 @@ internal class HomeContentRenderer(
     private fun updatePhoneFilterStatusStyle(hidePlainTimelineRange: Boolean = false) {
         val filtered = activePhoneFilter().isNotBlank()
         val fullLog = isFilteredFullLogMode()
+        val crmTopLevelStatusInResults = isTopLevelCrmPage()
         val plainCallLogRange = hidePlainTimelineRange &&
             activePhoneFilter().isBlank() &&
             activeSearchQuery().isBlank() &&
             !isCrmModeEnabled() &&
             !isCrmContactsMode()
         binding.homeStatusRow.visibility = if (fullLog || plainCallLogRange) View.GONE else View.VISIBLE
-        binding.homeStatusText.visibility = if (plainCallLogRange) View.GONE else View.VISIBLE
+        binding.homeStatusText.visibility = if (plainCallLogRange || crmTopLevelStatusInResults) View.GONE else View.VISIBLE
         binding.filteredDialButton.visibility = if (filtered && !fullLog) View.VISIBLE else View.GONE
         if (filtered && !fullLog) {
             binding.filteredStatusContainer.background = roundedRect(Color.rgb(255, 237, 213), dp(12), Color.rgb(251, 146, 60), dp(1)); binding.filteredStatusContainer.setPadding(dp(10), dp(2), dp(4), dp(2))
@@ -164,6 +167,26 @@ internal class HomeContentRenderer(
             binding.homeStatusText.setTextColor(Color.rgb(71, 85, 105)); binding.homeStatusText.setPadding(0, 0, 0, 0)
         }
     }
+    private fun showResultsStatus(text: String) {
+        currentCalls = emptyList()
+        currentCallNotesByCall = emptyMap()
+        binding.homeCallsContainer.removeAllViews()
+        binding.fullLogProgress.visibility = View.GONE
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
+        binding.homeCallsContainer.addView(TextView(activity).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            textSize = 14f
+            setTextColor(Color.rgb(100, 116, 139))
+            setPadding(dp(18), dp(28), dp(18), dp(28))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        })
+    }
+    private fun isTopLevelCrmPage() = activePhoneFilter().isBlank() && (isCrmModeEnabled() || isCrmContactsMode())
     private fun isFilteredFullLogMode() = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
     private fun updateCrmModeControls() {
         val showBrandShortcut = activePhoneFilter().isBlank() && !isCrmContactsMode()
