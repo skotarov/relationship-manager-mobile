@@ -22,7 +22,7 @@ class SmsDeliverReceiver : BroadcastReceiver() {
             try {
                 val appContext = context.applicationContext
                 saveToInboxIfMissing(appContext, phone, body, receivedAt)
-                SmsIncomingNotifications.show(appContext, phone, body)
+                SmsIncomingNotifications.show(appContext, phone, body, receivedAt)
                 appContext.sendBroadcast(
                     Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(appContext.packageName),
                 )
