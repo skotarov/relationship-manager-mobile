@@ -27,7 +27,9 @@ object LookupPopupPresenter {
                     .putExtra(PostCallOverlayService.EXTRA_TITLE, result.title)
                     .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, result.subtitle)
                     .putStringArrayListExtra(PostCallOverlayService.EXTRA_LINES, ArrayList(result.lines))
-                    .putExtra(PostCallOverlayService.EXTRA_FORM_URL, result.openFormUrl)
+                    // The server may still return form.php for backward compatibility,
+                    // but the Android post-call bubble must use the local blue-note modal.
+                    .putExtra(PostCallOverlayService.EXTRA_FORM_URL, "")
                     .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                     .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
                     .putExtra(PostCallOverlayService.EXTRA_REMOTE_ROWS_ARE_PRELOADED, remoteRowsArePreloaded),
