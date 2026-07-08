@@ -352,6 +352,7 @@ class HomeActivity : AppCompatActivity() {
         companyGeneralNotesController.invalidate()
         crmContactsContentView.invalidate()
         HomeCrmPhaseLookup.invalidate()
+        crmFiltersController.refreshCompaniesIfNeeded(force = true)
         CallReportNoteOutboxScheduler.enqueue(this, reason = "home_pull_refresh")
         CallReportTopicNoteOutbox.requestSyncNow(this)
         CallReportSyncScheduler.enqueueCatchUp(this, reason = "home_pull_refresh")
