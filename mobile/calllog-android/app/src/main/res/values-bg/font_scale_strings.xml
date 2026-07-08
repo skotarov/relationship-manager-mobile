@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_general_section">Език и текст</string>
+    <string name="font_scale_large_title">2 пъти по-големи букви</string>
+    <string name="font_scale_large_description">Удвоява размера на текста в приложението. Записва се като профил за шрифт, за да могат после лесно да се добавят още размери.</string>
+</resources>
