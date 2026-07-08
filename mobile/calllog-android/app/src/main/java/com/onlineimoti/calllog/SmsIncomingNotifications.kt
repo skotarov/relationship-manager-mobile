@@ -19,20 +19,24 @@ import androidx.core.content.ContextCompat
 internal object SmsIncomingNotifications {
     private const val CHANNEL_ID = "relationship_manager_sms"
     private const val CHANNEL_NAME = "SMS"
-    private const val ACTION_OPEN_SMS = "com.onlineimoti.calllog.OPEN_SMS"
+    private const val ACTION_OPEN_SMS = "com.onlineimoti.calllog.OPEN_SMS_DETAIL"
 
-    fun show(context: Context, phone: String, body: String) {
+    fun show(context: Context, phone: String, body: String, receivedAtMs: Long = System.currentTimeMillis()) {
         if (!canPostNotifications(context) || phone.isBlank()) return
         ensureChannel(context)
         val displayName = ContactGroupFilter.resolveDisplayName(context, phone).orEmpty()
         val title = displayName.ifBlank { phone }
         val notificationId = notificationId(phone, body)
-        val openInbox = PendingIntent.getActivity(
+        val openMessage = PendingIntent.getActivity(
             context,
             notificationId,
-            Intent(context, SmsHistoryActivity::class.java)
+            Intent(context, NoteEditorLaunchActivity::class.java)
                 .setAction(ACTION_OPEN_SMS)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                .putExtra(PostCallOverlayService.EXTRA_MODE, NoteEditorLaunchActivity.MODE_SMS_VIEW)
+                .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
+                .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
+                .putExtra(NoteEditorLaunchActivity.EXTRA_SMS_BODY, body)
+                .putExtra(NoteEditorLaunchActivity.EXTRA_SMS_RECEIVED_AT, receivedAtMs),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val reply = PendingIntent.getActivity(
@@ -53,7 +57,7 @@ internal object SmsIncomingNotifications {
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            .setContentIntent(openInbox)
+            .setContentIntent(openMessage)
             .addAction(R.drawable.ic_menu_sms, "Отговори", reply)
             .build()
         NotificationManagerCompat.from(context).notify(notificationId, notification)
@@ -74,5 +78,5 @@ internal object SmsIncomingNotifications {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
     private fun notificationId(phone: String, body: String): Int =
-        (phone + "\u0000" + body + "\u0000" + System.currentTimeMillis()).hashCode()
+        "$phone|$body|${System.currentTimeMillis()}".hashCode()
 }
