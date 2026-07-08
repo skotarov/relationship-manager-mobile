@@ -59,7 +59,7 @@ open class FontScaledActivity : Activity() {
     }
 }
 
-open class FontScaledService : Service() {
+abstract class FontScaledService : Service() {
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppFontScale.wrap(newBase))
     }
