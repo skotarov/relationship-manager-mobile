@@ -11,6 +11,7 @@ internal class MainSettingsAutoSaveController(
     private val binding: ActivityMainBinding,
     private val autoSaveSettings: () -> AppConfig,
     private val applyLanguageIfChanged: (String) -> Unit,
+    private val applyFontScaleIfChanged: (Float) -> Unit,
 ) {
     fun wire() {
         val remote = binding.remoteSettingsSection
@@ -46,6 +47,12 @@ internal class MainSettingsAutoSaveController(
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
         tests.showRmDebugBoxCheckBox.autoSaveCheckedChanges()
+        binding.settingsGeneralGroup.largeTextCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            autoSaveSettings()
+            val scale = if (isChecked) AppFontScaleStore.LARGE else AppFontScaleStore.NORMAL
+            AppFontScaleStore.saveMultiplier(binding.root.context, scale)
+            applyFontScaleIfChanged(scale)
+        }
 
         language.appLanguageGroup.setOnCheckedChangeListener { _, _ ->
             val config = autoSaveSettings()
