@@ -2,7 +2,6 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.app.Dialog
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
