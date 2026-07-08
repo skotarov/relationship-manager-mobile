@@ -37,7 +37,11 @@ internal object HomeCrmCompanyMembershipStore {
             .filterKeys { it.isNotBlank() }
         if (requested.isEmpty()) return HomeCrmCompanyMembershipResult(emptyMap(), complete = true)
 
-        val scope = scopeFor(config) ?: return HomeCrmCompanyMembershipResult(emptyMap(), complete = false)
+        val pendingCompanyIds = CallReportTopicNoteOutbox.pendingCompanyIdsByPhoneKey(context)
+        val scope = scopeFor(config) ?: return HomeCrmCompanyMembershipResult(
+            companyIdsByPhoneKey = pendingCompanyIds.filterKeys { it in requested.keys },
+            complete = false,
+        )
         synchronized(lock) {
             var entries = readLocked(context, scope)
             val missing = requested.keys.filterNot { it in entries }
@@ -71,12 +75,43 @@ internal object HomeCrmCompanyMembershipStore {
                 }
             }
             val result = requested.keys.mapNotNull { phoneKey ->
-                entries[phoneKey]?.let { phoneKey to it.companyIds }
+                val cached = entries[phoneKey]?.companyIds.orEmpty()
+                val pending = pendingCompanyIds[phoneKey].orEmpty()
+                val merged = cached + pending
+                if (merged.isEmpty() && phoneKey !in entries && pending.isEmpty()) null else phoneKey to merged
             }.toMap()
             return HomeCrmCompanyMembershipResult(
                 companyIdsByPhoneKey = result,
-                complete = requested.keys.all { it in entries },
+                complete = requested.keys.all { it in entries || it in pendingCompanyIds },
             )
+        }
+    }
+
+    /**
+     * Company membership can change from note/SMS reassignment or CRM switch edits.
+     * Drop the stale phone entry so the next company-filter pass re-reads server
+     * history and overlays any local pending topic operation.
+     */
+    fun invalidate(context: Context, phone: String) {
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        if (phoneKey.isBlank()) return
+        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        synchronized(lock) {
+            val entries = readLocked(context, scope)
+            if (phoneKey !in entries) return
+            writeLocked(context, scope, entries - phoneKey)
+        }
+    }
+
+    fun invalidate(context: Context, phones: Collection<String>) {
+        val phoneKeys = phones.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it) }.filterTo(linkedSetOf()) { it.isNotBlank() }
+        if (phoneKeys.isEmpty()) return
+        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        synchronized(lock) {
+            val entries = readLocked(context, scope)
+            val next = entries.filterKeys { it !in phoneKeys }
+            if (next.size == entries.size) return
+            writeLocked(context, scope, next)
         }
     }
 
