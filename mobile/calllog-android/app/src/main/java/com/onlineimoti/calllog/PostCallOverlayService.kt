@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.animation.ObjectAnimator
-import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.os.Handler
@@ -11,7 +10,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
 
-class PostCallOverlayService : Service() {
+class PostCallOverlayService : FontScaledService() {
     private val handler = Handler(Looper.getMainLooper())
     private val state = PostCallOverlayState()
     private val ui: PostCallOverlayUi by lazy { PostCallOverlayUi(this) }

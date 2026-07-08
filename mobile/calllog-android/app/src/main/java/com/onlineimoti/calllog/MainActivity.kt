@@ -5,16 +5,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : FontScaledAppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val executor = Executors.newSingleThreadExecutor()
     private var suppressAutoSave = false
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
+    private var currentFontScale = AppFontScaleStore.NORMAL
 
     private val contactsCleanupController: MainContactsCleanupController by lazy {
         MainContactsCleanupController(this, binding, executor, ::setStatus, ::dp)
@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
         MainSettingsNavigationController(this, binding, translationSettingsController::onSectionVisible)
     }
     private val settingsAutoSaveController: MainSettingsAutoSaveController by lazy {
-        MainSettingsAutoSaveController(binding, ::autoSaveSettings, ::applyLanguageIfChanged)
+        MainSettingsAutoSaveController(binding, ::autoSaveSettings, ::applyLanguageIfChanged, ::applyFontScaleIfChanged)
     }
     private val translationSettingsController: TranslationSettingsController by lazy {
         TranslationSettingsController(this, binding)
@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         currentLanguage = ConfigStore.load(this).appLanguage
+        currentFontScale = AppFontScaleStore.loadMultiplier(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         if (DistributionCapabilities.supportsLocalDeviceData) syncPrivateNotesToSharedStorageWhenAvailable()
@@ -109,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (!::binding.isInitialized) return
         if (DistributionCapabilities.supportsLocalDeviceData) {
             syncPrivateNotesToSharedStorageWhenAvailable()
             contactsCleanupController.addProgressBar()
@@ -232,6 +234,13 @@ class MainActivity : AppCompatActivity() {
         if (language == currentLanguage) return
         currentLanguage = language
         AppLanguageManager.applyFromConfig(this)
+        recreate()
+    }
+
+    private fun applyFontScaleIfChanged(scale: Float) {
+        val normalized = AppFontScaleStore.normalize(scale)
+        if (normalized == currentFontScale) return
+        currentFontScale = normalized
         recreate()
     }
 

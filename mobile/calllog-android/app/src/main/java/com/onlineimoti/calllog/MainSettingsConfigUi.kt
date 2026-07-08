@@ -35,6 +35,7 @@ object MainSettingsConfigUi {
             ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
             else -> language.appLanguageSystem.isChecked = true
         }
+        binding.settingsGeneralGroup.largeTextCheckBox.isChecked = AppFontScaleStore.isLarge(binding.root.context)
         tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
     }
 

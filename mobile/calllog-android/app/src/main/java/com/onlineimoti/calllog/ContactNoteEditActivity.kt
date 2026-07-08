@@ -1,5 +1,4 @@
 package com.onlineimoti.calllog
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
@@ -7,7 +6,7 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
 import java.util.concurrent.Executors
-class ContactNoteEditActivity : Activity() {
+class ContactNoteEditActivity : FontScaledActivity() {
     private var phone = ""
     private var titleText = ""
     private var direction = ""

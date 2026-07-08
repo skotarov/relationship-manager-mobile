@@ -1,10 +1,9 @@
 package com.onlineimoti.calllog
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 
-class ContactNotesActivity : Activity() {
+class ContactNotesActivity : FontScaledActivity() {
     private val controller by lazy { ContactNotesRestoredController(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
