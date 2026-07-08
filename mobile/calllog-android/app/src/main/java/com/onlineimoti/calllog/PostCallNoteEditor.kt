@@ -54,7 +54,10 @@ internal class PostCallNoteEditor(
         val displayName = ContactGroupFilter.resolveDisplayName(service, phoneValue).orEmpty()
         val titleText = displayName.ifBlank { phoneValue.ifBlank { "Бележка към обаждане" } }
         val existingCallNote = existingCallNote(phoneValue, callAtValue, directionValue)
-        val initialCompanyId = preferredCompanyId().trim().ifBlank { existingCallNote?.companyId.orEmpty() }
+        val storedPendingNote = PendingCallNoteStore.pendingForPhone(service, phoneValue)
+        val initialCompanyId = preferredCompanyId().trim()
+            .ifBlank { existingCallNote?.companyId.orEmpty() }
+            .ifBlank { storedPendingNote?.companyId.orEmpty() }
         if (initialCompanyId.isNotBlank()) setPreferredCompanyId(initialCompanyId)
         val draft = ContactNoteFormDraft(
             phone = phoneValue,
@@ -75,6 +78,7 @@ internal class PostCallNoteEditor(
         val originalText = pendingCallNote()
             ?: initialNoteText().takeIf { it.isNotBlank() }
             ?: existingCallNote?.note
+            ?: storedPendingNote?.note
             ?: ContactNoteReader.callNoteForPhone(service, phoneValue, callAtValue, directionValue)
 
         fun saveCurrent(noteText: String, transition: Boolean): Boolean {
