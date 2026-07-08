@@ -38,6 +38,20 @@ class NoteEditorLaunchActivity : Activity() {
             return
         }
 
+        if (mode == MODE_SMS_VIEW) {
+            SmsMessageViewDialog(this, ::dp).show(
+                phone = phone,
+                title = title.ifBlank { phone },
+                body = source.getStringExtra(EXTRA_SMS_BODY).orEmpty(),
+                receivedAtMs = source.getLongExtra(EXTRA_SMS_RECEIVED_AT, 0L),
+                onDismiss = {
+                    finish()
+                    overridePendingTransition(0, 0)
+                },
+            )
+            return
+        }
+
         val config = ConfigStore.load(this)
         if (config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(this)) {
             startService(
@@ -73,6 +87,9 @@ class NoteEditorLaunchActivity : Activity() {
 
     companion object {
         const val MODE_SMS_REPLY = "sms_reply"
+        const val MODE_SMS_VIEW = "sms_view"
+        const val EXTRA_SMS_BODY = "sms_body"
+        const val EXTRA_SMS_RECEIVED_AT = "sms_received_at"
         private const val LOOKUP_NOTIFICATION_ID = 2001
         private const val POST_CALL_NOTIFICATION_ID = 2002
     }
