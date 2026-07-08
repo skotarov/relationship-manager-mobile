@@ -49,12 +49,12 @@ internal object HomeCompanyGeneralNoteLabels {
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
             if (phoneKey.isBlank() || phoneKey !in scopedPhoneKeys) continue
 
-            // Topic general notes have a stable event id. The fallback preserves
-            // compatibility with earlier server records that have no such id.
+            // Yellow Home labels must match the History/editor rule: only an
+            // explicitly emitted company main-note id can populate the yellow
+            // card. Do not infer a main note from blank call metadata because
+            // some server call-note responses omit direction/duration.
             val isGeneralNote = event.clientEventId.contains(":topic:general:") ||
-                event.clientEventId.contains(":note:general:") ||
-                (event.communicationType.equals("note", ignoreCase = true) &&
-                    event.direction.isBlank() && event.durationSeconds <= 0L)
+                event.clientEventId.contains(":note:general:")
             if (isGeneralNote) {
                 labelFor(phoneKey, event.companyId).setServerGeneralNote(
                     text = event.note,
