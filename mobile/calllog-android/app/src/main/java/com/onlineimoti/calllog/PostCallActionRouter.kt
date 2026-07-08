@@ -13,21 +13,18 @@ internal object PostCallActionRouter {
         formUrl: String = "",
         config: AppConfig = ConfigStore.load(context),
     ) {
-        val allowedFormUrl = if (CrmContactSyncStore.isEnabled(context.applicationContext, phone)) formUrl else ""
         when (config.postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_NOTHING -> return
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> {
                 if (shouldUseOverlay(context, config)) {
-                    startOverlay(context, allowedFormUrl, phone, direction, title)
+                    startOverlay(context, phone, direction, title)
                 } else {
                     CallNoteEditorLauncher.startHistory(context, phone, title.ifBlank { phone.ifBlank { "История" } })
                 }
             }
             else -> {
                 if (shouldUseOverlay(context, config)) {
-                    startOverlay(context, allowedFormUrl, phone, direction, title)
-                } else if (allowedFormUrl.isNotBlank()) {
-                    openRemoteForm(context, allowedFormUrl, phone, direction)
+                    startOverlay(context, phone, direction, title)
                 } else {
                     CallNoteEditorLauncher.startEditor(
                         context = context,
@@ -42,6 +39,7 @@ internal object PostCallActionRouter {
         }
     }
 
+    /** Legacy remote form is no longer used for post-call note entry. */
     fun openRemoteForm(context: Context, formUrl: String, phone: String, direction: String) {
         if (formUrl.isBlank()) return
         context.startActivity(
@@ -57,15 +55,13 @@ internal object PostCallActionRouter {
         return config.useOverlayPopups && config.useCustomEndPopup && Settings.canDrawOverlays(context)
     }
 
-    private fun startOverlay(context: Context, formUrl: String, phone: String, direction: String, title: String) {
+    private fun startOverlay(context: Context, phone: String, direction: String, title: String) {
         context.startService(
             Intent(context, PostCallOverlayService::class.java)
                 .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_CALL_ENDED)
-                .putExtra(PostCallOverlayService.EXTRA_FORM_URL, formUrl)
                 .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
                 .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
                 .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-                .putExtra(PostCallOverlayService.EXTRA_SUBTITLE, if (formUrl.isBlank()) "Локален режим — без сървърна бележка" else "")
                 .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, System.currentTimeMillis())
         )
     }
