@@ -37,11 +37,7 @@ internal object HomeCrmCompanyMembershipStore {
             .filterKeys { it.isNotBlank() }
         if (requested.isEmpty()) return HomeCrmCompanyMembershipResult(emptyMap(), complete = true)
 
-        val pendingCompanyIds = CallReportTopicNoteOutbox.pendingCompanyIdsByPhoneKey(context)
-        val scope = scopeFor(config) ?: return HomeCrmCompanyMembershipResult(
-            companyIdsByPhoneKey = pendingCompanyIds.filterKeys { it in requested.keys },
-            complete = false,
-        )
+        val scope = scopeFor(config) ?: return HomeCrmCompanyMembershipResult(emptyMap(), complete = false)
         synchronized(lock) {
             var entries = readLocked(context, scope)
             val missing = requested.keys.filterNot { it in entries }
@@ -75,22 +71,18 @@ internal object HomeCrmCompanyMembershipStore {
                 }
             }
             val result = requested.keys.mapNotNull { phoneKey ->
-                val cached = entries[phoneKey]?.companyIds.orEmpty()
-                val pending = pendingCompanyIds[phoneKey].orEmpty()
-                val merged = cached + pending
-                if (merged.isEmpty() && phoneKey !in entries && pending.isEmpty()) null else phoneKey to merged
+                entries[phoneKey]?.let { phoneKey to it.companyIds }
             }.toMap()
             return HomeCrmCompanyMembershipResult(
                 companyIdsByPhoneKey = result,
-                complete = requested.keys.all { it in entries || it in pendingCompanyIds },
+                complete = requested.keys.all { it in entries },
             )
         }
     }
 
     /**
      * Company membership can change from note/SMS reassignment or CRM switch edits.
-     * Drop the stale phone entry so the next company-filter pass re-reads server
-     * history and overlays any local pending topic operation.
+     * Drop the stale phone entry so the next company-filter pass re-reads server history.
      */
     fun invalidate(context: Context, phone: String) {
         val phoneKey = HomeCallPageLoader.noteKey(phone)
