@@ -1,6 +1,10 @@
 package com.onlineimoti.calllog
 
+import android.graphics.Color
+import android.view.Gravity
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
@@ -24,12 +28,13 @@ internal class HomeCrmContactsContentView(
     fun showLoading() {
         prepareCustomersHeader()
         timelineToggle.prepare(visible = true, contactsMode = true)
-        binding.homeStatusText.text = if (AppLocaleText.isBulgarian()) {
-            "Зареждане на клиенти…"
-        } else {
-            "Loading customers…"
-        }
-        binding.fullLogProgress.visibility = View.VISIBLE
+        currentData = null
+        contentRenderer.clearCalls()
+        binding.homeCallsContainer.removeAllViews()
+        binding.fullLogProgress.visibility = View.GONE
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
+        addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
         binding.paginationContainer.visibility = View.GONE
     }
 
@@ -67,12 +72,14 @@ internal class HomeCrmContactsContentView(
         contentRenderer.clearCalls()
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
-        binding.homeStatusText.text = when {
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
+        addStatusRow(when {
             hasActiveCrmFilters() && AppLocaleText.isBulgarian() -> "Няма клиенти за избраните филтри."
             hasActiveCrmFilters() -> "No customers match the selected filters."
             AppLocaleText.isBulgarian() -> "Няма клиенти в RM."
             else -> "No customers in RM."
-        }
+        })
         timelineToggle.showEmpty(contactsMode = true)
         PaginationButtonAppearance.apply(binding.previousCallsButton, pageIndex() > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, enabled = false)
@@ -96,6 +103,22 @@ internal class HomeCrmContactsContentView(
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex() + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
+
+    private fun addStatusRow(text: String) {
+        binding.homeCallsContainer.addView(TextView(activity).apply {
+            this.text = text
+            gravity = Gravity.CENTER
+            textSize = 14f
+            setTextColor(Color.rgb(100, 116, 139))
+            setPadding(dp(18), dp(28), dp(18), dp(28))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+        })
+    }
+
+    private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
 
     /** This list is independent from the local CRM-mode switch. */
     private fun prepareCustomersHeader() {
