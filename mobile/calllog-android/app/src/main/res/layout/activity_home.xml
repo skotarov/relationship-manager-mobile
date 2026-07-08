@@ -124,6 +124,18 @@
             android:src="@drawable/ic_popup_close" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/searchStatusText"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/homeStatusRow"
         android:layout_width="match_parent"
