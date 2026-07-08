@@ -132,6 +132,7 @@ internal class SmsCompanyAssignmentDialog(
                     status.text = "Не успях да запиша SMS към фирмата"
                     return@setOnClickListener
                 }
+                HomeCrmCompanyMembershipStore.invalidate(activity, phone)
                 activity.sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(activity.packageName))
                 onSaved()
                 dialog.dismiss()
