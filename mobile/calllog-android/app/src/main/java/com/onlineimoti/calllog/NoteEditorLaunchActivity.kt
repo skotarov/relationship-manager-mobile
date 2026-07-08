@@ -1,11 +1,10 @@
 package com.onlineimoti.calllog
 
-import android.app.Activity
 import android.os.Bundle
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 
-class NoteEditorLaunchActivity : Activity() {
+class NoteEditorLaunchActivity : FontScaledActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         openEditorAndFinish()
