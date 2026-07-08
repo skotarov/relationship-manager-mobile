@@ -83,6 +83,7 @@ internal object CallNoteTopicWriter {
         val result = CallNoteWriteResult(saved, false, target)
         if (!saved) return result
 
+        PendingCallNoteStore.clearResolvedForCall(context, phone, target.direction, target.callAt)
         HomeCrmCompanyMembershipStore.invalidate(context, phone)
         if (CrmContactSyncStore.isEnabled(context, phone)) {
             RmLayerContactDataSyncer.sync(context, phone)
