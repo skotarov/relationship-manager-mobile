@@ -25,7 +25,10 @@ internal object CrmContactSyncStore {
     fun setEnabled(context: Context, phone: String, enabled: Boolean) {
         val key = phoneKey(phone)
         if (key.isBlank()) return
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(key, enabled).apply()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val previous = prefs.getBoolean(key, false)
+        prefs.edit().putBoolean(key, enabled).apply()
+        if (previous != enabled) HomeCrmCompanyMembershipStore.invalidate(context, phone)
     }
 
     fun toggle(context: Context, phone: String): Boolean {

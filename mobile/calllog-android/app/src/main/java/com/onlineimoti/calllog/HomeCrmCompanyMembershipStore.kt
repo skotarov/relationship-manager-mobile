@@ -80,6 +80,33 @@ internal object HomeCrmCompanyMembershipStore {
         }
     }
 
+    /**
+     * Company membership can change from note/SMS reassignment or CRM switch edits.
+     * Drop the stale phone entry so the next company-filter pass re-reads server history.
+     */
+    fun invalidate(context: Context, phone: String) {
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        if (phoneKey.isBlank()) return
+        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        synchronized(lock) {
+            val entries = readLocked(context, scope)
+            if (phoneKey !in entries) return
+            writeLocked(context, scope, entries - phoneKey)
+        }
+    }
+
+    fun invalidate(context: Context, phones: Collection<String>) {
+        val phoneKeys = phones.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it) }.filterTo(linkedSetOf()) { it.isNotBlank() }
+        if (phoneKeys.isEmpty()) return
+        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        synchronized(lock) {
+            val entries = readLocked(context, scope)
+            val next = entries.filterKeys { it !in phoneKeys }
+            if (next.size == entries.size) return
+            writeLocked(context, scope, next)
+        }
+    }
+
     private fun readLocked(context: Context, scope: String): Map<String, MembershipEntry> {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getString(KEY_SCOPE, "").orEmpty() != scope) return emptyMap()
