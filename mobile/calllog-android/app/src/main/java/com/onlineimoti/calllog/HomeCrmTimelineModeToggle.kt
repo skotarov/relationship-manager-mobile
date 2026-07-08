@@ -38,9 +38,11 @@ internal class HomeCrmTimelineModeToggle(
         binding.homeStatusText.visibility = View.GONE
     }
 
+    /** Empty/loading CRM messages are rendered in the result area, not before firm buttons. */
     fun showEmpty(contactsMode: Boolean) {
         prepare(true, contactsMode)
-        binding.homeStatusText.visibility = View.VISIBLE
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
     }
 
     companion object {
