@@ -105,8 +105,9 @@ internal class HomeCrmFiltersController(
                 if (requestGeneration != companyGeneration.get() || activity.isFinishing || activity.isDestroyed) return@post
                 if (companies == loaded) return@post
                 companies = loaded
-                removeUnavailableCompanySelections()
+                val selectionChanged = removeUnavailableCompanySelections()
                 renderButtons()
+                if (selectionChanged) onFilterChanged()
             }
         }
     }
@@ -156,14 +157,14 @@ internal class HomeCrmFiltersController(
         onFilterChanged()
     }
 
-    private fun removeUnavailableCompanySelections() {
-        if (companies.isEmpty() || state.companyIds.isEmpty()) return
+    private fun removeUnavailableCompanySelections(): Boolean {
+        if (companies.isEmpty() || state.companyIds.isEmpty()) return false
         val knownIds = companies.mapTo(hashSetOf()) { it.id }
         val availableSelection = state.companyIds.filterTo(linkedSetOf()) { it in knownIds }
-        if (availableSelection != state.companyIds) {
-            state = state.copy(companyIds = availableSelection)
-            HomeCrmFilterStore.save(activity, state)
-        }
+        if (availableSelection == state.companyIds) return false
+        state = state.copy(companyIds = availableSelection)
+        HomeCrmFilterStore.save(activity, state)
+        return true
     }
 
     private fun renderButtons() {
