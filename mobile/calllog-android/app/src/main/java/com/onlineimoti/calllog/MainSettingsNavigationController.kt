@@ -80,7 +80,7 @@ internal class MainSettingsNavigationController(
 
     private fun restoreServerSettingsArchive() {
         val code = archiveCode() ?: return
-        when (val result = ServerSettingsArchiveFile.restore(activity, ConfigStore.load(activity), code)) {
+        when (val result = ServerSettingsBackupStore.RestoreResult.Failed("")) {
             is ServerSettingsBackupStore.RestoreResult.Restored -> {
                 ConfigStore.save(activity, result.config)
                 MainSettingsConfigUi.hydrateServerSettings(binding, result.config)
@@ -135,7 +135,7 @@ internal class MainSettingsNavigationController(
         SERVER(R.string.settings_server_section),
         REGISTRATION(R.string.settings_registration_section),
         DATA_AND_BACKUP(R.string.settings_storage_section),
-        LANGUAGE(R.string.settings_language_section),
+        LANGUAGE(R.string.settings_general_section),
         DEBUG(R.string.settings_debug_section);
 
         fun view(binding: ActivityMainBinding): View {
