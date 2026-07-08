@@ -54,6 +54,7 @@ internal object CallNoteWriter {
             durationSeconds = target.durationSeconds,
         )
         val result = CallNoteWriteResult(saved, false, target)
+        if (saved) PendingCallNoteStore.clearResolvedForCall(context, phone, target.direction, target.callAt)
         if (syncToCrm) syncToCrmIfNeeded(context, phone, text, result)
         return result
     }
