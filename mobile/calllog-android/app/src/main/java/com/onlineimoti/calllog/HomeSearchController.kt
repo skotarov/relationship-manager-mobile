@@ -35,7 +35,8 @@ internal class HomeSearchController(
         if (HomeCallPageLoader.isSearchTooShort(query)) {
             cancelActiveTask()
             setCurrentCalls(emptyList())
-            binding.homeStatusText.text = context.getString(R.string.dynamic_home_search_minimum)
+            showSearchStatus(context.getString(R.string.dynamic_home_search_minimum))
+            hideInlineStatusForSearch()
             binding.previousCallsButton.isEnabled = false
             binding.nextCallsButton.isEnabled = false
             binding.pageText.text = context.getString(R.string.dynamic_home_page, pageIndex() + 1)
@@ -52,8 +53,8 @@ internal class HomeSearchController(
         val usesCrmFilters = phoneFilter.isBlank() && (crmMode || crmContactsMode)
         val filterState = if (usesCrmFilters) HomeCrmFilterStore.load(context) else null
         val page = pageIndex()
-        binding.homeStatusText.text = context.getString(R.string.dynamic_home_searching, query.trim())
-        binding.homeStatusText.visibility = View.VISIBLE
+        showSearchStatus(context.getString(R.string.dynamic_home_searching, query.trim()))
+        hideInlineStatusForSearch()
         binding.previousCallsButton.isEnabled = false
         binding.nextCallsButton.isEnabled = false
         binding.paginationContainer.visibility = View.VISIBLE
@@ -94,8 +95,10 @@ internal class HomeSearchController(
                 if (renderData.calls.isEmpty()) {
                     binding.homeCallsContainer.removeAllViews()
                     renderEmptyState()
+                    hideInlineStatusForSearch()
                 } else {
                     applyRenderData(renderData, currentPageSize)
+                    hideInlineStatusForSearch()
                     serverCallNotes.enrichAsync(renderData) { enriched ->
                         if (generation != searchGeneration.get()) return@enrichAsync
                         if (
@@ -109,6 +112,7 @@ internal class HomeSearchController(
                             return@enrichAsync
                         }
                         applyRenderData(enriched, currentPageSize)
+                        hideInlineStatusForSearch()
                         showSearchCount(filteredResults.size)
                     }
                 }
@@ -124,6 +128,7 @@ internal class HomeSearchController(
         // Invalidate a callback that may have been posted immediately before
         // cancellation, such as when Home goes to the background.
         searchGeneration.incrementAndGet()
+        if (activeSearchQuery().isBlank()) hideSearchStatus()
     }
 
     /**
@@ -216,8 +221,22 @@ internal class HomeSearchController(
 
     private fun showSearchCount(count: Int) {
         if (activeSearchQuery().isBlank()) return
-        binding.homeStatusText.text = context.getString(R.string.runtime_search_found_count, count)
-        binding.homeStatusText.visibility = View.VISIBLE
+        showSearchStatus(context.getString(R.string.runtime_search_found_count, count))
+    }
+
+    private fun showSearchStatus(text: String) {
+        binding.searchStatusText.text = text
+        binding.searchStatusText.visibility = View.VISIBLE
+    }
+
+    private fun hideSearchStatus() {
+        binding.searchStatusText.text = ""
+        binding.searchStatusText.visibility = View.GONE
+    }
+
+    private fun hideInlineStatusForSearch() {
+        binding.homeStatusText.text = ""
+        binding.homeStatusText.visibility = View.GONE
     }
 
     private data class SearchKey(
