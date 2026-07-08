@@ -31,10 +31,22 @@ internal class SmsMessageViewDialog(
             return
         }
         runCatching {
+            var openingReply = false
             val dialog = Dialog(activity).apply { requestWindowFeature(Window.FEATURE_NO_TITLE) }
-            dialog.setContentView(content(dialog, phone, title.ifBlank { phone }, body, receivedAtMs))
+            dialog.setContentView(content(
+                dialog = dialog,
+                phone = phone,
+                title = title.ifBlank { phone },
+                body = body,
+                receivedAtMs = receivedAtMs,
+                openReply = {
+                    openingReply = true
+                    dialog.dismiss()
+                    SmsComposeDialog(activity, dp).show(phone, title.ifBlank { phone }, onDismiss)
+                },
+            ))
             dialog.setOnShowListener { configureWindow(dialog) }
-            dialog.setOnDismissListener { onDismiss?.invoke() }
+            dialog.setOnDismissListener { if (!openingReply) onDismiss?.invoke() }
             dialog.show()
         }.onFailure { error ->
             Toast.makeText(
@@ -55,7 +67,14 @@ internal class SmsMessageViewDialog(
         }
     }
 
-    private fun content(dialog: Dialog, phone: String, title: String, body: String, receivedAtMs: Long): LinearLayout {
+    private fun content(
+        dialog: Dialog,
+        phone: String,
+        title: String,
+        body: String,
+        receivedAtMs: Long,
+        openReply: () -> Unit,
+    ): LinearLayout {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(18))
@@ -94,10 +113,7 @@ internal class SmsMessageViewDialog(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(48),
             ).apply { topMargin = dp(16) }
-            setOnClickListener {
-                dialog.dismiss()
-                SmsComposeDialog(activity, dp).show(phone, title, onDismiss)
-            }
+            setOnClickListener { openReply() }
         })
         return root
     }
