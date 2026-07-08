@@ -137,6 +137,22 @@ internal object PendingCallNoteStore {
         return false
     }
 
+    /**
+     * Once the user edits the real post-call row, the old pending draft must not
+     * reconcile later and overwrite the newer text with the text typed mid-call.
+     */
+    fun clearResolvedForCall(context: Context, phone: String, direction: String, callAt: Long) {
+        if (callAt <= 0L) return
+        val pending = pendingForPhone(context, phone) ?: return
+        val matched = findMatchingCall(context, pending)
+        if (
+            matched?.startedAt == callAt &&
+            (direction.isBlank() || pending.direction.isBlank() || matched.direction.isBlank() || matched.direction == direction || pending.direction == direction)
+        ) {
+            clear(context, phone)
+        }
+    }
+
     private fun findMatchingCall(context: Context, pending: PendingCallNote): PhoneCallRecord? {
         val anchor = pending.sessionStartedAt.takeIf { it > 0L } ?: pending.savedAt
         val earliest = anchor - MATCH_BEFORE_SESSION_MS
