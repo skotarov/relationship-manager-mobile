@@ -28,6 +28,7 @@ internal object CallNoteTopicWriter {
         val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
         if (!saved) return result
 
+        HomeCrmCompanyMembershipStore.invalidate(context, phone)
         CallReportTopicNoteOutbox.enqueueGeneral(context, phone, text, companyId)
         return result
     }
@@ -82,6 +83,7 @@ internal object CallNoteTopicWriter {
         val result = CallNoteWriteResult(saved, false, target)
         if (!saved) return result
 
+        HomeCrmCompanyMembershipStore.invalidate(context, phone)
         if (CrmContactSyncStore.isEnabled(context, phone)) {
             RmLayerContactDataSyncer.sync(context, phone)
         }
@@ -131,6 +133,7 @@ internal object CallNoteTopicWriter {
             text = text,
             companyId = companyId,
         )
+        if (saved) HomeCrmCompanyMembershipStore.invalidate(context, phone)
         if (saved && text.trim().isNotBlank() && activeSession == null) {
             PendingCallNoteStore.reconcileSoon(context, phone)
         }
