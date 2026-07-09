@@ -44,10 +44,11 @@ internal class HomeCallRowRenderer(
         showContactIdentity: Boolean = true,
         showGeneralContactNote: Boolean = true,
         showQuickActions: Boolean = true,
+        serverBacked: Boolean = false,
     ): MaterialCardView {
         if (call.isSms) return smsRowRenderer.compactRow(
             call, displayName, contactNote, companyGeneralNoteLabels, callNote,
-            highlightQuery, showContactIdentity, showGeneralContactNote, showQuickActions,
+            highlightQuery, showContactIdentity, showGeneralContactNote, showQuickActions, serverBacked,
         )
         val crmClient = isCrmClient(call, showGeneralContactNote)
         val card = MaterialCardView(activity).apply {
@@ -76,7 +77,7 @@ internal class HomeCallRowRenderer(
         }
         column.addView(callMetaText(call, displayName, highlightQuery, showContactIdentity))
         if (showContactIdentity) {
-            column.addView(mainNameRow(call, displayName, highlightQuery, crmClient, companyGeneralNoteLabels))
+            column.addView(mainNameRow(call, displayName, highlightQuery, crmClient, companyGeneralNoteLabels, showGeneralContactNote && serverBacked))
         }
         addGeneralNote(column, contactNote, highlightQuery, showGeneralContactNote)
         notesUi.addCompanyGeneralNotes(
@@ -186,6 +187,7 @@ internal class HomeCallRowRenderer(
         query: String,
         crmClient: Boolean,
         labels: List<HomeCompanyScopeLabel>?,
+        serverBacked: Boolean,
     ) = LinearLayout(activity).apply {
         val color = activity.getColor(R.color.calllog_text)
         orientation = LinearLayout.HORIZONTAL
@@ -193,7 +195,7 @@ internal class HomeCallRowRenderer(
         setPadding(0, dp(2), 0, 0)
         addView(TextView(activity).apply {
             val identity = SearchTextHighlighter.highlightedText(displayName.ifBlank { call.number }, query, color)
-            text = companyScopeChipsUi.inlineCrmIdentity(identity, labels, crmClient)
+            text = companyScopeChipsUi.inlineCrmIdentity(identity, labels, crmClient, serverBacked)
             setTextColor(color)
             textSize = 15f
             setTypeface(typeface, Typeface.BOLD)
