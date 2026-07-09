@@ -94,6 +94,7 @@ internal class ContactNotesRestoredController(
         if (pullRefreshRequested && !showPullRefresh) pullRefreshRequested = false
         val config = ConfigStore.load(activity)
         val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
+        val crmSyncServerBacked = !crmSyncEnabled && historyController.hasServerRecordsFor(phone)
         val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -108,6 +109,7 @@ internal class ContactNotesRestoredController(
             showCrmSyncButton = config.remoteEnabled,
             crmSyncEnabled = crmSyncEnabled,
             crmSyncBusy = crmSyncBusy,
+            crmSyncServerBacked = crmSyncServerBacked,
             goBack = { activity.finish() },
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
