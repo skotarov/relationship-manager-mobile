@@ -13,7 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 
-/** Compact planning card for an explicitly enabled CRM contact. */
+/** Compact planning card for an explicitly enabled CRM contact or server-backed contact. */
 internal class HomeCrmContactRowRenderer(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -55,7 +55,7 @@ internal class HomeCrmContactRowRenderer(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                addView(titleView(title, highlightQuery, companyLabels))
+                addView(titleView(title, highlightQuery, companyLabels, contact.number))
                 addView(numberView(contact.number, highlightQuery))
                 notesUi.addGeneralContactNote(
                     column = this,
@@ -89,11 +89,14 @@ internal class HomeCrmContactRowRenderer(
         title: String,
         query: String,
         labels: List<HomeCompanyScopeLabel>?,
+        phone: String,
     ): TextView {
         val color = activity.getColor(R.color.calllog_text)
+        val crmClient = CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
+            CrmContactSyncStore.isEnabled(activity.applicationContext, phone)
         return TextView(activity).apply {
             val identity = SearchTextHighlighter.highlightedText(title, query, color)
-            text = scopeChipsUi.inlineCrmIdentity(identity, labels, crmClient = true)
+            text = scopeChipsUi.inlineCrmIdentity(identity, labels, crmClient = crmClient, serverBacked = true)
             setTextColor(color)
             textSize = 15.5f
             setTypeface(typeface, Typeface.BOLD)
