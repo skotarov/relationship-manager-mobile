@@ -11,12 +11,11 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
 import java.util.concurrent.Executors
 
 /** Device-wide chronological SMS list opened from the Call Log overflow menu. */
-class SmsHistoryActivity : AppCompatActivity() {
+class SmsHistoryActivity : FontScaledAppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
