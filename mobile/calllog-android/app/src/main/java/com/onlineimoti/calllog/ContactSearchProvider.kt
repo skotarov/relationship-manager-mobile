@@ -30,8 +30,16 @@ internal object ContactSearchProvider {
             .asSequence()
             // Every separated word/number is required, but it can be found in a
             // different field: e.g. "Иван 897" matches name + phone together.
-            .filter { result -> terms.matches(result.name, result.phone, result.normalizedPhone) }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
+            .filter { result ->
+                terms.matches(
+                    result.name,
+                    result.phone,
+                    result.normalizedPhone,
+                    PhoneNormalizer.key(result.phone),
+                    PhoneNormalizer.display(result.phone),
+                )
+            }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { PhoneNormalizer.display(it.phone) } })
             .toList()
     }
 
@@ -40,8 +48,8 @@ internal object ContactSearchProvider {
         val enabledKeys = CrmContactSyncStore.enabledPhoneKeys(context.applicationContext)
         if (enabledKeys.isEmpty()) return emptyList()
         return allContacts(context)
-            .filter { contact -> noteKey(contact.phone) in enabledKeys }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { it.phone } })
+            .filter { contact -> PhoneNormalizer.key(contact.phone) in enabledKeys }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.ifBlank { PhoneNormalizer.display(it.phone) } })
     }
 
     fun invalidate() {
@@ -89,20 +97,15 @@ internal object ContactSearchProvider {
                 val number = if (numberIndex >= 0) cursor.getString(numberIndex).orEmpty() else ""
                 val normalized = if (normalizedIndex >= 0) cursor.getString(normalizedIndex).orEmpty() else ""
                 val phone = number.ifBlank { normalized }
-                val key = noteKey(phone)
+                val key = PhoneNormalizer.key(phone)
                 if (key.isBlank() || results.containsKey(key)) continue
                 results[key] = ContactSearchResult(
                     phone = phone,
-                    name = name.ifBlank { phone },
-                    normalizedPhone = normalized,
+                    name = name.ifBlank { PhoneNormalizer.display(phone) },
+                    normalizedPhone = PhoneNormalizer.normalize(phone).ifBlank { normalized },
                 )
             }
         }
         return results.values.toList()
-    }
-
-    private fun noteKey(number: String): String {
-        val digits = number.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
     }
 }
