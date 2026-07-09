@@ -74,7 +74,7 @@
                     android:contentDescription="@string/settings_back_content_description"
                     android:padding="8dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_settings_back" />
+                    android:src="@drawable/ic_settings_chevron_back" />
                 <TextView
                     android:id="@+id/settingsDetailTitle"
                     android:layout_width="0dp"
