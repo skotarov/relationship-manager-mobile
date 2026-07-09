@@ -1,5 +1,8 @@
 <resources>
     <string name="settings_general_section">Language &amp; text</string>
-    <string name="font_scale_large_title">2x larger text</string>
-    <string name="font_scale_large_description">Doubles app text size. Stored as a font scale profile so more sizes can be added later.</string>
+    <string name="font_scale_title">Text size</string>
+    <string name="font_scale_normal">Normal</string>
+    <string name="font_scale_larger">Larger (+30%)</string>
+    <string name="font_scale_largest">Largest (1.7x)</string>
+    <string name="font_scale_description">Applies to the app screens after they reopen. Stored as a font scale profile so more sizes can be added later.</string>
 </resources>
