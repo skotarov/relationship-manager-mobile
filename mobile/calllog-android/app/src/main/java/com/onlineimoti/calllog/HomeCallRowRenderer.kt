@@ -121,7 +121,7 @@ internal class HomeCallRowRenderer(
         val value = listOf(
             PhoneCallReader.formatStartedAt(call.startedAt),
             PhoneCallReader.formatDuration(call.durationSeconds),
-            call.number.takeIf { hasName },
+            call.displayNumber.takeIf { hasName },
         ).filter { !it.isNullOrBlank() }.joinToString(" • ")
         val color = activity.getColor(R.color.calllog_muted_text)
         return TextView(activity).apply {
@@ -194,7 +194,7 @@ internal class HomeCallRowRenderer(
         gravity = Gravity.CENTER_VERTICAL
         setPadding(0, dp(2), 0, 0)
         addView(TextView(activity).apply {
-            val identity = SearchTextHighlighter.highlightedText(displayName.ifBlank { call.number }, query, color)
+            val identity = SearchTextHighlighter.highlightedText(displayName.ifBlank { call.displayNumber }, query, color)
             text = companyScopeChipsUi.inlineCrmIdentity(identity, labels, crmClient, serverBacked)
             setTextColor(color)
             textSize = 15f
