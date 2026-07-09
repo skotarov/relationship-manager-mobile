@@ -65,26 +65,28 @@ object ContactGroupFilter {
         }
 
         val resolver = context.contentResolver
-        val contact = resolver.query(
-            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
-                .appendPath(phoneNumber)
-                .build(),
-            arrayOf(
-                ContactsContract.PhoneLookup._ID,
-                ContactsContract.PhoneLookup.DISPLAY_NAME,
-            ),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                ContactRecord(
-                    displayName = cursor.getString(1).orEmpty(),
-                    groups = emptyList(),
-                    contactId = cursor.getLong(0),
-                )
-            } else {
-                null
+        val contact = PhoneNormalizer.candidates(phoneNumber).firstNotNullOfOrNull { candidate ->
+            resolver.query(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon()
+                    .appendPath(candidate)
+                    .build(),
+                arrayOf(
+                    ContactsContract.PhoneLookup._ID,
+                    ContactsContract.PhoneLookup.DISPLAY_NAME,
+                ),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    ContactRecord(
+                        displayName = cursor.getString(1).orEmpty(),
+                        groups = emptyList(),
+                        contactId = cursor.getLong(0),
+                    )
+                } else {
+                    null
+                }
             }
         } ?: return null
 
