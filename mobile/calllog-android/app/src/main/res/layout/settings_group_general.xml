@@ -43,21 +43,53 @@
             android:id="@+id/languageSettingsSection"
             layout="@layout/section_language_settings" />
 
-        <CheckBox
-            android:id="@+id/largeTextCheckBox"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/font_scale_large_title"
+            android:text="@string/font_scale_title"
             android:textColor="@color/calllog_text"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/fontScaleGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/fontScaleNormalRadio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/font_scale_normal"
+                android:textColor="@color/calllog_text"
+                android:textSize="15sp" />
+
+            <RadioButton
+                android:id="@+id/fontScaleLargerRadio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/font_scale_larger"
+                android:textColor="@color/calllog_text"
+                android:textSize="15sp" />
+
+            <RadioButton
+                android:id="@+id/fontScaleLargestRadio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/font_scale_largest"
+                android:textColor="@color/calllog_text"
+                android:textSize="15sp" />
+        </RadioGroup>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
             android:layout_marginTop="2dp"
-            android:text="@string/font_scale_large_description"
+            android:text="@string/font_scale_description"
             android:textColor="@color/calllog_muted_text"
             android:textSize="12sp" />
 
