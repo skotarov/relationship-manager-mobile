@@ -31,7 +31,7 @@ internal object StoredNoteSearchProvider {
         if (terms.isEmpty) return emptyList()
         return allNotes(context)
             .asSequence()
-            .filter { result -> terms.matches(result.note, result.phone, result.phoneKey) }
+            .filter { result -> terms.matches(result.note, result.phone, result.phoneKey, PhoneNormalizer.display(result.phone)) }
             .sortedByDescending { it.noteAt.takeIf { at -> at > 0L } ?: it.callAt }
             .toList()
     }
@@ -60,10 +60,11 @@ internal object StoredNoteSearchProvider {
         val prefs = context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE)
         return prefs.all.mapNotNull { (key, value) ->
             val note = (value as? String).orEmpty().trim()
-            if (key.isBlank() || note.isBlank()) return@mapNotNull null
+            val phoneKey = PhoneNormalizer.key(key)
+            if (phoneKey.isBlank() || note.isBlank()) return@mapNotNull null
             StoredNoteSearchResult(
                 phone = key,
-                phoneKey = key,
+                phoneKey = phoneKey,
                 note = note,
                 noteAt = 0L,
                 callAt = 0L,
@@ -92,7 +93,7 @@ internal object StoredNoteSearchProvider {
                 val note = json.optString("note").trim()
                 if (note.isBlank()) return@mapNotNull null
                 val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
-                val phoneKey = json.optString("normalized_phone").ifBlank { noteKey(phone) }
+                val phoneKey = PhoneNormalizer.key(json.optString("normalized_phone").ifBlank { phone })
                 if (phoneKey.isBlank()) return@mapNotNull null
                 StoredNoteSearchResult(
                     phone = phone.ifBlank { phoneKey },
@@ -106,10 +107,5 @@ internal object StoredNoteSearchProvider {
                 )
             }
         }.getOrDefault(emptyList())
-    }
-
-    private fun noteKey(number: String): String {
-        val digits = number.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
     }
 }

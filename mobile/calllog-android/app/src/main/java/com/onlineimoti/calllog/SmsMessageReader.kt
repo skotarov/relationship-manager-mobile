@@ -43,21 +43,22 @@ internal object SmsMessageReader {
     }
 
     fun messagesForPhone(context: Context, phone: String, limit: Int = MAX_MESSAGES_PER_CONTACT): List<SmsMessageRecord> {
-        val targetPhone = PhoneNormalizer.normalize(phone)
+        val targetPhone = PhoneNormalizer.key(phone)
         if (targetPhone.isBlank() || !canReadSms(context)) return emptyList()
+        val candidates = PhoneNormalizer.candidates(phone)
 
         return runCatching {
             val exact = queryMessages(
                 context = context,
-                selection = "${Telephony.Sms.ADDRESS} IN (${phoneCandidates(targetPhone).joinToString(",") { "?" }})",
-                selectionArgs = phoneCandidates(targetPhone).toTypedArray(),
+                selection = "${Telephony.Sms.ADDRESS} IN (${candidates.joinToString(",") { "?" }})",
+                selectionArgs = candidates.toTypedArray(),
                 targetPhone = targetPhone,
                 limit = limit,
             )
             if (exact.isNotEmpty()) {
                 exact
             } else {
-                val lastDigits = targetPhone.filter { it.isDigit() }.takeLast(9)
+                val lastDigits = targetPhone.takeLast(9)
                 if (lastDigits.length < 7) emptyList() else queryMessages(
                     context = context,
                     selection = "${Telephony.Sms.ADDRESS} LIKE ?",
@@ -220,21 +221,6 @@ internal object SmsMessageReader {
             }
         }
         return rows
-    }
-
-    private fun phoneCandidates(normalizedPhone: String): List<String> {
-        val digits = normalizedPhone.filter { it.isDigit() }
-        val lastNine = digits.takeLast(9)
-        return linkedSetOf<String>().apply {
-            add(normalizedPhone)
-            add(digits)
-            if (lastNine.length == 9) {
-                add(lastNine)
-                add("0$lastNine")
-                add("359$lastNine")
-                add("+359$lastNine")
-            }
-        }.filter { it.isNotBlank() }
     }
 
     private fun canReadSms(context: Context): Boolean = hasReadSmsPermission(context)

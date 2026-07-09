@@ -17,7 +17,7 @@ internal object CrmContactSyncStore {
             .all
             .asSequence()
             .filter { entry -> entry.value as? Boolean == true }
-            .map { entry -> entry.key }
+            .map { entry -> PhoneNormalizer.key(entry.key) }
             .filter { key -> key.isNotBlank() }
             .toSet()
     }
@@ -37,8 +37,5 @@ internal object CrmContactSyncStore {
         return enabled
     }
 
-    private fun phoneKey(phone: String): String {
-        val digits = phone.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
-    }
+    private fun phoneKey(phone: String): String = PhoneNormalizer.key(phone)
 }

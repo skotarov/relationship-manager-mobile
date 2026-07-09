@@ -249,7 +249,7 @@ object LocalNotesFileStore {
     private fun profileFile(context: Context, phoneKey: String, createDirs: Boolean): File = File(phoneDir(context, phoneKey, createDirs), PROFILE_FILE)
 
     private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
-        val key = phoneKey.filter { it.isDigit() }
+        val key = PhoneNormalizer.key(phoneKey)
         val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
         val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
@@ -274,5 +274,5 @@ object LocalNotesFileStore {
         }.getOrDefault("")
     }
 
-    private fun String.normalizePhoneKey(): String = filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
+    private fun String.normalizePhoneKey(): String = PhoneNormalizer.key(this)
 }
