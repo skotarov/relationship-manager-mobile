@@ -40,7 +40,7 @@ object ContactNoteReader {
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
         if (phoneNumber.isBlank()) return false
         saveLocalNote(context, phoneNumber, note)
-        return phoneNumber.normalizePhoneKey().isNotBlank()
+        return PhoneNormalizer.key(phoneNumber).isNotBlank()
     }
 
     fun saveCallNoteForPhone(
@@ -72,17 +72,21 @@ object ContactNoteReader {
 
     private fun findContactId(context: Context, phoneNumber: String): Long? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return null
-        return context.contentResolver.query(
-            ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(phoneNumber).build(),
-            arrayOf(ContactsContract.PhoneLookup._ID),
-            null,
-            null,
-            null,
-        )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null }
+        for (candidate in PhoneNormalizer.candidates(phoneNumber)) {
+            val match = context.contentResolver.query(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(candidate).build(),
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null }
+            if (match != null) return match
+        }
+        return null
     }
 
     private fun readLocalNote(context: Context, phoneNumber: String): String {
-        val key = phoneNumber.normalizePhoneKey()
+        val key = PhoneNormalizer.key(phoneNumber)
         if (key.isBlank()) return ""
         return context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE)
             .getString(key, "")
@@ -91,10 +95,8 @@ object ContactNoteReader {
     }
 
     private fun saveLocalNote(context: Context, phoneNumber: String, note: String) {
-        val key = phoneNumber.normalizePhoneKey()
+        val key = PhoneNormalizer.key(phoneNumber)
         if (key.isBlank()) return
         context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE).edit().putString(key, note.trim()).apply()
     }
-
-    private fun String.normalizePhoneKey(): String = filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
 }
