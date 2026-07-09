@@ -30,11 +30,11 @@ internal class HomeSmsRowRenderer(
         serverBacked: Boolean = false,
     ): MaterialCardView {
         val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
-        val title = displayName.ifBlank { call.number }
+        val title = displayName.ifBlank { call.displayNumber }
         val metaText = listOf(
             PhoneCallReader.formatStartedAt(call.startedAt),
             call.smsDirectionLabel,
-            call.number.takeIf { hasContactName },
+            call.displayNumber.takeIf { hasContactName },
         ).filter { !it.isNullOrBlank() }.joinToString(" • ")
         val crmClient = showGeneralContactNote &&
             CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) &&
