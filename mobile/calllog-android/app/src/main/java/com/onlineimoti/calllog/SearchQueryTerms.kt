@@ -25,9 +25,16 @@ internal class SearchQueryTerms private constructor(
             .flatMap { it.asSequence() }
             .filter(Char::isDigit)
             .joinToString("")
+        val phoneKeyHaystack = fields
+            .asSequence()
+            .map(PhoneNormalizer::key)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
         return terms.all { term ->
             when (term) {
-                is Term.Digits -> digitsHaystack.contains(term.value)
+                is Term.Digits -> term.values.any { value ->
+                    digitsHaystack.contains(value) || phoneKeyHaystack.contains(value)
+                }
                 is Term.Text -> textHaystack.contains(term.value)
             }
         }
@@ -41,7 +48,7 @@ internal class SearchQueryTerms private constructor(
         val value: String
 
         data class Text(override val value: String) : Term
-        data class Digits(override val value: String) : Term
+        data class Digits(override val value: String, val values: Set<String>) : Term
     }
 
     companion object {
@@ -54,13 +61,27 @@ internal class SearchQueryTerms private constructor(
                 .mapNotNull { raw ->
                     val digits = raw.filter(Char::isDigit)
                     when {
-                        raw.all(Char::isDigit) && digits.isNotBlank() -> Term.Digits(digits)
+                        raw.all { it.isDigit() || it == '+' } && digits.isNotBlank() -> Term.Digits(
+                            value = digits,
+                            values = digitAlternates(digits),
+                        )
                         else -> raw.lowercase(Locale.getDefault()).takeIf { it.isNotBlank() }?.let(Term::Text)
                     }
                 }
                 .distinct()
                 .toList()
             return SearchQueryTerms(terms)
+        }
+
+        private fun digitAlternates(digits: String): Set<String> {
+            val normalized = if (digits.startsWith("00") && digits.length > 4) digits.drop(2) else digits
+            return linkedSetOf<String>().apply {
+                add(digits)
+                add(normalized)
+                if (normalized.startsWith("359")) add(normalized.drop(3))
+                if (normalized.startsWith("0")) add(normalized.drop(1))
+                PhoneNormalizer.key(normalized).takeIf { it.isNotBlank() }?.let(::add)
+            }.filter { it.isNotBlank() }.toSet()
         }
     }
 }
