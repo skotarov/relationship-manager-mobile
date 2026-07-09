@@ -15,10 +15,21 @@ internal class HomeCompanyGeneralNotesController(
     private val generation = AtomicInteger(0)
     private var requestSignature = ""
     private var labelsByPhoneKey: Map<String, List<HomeCompanyScopeLabel>> = emptyMap()
+    private var serverBackedPhoneKeys: Set<String> = emptySet()
 
     fun labelsFor(calls: List<PhoneCallRecord>): Map<String, List<HomeCompanyScopeLabel>> {
         val keys = calls.map { HomeCallPageLoader.noteKey(it.number) }.filter { it.isNotBlank() }.toSet()
         return labelsByPhoneKey.filterKeys { it in keys }
+    }
+
+    fun serverBackedPhoneKeysFor(calls: List<PhoneCallRecord>): Set<String> {
+        val keys = calls.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }.filterTo(linkedSetOf()) { it.isNotBlank() }
+        return serverBackedPhoneKeys.filterTo(linkedSetOf()) { it in keys }
+    }
+
+    fun hasServerBackedPhone(phone: String): Boolean {
+        val key = HomeCallPageLoader.noteKey(phone)
+        return key.isNotBlank() && key in serverBackedPhoneKeys
     }
 
     fun refresh(calls: List<PhoneCallRecord>) {
@@ -38,8 +49,9 @@ internal class HomeCompanyGeneralNotesController(
         requestSignature = nextSignature
 
         if (!CallReportRemoteAccess.isReady(config) || phones.isEmpty()) {
-            if (labelsByPhoneKey.isNotEmpty()) {
+            if (labelsByPhoneKey.isNotEmpty() || serverBackedPhoneKeys.isNotEmpty()) {
                 labelsByPhoneKey = emptyMap()
+                serverBackedPhoneKeys = emptySet()
                 onChanged()
             }
             return
@@ -47,13 +59,14 @@ internal class HomeCompanyGeneralNotesController(
 
         val currentGeneration = generation.incrementAndGet()
         executor.execute {
-            val labels = runCatching {
+            val snapshot = runCatching {
                 HomeCompanyGeneralNoteLabels.fetch(context.applicationContext, config, phones)
-            }.getOrDefault(emptyMap())
+            }.getOrDefault(HomeCompanyScopeSnapshot())
             handler.post {
                 if (currentGeneration != generation.get()) return@post
-                if (labelsByPhoneKey == labels) return@post
-                labelsByPhoneKey = labels
+                if (labelsByPhoneKey == snapshot.labelsByPhoneKey && serverBackedPhoneKeys == snapshot.serverBackedPhoneKeys) return@post
+                labelsByPhoneKey = snapshot.labelsByPhoneKey
+                serverBackedPhoneKeys = snapshot.serverBackedPhoneKeys
                 onChanged()
             }
         }
