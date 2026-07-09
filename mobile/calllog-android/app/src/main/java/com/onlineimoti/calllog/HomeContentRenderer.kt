@@ -75,7 +75,9 @@ internal class HomeContentRenderer(
     private fun applyRenderData(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean) {
         val calls = data.calls.sortedByDescending { it.startedAt }; currentCalls = calls; currentCallNotesByCall = data.callNotesByCall
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
-        val filtered = activePhoneFilter().isNotBlank(); val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
+        val filtered = activePhoneFilter().isNotBlank()
+        val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
+        val serverBackedKeys = if (filtered) emptySet() else companyGeneralNotes.serverBackedPhoneKeysFor(calls)
         val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L; var previous: Long? = null
         calls.forEach { call ->
             val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
@@ -85,6 +87,7 @@ internal class HomeContentRenderer(
                 call, data.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName },
                 if (filtered) null else data.contactNotesByNumber[key], if (filtered) null else labels[key],
                 data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
+                serverBacked = !filtered && key in serverBackedKeys,
             ))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
@@ -107,7 +110,13 @@ internal class HomeContentRenderer(
         val summary = PhoneCallRecord(phone, "", "", 0L, 0L)
         val labels = companyGeneralNotes.labelsFor(listOf(summary))[HomeCallPageLoader.noteKey(phone)]
         val crm = CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) && CrmContactSyncStore.isEnabled(activity.applicationContext, phone)
-        val identity = scopeChipsUi.inlineCrmIdentity(name.ifBlank { phone }, labels, crm); val note = ContactNoteReader.generalNoteForPhone(activity, phone).orEmpty()
+        val identity = scopeChipsUi.inlineCrmIdentity(
+            name.ifBlank { phone },
+            labels,
+            crm,
+            serverBacked = companyGeneralNotes.hasServerBackedPhone(phone),
+        )
+        val note = ContactNoteReader.generalNoteForPhone(activity, phone).orEmpty()
         container.visibility = View.VISIBLE
         if (isFilteredFullLogMode()) container.addView(fullLogContactHeader(phone, identity)) else container.addView(summaryText(identity, 18f, true, dp(2)))
         if (name.isNotBlank()) container.addView(summaryText(phone, 14f, false, dp(2)))
