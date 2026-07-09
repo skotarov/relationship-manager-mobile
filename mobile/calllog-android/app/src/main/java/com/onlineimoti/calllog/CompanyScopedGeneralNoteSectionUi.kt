@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.LinearLayout
@@ -62,12 +63,15 @@ internal class CompanyScopedGeneralNoteSectionUi(
     }
 
     private fun companyLabel(name: String, showCloud: Boolean = false): TextView = TextView(activity).apply {
+        val activeColor = activity.getColor(R.color.callreport_icon_background)
         text = name
         textSize = 12.5f
-        setTextColor(Color.rgb(71, 85, 105))
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(activeColor)
         setPadding(dp(2), dp(8), dp(2), dp(3))
         if (showCloud) {
-            activity.getDrawable(R.drawable.ic_cloud_note)?.apply {
+            activity.getDrawable(R.drawable.ic_cloud_note_filled)?.mutate()?.apply {
+                setTint(activeColor)
                 setBounds(0, 0, dp(14), dp(14))
                 setCompoundDrawables(this, null, null, null)
                 compoundDrawablePadding = dp(4)
