@@ -13,27 +13,31 @@ internal data class HomeCompanyScopeLabel(
     val generalNote: String = "",
 )
 
+internal data class HomeCompanyScopeSnapshot(
+    val labelsByPhoneKey: Map<String, List<HomeCompanyScopeLabel>> = emptyMap(),
+    val serverBackedPhoneKeys: Set<String> = emptySet(),
+)
+
 /**
  * Creates compact company labels below a contact name in Home.
  * A yellow label means there is a company main note; a gray label means there
  * is no main note but the contact has a phase in that company.
  */
 internal object HomeCompanyGeneralNoteLabels {
-    fun fetch(context: Context, config: AppConfig, phones: List<String>): Map<String, List<HomeCompanyScopeLabel>> {
-        if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
+    fun fetch(context: Context, config: AppConfig, phones: List<String>): HomeCompanyScopeSnapshot {
+        if (!CallReportRemoteAccess.isReady(config)) return HomeCompanyScopeSnapshot()
 
         val requestedPhones = phones
             .filter { HomeCallPageLoader.noteKey(it).isNotBlank() }
             .distinctBy { HomeCallPageLoader.noteKey(it) }
             .take(MAX_VISIBLE_PHONE_LOOKUPS)
-        if (requestedPhones.isEmpty()) return emptyMap()
+        if (requestedPhones.isEmpty()) return HomeCompanyScopeSnapshot()
 
-        // CRM contacts and unknown numbers share the server-backed company scope.
-        // Resolve them in one batch, instead of doing a full Contacts lookup per row.
-        val scopedPhoneKeys = HomeCallPageLoader.crmEligiblePhoneKeys(context, requestedPhones)
-        if (scopedPhoneKeys.isEmpty()) return emptyMap()
-
+        val requestedPhoneKeys = requestedPhones.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it) }
         val result = CallReportHistoryLookupClient.lookupMany(config, requestedPhones)
+        val serverBackedPhoneKeys = result.events
+            .mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.phone) }
+            .filterTo(linkedSetOf()) { it.isNotBlank() && it in requestedPhoneKeys }
         val companiesById = result.principal.companies.associate { it.id to it.name }
         val labelsByPhone = linkedMapOf<String, LinkedHashMap<String, MutableScopeLabel>>()
 
@@ -47,7 +51,7 @@ internal object HomeCompanyGeneralNoteLabels {
         for (event in result.events) {
             if (event.note.isBlank() || event.companyId.isBlank()) continue
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
-            if (phoneKey.isBlank() || phoneKey !in scopedPhoneKeys) continue
+            if (phoneKey.isBlank() || phoneKey !in requestedPhoneKeys) continue
 
             // Yellow Home labels must match the History/editor rule: only an
             // explicitly emitted company main-note id can populate the yellow
@@ -68,7 +72,7 @@ internal object HomeCompanyGeneralNoteLabels {
         // over the server copy because it may be the newer unsynced edit.
         for (phone in requestedPhones) {
             val phoneKey = HomeCallPageLoader.noteKey(phone)
-            if (phoneKey !in scopedPhoneKeys) continue
+            if (phoneKey.isBlank()) continue
             for (company in result.principal.companies) {
                 val localNote = CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id)
                 if (localNote.isNotBlank()) {
@@ -79,9 +83,9 @@ internal object HomeCompanyGeneralNoteLabels {
 
         // The phase endpoint already scopes each record to one company. Lookups
         // are parallel and run only in this background Home loader.
-        val phaseRequests = requestedPhones
-            .filter { HomeCallPageLoader.noteKey(it) in scopedPhoneKeys }
-            .flatMap { phone -> result.principal.companies.map { company -> PhaseRequest(phone, company.id) } }
+        val phaseRequests = requestedPhones.flatMap { phone ->
+            result.principal.companies.map { company -> PhaseRequest(phone, company.id) }
+        }
         if (phaseRequests.isNotEmpty()) {
             val executor = Executors.newFixedThreadPool(minOf(MAX_PARALLEL_PHASE_LOOKUPS, phaseRequests.size))
             try {
@@ -122,7 +126,7 @@ internal object HomeCompanyGeneralNoteLabels {
             }
         }
 
-        return labelsByPhone.mapValues { (_, labelsByCompany) ->
+        val labelsByPhoneKey = labelsByPhone.mapValues { (_, labelsByCompany) ->
             labelsByCompany.values
                 .filter { it.hasGeneralNote || it.phase in 1..4 }
                 .sortedBy { it.companyName.lowercase() }
@@ -136,6 +140,11 @@ internal object HomeCompanyGeneralNoteLabels {
                     )
                 }
         }.filterValues { it.isNotEmpty() }
+
+        return HomeCompanyScopeSnapshot(
+            labelsByPhoneKey = labelsByPhoneKey,
+            serverBackedPhoneKeys = serverBackedPhoneKeys,
+        )
     }
 
     private data class MutableScopeLabel(
