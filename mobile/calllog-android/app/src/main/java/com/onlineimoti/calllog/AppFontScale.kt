@@ -12,8 +12,8 @@ object AppFontScaleStore {
     private const val PREFS = "relationship_manager_font_scale"
     private const val KEY_MULTIPLIER = "multiplier"
     const val NORMAL = 1.0f
-    const val LARGER = 1.3f
-    const val LARGEST = 1.7f
+    const val LARGER = 1.15f
+    const val LARGEST = 1.3f
 
     fun loadMultiplier(context: Context): Float {
         return normalize(context.applicationContext
@@ -30,14 +30,14 @@ object AppFontScaleStore {
     }
 
     fun normalize(value: Float): Float = when {
-        value >= 1.5f -> LARGEST
+        value >= 1.225f -> LARGEST
         value > 1.05f -> LARGER
         else -> NORMAL
     }
 }
 
 /**
- * App-only text scaling. It exposes Normal, +30%, and 1.7x, but the stored value
+ * App-only text scaling. It exposes Normal, +15%, and +30%, but the stored value
  * is still a multiplier so later profiles or separate screen-specific sizes can
  * reuse the same hook without rewriting every Activity.
  */
