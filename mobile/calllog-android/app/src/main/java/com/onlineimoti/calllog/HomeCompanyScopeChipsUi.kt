@@ -27,6 +27,7 @@ internal class HomeCompanyScopeChipsUi(
         onClick: (() -> Unit)? = null,
         showCrmLabel: Boolean = true,
         showPhaseDots: Boolean = true,
+        serverBacked: Boolean = false,
     ): HorizontalScrollView {
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -34,9 +35,15 @@ internal class HomeCompanyScopeChipsUi(
             bindHistoryClick(onClick, "Отвори историята на контакта")
         }
         var hasPrevious = false
-        if (crmClient && showCrmLabel) {
-            row.addView(crmLabel(onClick))
-            hasPrevious = true
+        when {
+            crmClient && showCrmLabel -> {
+                row.addView(crmLabel(onClick))
+                hasPrevious = true
+            }
+            serverBacked && showCrmLabel -> {
+                row.addView(cloudLabel(onClick))
+                hasPrevious = true
+            }
         }
         labels.orEmpty().forEach { label ->
             row.addView(chip(label, onClick, showPhaseDots), LinearLayout.LayoutParams(
@@ -59,28 +66,16 @@ internal class HomeCompanyScopeChipsUi(
         }
     }
 
-    /** CRM and all available company phase dots are placed directly before the name or phone. */
+    /** CRM/cloud and all available company phase dots are placed directly before the name or phone. */
     fun inlineCrmIdentity(
         identity: CharSequence,
         labels: List<HomeCompanyScopeLabel>?,
         crmClient: Boolean,
+        serverBacked: Boolean = false,
     ): CharSequence {
-        if (!crmClient) return identity
+        if (!crmClient && !serverBacked) return identity
         val builder = SpannableStringBuilder()
-        val crmStart = builder.length
-        builder.append("CRM")
-        builder.setSpan(
-            ForegroundColorSpan(activity.getColor(R.color.callreport_icon_background)),
-            crmStart,
-            builder.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-        )
-        builder.setSpan(
-            StyleSpan(Typeface.BOLD),
-            crmStart,
-            builder.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-        )
+        if (crmClient) appendCrmPrefix(builder) else appendCloudPrefix(builder)
         labels.orEmpty()
             .filter { it.phase in 1..4 }
             .forEach { label ->
@@ -99,6 +94,40 @@ internal class HomeCompanyScopeChipsUi(
         return builder
     }
 
+    private fun appendCrmPrefix(builder: SpannableStringBuilder) {
+        val crmStart = builder.length
+        builder.append("CRM")
+        builder.setSpan(
+            ForegroundColorSpan(activity.getColor(R.color.callreport_icon_background)),
+            crmStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        builder.setSpan(
+            StyleSpan(Typeface.BOLD),
+            crmStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+    }
+
+    private fun appendCloudPrefix(builder: SpannableStringBuilder) {
+        val cloudStart = builder.length
+        builder.append("☁")
+        builder.setSpan(
+            ForegroundColorSpan(COLOR_CLOUD),
+            cloudStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        builder.setSpan(
+            StyleSpan(Typeface.BOLD),
+            cloudStart,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+    }
+
     private fun crmLabel(onClick: (() -> Unit)?): TextView = TextView(activity).apply {
         text = "CRM"
         textSize = 12f
@@ -112,6 +141,17 @@ internal class HomeCompanyScopeChipsUi(
             0,
         )
         bindHistoryClick(onClick, "CRM. Отвори историята на контакта")
+    }
+
+    private fun cloudLabel(onClick: (() -> Unit)?): TextView = TextView(activity).apply {
+        text = "☁"
+        textSize = 13f
+        setTypeface(typeface, Typeface.BOLD)
+        setTextColor(Color.WHITE)
+        gravity = android.view.Gravity.CENTER
+        setPadding(dp(8), dp(4), dp(8), dp(4))
+        background = roundedRect(COLOR_CLOUD, dp(9), Color.TRANSPARENT, 0)
+        bindHistoryClick(onClick, "Има сървърна история. Отвори историята на контакта")
     }
 
     private fun chip(
@@ -184,4 +224,8 @@ internal class HomeCompanyScopeChipsUi(
         border = Color.TRANSPARENT,
         text = Color.rgb(71, 85, 105),
     )
+
+    private companion object {
+        val COLOR_CLOUD: Int = Color.rgb(59, 130, 246)
+    }
 }

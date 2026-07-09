@@ -27,6 +27,7 @@ internal class HomeSmsRowRenderer(
         showContactIdentity: Boolean,
         showGeneralContactNote: Boolean,
         showQuickActions: Boolean,
+        serverBacked: Boolean = false,
     ): MaterialCardView {
         val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
         val title = displayName.ifBlank { call.number }
@@ -52,6 +53,7 @@ internal class HomeSmsRowRenderer(
                 identity = highlightedTitle,
                 labels = companyGeneralNoteLabels,
                 crmClient = crmClient,
+                serverBacked = showGeneralContactNote && serverBacked,
             ),
             metaText = SearchTextHighlighter.highlightedText(metaText, highlightQuery, activity.getColor(R.color.calllog_muted_text)),
             bodyText = SearchTextHighlighter.highlightedText(
