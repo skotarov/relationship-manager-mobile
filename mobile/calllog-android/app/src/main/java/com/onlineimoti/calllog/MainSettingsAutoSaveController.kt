@@ -47,9 +47,13 @@ internal class MainSettingsAutoSaveController(
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
         tests.showRmDebugBoxCheckBox.autoSaveCheckedChanges()
-        binding.settingsGeneralGroup.largeTextCheckBox.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsGeneralGroup.fontScaleGroup.setOnCheckedChangeListener { _, checkedId ->
             autoSaveSettings()
-            val scale = if (isChecked) AppFontScaleStore.LARGE else AppFontScaleStore.NORMAL
+            val scale = when (checkedId) {
+                binding.settingsGeneralGroup.fontScaleLargestRadio.id -> AppFontScaleStore.LARGEST
+                binding.settingsGeneralGroup.fontScaleLargerRadio.id -> AppFontScaleStore.LARGER
+                else -> AppFontScaleStore.NORMAL
+            }
             AppFontScaleStore.saveMultiplier(binding.root.context, scale)
             applyFontScaleIfChanged(scale)
         }
