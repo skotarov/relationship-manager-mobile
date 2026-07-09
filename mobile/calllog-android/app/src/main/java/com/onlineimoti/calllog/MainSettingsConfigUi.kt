@@ -35,7 +35,11 @@ object MainSettingsConfigUi {
             ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
             else -> language.appLanguageSystem.isChecked = true
         }
-        binding.settingsGeneralGroup.largeTextCheckBox.isChecked = AppFontScaleStore.isLarge(binding.root.context)
+        when (AppFontScaleStore.loadMultiplier(binding.root.context)) {
+            AppFontScaleStore.LARGEST -> binding.settingsGeneralGroup.fontScaleLargestRadio.isChecked = true
+            AppFontScaleStore.LARGER -> binding.settingsGeneralGroup.fontScaleLargerRadio.isChecked = true
+            else -> binding.settingsGeneralGroup.fontScaleNormalRadio.isChecked = true
+        }
         tests.showRmDebugBoxCheckBox.isChecked = config.showRmDebugBox
     }
 
