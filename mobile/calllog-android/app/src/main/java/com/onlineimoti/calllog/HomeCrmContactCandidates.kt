@@ -4,15 +4,22 @@ import android.content.Context
 import android.provider.CallLog
 
 /**
- * Contacts mode is sourced from the authenticated CRM server account. The old
- * local call-log helper remains below only for backward-compatible code paths.
+ * Contacts mode is sourced from the authenticated CRM server account, but the
+ * Clients page is intentionally the user's local CRM list. Server-only phones
+ * from colleagues or old server history stay visible as cloud badges in call
+ * history, but must not become this device/user's Clients rows.
+ *
+ * The old local call-log helper remains below only for backward-compatible code paths.
  */
 internal object HomeCrmContactCandidates {
     private const val UNKNOWN_CRM_LOOKBACK_MS = 14L * 24L * 60L * 60L * 1_000L
 
     fun load(context: Context, nowMs: Long = System.currentTimeMillis()): List<PhoneCallRecord> {
         val appContext = context.applicationContext
+        val enabledKeys = CrmContactSyncStore.enabledPhoneKeys(appContext)
+        if (enabledKeys.isEmpty()) return emptyList()
         return HomeCrmContactCandidatesServer.load(appContext)
+            .filter { contact -> HomeCallPageLoader.noteKey(contact.number) in enabledKeys }
     }
 
     private fun recentUnknownCrmCalls(context: Context, nowMs: Long): List<PhoneCallRecord> {
