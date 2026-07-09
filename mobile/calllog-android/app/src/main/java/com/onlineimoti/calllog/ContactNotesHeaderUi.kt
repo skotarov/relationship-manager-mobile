@@ -33,6 +33,7 @@ class ContactNotesHeaderUi(
         showCrmSyncButton: Boolean,
         crmSyncEnabled: Boolean,
         crmSyncBusy: Boolean,
+        crmSyncServerBacked: Boolean,
         goBack: () -> Unit,
         openDialer: () -> Unit,
         openCalendarEvent: () -> Unit,
@@ -61,7 +62,7 @@ class ContactNotesHeaderUi(
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
                 if (showCrmSyncButton) {
-                    addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, toggleCrmSync))
+                    addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, crmSyncServerBacked, toggleCrmSync))
                 }
                 addView(iconButton(
                     R.drawable.ic_calendar_event,
@@ -207,16 +208,23 @@ class ContactNotesHeaderUi(
         }
     }
 
-    private fun crmSyncButton(enabled: Boolean, busy: Boolean, action: () -> Unit): LinearLayout {
-        val iconColor = if (enabled) Color.WHITE else Color.BLACK
+    private fun crmSyncButton(enabled: Boolean, busy: Boolean, serverBacked: Boolean, action: () -> Unit): LinearLayout {
+        val activeColor = activity.getColor(R.color.callreport_icon_background)
+        val cloudColor = when {
+            enabled -> Color.WHITE
+            serverBacked -> activeColor
+            else -> Color.BLACK
+        }
+        val labelColor = if (enabled) Color.WHITE else Color.BLACK
         val description = when {
             busy -> activity.getString(R.string.dynamic_crm_sync_changing)
             enabled -> activity.getString(R.string.dynamic_crm_sync_enabled)
+            serverBacked -> "Има сървърна история. Включи CRM"
             else -> activity.getString(R.string.dynamic_crm_sync_enable)
         }
         val cloudIcon = ImageView(activity).apply {
             setImageResource(R.drawable.ic_cloud_note)
-            imageTintList = ColorStateList.valueOf(iconColor)
+            imageTintList = ColorStateList.valueOf(cloudColor)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
             layoutParams = LinearLayout.LayoutParams(dp(30), dp(36))
@@ -225,7 +233,7 @@ class ContactNotesHeaderUi(
             text = "CRM"
             textSize = 11.5f
             setTypeface(typeface, Typeface.BOLD)
-            setTextColor(iconColor)
+            setTextColor(labelColor)
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, 0, dp(9), 0)
             layoutParams = LinearLayout.LayoutParams(
@@ -237,7 +245,7 @@ class ContactNotesHeaderUi(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), 0, 0, 0)
-            background = if (enabled) roundedIconBackground(activity.getColor(R.color.callreport_icon_background)) else null
+            background = if (enabled) roundedIconBackground(activeColor) else null
             contentDescription = description
             isClickable = !busy
             isFocusable = !busy
