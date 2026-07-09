@@ -26,8 +26,11 @@ data class PhoneCallRecord(
      */
     val callType: Int = 0,
 ) {
+    val displayNumber: String
+        get() = PhoneNormalizer.display(number)
+
     val displayName: String
-        get() = name.ifBlank { number }
+        get() = name.ifBlank { displayNumber.ifBlank { number } }
 
     val isSms: Boolean
         get() = direction == "sms_in" || direction == "sms_out"
@@ -207,28 +210,14 @@ object PhoneCallReader {
     }
 
     private fun samePhone(normalizedPhone: String, candidate: String): Boolean {
-        val normalizedCandidate = normalizePhone(candidate)
-        if (normalizedPhone.isBlank() || normalizedCandidate.isBlank()) return false
-        return normalizedPhone == normalizedCandidate || normalizedPhone.endsWith(normalizedCandidate) || normalizedCandidate.endsWith(normalizedPhone)
+        return PhoneNormalizer.samePhone(normalizedPhone, candidate)
     }
 
     private fun phoneCandidates(value: String): List<String> {
-        val digits = value.filter { it.isDigit() }
-        val lastNine = digits.takeLast(9)
-        return linkedSetOf<String>().apply {
-            add(value.trim())
-            add(digits)
-            if (lastNine.length == 9) {
-                add(lastNine)
-                add("0$lastNine")
-                add("359$lastNine")
-                add("+359$lastNine")
-            }
-        }.filter { it.isNotBlank() }
+        return PhoneNormalizer.candidates(value)
     }
 
     private fun normalizePhone(phone: String): String {
-        val digits = phone.filter { it.isDigit() }
-        return if (digits.length > 9) digits.takeLast(9) else digits
+        return PhoneNormalizer.key(phone)
     }
 }
