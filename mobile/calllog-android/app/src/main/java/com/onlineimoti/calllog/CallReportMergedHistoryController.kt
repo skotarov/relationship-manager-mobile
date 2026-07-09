@@ -92,6 +92,13 @@ internal class CallReportMergedHistoryController(
 
     fun hasCompanyMainNoteScope(): Boolean = serverLoaded && serverHistory.principal.companies.isNotEmpty()
 
+    fun hasServerRecordsFor(phone: String): Boolean {
+        if (!serverLoaded || phone.isBlank()) return false
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        if (phoneKey.isBlank()) return false
+        return serverHistory.events.any { HomeCallPageLoader.noteKey(it.phone) == phoneKey }
+    }
+
     /** Temporary remote-loading text rendered in the fixed slot below the contact header. */
     fun serverLoadingStatusText(): String {
         return if (CallReportRemoteAccess.isEnabled(activity) && serverLoading) {
