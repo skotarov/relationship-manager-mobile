@@ -210,9 +210,10 @@ class ContactNotesHeaderUi(
 
     private fun crmSyncButton(enabled: Boolean, busy: Boolean, serverBacked: Boolean, action: () -> Unit): LinearLayout {
         val activeColor = activity.getColor(R.color.callreport_icon_background)
+        val filledCloud = !enabled && serverBacked
         val cloudColor = when {
             enabled -> Color.WHITE
-            serverBacked -> activeColor
+            filledCloud -> activeColor
             else -> Color.BLACK
         }
         val labelColor = if (enabled) Color.WHITE else Color.BLACK
@@ -223,7 +224,7 @@ class ContactNotesHeaderUi(
             else -> activity.getString(R.string.dynamic_crm_sync_enable)
         }
         val cloudIcon = ImageView(activity).apply {
-            setImageResource(R.drawable.ic_cloud_note)
+            setImageResource(if (filledCloud) R.drawable.ic_cloud_note_filled else R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(cloudColor)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
