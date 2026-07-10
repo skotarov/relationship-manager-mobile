@@ -158,6 +158,7 @@ class MainActivity : FontScaledAppCompatActivity() {
             openHome = ::openCallLogHome,
             syncContacts = contactsCleanupController::syncAllRmContacts,
             saveServerSettings = ::saveServerSettings,
+            testServerConnection = ::testServerConnection,
             createArchive = { createArchiveLauncher.launch(MainArchiveActions.archiveFileName()) },
             restoreArchive = { restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
             testStart = if (BuildConfig.DEBUG) ({ saveConfig(); testStartPopup() }) else null,
@@ -170,6 +171,33 @@ class MainActivity : FontScaledAppCompatActivity() {
         setStatus(getString(R.string.settings_server_saved))
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
+    }
+
+    private fun testServerConnection() {
+        val config = saveConfig()
+        val remote = binding.remoteSettingsSection
+        remote.serverConnectionTestStatusText.visibility = android.view.View.VISIBLE
+        remote.serverConnectionTestStatusText.text = getString(R.string.test_server_connection_running)
+        remote.testServerConnectionButton.isEnabled = false
+        executor.execute {
+            val result = runCatching { ServerConnectionTester.test(config) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                remote.testServerConnectionButton.isEnabled = true
+                result.onSuccess { status ->
+                    remote.serverConnectionTestStatusText.text = buildString {
+                        append(if (status.ok) "✅ " else "⚠️ ")
+                        append(status.title)
+                        if (status.detail.isNotBlank()) append("\n").append(status.detail)
+                    }
+                    setStatus(status.title)
+                }.onFailure { error ->
+                    val message = error.message.orEmpty().ifBlank { getString(R.string.test_server_connection_failed) }
+                    remote.serverConnectionTestStatusText.text = "❌ $message"
+                    setStatus(message)
+                }
+            }
+        }
     }
 
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
