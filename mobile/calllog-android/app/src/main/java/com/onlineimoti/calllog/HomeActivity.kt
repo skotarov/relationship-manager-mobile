@@ -16,6 +16,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val uiGeometry: HomeUiGeometry by lazy { HomeUiGeometry(resources) }
     private val searchExecutor = Executors.newFixedThreadPool(2)
+    private val refreshExecutor = Executors.newSingleThreadExecutor()
     private val searchGeneration = AtomicInteger(0)
     private var smsPermissionPromptShownThisSession = false
     private var smsPermissionRequestInFlight = false
@@ -304,6 +305,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
         pullRefreshController.cancel()
         searchController.cancelActiveTask()
         searchExecutor.shutdownNow()
+        refreshExecutor.shutdownNow()
         callsLoader.release()
         crmContactsLoader.release()
         serverCallNotesController.release()
@@ -346,15 +348,20 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
 
     private fun refreshFromPull() {
+        val appContext = applicationContext
         HomeCallPageLoader.clearSearchCache()
         filteredFullLogController.invalidate()
         companyGeneralNotesController.invalidate()
         crmContactsContentView.invalidate()
         HomeCrmPhaseLookup.invalidate()
         crmFiltersController.refreshCompaniesIfNeeded(force = true)
-        CallReportNoteOutboxScheduler.enqueue(this, reason = "home_pull_refresh")
-        CallReportTopicNoteOutbox.requestSyncNow(this)
-        CallReportSyncScheduler.enqueueCatchUp(this, reason = "home_pull_refresh")
+        runCatching {
+            refreshExecutor.execute {
+                runCatching { CallReportNoteOutboxScheduler.enqueue(appContext, reason = "home_pull_refresh") }
+                runCatching { CallReportTopicNoteOutbox.requestSyncNow(appContext) }
+                runCatching { CallReportSyncScheduler.enqueueCatchUp(appContext, reason = "home_pull_refresh") }
+            }
+        }
         renderCalls()
     }
 
