@@ -50,9 +50,12 @@ object PhoneCallReader {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
     }
 
-    /** System call history is available only inside an authenticated company CRM session. */
+    /**
+     * Local Android call history depends only on the Android READ_CALL_LOG permission.
+     * Server/company access is optional and must not block the local call log.
+     */
     fun hasCallLogPermission(context: Context): Boolean {
-        return hasRawCallLogPermission(context) && CorporateAccess.isActive(context)
+        return hasRawCallLogPermission(context)
     }
 
     fun latestCall(context: Context): PhoneCallRecord? {
