@@ -25,7 +25,7 @@ internal class DefaultSmsSettingsController(
     }
 
     fun refresh() {
-        val active = SmsRoleController.isDefaultSmsApp(activity)
+        val active = DefaultSmsRoleController.isDefaultSmsApp(activity)
         val statusText = activity.getString(
             if (active) R.string.default_sms_status_active else R.string.default_sms_status_inactive,
         )
@@ -40,7 +40,7 @@ internal class DefaultSmsSettingsController(
     }
 
     private fun requestRoleOrPermissions() {
-        if (SmsRoleController.isDefaultSmsApp(activity)) {
+        if (DefaultSmsRoleController.isDefaultSmsApp(activity)) {
             requestSmsPermissions()
             setStatus(activity.getString(R.string.default_sms_permissions_checked))
         } else {
