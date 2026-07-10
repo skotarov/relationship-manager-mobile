@@ -34,6 +34,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     private lateinit var status: TextView
     private lateinit var price: TextView
+    private lateinit var playResponse: TextView
     private lateinit var spinner: ProgressBar
     private lateinit var buy: MaterialButton
     private lateinit var restore: MaterialButton
@@ -47,10 +48,12 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         refresh()
         if (!BuildConfig.PLAY_BILLING_ENABLED) {
             status.text = "Фирмен лиценз се купува през версията от Google Play."
+            playResponse.text = "Google Play Billing е изключен в този build."
             return
         }
         if (ConfigStore.load(this).baseUrl.isBlank()) {
             status.text = "Преди покупка въведи Server URL в Настройки."
+            playResponse.text = "Google Play още не е питан, защото Server URL липсва."
             return
         }
         connect()
@@ -63,6 +66,11 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
+        showPlayResponse(
+            "Резултат от покупка",
+            result,
+            "purchases=${purchases.orEmpty().size}\n${purchases.orEmpty().joinToString("\n") { purchaseDebug(it) }}"
+        )
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach(::process)
             BillingClient.BillingResponseCode.USER_CANCELED -> status.text = "Покупката беше отменена."
@@ -107,6 +115,18 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
         status = TextView(this).apply { textSize = 15f; setPadding(0, dp(18), 0, 0) }
         box.addView(status)
+        box.addView(TextView(this).apply {
+            text = "Отговор от Google Play"
+            textSize = 16f
+            setPadding(0, dp(18), 0, dp(6))
+        })
+        playResponse = TextView(this).apply {
+            text = "Още няма отговор от Google Play."
+            textSize = 13f
+            setTextIsSelectable(true)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
+        box.addView(playResponse)
         return root
     }
 
@@ -120,6 +140,11 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 connected = result.responseCode == BillingClient.BillingResponseCode.OK
+                showPlayResponse(
+                    "Свързване с Google Play",
+                    result,
+                    "package=${applicationContext.packageName}\nproduct=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nbillingEnabled=${BuildConfig.PLAY_BILLING_ENABLED}"
+                )
                 if (!connected) {
                     loading(false)
                     status.text = "Неуспешна връзка с Google Play: ${result.debugMessage.ifBlank { "опитай отново" }}"
@@ -132,6 +157,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 connected = false
                 buy.isEnabled = false
                 restore.isEnabled = false
+                playResponse.text = "Google Play връзката беше прекъсната."
             }
         })
     }
@@ -145,13 +171,27 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             loading(false)
             product = detailsResult.productDetailsList.firstOrNull()
             val details = product
+            val offer = details?.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: details?.oneTimePurchaseOfferDetails
+            showPlayResponse(
+                "Заявка за продукт",
+                result,
+                listOf(
+                    "package=${applicationContext.packageName}",
+                    "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}",
+                    "type=${BillingClient.ProductType.INAPP}",
+                    "fetchedProducts=${detailsResult.productDetailsList.size}",
+                    unfetchedProductsDebug(detailsResult),
+                    "title=${details?.title.orEmpty().ifBlank { "-" }}",
+                    "price=${offer?.formattedPrice.orEmpty().ifBlank { "-" }}",
+                    "offerToken=${offerTokenDebug(offer?.offerToken.orEmpty())}",
+                ).joinToString("\n")
+            )
             if (result.responseCode != BillingClient.BillingResponseCode.OK || details == null) {
                 offerToken = ""
                 price.text = "Фирменият лиценз още не е наличен в Google Play."
                 status.text = "Създай и активирай продукт ${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID} в Play Console."
                 return@queryProductDetailsAsync
             }
-            val offer = details.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: details.oneTimePurchaseOfferDetails
             offerToken = offer?.offerToken.orEmpty()
             if (offerToken.isBlank()) {
                 buy.isEnabled = false
@@ -177,6 +217,11 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             .setProductDetailsParamsList(listOf(params))
             .setObfuscatedAccountId(obfuscatedInstallationId())
             .build())
+        showPlayResponse(
+            "Отваряне на покупка",
+            result,
+            "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nofferToken=${offerTokenDebug(offerToken)}"
+        )
         if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Google Play не можа да отвори плащането: ${result.debugMessage.ifBlank { "опитай отново" }}"
     }
 
@@ -185,6 +230,11 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         loading(true)
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result, purchases ->
             loading(false)
+            showPlayResponse(
+                "Възстановяване на покупки",
+                result,
+                "purchases=${purchases.size}\n${purchases.joinToString("\n") { purchaseDebug(it) }}"
+            )
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 if (!silent) status.text = "Неуспешно възстановяване: ${result.debugMessage.ifBlank { "опитай отново" }}"
                 return@queryPurchasesAsync
@@ -227,6 +277,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     private fun acknowledge(purchase: Purchase) {
         if (purchase.isAcknowledged || !connected) return
         client.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()) { result ->
+            showPlayResponse("Acknowledge покупка", result, purchaseDebug(purchase))
             if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Лицензът е потвърден; acknowledgement ще бъде повторен при възстановяване."
         }
     }
@@ -241,6 +292,64 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     private fun loading(value: Boolean) { spinner.visibility = if (value) View.VISIBLE else View.GONE }
+
+    private fun showPlayResponse(stage: String, result: BillingResult, extra: String = "") {
+        playResponse.text = buildString {
+            appendLine(stage)
+            appendLine("responseCode=${result.responseCode} (${billingCodeName(result.responseCode)})")
+            appendLine("debugMessage=${result.debugMessage.ifBlank { "-" }}")
+            if (extra.isNotBlank()) append(extra.trim())
+        }
+    }
+
+    private fun billingCodeName(code: Int): String = when (code) {
+        BillingClient.BillingResponseCode.OK -> "OK"
+        BillingClient.BillingResponseCode.USER_CANCELED -> "USER_CANCELED"
+        BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE -> "SERVICE_UNAVAILABLE"
+        BillingClient.BillingResponseCode.BILLING_UNAVAILABLE -> "BILLING_UNAVAILABLE"
+        BillingClient.BillingResponseCode.ITEM_UNAVAILABLE -> "ITEM_UNAVAILABLE"
+        BillingClient.BillingResponseCode.DEVELOPER_ERROR -> "DEVELOPER_ERROR"
+        BillingClient.BillingResponseCode.ERROR -> "ERROR"
+        BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> "ITEM_ALREADY_OWNED"
+        BillingClient.BillingResponseCode.ITEM_NOT_OWNED -> "ITEM_NOT_OWNED"
+        BillingClient.BillingResponseCode.SERVICE_DISCONNECTED -> "SERVICE_DISCONNECTED"
+        BillingClient.BillingResponseCode.FEATURE_NOT_SUPPORTED -> "FEATURE_NOT_SUPPORTED"
+        BillingClient.BillingResponseCode.NETWORK_ERROR -> "NETWORK_ERROR"
+        else -> "UNKNOWN"
+    }
+
+    private fun unfetchedProductsDebug(detailsResult: Any): String {
+        val list = runCatching {
+            detailsResult.javaClass.methods
+                .firstOrNull { it.name == "getUnfetchedProductList" && it.parameterCount == 0 }
+                ?.invoke(detailsResult) as? List<*>
+        }.getOrNull().orEmpty()
+        return if (list.isEmpty()) {
+            "unfetchedProducts=0"
+        } else {
+            "unfetchedProducts=${list.size}\n" + list.take(5).joinToString("\n") { "unfetched=$it" }
+        }
+    }
+
+    private fun purchaseDebug(purchase: Purchase): String = listOf(
+        "products=${purchase.products.joinToString(",")}",
+        "state=${purchaseStateName(purchase.purchaseState)}",
+        "acknowledged=${purchase.isAcknowledged}",
+        "token=${offerTokenDebug(purchase.purchaseToken)}",
+    ).joinToString("; ")
+
+    private fun purchaseStateName(state: Int): String = when (state) {
+        Purchase.PurchaseState.PURCHASED -> "PURCHASED"
+        Purchase.PurchaseState.PENDING -> "PENDING"
+        Purchase.PurchaseState.UNSPECIFIED_STATE -> "UNSPECIFIED_STATE"
+        else -> "UNKNOWN"
+    }
+
+    private fun offerTokenDebug(token: String): String = when {
+        token.isBlank() -> "-"
+        token.length <= 16 -> token
+        else -> token.take(8) + "…" + token.takeLast(6)
+    }
 
     private fun obfuscatedInstallationId(): String {
         val prefs = getSharedPreferences("relationship_manager_billing", MODE_PRIVATE)
