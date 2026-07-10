@@ -10,20 +10,8 @@ internal object CallNoteTopicWriter {
         text: String,
         companyId: String,
     ): CallNoteWriteResult {
-        // Guard the writer too, not only the form: unmarked contacts must never
-        // create a company-scoped outbox event through an alternate caller.
-        if (!CrmContactSyncStore.isEnabled(context, phone)) {
-            return CallNoteWriter.writeGeneral(
-                context = context,
-                phone = phone,
-                text = text,
-                syncToCrm = false,
-            )
-        }
-
-        // A main note selected under a company is not the phone's ordinary local
-        // note. Keeping it separately prevents one company's value overwriting
-        // the value displayed for another company.
+        // A company/topic note is server-scoped metadata. It must not imply that
+        // this device/user has marked the phone as a local CRM client.
         val saved = CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, text)
         val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
         if (!saved) return result
@@ -52,22 +40,6 @@ internal object CallNoteTopicWriter {
                 direction = direction,
                 actionIssuedAt = actionIssuedAt,
                 companyId = companyId,
-            )
-        }
-
-        // Keep any direct or stale invocation local unless the contact carries
-        // the explicit CRM marker. The resolved call target is passed through so
-        // a call note can never silently fall back into the general-note bucket.
-        if (!CrmContactSyncStore.isEnabled(context, phone)) {
-            return CallNoteWriter.writeCallOrGeneral(
-                context = context,
-                phone = phone,
-                text = text,
-                direction = target.direction,
-                callAt = target.callAt,
-                durationSeconds = target.durationSeconds,
-                actionIssuedAt = 0L,
-                syncToCrm = false,
             )
         }
 
