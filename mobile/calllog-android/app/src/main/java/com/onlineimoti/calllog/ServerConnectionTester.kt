@@ -1,7 +1,6 @@
 package com.onlineimoti.calllog
 
 import org.json.JSONObject
-import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -36,7 +35,7 @@ internal object ServerConnectionTester {
         try {
             val code = connection.responseCode
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.bufferedReader()?.use(BufferedReader::readText).orEmpty().trim()
+            val body = stream?.bufferedReader()?.use { reader -> reader.readText() }.orEmpty().trim()
             if (code !in 200..299) {
                 return Result(
                     ok = false,
