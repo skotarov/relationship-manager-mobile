@@ -183,7 +183,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     unfetchedProductsDebug(detailsResult),
                     "title=${details?.title.orEmpty().ifBlank { "-" }}",
                     "price=${offer?.formattedPrice.orEmpty().ifBlank { "-" }}",
-                    "offerToken=${offerTokenDebug(offer?.offerToken.orEmpty())}",
+                    "offerToken=${maskedToken(offer?.offerToken.orEmpty())}",
                 ).joinToString("\n")
             )
             if (result.responseCode != BillingClient.BillingResponseCode.OK || details == null) {
@@ -220,7 +220,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         showPlayResponse(
             "Отваряне на покупка",
             result,
-            "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nofferToken=${offerTokenDebug(offerToken)}"
+            "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nofferToken=${maskedToken(offerToken)}"
         )
         if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Google Play не можа да отвори плащането: ${result.debugMessage.ifBlank { "опитай отново" }}"
     }
@@ -335,7 +335,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         "products=${purchase.products.joinToString(",")}",
         "state=${purchaseStateName(purchase.purchaseState)}",
         "acknowledged=${purchase.isAcknowledged}",
-        "token=${offerTokenDebug(purchase.purchaseToken)}",
+        "token=${maskedToken(purchase.purchaseToken)}",
     ).joinToString("; ")
 
     private fun purchaseStateName(state: Int): String = when (state) {
@@ -345,7 +345,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         else -> "UNKNOWN"
     }
 
-    private fun offerTokenDebug(token: String): String = when {
+    private fun maskedToken(token: String): String = when {
         token.isBlank() -> "-"
         token.length <= 16 -> token
         else -> token.take(8) + "…" + token.takeLast(6)
