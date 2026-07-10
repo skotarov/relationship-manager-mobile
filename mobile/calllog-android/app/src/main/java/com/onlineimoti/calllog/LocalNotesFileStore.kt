@@ -349,8 +349,9 @@ object LocalNotesFileStore {
     )
 
     private fun selectedRootPath(context: Context): String {
-        val folderName = selectedRootDocument(context)?.name.orEmpty().ifBlank { "избрана папка" }
-        return "$folderName/$ROOT_DIR"
+        val tree = selectedRootDocument(context) ?: return "избрана папка/$ROOT_DIR"
+        val folderName = tree.name.orEmpty().ifBlank { "избрана папка" }
+        return if (folderName == ROOT_DIR) folderName else "$folderName/$ROOT_DIR"
     }
 
     private fun selectedRootDocument(context: Context): DocumentFile? =
@@ -358,6 +359,7 @@ object LocalNotesFileStore {
 
     private fun safRoot(context: Context, createDirs: Boolean): DocumentFile? {
         val tree = selectedRootDocument(context) ?: return null
+        if (tree.name == ROOT_DIR) return tree
         return directoryInSafDir(tree, ROOT_DIR, createDirs)
     }
 
