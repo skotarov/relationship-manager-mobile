@@ -41,7 +41,11 @@ internal class SmsMessageViewDialog(
                 openReply = {
                     openingReply = true
                     dialog.dismiss()
-                    SmsComposeDialog(activity, dp).show(phone, title.ifBlank { phone }, onDismiss)
+                    SmsComposeDialog(activity, dp).show(
+                        phone = phone,
+                        title = title.ifBlank { phone },
+                        onDismiss = onDismiss,
+                    )
                 },
             ))
             dialog.setOnShowListener { configureWindow(dialog) }
