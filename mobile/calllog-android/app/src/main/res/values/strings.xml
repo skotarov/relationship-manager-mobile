@@ -121,12 +121,18 @@
     <string name="permissions_use_call_screening">Use Call screening / Caller ID role</string>
     <string name="permissions_call_screening_description">Not required. Activate only if the popup does not appear on time for incoming calls or Android delays call information. The phone may show it as the default Caller ID / spam app.</string>
     <string name="permissions_sms_role_title">SMS app</string>
-    <string name="permissions_sms_role_description">The public Relationship Manager build is not an SMS app.</string>
-    <string name="permissions_sms_role_button">SMS role unavailable</string>
+    <string name="permissions_sms_role_description">When Relationship Manager is the default SMS app, new SMS messages arrive here first.</string>
+    <string name="permissions_sms_role_button">Choose as SMS app</string>
     <string name="permissions_sms_theme_title">SMS icon</string>
-    <string name="permissions_sms_theme_description">The public Relationship Manager build does not provide an SMS app.</string>
-    <string name="permissions_sms_theme_install_button">SMS role unavailable</string>
-    <string name="permissions_sms_theme_restore_button">SMS role unavailable</string>
+    <string name="permissions_sms_theme_description">Relationship Manager provides its own SMS app entry while it is the default SMS app.</string>
+    <string name="permissions_sms_theme_install_button">Refresh SMS icon</string>
+    <string name="permissions_sms_theme_restore_button">Restore SMS icon</string>
+    <string name="default_sms_status_active">Relationship Manager is the default SMS app.</string>
+    <string name="default_sms_status_inactive">Relationship Manager is not the default SMS app.</string>
+    <string name="default_sms_activate_button">Choose as SMS app</string>
+    <string name="default_sms_permissions_button">Check SMS permissions</string>
+    <string name="default_sms_permissions_checked">SMS permissions checked.</string>
+    <string name="default_sms_role_unavailable">This phone does not expose the default SMS app role.</string>
 
     <string name="server_enabled">Cloud sync</string>
     <string name="server_base_url_hint">Cloud server URL</string>
