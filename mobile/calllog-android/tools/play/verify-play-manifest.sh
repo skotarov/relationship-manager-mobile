@@ -16,17 +16,17 @@ manifest="$(find app/build/intermediates -type f -path '*release*' -name Android
   exit 1
 }
 
-grep -q 'applicationId = "com.onlineimoti.relationshipmanager"' app/build.gradle.kts || {
+grep -Fq 'applicationId = "com.onlineimoti.relationshipmanager"' app/build.gradle.kts || {
   echo "ERROR: The single build must use the Play package com.onlineimoti.relationshipmanager." >&2
   exit 1
 }
 
-grep -q 'PLAY_COMPANY_LICENSE_PRODUCT_ID", "\\"rm_company_license\\""' app/build.gradle.kts || {
+grep -Fq 'PLAY_COMPANY_LICENSE_PRODUCT_ID' app/build.gradle.kts && grep -Fq 'rm_company_license' app/build.gradle.kts || {
   echo "ERROR: Missing Google Play product ID rm_company_license." >&2
   exit 1
 }
 
-grep -q 'PLAY_BILLING_ENABLED", "true"' app/build.gradle.kts || {
+grep -Fq 'PLAY_BILLING_ENABLED' app/build.gradle.kts && grep -Fq 'buildConfigField("boolean", "PLAY_BILLING_ENABLED", "true")' app/build.gradle.kts || {
   echo "ERROR: Google Play Billing must be enabled in the single build." >&2
   exit 1
 }
