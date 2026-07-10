@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import android.os.Handler
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -19,6 +20,7 @@ internal class HomeCallsLoader(
     private val onCrmCallsRendered: (Int) -> Unit = {},
     private val onCrmCallsEmpty: () -> Unit = {},
 ) {
+    private val localExecutor = Executors.newSingleThreadExecutor()
     private val crmExecutor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
 
@@ -26,55 +28,92 @@ internal class HomeCallsLoader(
 
     fun release() {
         generation.incrementAndGet()
+        localExecutor.shutdownNow()
         crmExecutor.shutdownNow()
     }
 
     fun renderLocalCalls(pageSize: Int) {
+        val requestedPage = pageIndex()
         val phoneFilter = activePhoneFilter()
         val searchQuery = activeSearchQuery()
-        val calls = when {
+        val expectedGeneration = generation.get()
+        val appContext = activity.applicationContext
+        contentRenderer.showLoading()
+        localExecutor.execute {
+            val calls = loadLocalCalls(appContext, phoneFilter, searchQuery, requestedPage, pageSize)
+            val contactNames = HomeCallPageLoader.contactNames(appContext, calls)
+            val fastData = HomeRenderData(
+                calls = calls,
+                contactNotesByNumber = emptyMap(),
+                contactNamesByNumber = contactNames,
+                callNotesByCall = emptyMap(),
+            )
+            handler.post {
+                if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
+                if (calls.isEmpty()) {
+                    contentRenderer.renderEmptyState()
+                    onRenderComplete()
+                } else {
+                    contentRenderer.applyRenderData(fastData, pageSize)
+                    onRenderComplete()
+                }
+            }
+            if (calls.isEmpty()) return@execute
+
+            // Notes stored in a user-selected SAF folder can be much slower than
+            // app-private files. Render the page first, then enrich it with notes.
+            val data = HomeRenderData(
+                calls = calls,
+                contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                contactNamesByNumber = contactNames,
+                callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
+            )
+            handler.post {
+                if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
+                contentRenderer.applyRenderData(data, pageSize)
+                serverCallNotes.enrichAsync(data) { enriched ->
+                    contentRenderer.applyRenderData(enriched, pageSize)
+                }
+            }
+        }
+    }
+
+    private fun loadLocalCalls(
+        context: Context,
+        phoneFilter: String,
+        searchQuery: String,
+        requestedPage: Int,
+        pageSize: Int,
+    ): List<PhoneCallRecord> {
+        return when {
             phoneFilter.isBlank() && searchQuery.isBlank() -> HomeTimelineLoader.page(
-                context = activity,
-                pageIndex = pageIndex(),
+                context = context,
+                pageIndex = requestedPage,
                 pageSize = pageSize,
             )
-            searchQuery.isNotBlank() -> searchResultsWithSms(phoneFilter, searchQuery, pageSize)
+            searchQuery.isNotBlank() -> searchResultsWithSms(context, phoneFilter, searchQuery, requestedPage, pageSize)
             else -> HomeCallPageLoader.calls(
-                context = activity,
+                context = context,
                 activePhoneFilter = phoneFilter,
                 searchQuery = searchQuery,
-                pageIndex = pageIndex(),
+                pageIndex = requestedPage,
                 pageSize = pageSize,
                 crmMode = false,
             )
         }
-        if (calls.isEmpty()) {
-            contentRenderer.renderEmptyState()
-            onRenderComplete()
-            return
-        }
-        val data = HomeRenderData(
-            calls = calls,
-            contactNotesByNumber = HomeCallPageLoader.contactNotes(activity, calls),
-            contactNamesByNumber = HomeCallPageLoader.contactNames(activity, calls),
-            callNotesByCall = HomeCallNotesResolver.localNotes(activity, calls),
-        )
-        contentRenderer.applyRenderData(data, pageSize)
-        serverCallNotes.enrichAsync(data) { enriched ->
-            contentRenderer.applyRenderData(enriched, pageSize)
-        }
-        onRenderComplete()
     }
 
     /** Searches notes/contacts through the existing index and adds matching SMS rows. */
     private fun searchResultsWithSms(
+        context: Context,
         phoneFilter: String,
         query: String,
+        requestedPage: Int,
         pageSize: Int,
     ): List<PhoneCallRecord> {
         if (HomeCallPageLoader.isSearchTooShort(query)) return emptyList()
         val baseResults = HomeCallPageLoader.calls(
-            context = activity,
+            context = context,
             activePhoneFilter = phoneFilter,
             searchQuery = query,
             pageIndex = 0,
@@ -82,7 +121,7 @@ internal class HomeCallsLoader(
             crmMode = false,
         )
         val selectedPhoneKey = HomeCallPageLoader.noteKey(phoneFilter)
-        val smsResults = SmsMessageReader.searchMessages(activity, query, SEARCH_RESULT_SCAN_LIMIT)
+        val smsResults = SmsMessageReader.searchMessages(context, query, SEARCH_RESULT_SCAN_LIMIT)
             .asSequence()
             .filter { message -> selectedPhoneKey.isBlank() || HomeCallPageLoader.noteKey(message.address) == selectedPhoneKey }
             .mapNotNull { message ->
@@ -103,7 +142,7 @@ internal class HomeCallsLoader(
         val combined = (baseResults + smsResults)
             .filter { row -> seen.add(searchResultKey(row)) }
             .sortedByDescending { row -> row.startedAt }
-        val offset = (pageIndex().toLong() * pageSize.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val offset = (requestedPage.toLong() * pageSize.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         return combined.drop(offset).take(pageSize)
     }
 
@@ -169,6 +208,20 @@ internal class HomeCallsLoader(
                 onRenderComplete()
             }
         }
+    }
+
+    private fun isCurrentLocalRender(
+        expectedGeneration: Int,
+        requestedPage: Int,
+        phoneFilter: String,
+        searchQuery: String,
+    ): Boolean {
+        return expectedGeneration == generation.get() &&
+            !activity.isFinishing &&
+            !activity.isDestroyed &&
+            activePhoneFilter() == phoneFilter &&
+            activeSearchQuery() == searchQuery &&
+            pageIndex() == requestedPage
     }
 
     private companion object {

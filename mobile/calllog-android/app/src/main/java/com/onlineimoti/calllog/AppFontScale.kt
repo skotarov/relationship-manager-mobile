@@ -11,9 +11,12 @@ import androidx.appcompat.app.AppCompatActivity
 object AppFontScaleStore {
     private const val PREFS = "relationship_manager_font_scale"
     private const val KEY_MULTIPLIER = "multiplier"
-    const val NORMAL = 1.0f
-    const val LARGER = 1.15f
-    const val LARGEST = 1.3f
+    const val SMALL = 1.0f
+    const val NORMAL = 1.15f
+    const val LARGE = 1.3f
+    /** Legacy aliases retained so older code paths and stored values remain safe. */
+    const val LARGER = NORMAL
+    const val LARGEST = LARGE
 
     fun loadMultiplier(context: Context): Float {
         return normalize(context.applicationContext
@@ -30,23 +33,23 @@ object AppFontScaleStore {
     }
 
     fun normalize(value: Float): Float = when {
-        value >= 1.225f -> LARGEST
-        value > 1.05f -> LARGER
-        else -> NORMAL
+        value >= 1.225f -> LARGE
+        value > 1.075f -> NORMAL
+        else -> SMALL
     }
 }
 
 /**
- * App-only text scaling. It exposes Normal, +15%, and +30%, but the stored value
- * is still a multiplier so later profiles or separate screen-specific sizes can
- * reuse the same hook without rewriting every Activity.
+ * App-only text scaling. It exposes Small, Normal, and Large. Normal is the
+ * middle/default profile installed with the app, while Small maps to the phone's
+ * unmodified text size.
  */
 object AppFontScale {
     fun wrap(base: Context): Context {
         val scale = AppFontScaleStore.loadMultiplier(base)
-        if (scale == AppFontScaleStore.NORMAL) return base
+        if (scale == AppFontScaleStore.SMALL) return base
         val configuration = Configuration(base.resources.configuration).apply {
-            fontScale = (fontScale * scale).coerceIn(0.5f, AppFontScaleStore.LARGEST)
+            fontScale = (fontScale * scale).coerceIn(0.5f, AppFontScaleStore.LARGE)
         }
         return base.createConfigurationContext(configuration)
     }

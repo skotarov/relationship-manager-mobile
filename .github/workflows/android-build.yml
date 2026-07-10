@@ -14,7 +14,7 @@ on:
       - mobile/calllog-android/**
 
 jobs:
-  build-internal:
+  build-android:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,7 +63,7 @@ jobs:
           test -f "$ANDROID_HOME/platforms/android-35/android.jar"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
 
-      - name: Install internal signing key
+      - name: Install debug signing key
         run: |
           mkdir -p "$HOME/.android"
           base64 -d debug-signing/callreport-debug.keystore.base64 > "$HOME/.android/debug.keystore"
@@ -163,12 +163,12 @@ jobs:
             "$AAPT2" compile -o "$output_dir" "$resource_file"
           done < <(find app/src/main/res -type f \( -path '*/values/*.xml' -o -path '*/values-*/*.xml' \) -print0 | sort -z)
 
-      - name: Lint internal and Play builds
+      - name: Lint Android build
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:lintInternalDebug :app:lintPlayRelease > /tmp/relationship-manager-lint.log 2>&1
+          gradle --no-daemon --console=plain :app:lintDebug :app:lintRelease > /tmp/relationship-manager-lint.log 2>&1
           gradle_status=$?
 
           if [ "$gradle_status" -ne 0 ]; then
@@ -183,12 +183,12 @@ jobs:
             exit "$gradle_status"
           fi
 
-      - name: Build internal Relationship Manager APK
+      - name: Build Relationship Manager APK
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle --no-daemon --console=plain :app:assembleInternalDebug > /tmp/relationship-manager-gradle.log 2>&1
+          gradle --no-daemon --console=plain :app:assembleDebug > /tmp/relationship-manager-gradle.log 2>&1
           gradle_status=$?
 
           if [ "$gradle_status" -ne 0 ]; then
@@ -214,9 +214,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload internal Relationship Manager APK
+      - name: Upload Relationship Manager APK
         uses: actions/upload-artifact@v4
         with:
           name: relationship-manager-apk
-          path: mobile/calllog-android/app/build/outputs/apk/internal/debug/relationship-manager.apk
+          path: mobile/calllog-android/app/build/outputs/apk/debug/relationship-manager.apk
           if-no-files-found: error

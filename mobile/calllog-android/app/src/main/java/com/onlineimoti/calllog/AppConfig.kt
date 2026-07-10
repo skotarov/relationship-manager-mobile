@@ -28,6 +28,8 @@ data class AppConfig(
     val useCallScreening: Boolean,
     val showRmDebugBox: Boolean,
     val useLocalNotesStorage: Boolean = true,
+    /** Persisted Storage Access Framework tree URI selected by the user for local notes. */
+    val localNotesFolderUri: String = "",
     /** Play builds deliberately use notifications/overlay fallback instead of full-screen intent. */
     val useFullScreenPopup: Boolean = false,
     /** The public Play build is not an SMS app. */
@@ -59,6 +61,7 @@ object ConfigStore {
     private const val KEY_USE_CALL_SCREENING = "use_call_screening"
     private const val KEY_SHOW_RM_DEBUG_BOX = "show_rm_debug_box"
     private const val KEY_USE_LOCAL_NOTES_STORAGE = "use_local_notes_storage"
+    private const val KEY_LOCAL_NOTES_FOLDER_URI = "local_notes_folder_uri"
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
 
@@ -116,11 +119,12 @@ object ConfigStore {
                 DEFAULT_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS,
             ),
             appLanguage = normalizeAppLanguage(prefs.getString(KEY_APP_LANGUAGE, DEFAULT_APP_LANGUAGE).orEmpty()),
-            // The Play package only uses app-private storage. Retain the field for older local data models.
+            // The Play package only uses app-private storage or a user-selected SAF folder.
             usePublicNotesFolder = false,
             useCallScreening = prefs.getBoolean(KEY_USE_CALL_SCREENING, DEFAULT_USE_CALL_SCREENING),
             showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
             useLocalNotesStorage = prefs.getBoolean(KEY_USE_LOCAL_NOTES_STORAGE, DEFAULT_USE_LOCAL_NOTES_STORAGE),
+            localNotesFolderUri = prefs.getString(KEY_LOCAL_NOTES_FOLDER_URI, "").orEmpty().trim(),
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
         )
@@ -152,6 +156,7 @@ object ConfigStore {
             .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
             .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
             .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, config.useLocalNotesStorage)
+            .putString(KEY_LOCAL_NOTES_FOLDER_URI, config.localNotesFolderUri.trim())
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .apply()

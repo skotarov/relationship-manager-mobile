@@ -56,7 +56,6 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // Public Play identity. The internal flavor overrides this with the legacy ID.
         applicationId = "com.onlineimoti.relationshipmanager"
         minSdk = 29
         targetSdk = 35
@@ -67,25 +66,9 @@ android {
         buildConfigField("String", "BUILD_TIME", "\"$buildTimeText\"")
         // Create this non-consumable one-time product in Play Console with the exact same ID.
         buildConfigField("String", "PLAY_COMPANY_LICENSE_PRODUCT_ID", "\"rm_company_license\"")
-        buildConfigField("boolean", "PLAY_BILLING_ENABLED", "false")
+        buildConfigField("boolean", "PLAY_BILLING_ENABLED", "true")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    flavorDimensions += "distribution"
-    productFlavors {
-        create("internal") {
-            dimension = "distribution"
-            // This preserves updates for existing sideloaded internal APKs.
-            applicationId = "com.onlineimoti.calllog"
-            buildConfigField("boolean", "PLAY_BILLING_ENABLED", "false")
-        }
-        create("play") {
-            dimension = "distribution"
-            // A distinct secure identity avoids signature conflicts with the public debug key.
-            applicationId = "com.onlineimoti.relationshipmanager"
-            buildConfigField("boolean", "PLAY_BILLING_ENABLED", "true")
-        }
     }
 
     signingConfigs {
@@ -107,7 +90,6 @@ android {
 
     buildTypes {
         debug {
-            // The internal flavor retains the legacy package ID with no suffix.
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
@@ -124,10 +106,10 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output.outputFileName = when {
-                flavorName == "play" && buildType.name == "release" -> "relationship-manager-play-release.apk"
-                flavorName == "internal" && buildType.name == "debug" -> "relationship-manager.apk"
-                else -> "relationship-manager-${flavorName}-${buildType.name}.apk"
+            output.outputFileName = when (buildType.name) {
+                "release" -> "relationship-manager-release.apk"
+                "debug" -> "relationship-manager.apk"
+                else -> "relationship-manager-${buildType.name}.apk"
             }
         }
     }
@@ -151,26 +133,10 @@ android {
     }
 }
 
-// Kept for the diagnostics workflow that predates the internal/play flavors.
-// Calling :app:compileDebugKotlin now validates both debug variants explicitly.
-tasks.register("compileDebugKotlin") {
-    group = "verification"
-    description = "Compiles Kotlin for internalDebug and playDebug."
-    dependsOn("compileInternalDebugKotlin", "compilePlayDebugKotlin")
-}
-
-// The same diagnostics workflow still calls :app:lintDebug. With two distribution
-// flavors that name became ambiguous, so keep an explicit compatibility task that
-// runs lint for both debug variants rather than skipping either one.
-tasks.register("lintDebug") {
-    group = "verification"
-    description = "Runs Android lint for internalDebug and playDebug."
-    dependsOn("lintInternalDebug", "lintPlayDebug")
-}
-
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.android.billingclient:billing-ktx:9.1.0")
 }

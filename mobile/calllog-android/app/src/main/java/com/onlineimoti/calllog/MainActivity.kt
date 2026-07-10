@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -62,6 +63,9 @@ class MainActivity : FontScaledAppCompatActivity() {
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onStorageSettingsResult()
     }
+    private val localNotesFolderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        onLocalNotesFolderPicked(uri)
+    }
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onSmsRoleResult()
         defaultSmsSettingsController.refresh()
@@ -104,7 +108,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
-        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
+        defaultSmsSettingsController.refresh()
         permissionFlowController.start()
     }
 
@@ -118,7 +122,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
-        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
+        defaultSmsSettingsController.refresh()
     }
 
     override fun onDestroy() {
@@ -141,13 +145,8 @@ class MainActivity : FontScaledAppCompatActivity() {
             binding.settingsDataArchiveGroup.root.visibility = android.view.View.GONE
             return
         }
-        if (BuildConfig.DEBUG) {
-            permissionsSection.visibility = android.view.View.VISIBLE
-            defaultSmsSettingsController.wire()
-        } else {
-            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
-            permissionsSection.visibility = android.view.View.GONE
-        }
+        permissionsSection.visibility = android.view.View.VISIBLE
+        defaultSmsSettingsController.wire()
     }
 
     private fun hydrateFields() = MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
@@ -159,6 +158,7 @@ class MainActivity : FontScaledAppCompatActivity() {
             openHome = ::openCallLogHome,
             syncContacts = contactsCleanupController::syncAllRmContacts,
             saveServerSettings = ::saveServerSettings,
+            testServerConnection = ::testServerConnection,
             createArchive = { createArchiveLauncher.launch(MainArchiveActions.archiveFileName()) },
             restoreArchive = { restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
             testStart = if (BuildConfig.DEBUG) ({ saveConfig(); testStartPopup() }) else null,
@@ -173,17 +173,51 @@ class MainActivity : FontScaledAppCompatActivity() {
         serverSyncQueueStatusController.refresh()
     }
 
+    private fun testServerConnection() {
+        val config = saveConfig()
+        val remote = binding.remoteSettingsSection
+        remote.serverConnectionTestStatusText.visibility = android.view.View.VISIBLE
+        remote.serverConnectionTestStatusText.text = getString(R.string.test_server_connection_running)
+        remote.testServerConnectionButton.isEnabled = false
+        executor.execute {
+            val result = runCatching { ServerConnectionTester.test(config) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                remote.testServerConnectionButton.isEnabled = true
+                result.onSuccess { status ->
+                    remote.serverConnectionTestStatusText.text = buildString {
+                        append(if (status.ok) "✅ " else "⚠️ ")
+                        append(status.title)
+                        if (status.detail.isNotBlank()) append("\n").append(status.detail)
+                    }
+                    setStatus(status.title)
+                }.onFailure { error ->
+                    val message = error.message.orEmpty().ifBlank { getString(R.string.test_server_connection_failed) }
+                    remote.serverConnectionTestStatusText.text = "❌ $message"
+                    setStatus(message)
+                }
+            }
+        }
+    }
+
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
         permissionFlowController.requestAppPermissionOrOpenSettings(permission, label)
     }
 
     internal fun requestSharedNotesStoragePermissionFromSummary() {
         saveConfig()
-        permissionFlowController.requestSharedNotesStoragePermission()
+        setStatus("Избери папка за локалните бележки. В нея ще се създаде .callreport и ще остане след преинсталиране.")
+        localNotesFolderLauncher.launch(null)
     }
 
     internal fun openSharedNotesStorageSettingsFromSummary() {
-        permissionFlowController.openSharedNotesStorageSettings()
+        requestSharedNotesStoragePermissionFromSummary()
+    }
+
+    internal fun clearSharedNotesStorageFromSummary() {
+        LocalNotesFileStore.clearSelectedFolder(this)
+        setStatus("Избраната папка е изключена. Локалните бележки ще се пазят в личната папка на приложението.")
+        refreshPermissionSummary()
     }
 
     internal fun requestOverlayPermissionFromSummary() {
@@ -211,7 +245,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
     }
 
-    private fun hasSmsPermissions(): Boolean = !BuildConfig.DEBUG || arrayOf(
+    private fun hasSmsPermissions(): Boolean = arrayOf(
         Manifest.permission.RECEIVE_SMS,
         Manifest.permission.READ_SMS,
         Manifest.permission.SEND_SMS,
@@ -261,7 +295,28 @@ class MainActivity : FontScaledAppCompatActivity() {
     }
 
     private fun syncPrivateNotesToSharedStorageWhenAvailable() {
-        if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
+        if (LocalNotesFileStore.hasSelectedFolderAccess(this)) LocalNotesFileStore.migratePrivateToSelected(this)
+        else if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
+    }
+
+    private fun onLocalNotesFolderPicked(uri: Uri?) {
+        if (uri == null) {
+            setStatus("Не е избрана папка. Локалните бележки остават в личната папка на приложението.")
+            refreshPermissionSummary()
+            return
+        }
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        val persisted = runCatching { contentResolver.takePersistableUriPermission(uri, flags) }.isSuccess
+        LocalNotesFileStore.setSelectedFolder(this, uri)
+        val migrated = LocalNotesFileStore.migratePrivateToSelected(this)
+        setStatus(
+            when {
+                !persisted -> "Папката е избрана, но Android не даде постоянен достъп. Избери папката отново."
+                migrated -> "Локалните бележки ще се пазят в избраната папка/.callreport и ще останат след преинсталиране."
+                else -> "Папката е избрана. Новите локални бележки ще се пазят в нея."
+            },
+        )
+        refreshPermissionSummary()
     }
 
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)

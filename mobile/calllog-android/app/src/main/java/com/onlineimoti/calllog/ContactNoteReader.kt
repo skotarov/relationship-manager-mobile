@@ -27,6 +27,7 @@ object ContactNoteReader {
     fun generalNoteForPhone(context: Context, phoneNumber: String): String {
         if (phoneNumber.isBlank()) return ""
         return readLocalNote(context, phoneNumber)
+            .ifBlank { LocalNotesFileStore.profileGeneralNote(context, phoneNumber) }
     }
 
     fun callNoteForPhone(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
@@ -40,6 +41,7 @@ object ContactNoteReader {
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
         if (phoneNumber.isBlank()) return false
         saveLocalNote(context, phoneNumber, note)
+        LocalNotesFileStore.saveUnknownGeneralNote(context, phoneNumber, note)
         return PhoneNormalizer.key(phoneNumber).isNotBlank()
     }
 

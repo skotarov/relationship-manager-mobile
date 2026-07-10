@@ -40,11 +40,6 @@ internal class MainPermissionFlowController(
 
     fun start() {
         if (isRunning) return
-        if (!CorporateAccess.isActive(activity)) {
-            setStatus("Влез във фирмен профил, преди да активираш служебна история на разговорите.")
-            refreshPermissionSummary()
-            return
-        }
         if (DistributionCapabilities.isPlayBusinessBuild) {
             isRunning = false
             setStatus(activity.getString(R.string.runtime_play_corporate_crm_ready))
@@ -64,11 +59,6 @@ internal class MainPermissionFlowController(
         isRunning = false
         if (DistributionCapabilities.isPlayBusinessBuild && isCorporateTelephonyPermission(permission)) {
             setStatus(activity.getString(R.string.runtime_play_local_feature_unavailable))
-            refreshPermissionSummary()
-            return
-        }
-        if (isCorporateTelephonyPermission(permission) && !CorporateAccess.isActive(activity)) {
-            setStatus("Влез във фирмен профил, преди да разрешиш $label.")
             refreshPermissionSummary()
             return
         }
@@ -205,12 +195,6 @@ internal class MainPermissionFlowController(
     }
 
     fun requestNextStep() {
-        if (!CorporateAccess.isActive(activity)) {
-            isRunning = false
-            setStatus("Влез във фирмен профил, преди да активираш служебна история на разговорите.")
-            refreshPermissionSummary()
-            return
-        }
         if (DistributionCapabilities.isPlayBusinessBuild) {
             isRunning = false
             setStatus(activity.getString(R.string.runtime_play_corporate_crm_ready))
@@ -257,11 +241,6 @@ internal class MainPermissionFlowController(
     fun requestCallScreeningRoleIfNeeded() {
         if (DistributionCapabilities.isPlayBusinessBuild) {
             setStatus(activity.getString(R.string.runtime_play_local_feature_unavailable))
-            refreshPermissionSummary()
-            return
-        }
-        if (!CorporateAccess.isActive(activity)) {
-            setStatus("Влез във фирмен профил, преди да активираш разпознаване на служебни разговори.")
             refreshPermissionSummary()
             return
         }
