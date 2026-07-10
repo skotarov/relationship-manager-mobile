@@ -8,7 +8,7 @@ import android.os.Build
 import android.provider.Telephony
 import androidx.activity.result.ActivityResultLauncher
 
-internal object SmsRoleController {
+internal object DefaultSmsRoleController {
     fun isDefaultSmsApp(context: Context): Boolean {
         return Telephony.Sms.getDefaultSmsPackage(context.applicationContext) == context.packageName
     }
