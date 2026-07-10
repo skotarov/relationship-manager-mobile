@@ -1,0 +1,5 @@
+<resources>
+    <string name="test_server_connection">Test server connection</string>
+    <string name="test_server_connection_running">Testing server connection…</string>
+    <string name="test_server_connection_failed">Server connection test failed.</string>
+</resources>
