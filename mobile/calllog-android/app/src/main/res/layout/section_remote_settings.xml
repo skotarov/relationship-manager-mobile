@@ -130,6 +130,23 @@
             android:text="@string/save_server_settings" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/testServerConnectionButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/test_server_connection" />
+
+        <TextView
+            android:id="@+id/serverConnectionTestStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/calllog_muted_text"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/restoreServerSettingsButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
