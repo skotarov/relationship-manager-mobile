@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -31,9 +32,11 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     private var connected = false
     private var product: ProductDetails? = null
     private var offerToken = ""
+    private var serverLicenseStatus: CompanyLicenseApi.LicenseStatus? = null
 
     private lateinit var status: TextView
     private lateinit var price: TextView
+    private lateinit var paymentOptionsBox: LinearLayout
     private lateinit var playResponse: TextView
     private lateinit var spinner: ProgressBar
     private lateinit var buy: MaterialButton
@@ -46,14 +49,15 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         title = "Фирмен лиценз"
         setContentView(content())
         refresh()
-        if (!BuildConfig.PLAY_BILLING_ENABLED) {
-            status.text = "Фирмен лиценз се купува през версията от Google Play."
-            playResponse.text = "Google Play Billing е изключен в този build."
-            return
-        }
         if (ConfigStore.load(this).baseUrl.isBlank()) {
             status.text = "Преди покупка въведи Server URL в Настройки."
             playResponse.text = "Google Play още не е питан, защото Server URL липсва."
+            return
+        }
+        syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(stage = "initial"))
+        if (!BuildConfig.PLAY_BILLING_ENABLED) {
+            status.text = "Фирмен лиценз се купува през версията от Google Play."
+            playResponse.text = "Google Play Billing е изключен в този build."
             return
         }
         connect()
@@ -66,14 +70,25 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
+        val owned = purchases.orEmpty()
         showPlayResponse(
             "Резултат от покупка",
             result,
-            "purchases=${purchases.orEmpty().size}\n${purchases.orEmpty().joinToString("\n") { purchaseDebug(it) }}"
+            "purchases=${owned.size}\n${owned.joinToString("\n") { purchaseDebug(it) }}"
+        )
+        syncLicenseStatus(
+            CompanyLicenseApi.PlayDiagnostics(
+                stage = "purchase_update",
+                responseCode = result.responseCode,
+                debugMessage = result.debugMessage,
+                purchaseCount = owned.size,
+                hasPurchaseToken = owned.any { it.purchaseToken.isNotBlank() },
+            )
         )
         when (result.responseCode) {
-            BillingClient.BillingResponseCode.OK -> purchases.orEmpty().forEach(::process)
+            BillingClient.BillingResponseCode.OK -> owned.forEach(::process)
             BillingClient.BillingResponseCode.USER_CANCELED -> status.text = "Покупката беше отменена."
+            BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> restore(silent = false)
             else -> status.text = "Google Play не можа да завърши покупката: ${result.debugMessage.ifBlank { "опитай отново" }}"
         }
     }
@@ -93,7 +108,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             textSize = 16f
             setPadding(0, dp(8), 0, dp(18))
         })
-        price = TextView(this).apply { text = "Проверяваме цената в Google Play…"; textSize = 18f }
+        price = TextView(this).apply { text = "Проверяваме лиценза…"; textSize = 18f }
         box.addView(price)
         spinner = ProgressBar(this).apply { visibility = View.GONE }
         box.addView(spinner, LinearLayout.LayoutParams(dp(42), dp(42)).apply { gravity = Gravity.CENTER_HORIZONTAL })
@@ -101,6 +116,8 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         box.addView(buy, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         restore = MaterialButton(this).apply { text = "Възстанови покупка"; isEnabled = false; setOnClickListener { restore() } }
         box.addView(restore, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        paymentOptionsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        box.addView(paymentOptionsBox)
         create = MaterialButton(this).apply {
             text = "Създай фирма"
             visibility = View.GONE
@@ -145,6 +162,13 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     result,
                     "package=${applicationContext.packageName}\nproduct=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nbillingEnabled=${BuildConfig.PLAY_BILLING_ENABLED}"
                 )
+                syncLicenseStatus(
+                    CompanyLicenseApi.PlayDiagnostics(
+                        stage = "billing_setup",
+                        responseCode = result.responseCode,
+                        debugMessage = result.debugMessage,
+                    )
+                )
                 if (!connected) {
                     loading(false)
                     status.text = "Неуспешна връзка с Google Play: ${result.debugMessage.ifBlank { "опитай отново" }}"
@@ -172,6 +196,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             product = detailsResult.productDetailsList.firstOrNull()
             val details = product
             val offer = details?.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: details?.oneTimePurchaseOfferDetails
+            val unfetchedCount = unfetchedProductsCount(detailsResult)
             showPlayResponse(
                 "Заявка за продукт",
                 result,
@@ -186,10 +211,19 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     "offerToken=${maskedToken(offer?.offerToken.orEmpty())}",
                 ).joinToString("\n")
             )
+            syncLicenseStatus(
+                CompanyLicenseApi.PlayDiagnostics(
+                    stage = "query_product",
+                    responseCode = result.responseCode,
+                    debugMessage = result.debugMessage,
+                    fetchedProducts = detailsResult.productDetailsList.size,
+                    unfetchedProducts = unfetchedCount,
+                )
+            )
             if (result.responseCode != BillingClient.BillingResponseCode.OK || details == null) {
                 offerToken = ""
                 price.text = "Фирменият лиценз още не е наличен в Google Play."
-                status.text = "Създай и активирай продукт ${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID} в Play Console."
+                status.text = "Сървърът ще покаже точния статус според отговора на Google Play."
                 return@queryProductDetailsAsync
             }
             offerToken = offer?.offerToken.orEmpty()
@@ -200,15 +234,20 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 return@queryProductDetailsAsync
             }
             price.text = offer?.formattedPrice?.let { "Цена: $it" } ?: "Еднократен фирмен лиценз"
-            buy.isEnabled = CompanyLicenseStore.loadValid(this) == null
             restore.isEnabled = true
-            if (CompanyLicenseStore.loadValid(this) == null) status.text = "Лицензът се потвърждава от сървъра."
+            renderGoogleButton()
+            if (CompanyLicenseStore.loadValid(this) == null && status.text.isBlank()) status.text = "Лицензът се потвърждава от сървъра."
         }
     }
 
     private fun launch() {
         val details = product ?: run { status.text = "Лицензът още не е зареден."; return }
         if (offerToken.isBlank()) { status.text = "Няма валидна оферта за покупка."; return }
+        val googleOption = serverLicenseStatus?.googlePlayOption()
+        if (googleOption?.enabled == false) {
+            status.text = googleOption.description.ifBlank { "Google Play плащането не е активно от сървъра." }
+            return
+        }
         val params = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
             .setOfferToken(offerToken)
@@ -221,6 +260,13 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             "Отваряне на покупка",
             result,
             "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nofferToken=${maskedToken(offerToken)}"
+        )
+        syncLicenseStatus(
+            CompanyLicenseApi.PlayDiagnostics(
+                stage = "launch_billing_flow",
+                responseCode = result.responseCode,
+                debugMessage = result.debugMessage,
+            )
         )
         if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Google Play не можа да отвори плащането: ${result.debugMessage.ifBlank { "опитай отново" }}"
     }
@@ -235,12 +281,21 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 result,
                 "purchases=${purchases.size}\n${purchases.joinToString("\n") { purchaseDebug(it) }}"
             )
+            syncLicenseStatus(
+                CompanyLicenseApi.PlayDiagnostics(
+                    stage = "query_purchases",
+                    responseCode = result.responseCode,
+                    debugMessage = result.debugMessage,
+                    purchaseCount = purchases.size,
+                    hasPurchaseToken = purchases.any { it.purchaseToken.isNotBlank() },
+                )
+            )
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 if (!silent) status.text = "Неуспешно възстановяване: ${result.debugMessage.ifBlank { "опитай отново" }}"
                 return@queryPurchasesAsync
             }
             val licenses = purchases.filter { it.products.contains(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID) }
-            if (licenses.isEmpty() && !silent) status.text = "Няма намерен фирмен лиценз за този Google Play профил."
+            if (licenses.isEmpty() && !silent) status.text = serverLicenseStatus?.message?.ifBlank { null } ?: "Няма намерен фирмен лиценз за този Google Play профил."
             licenses.forEach(::process)
         }
     }
@@ -265,9 +320,10 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     loading(false)
                     refresh()
                     status.text = "Лицензът е потвърден. Вече можеш да създадеш фирма."
+                    syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(stage = "verify_purchase", hasPurchaseToken = true))
                 }.onFailure { error ->
                     loading(false)
-                    buy.isEnabled = product != null && offerToken.isNotBlank()
+                    renderGoogleButton()
                     status.text = "Покупката е направена, но проверката не успя: ${error.message ?: "опитай Възстанови покупка"}"
                 }
             }
@@ -280,6 +336,83 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             showPlayResponse("Acknowledge покупка", result, purchaseDebug(purchase))
             if (result.responseCode != BillingClient.BillingResponseCode.OK) status.text = "Лицензът е потвърден; acknowledgement ще бъде повторен при възстановяване."
         }
+    }
+
+    private fun syncLicenseStatus(diagnostics: CompanyLicenseApi.PlayDiagnostics) {
+        if (ConfigStore.load(this).baseUrl.isBlank()) return
+        executor.execute {
+            val result = CompanyLicenseApi.licenseStatus(applicationContext, diagnostics)
+            runOnUiThread {
+                result.onSuccess { renderLicenseStatus(it) }
+                    .onFailure { error ->
+                        if (serverLicenseStatus == null) status.text = "Сървърният статус на лиценза не се зареди: ${error.message ?: "опитай отново"}"
+                    }
+            }
+        }
+    }
+
+    private fun renderLicenseStatus(value: CompanyLicenseApi.LicenseStatus) {
+        serverLicenseStatus = value
+        if (value.title.isNotBlank()) price.text = value.title
+        if (value.message.isNotBlank()) status.text = value.message
+        if (value.state == "active") {
+            buy.isEnabled = false
+            restore.isEnabled = false
+        }
+        renderPaymentOptions(value.paymentOptions)
+        renderGoogleButton()
+    }
+
+    private fun renderPaymentOptions(options: List<CompanyLicenseApi.PaymentOption>) {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density).toInt()
+        paymentOptionsBox.removeAllViews()
+        val nonGoogle = options.filterNot { it.type == "google_play" }
+        if (nonGoogle.isEmpty()) return
+        paymentOptionsBox.addView(TextView(this).apply {
+            text = "Други начини за плащане"
+            textSize = 16f
+            setPadding(0, dp(14), 0, dp(4))
+        })
+        nonGoogle.forEach { option ->
+            val button = MaterialButton(this).apply {
+                text = option.title.ifBlank { "Плащане" }
+                isEnabled = option.enabled
+                setOnClickListener { handlePaymentOption(option) }
+            }
+            paymentOptionsBox.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
+            val detail = listOf(option.subtitle, option.description).filter { it.isNotBlank() }.joinToString("\n")
+            if (detail.isNotBlank()) {
+                paymentOptionsBox.addView(TextView(this).apply {
+                    text = detail
+                    textSize = 13f
+                    setPadding(dp(4), 0, dp(4), dp(4))
+                })
+            }
+        }
+    }
+
+    private fun handlePaymentOption(option: CompanyLicenseApi.PaymentOption) {
+        when (option.type) {
+            "webview", "web_url" -> {
+                if (option.url.isBlank()) {
+                    status.text = option.description.ifBlank { "Сървърът не върна адрес за този начин на плащане." }
+                } else {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(option.url)))
+                }
+            }
+            "instructions", "manual", "contact" -> status.text = listOf(option.title, option.description).filter { it.isNotBlank() }.joinToString("\n")
+            else -> status.text = "Неподдържан начин на плащане: ${option.type}"
+        }
+    }
+
+    private fun renderGoogleButton() {
+        val activation = CompanyLicenseStore.loadValid(this)
+        val googleOption = serverLicenseStatus?.googlePlayOption()
+        if (googleOption != null) {
+            buy.text = googleOption.title.ifBlank { "Плати през Google Play" }
+        }
+        buy.isEnabled = activation == null && product != null && offerToken.isNotBlank() && googleOption?.enabled != false
     }
 
     private fun refresh() {
@@ -318,12 +451,16 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         else -> "UNKNOWN"
     }
 
+    private fun unfetchedProductsList(detailsResult: Any): List<*> = runCatching {
+        detailsResult.javaClass.methods
+            .firstOrNull { it.name == "getUnfetchedProductList" && it.parameterCount == 0 }
+            ?.invoke(detailsResult) as? List<*>
+    }.getOrNull().orEmpty()
+
+    private fun unfetchedProductsCount(detailsResult: Any): Int = unfetchedProductsList(detailsResult).size
+
     private fun unfetchedProductsDebug(detailsResult: Any): String {
-        val list = runCatching {
-            detailsResult.javaClass.methods
-                .firstOrNull { it.name == "getUnfetchedProductList" && it.parameterCount == 0 }
-                ?.invoke(detailsResult) as? List<*>
-        }.getOrNull().orEmpty()
+        val list = unfetchedProductsList(detailsResult)
         return if (list.isEmpty()) {
             "unfetchedProducts=0"
         } else {
