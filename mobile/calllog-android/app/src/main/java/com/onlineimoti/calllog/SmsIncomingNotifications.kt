@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -21,6 +22,7 @@ internal object SmsIncomingNotifications {
     private const val CHANNEL_NAME = "SMS"
     private const val ACTION_OPEN_SMS = "com.onlineimoti.calllog.OPEN_SMS_DETAIL"
 
+    @SuppressLint("MissingPermission")
     fun show(context: Context, phone: String, body: String, receivedAtMs: Long = System.currentTimeMillis()) {
         if (!canPostNotifications(context) || phone.isBlank()) return
         ensureChannel(context)
@@ -60,6 +62,8 @@ internal object SmsIncomingNotifications {
             .setContentIntent(openMessage)
             .addAction(R.drawable.ic_menu_sms, "Отговори", reply)
             .build()
+        // Permission is checked above in canPostNotifications(); suppress only because
+        // Android lint cannot follow the helper method across this notification call.
         NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
 
