@@ -136,6 +136,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.android.billingclient:billing-ktx:9.1.0")
 }
