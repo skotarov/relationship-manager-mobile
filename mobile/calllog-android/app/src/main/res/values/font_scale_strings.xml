@@ -1,8 +1,8 @@
 <resources>
     <string name="settings_general_section">Language &amp; text</string>
     <string name="font_scale_title">Text size</string>
-    <string name="font_scale_normal">Normal</string>
-    <string name="font_scale_larger">Larger (1.15x)</string>
-    <string name="font_scale_largest">Largest (1.30x)</string>
-    <string name="font_scale_description">Choose the app text size. Stored as a font scale profile so more sizes can be added later.</string>
+    <string name="font_scale_normal">Small</string>
+    <string name="font_scale_larger">Normal</string>
+    <string name="font_scale_largest">Large</string>
+    <string name="font_scale_description">Normal is the default app text size.</string>
 </resources>
