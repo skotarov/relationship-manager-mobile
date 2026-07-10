@@ -44,7 +44,7 @@ class MainActivity : FontScaledAppCompatActivity() {
             overlaySettingsLauncher = overlaySettingsLauncher,
             requestDefaultSmsRole = ::requestDefaultSmsRole,
             requestSmsPermissions = ::requestSmsPermissions,
-            isDefaultSmsApp = { SmsRoleController.isDefaultSmsApp(this) },
+            isDefaultSmsApp = { DefaultSmsRoleController.isDefaultSmsApp(this) },
             hasSmsPermissions = ::hasSmsPermissions,
             hasPermission = ::hasPermission,
             disableOverlayPopups = ::disableOverlayPopups,
@@ -230,7 +230,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         permissionFlowController.requestCallScreeningRoleIfNeeded()
     }
 
-    private fun requestDefaultSmsRole() = SmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
+    private fun requestDefaultSmsRole() = DefaultSmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
 
     private fun requestSmsPermissions() {
         val missing = arrayOf(
