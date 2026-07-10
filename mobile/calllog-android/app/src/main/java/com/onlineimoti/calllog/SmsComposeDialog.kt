@@ -29,14 +29,14 @@ internal class SmsComposeDialog(
     private val subscriptionChooser by lazy { SmsSubscriptionChooser(activity, dp, ::roundedRect) }
 
     /** The optional callback is used only by transparent notification launchers. */
-    fun show(phone: String, title: String, onDismiss: (() -> Unit)? = null) {
+    fun show(phone: String, title: String, initialBody: String = "", onDismiss: (() -> Unit)? = null) {
         if (phone.isBlank() || activity.isFinishing || activity.isDestroyed) {
             onDismiss?.invoke()
             return
         }
         runCatching {
             val dialog = Dialog(activity).apply { requestWindowFeature(Window.FEATURE_NO_TITLE) }
-            val views = content(dialog, phone, title)
+            val views = content(dialog, phone, title, initialBody)
             dialog.setContentView(views.root)
             dialog.setOnShowListener { configureWindow(dialog, views.messageInput) }
             dialog.setOnDismissListener { onDismiss?.invoke() }
@@ -67,7 +67,7 @@ internal class SmsComposeDialog(
             ?.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private fun content(dialog: Dialog, phone: String, title: String): DialogViews {
+    private fun content(dialog: Dialog, phone: String, title: String, initialBody: String): DialogViews {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(18))
@@ -76,7 +76,7 @@ internal class SmsComposeDialog(
         root.addView(dialogTitle(dialog))
         root.addView(contactSummary(title.trim().ifBlank { phone }, phone))
         val selectedSubscriptionId = subscriptionChooser.addTo(root)
-        val messageInput = messageInput()
+        val messageInput = messageInput(initialBody)
         val status = statusText()
         val sendButton = primaryButton(activity.getString(R.string.dynamic_sms_send))
         root.addView(messageInput)
@@ -130,8 +130,10 @@ internal class SmsComposeDialog(
         setPadding(0, dp(2), 0, dp(14))
     }
 
-    private fun messageInput(): EditText = EditText(activity).apply {
+    private fun messageInput(initialBody: String): EditText = EditText(activity).apply {
         hint = activity.getString(R.string.dynamic_sms_message_hint)
+        setText(initialBody)
+        setSelection(text?.length ?: 0)
         textSize = 16f
         minLines = 4
         maxLines = 8
