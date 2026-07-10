@@ -41,6 +41,11 @@ internal class HomeContentRenderer(
         binding.clearFilterButton.visibility = if (isFilteredFullLogMode() || activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
         updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
     }
+    fun showLoading() {
+        binding.fullLogProgress.visibility = View.VISIBLE
+        binding.paginationContainer.visibility = View.GONE
+        if (currentCalls.isEmpty()) binding.homeStatusText.text = activity.getString(R.string.runtime_crm_calls_loading)
+    }
     fun showMissingCallLogPermission() {
         val text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
         if (isTopLevelCrmPage()) showResultsStatus(text) else binding.homeStatusText.text = text
