@@ -1,0 +1,8 @@
+<resources>
+    <string name="default_sms_status_active">Relationship Manager е SMS приложението по подразбиране.</string>
+    <string name="default_sms_status_inactive">Relationship Manager не е SMS приложението по подразбиране.</string>
+    <string name="default_sms_activate_button">Избери като SMS приложение</string>
+    <string name="default_sms_permissions_button">Провери SMS разрешенията</string>
+    <string name="default_sms_permissions_checked">SMS разрешенията са проверени.</string>
+    <string name="default_sms_role_unavailable">Този телефон не показва роля за SMS приложение по подразбиране.</string>
+</resources>
