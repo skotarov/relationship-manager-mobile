@@ -108,7 +108,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
-        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
+        defaultSmsSettingsController.refresh()
         permissionFlowController.start()
     }
 
@@ -122,7 +122,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
-        if (BuildConfig.DEBUG) defaultSmsSettingsController.refresh()
+        defaultSmsSettingsController.refresh()
     }
 
     override fun onDestroy() {
@@ -145,13 +145,8 @@ class MainActivity : FontScaledAppCompatActivity() {
             binding.settingsDataArchiveGroup.root.visibility = android.view.View.GONE
             return
         }
-        if (BuildConfig.DEBUG) {
-            permissionsSection.visibility = android.view.View.VISIBLE
-            defaultSmsSettingsController.wire()
-        } else {
-            binding.settingsRmContactsGroup.defaultSmsSection.root.visibility = android.view.View.GONE
-            permissionsSection.visibility = android.view.View.GONE
-        }
+        permissionsSection.visibility = android.view.View.VISIBLE
+        defaultSmsSettingsController.wire()
     }
 
     private fun hydrateFields() = MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
@@ -222,7 +217,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
     }
 
-    private fun hasSmsPermissions(): Boolean = !BuildConfig.DEBUG || arrayOf(
+    private fun hasSmsPermissions(): Boolean = arrayOf(
         Manifest.permission.RECEIVE_SMS,
         Manifest.permission.READ_SMS,
         Manifest.permission.SEND_SMS,
