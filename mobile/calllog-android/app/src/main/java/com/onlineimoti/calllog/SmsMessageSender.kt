@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Sends an SMS from Call Report while it is the default SMS app.
+ * Sends an SMS from Relationship Manager while it is the default SMS app.
  *
  * A row in the local SMS history is added only after Android reports that the modem/operator
  * accepted every SMS part. This is a send confirmation, not a recipient-delivery receipt.
@@ -40,8 +40,8 @@ internal object SmsMessageSender {
         val body = rawBody.trim()
         require(phone.isNotBlank()) { "Липсва телефонен номер." }
         require(body.isNotBlank()) { "Напиши съобщение." }
-        require(SmsRoleController.isDefaultSmsApp(appContext)) {
-            "Първо избери Call Report като SMS приложение."
+        require(DefaultSmsRoleController.isDefaultSmsApp(appContext)) {
+            "Първо избери Relationship Manager като SMS приложение."
         }
         require(
             ContextCompat.checkSelfPermission(appContext, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED,
