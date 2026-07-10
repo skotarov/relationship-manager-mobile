@@ -99,6 +99,7 @@ object MainSettingsConfigUi {
             useCallScreening = currentConfig.useCallScreening,
             showRmDebugBox = tests.showRmDebugBoxCheckBox.isChecked,
             useLocalNotesStorage = currentConfig.useLocalNotesStorage,
+            localNotesFolderUri = currentConfig.localNotesFolderUri,
             useFullScreenPopup = currentConfig.useFullScreenPopup,
             useInternalSmsComposer = defaultSms.useInternalSmsComposerCheckBox.isChecked,
         )
