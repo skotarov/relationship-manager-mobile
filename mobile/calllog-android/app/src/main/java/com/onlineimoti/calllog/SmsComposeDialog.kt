@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
@@ -152,7 +153,7 @@ internal class SmsComposeDialog(
     private fun statusText(): TextView = TextView(activity).apply {
         textSize = 13f
         setTextColor(Color.rgb(185, 28, 28))
-        visibility = TextView.GONE
+        visibility = View.GONE
         setPadding(0, dp(8), 0, 0)
     }
 
@@ -166,7 +167,7 @@ internal class SmsComposeDialog(
     ) {
         sendButton.isEnabled = false
         sendButton.text = activity.getString(R.string.dynamic_sms_sending)
-        status.visibility = TextView.GONE
+        status.visibility = View.GONE
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             val result = runCatching {
@@ -195,7 +196,7 @@ internal class SmsComposeDialog(
         sendButton.isEnabled = true
         sendButton.text = activity.getString(R.string.dynamic_sms_send)
         status.text = error.message.orEmpty().ifBlank { activity.getString(R.string.dynamic_sms_send_failed) }
-        status.visibility = TextView.VISIBLE
+        status.visibility = View.VISIBLE
     }
 
     private fun primaryButton(label: String): Button = Button(activity).apply {
