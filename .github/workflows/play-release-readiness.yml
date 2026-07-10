@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   play-manifest-and-build:
-    name: Verify Play manifest and debug variant
+    name: Verify single Play-ready manifest and debug build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,8 +35,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Verify merged public Play manifest
+      - name: Verify merged app manifest
         run: bash tools/play/verify-play-manifest.sh
 
-      - name: Compile Play debug variant
-        run: ./gradlew --no-daemon :app:assemblePlayDebug
+      - name: Compile debug variant
+        run: ./gradlew --no-daemon :app:assembleDebug
