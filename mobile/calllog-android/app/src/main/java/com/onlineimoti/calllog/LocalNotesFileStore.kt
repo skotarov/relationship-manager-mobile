@@ -193,10 +193,11 @@ object LocalNotesFileStore {
             val seen = linkedSetOf<String>()
             readLines(context, ref).asReversed().mapNotNull { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
-                if (json.optString("type") != "call_note") return@mapNotNull null
                 val note = json.optString("note").trim()
                 if (note.isBlank()) return@mapNotNull null
                 val callAt = json.optLong("call_at", 0L)
+                if (json.optString("type").isNotBlank() && json.optString("type") != "call_note") return@mapNotNull null
+                if (callAt <= 0L && json.optString("type") != "call_note") return@mapNotNull null
                 val direction = json.optString("direction")
                 val clientNoteId = json.optString("id").ifBlank { clientNoteIdForCall(phoneNumber, callAt, direction) }
                 val key = if (callAt > 0L) "$callAt-$direction" else "$callAt-${direction.ifBlank { "call" }}"
@@ -251,11 +252,12 @@ object LocalNotesFileStore {
         val phoneKey = phoneNumber.normalizePhoneKey()
         if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return true
         return runCatching {
-            val ref = profileRef(context, phoneKey, createDirs = false) ?: return true
-            if (!exists(ref)) return true
+            val ref = profileRef(context, phoneKey, createDirs = false) ?: return@runCatching true
+            if (!exists(ref)) return@runCatching true
             val profile = runCatching { JSONObject(readText(context, ref)) }.getOrDefault(JSONObject())
             profile.remove("general_note")
             profile.remove("general_note_at")
+            profile.remove("note")
             cleanupOrWriteProfile(context, ref, phoneNumber, phoneKey, profile)
             true
         }.getOrDefault(false)
@@ -309,8 +311,8 @@ object LocalNotesFileStore {
         if (phoneKey.isBlank()) return false
         if (callAt <= 0L || !canUseConfiguredFolder(context)) return true
         return runCatching {
-            val ref = callLogRef(context, phoneKey, createDirs = false) ?: return true
-            if (!exists(ref)) return true
+            val ref = callLogRef(context, phoneKey, createDirs = false) ?: return@runCatching true
+            if (!exists(ref)) return@runCatching true
             val keptLines = readLines(context, ref).filterNot { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@filterNot false
                 sameCall(json, callAt, direction)
@@ -321,14 +323,14 @@ object LocalNotesFileStore {
         }.getOrDefault(false)
     }
 
-    fun storedGeneralNotes(context: Context): List<LocalStoredGeneralNote> {
+    internal fun storedGeneralNotes(context: Context): List<LocalStoredGeneralNote> {
         if (!canUseConfiguredFolder(context)) return emptyList()
         return profileRefs(context)
             .mapNotNull { ref -> parseStoredGeneralNote(context, ref) }
             .filter { it.note.isNotBlank() && it.phoneKey.isNotBlank() }
     }
 
-    fun storedCallNotes(context: Context): List<LocalStoredCallNote> {
+    internal fun storedCallNotes(context: Context): List<LocalStoredCallNote> {
         if (!canUseConfiguredFolder(context)) return emptyList()
         return callLogRefs(context)
             .flatMap { ref -> parseStoredCallNotes(context, ref) }
@@ -395,52 +397,46 @@ object LocalNotesFileStore {
         return NoteFileRef.Plain(profileFile(context, phoneKey, createDirs))
     }
 
-    private fun callLogRefs(context: Context): List<NoteFileRef> {
-        val notesRoot = activeNotesPlainRoot(context)
-        if (notesRoot != null) {
-            if (!notesRoot.exists()) return emptyList()
-            return notesRoot.walkTopDown()
-                .filter { it.isFile && safFileNameMatches(it.name, CALL_LOG_FILE) }
-                .map { NoteFileRef.Plain(it) }
-                .toList()
-        }
-        val safRoot = safNotesDir(context, createDirs = false) ?: return emptyList()
-        return walkSafFiles(safRoot)
-            .filter { file -> safFileNameMatches(file.name.orEmpty(), CALL_LOG_FILE) }
-            .map { NoteFileRef.Saf(it) }
-            .toList()
-    }
-
     private fun profileRefs(context: Context): List<NoteFileRef> {
-        val notesRoot = activeNotesPlainRoot(context)
-        if (notesRoot != null) {
-            if (!notesRoot.exists()) return emptyList()
-            return notesRoot.walkTopDown()
-                .filter { it.isFile && safFileNameMatches(it.name, PROFILE_FILE) }
-                .map { NoteFileRef.Plain(it) }
+        if (usesSelectedFolder(context)) {
+            val notes = safNotesDir(context, createDirs = false) ?: return emptyList()
+            return walkSafFiles(notes)
+                .filter { it.isFile && safFileNameMatches(it.name.orEmpty(), PROFILE_FILE) }
+                .map { NoteFileRef.Saf(it) }
                 .toList()
         }
-        val safRoot = safNotesDir(context, createDirs = false) ?: return emptyList()
-        return walkSafFiles(safRoot)
-            .filter { file -> safFileNameMatches(file.name.orEmpty(), PROFILE_FILE) }
-            .map { NoteFileRef.Saf(it) }
+        val notes = File(plainRoot(context), NOTES_DIR)
+        if (!notes.exists()) return emptyList()
+        return notes.walkTopDown()
+            .filter { it.isFile && (it.name == PROFILE_FILE || it.name == PROFILE_FILE_JSON) }
+            .map { NoteFileRef.Plain(it) }
             .toList()
     }
 
-    private fun activeNotesPlainRoot(context: Context): File? {
-        if (usesSelectedFolder(context)) return null
-        val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
-        return File(root, NOTES_DIR)
+    private fun callLogRefs(context: Context): List<NoteFileRef> {
+        if (usesSelectedFolder(context)) {
+            val notes = safNotesDir(context, createDirs = false) ?: return emptyList()
+            return walkSafFiles(notes)
+                .filter { it.isFile && safFileNameMatches(it.name.orEmpty(), CALL_LOG_FILE) }
+                .map { NoteFileRef.Saf(it) }
+                .toList()
+        }
+        val notes = File(plainRoot(context), NOTES_DIR)
+        if (!notes.exists()) return emptyList()
+        return notes.walkTopDown()
+            .filter { it.isFile && (it.name == CALL_LOG_FILE || it.name == CALL_LOG_FILE_TEXT) }
+            .map { NoteFileRef.Plain(it) }
+            .toList()
     }
 
     private fun parseStoredGeneralNote(context: Context, ref: NoteFileRef): LocalStoredGeneralNote? {
         val json = runCatching { JSONObject(readText(context, ref)) }.getOrNull() ?: return null
-        val note = json.optString("general_note").trim()
-            .ifBlank { json.optString("note").trim() }
-        if (note.isBlank()) return null
         val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
         val phoneKey = PhoneNormalizer.key(json.optString("normalized_phone").ifBlank { phone })
         if (phoneKey.isBlank()) return null
+        val note = json.optString("general_note").trim()
+            .ifBlank { json.optString("note").trim() }
+        if (note.isBlank()) return null
         return LocalStoredGeneralNote(
             phone = phone.ifBlank { phoneKey },
             phoneKey = phoneKey,
@@ -450,15 +446,13 @@ object LocalNotesFileStore {
     }
 
     private fun parseStoredCallNotes(context: Context, ref: NoteFileRef): List<LocalStoredCallNote> {
-        val fallbackUpdatedAt = when (ref) {
-            is NoteFileRef.Plain -> ref.file.lastModified()
-            is NoteFileRef.Saf -> ref.document.lastModified()
-        }
         return runCatching {
             readLines(context, ref).mapNotNull { line ->
                 val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
                 val type = json.optString("type")
+                val callAt = json.optLong("call_at", 0L)
                 if (type.isNotBlank() && type != "call_note") return@mapNotNull null
+                if (type.isBlank() && callAt <= 0L) return@mapNotNull null
                 val note = json.optString("note").trim()
                 if (note.isBlank()) return@mapNotNull null
                 val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
@@ -468,13 +462,32 @@ object LocalNotesFileStore {
                     phone = phone.ifBlank { phoneKey },
                     phoneKey = phoneKey,
                     note = note,
-                    noteAt = json.optLong("at", fallbackUpdatedAt),
-                    callAt = json.optLong("call_at", 0L),
+                    noteAt = json.optLong("at", 0L),
+                    callAt = callAt,
                     direction = json.optString("direction"),
                     durationSeconds = json.optLong("duration", 0L),
                 )
             }
         }.getOrDefault(emptyList())
+    }
+
+    private fun refreshLatestProfileNote(context: Context, phoneNumber: String, phoneKey: String) {
+        if (!canUseConfiguredFolder(context)) return
+        runCatching {
+            val profileRef = profileRef(context, phoneKey, createDirs = false) ?: return@runCatching
+            if (!exists(profileRef)) return@runCatching
+            val profile = runCatching { JSONObject(readText(context, profileRef)) }.getOrDefault(JSONObject())
+            val latestLine = readLastNonBlankLine(context, callLogRef(context, phoneKey, createDirs = false))
+            val latestNote = if (latestLine.isBlank()) "" else runCatching { JSONObject(latestLine).optString("note") }.getOrDefault("").trim()
+            if (latestNote.isBlank()) {
+                profile.remove("latest_note")
+                profile.remove("latest_note_at")
+            } else {
+                profile.put("latest_note", latestNote)
+                profile.put("latest_note_at", System.currentTimeMillis())
+            }
+            cleanupOrWriteProfile(context, profileRef, phoneNumber, phoneKey, profile)
+        }
     }
 
     private fun cleanupOrWriteProfile(
@@ -494,24 +507,13 @@ object LocalNotesFileStore {
         profile.put("phone", phoneNumber)
         profile.put("normalized_phone", phoneKey)
         profile.put("has_android_contact", false)
+        profile.put("storage", when {
+            usesSelectedFolder(context) -> "selected"
+            usesPublicFolder(context) -> "public"
+            else -> "private"
+        })
         profile.put("updated_at", System.currentTimeMillis())
         writeText(context, ref, profile.toString(2))
-    }
-
-    private fun refreshLatestProfileNote(context: Context, phoneNumber: String, phoneKey: String) {
-        val profileRef = profileRef(context, phoneKey, createDirs = false) ?: return
-        if (!exists(profileRef)) return
-        val profile = runCatching { JSONObject(readText(context, profileRef)) }.getOrDefault(JSONObject())
-        val latestLine = readLastNonBlankLine(context, callLogRef(context, phoneKey, createDirs = false))
-        val latestNote = if (latestLine.isBlank()) "" else runCatching { JSONObject(latestLine).optString("note") }.getOrDefault("").trim()
-        if (latestNote.isBlank()) {
-            profile.remove("latest_note")
-            profile.remove("latest_note_at")
-        } else {
-            profile.put("latest_note", latestNote)
-            profile.put("latest_note_at", System.currentTimeMillis())
-        }
-        cleanupOrWriteProfile(context, profileRef, phoneNumber, phoneKey, profile)
     }
 
     private fun copyDirectory(source: File, target: File) {
@@ -549,6 +551,8 @@ object LocalNotesFileStore {
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
         ROOT_DIR,
     )
+
+    private fun plainRoot(context: Context): File = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
 
     private fun selectedRootPath(context: Context): String {
         val tree = selectedRootDocument(context) ?: return "избрана папка/$ROOT_DIR"
@@ -643,8 +647,7 @@ object LocalNotesFileStore {
 
     private fun phoneDir(context: Context, phoneKey: String, createDirs: Boolean): File {
         val key = PhoneNormalizer.key(phoneKey)
-        val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
-        val dir = File(File(File(root, NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
+        val dir = File(File(File(plainRoot(context), NOTES_DIR), key.take(3)), "${key.drop(3).take(3)}/$key")
         if (createDirs) dir.mkdirs()
         return dir
     }
