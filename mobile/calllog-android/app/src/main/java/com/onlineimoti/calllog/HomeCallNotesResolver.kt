@@ -1,5 +1,7 @@
 package com.onlineimoti.calllog
 
+import kotlin.math.abs
+
 /** A blue Home-row note, selected from either local storage or server history. */
 internal data class HomeCallNote(
     val text: String,
@@ -31,12 +33,15 @@ internal object HomeCallNotesResolver {
                 valueTransform = { phone -> ContactNoteReader.callNotesForPhone(context, phone) },
             )
         val result = linkedMapOf<String, HomeCallNote>()
+        val claimedNotes = hashSetOf<String>()
         calls.filterNot { it.isSms }.forEach { call ->
             val local = notesByPhoneKey[HomeCallPageLoader.noteKey(call.number)]
                 .orEmpty()
                 .filter { note -> sameLocalCall(call, note) }
-                .maxByOrNull(::localVersionMs)
+                .filterNot { note -> claimedNoteKey(note) in claimedNotes }
+                .maxWithOrNull(compareBy<ContactCallNote> { localMatchScore(call, it) }.thenBy(::localVersionMs))
                 ?: return@forEach
+            claimedNotes += claimedNoteKey(local)
             result[keyFor(call)] = HomeCallNote(
                 text = local.note,
                 updatedAtMs = localVersionMs(local),
@@ -91,12 +96,16 @@ internal object HomeCallNotesResolver {
     }
 
     private fun sameLocalCall(call: PhoneCallRecord, note: ContactCallNote): Boolean {
-        if (call.startedAt <= 0L || note.callAt != call.startedAt) return false
+        if (call.startedAt <= 0L || note.callAt <= 0L) return false
+        if (abs(call.startedAt - note.callAt) > LOCAL_NOTE_CALL_MATCH_WINDOW_MS) return false
         return call.direction.isBlank() || note.direction.isBlank() || call.direction == note.direction
     }
 
+    private fun localMatchScore(call: PhoneCallRecord, note: ContactCallNote): Long = -abs(call.startedAt - note.callAt)
+
     private fun sameServerCall(call: PhoneCallRecord, event: CallReportHistoryEvent): Boolean {
-        if (call.startedAt <= 0L || event.occurredAtMs != call.startedAt) return false
+        if (call.startedAt <= 0L || event.occurredAtMs <= 0L) return false
+        if (abs(call.startedAt - event.occurredAtMs) > SERVER_NOTE_CALL_MATCH_WINDOW_MS) return false
         return call.direction.isBlank() || event.direction.isBlank() || call.direction == event.direction
     }
 
@@ -123,6 +132,10 @@ internal object HomeCallNotesResolver {
         return false
     }
 
+    private fun claimedNoteKey(note: ContactCallNote): String {
+        return note.clientNoteId.ifBlank { "${note.callAt}|${note.direction}|${note.note.hashCode()}" }
+    }
+
     private fun localVersionMs(note: ContactCallNote): Long = maxOf(note.savedAt, note.callAt)
 
     private fun serverVersionMs(event: CallReportHistoryEvent): Long = maxOf(
@@ -135,4 +148,7 @@ internal object HomeCallNotesResolver {
         return candidate.updatedAtMs > current.updatedAtMs ||
             (candidate.updatedAtMs == current.updatedAtMs && candidate.fromServer && !current.fromServer)
     }
+
+    private const val LOCAL_NOTE_CALL_MATCH_WINDOW_MS = 5 * 60 * 1000L
+    private const val SERVER_NOTE_CALL_MATCH_WINDOW_MS = 90_000L
 }
