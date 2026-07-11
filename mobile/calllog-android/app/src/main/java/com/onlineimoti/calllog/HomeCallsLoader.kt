@@ -21,6 +21,7 @@ internal class HomeCallsLoader(
     private val onCrmCallsEmpty: () -> Unit = {},
 ) {
     private val localExecutor = Executors.newSingleThreadExecutor()
+    private val localNotesExecutor = Executors.newSingleThreadExecutor()
     private val crmExecutor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
 
@@ -29,6 +30,7 @@ internal class HomeCallsLoader(
     fun release() {
         generation.incrementAndGet()
         localExecutor.shutdownNow()
+        localNotesExecutor.shutdownNow()
         crmExecutor.shutdownNow()
     }
 
@@ -41,11 +43,10 @@ internal class HomeCallsLoader(
         contentRenderer.showLoading()
         localExecutor.execute {
             val calls = loadLocalCalls(appContext, phoneFilter, searchQuery, requestedPage, pageSize)
-            val contactNames = HomeCallPageLoader.contactNames(appContext, calls)
             val fastData = HomeRenderData(
                 calls = calls,
                 contactNotesByNumber = emptyMap(),
-                contactNamesByNumber = contactNames,
+                contactNamesByNumber = emptyMap(),
                 callNotesByCall = emptyMap(),
             )
             handler.post {
@@ -60,19 +61,25 @@ internal class HomeCallsLoader(
             }
             if (calls.isEmpty()) return@execute
 
-            // Notes stored in a user-selected SAF folder can be much slower than
-            // app-private files. Render the page first, then enrich it with notes.
-            val data = HomeRenderData(
-                calls = calls,
-                contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
-                contactNamesByNumber = contactNames,
-                callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
-            )
-            handler.post {
-                if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
-                contentRenderer.applyRenderData(data, pageSize)
-                serverCallNotes.enrichAsync(data) { enriched ->
-                    contentRenderer.applyRenderData(enriched, pageSize)
+            // Never let slow SAF/local-note reads block the next call-log page.
+            // The rows are already visible; names and notes are added afterwards.
+            runCatching {
+                localNotesExecutor.execute {
+                    if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@execute
+                    val data = HomeRenderData(
+                        calls = calls,
+                        contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                        contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
+                        callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
+                    )
+                    handler.post {
+                        if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
+                        contentRenderer.applyRenderData(data, pageSize)
+                        serverCallNotes.enrichAsync(data) { enriched ->
+                            if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@enrichAsync
+                            contentRenderer.applyRenderData(enriched, pageSize)
+                        }
+                    }
                 }
             }
         }
