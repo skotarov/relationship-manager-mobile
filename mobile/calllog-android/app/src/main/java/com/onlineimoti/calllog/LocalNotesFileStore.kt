@@ -10,6 +10,23 @@ import org.json.JSONObject
 import java.io.File
 import java.io.RandomAccessFile
 
+internal data class LocalStoredGeneralNote(
+    val phone: String,
+    val phoneKey: String,
+    val note: String,
+    val noteAt: Long,
+)
+
+internal data class LocalStoredCallNote(
+    val phone: String,
+    val phoneKey: String,
+    val note: String,
+    val noteAt: Long,
+    val callAt: Long,
+    val direction: String,
+    val durationSeconds: Long,
+)
+
 /**
  * Local notes use one active root:
  * - a user-selected Storage Access Framework folder, when configured;
@@ -230,6 +247,20 @@ object LocalNotesFileStore {
         }.getOrDefault(false)
     }
 
+    fun deleteGeneralNote(context: Context, phoneNumber: String): Boolean {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return true
+        return runCatching {
+            val ref = profileRef(context, phoneKey, createDirs = false) ?: return true
+            if (!exists(ref)) return true
+            val profile = runCatching { JSONObject(readText(context, ref)) }.getOrDefault(JSONObject())
+            profile.remove("general_note")
+            profile.remove("general_note_at")
+            cleanupOrWriteProfile(context, ref, phoneNumber, phoneKey, profile)
+            true
+        }.getOrDefault(false)
+    }
+
     fun appendCallNote(
         context: Context,
         phoneNumber: String,
@@ -273,6 +304,37 @@ object LocalNotesFileStore {
         }.getOrDefault(false)
     }
 
+    fun deleteCallNote(context: Context, phoneNumber: String, callAt: Long, direction: String): Boolean {
+        val phoneKey = phoneNumber.normalizePhoneKey()
+        if (phoneKey.isBlank()) return false
+        if (callAt <= 0L || !canUseConfiguredFolder(context)) return true
+        return runCatching {
+            val ref = callLogRef(context, phoneKey, createDirs = false) ?: return true
+            if (!exists(ref)) return true
+            val keptLines = readLines(context, ref).filterNot { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@filterNot false
+                sameCall(json, callAt, direction)
+            }
+            if (keptLines.isEmpty()) deleteRef(ref) else writeText(context, ref, keptLines.joinToString("\n") + "\n")
+            refreshLatestProfileNote(context, phoneNumber, phoneKey)
+            true
+        }.getOrDefault(false)
+    }
+
+    fun storedGeneralNotes(context: Context): List<LocalStoredGeneralNote> {
+        if (!canUseConfiguredFolder(context)) return emptyList()
+        return profileRefs(context)
+            .mapNotNull { ref -> parseStoredGeneralNote(context, ref) }
+            .filter { it.note.isNotBlank() && it.phoneKey.isNotBlank() }
+    }
+
+    fun storedCallNotes(context: Context): List<LocalStoredCallNote> {
+        if (!canUseConfiguredFolder(context)) return emptyList()
+        return callLogRefs(context)
+            .flatMap { ref -> parseStoredCallNotes(context, ref) }
+            .filter { it.note.isNotBlank() && it.phoneKey.isNotBlank() }
+    }
+
     private sealed class NoteFileRef {
         data class Plain(val file: File) : NoteFileRef()
         data class Saf(val document: DocumentFile) : NoteFileRef()
@@ -281,6 +343,13 @@ object LocalNotesFileStore {
     private fun exists(ref: NoteFileRef): Boolean = when (ref) {
         is NoteFileRef.Plain -> ref.file.exists()
         is NoteFileRef.Saf -> ref.document.exists()
+    }
+
+    private fun deleteRef(ref: NoteFileRef) {
+        when (ref) {
+            is NoteFileRef.Plain -> ref.file.delete()
+            is NoteFileRef.Saf -> ref.document.delete()
+        }
     }
 
     private fun readText(context: Context, ref: NoteFileRef): String = when (ref) {
@@ -324,6 +393,125 @@ object LocalNotesFileStore {
             return fileInSafDir(dir, PROFILE_FILE, "application/json", createDirs)?.let(NoteFileRef::Saf)
         }
         return NoteFileRef.Plain(profileFile(context, phoneKey, createDirs))
+    }
+
+    private fun callLogRefs(context: Context): List<NoteFileRef> {
+        val notesRoot = activeNotesPlainRoot(context)
+        if (notesRoot != null) {
+            if (!notesRoot.exists()) return emptyList()
+            return notesRoot.walkTopDown()
+                .filter { it.isFile && safFileNameMatches(it.name, CALL_LOG_FILE) }
+                .map { NoteFileRef.Plain(it) }
+                .toList()
+        }
+        val safRoot = safNotesDir(context, createDirs = false) ?: return emptyList()
+        return walkSafFiles(safRoot)
+            .filter { file -> safFileNameMatches(file.name.orEmpty(), CALL_LOG_FILE) }
+            .map { NoteFileRef.Saf(it) }
+            .toList()
+    }
+
+    private fun profileRefs(context: Context): List<NoteFileRef> {
+        val notesRoot = activeNotesPlainRoot(context)
+        if (notesRoot != null) {
+            if (!notesRoot.exists()) return emptyList()
+            return notesRoot.walkTopDown()
+                .filter { it.isFile && safFileNameMatches(it.name, PROFILE_FILE) }
+                .map { NoteFileRef.Plain(it) }
+                .toList()
+        }
+        val safRoot = safNotesDir(context, createDirs = false) ?: return emptyList()
+        return walkSafFiles(safRoot)
+            .filter { file -> safFileNameMatches(file.name.orEmpty(), PROFILE_FILE) }
+            .map { NoteFileRef.Saf(it) }
+            .toList()
+    }
+
+    private fun activeNotesPlainRoot(context: Context): File? {
+        if (usesSelectedFolder(context)) return null
+        val root = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
+        return File(root, NOTES_DIR)
+    }
+
+    private fun parseStoredGeneralNote(context: Context, ref: NoteFileRef): LocalStoredGeneralNote? {
+        val json = runCatching { JSONObject(readText(context, ref)) }.getOrNull() ?: return null
+        val note = json.optString("general_note").trim()
+            .ifBlank { json.optString("note").trim() }
+        if (note.isBlank()) return null
+        val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
+        val phoneKey = PhoneNormalizer.key(json.optString("normalized_phone").ifBlank { phone })
+        if (phoneKey.isBlank()) return null
+        return LocalStoredGeneralNote(
+            phone = phone.ifBlank { phoneKey },
+            phoneKey = phoneKey,
+            note = note,
+            noteAt = maxOf(json.optLong("general_note_at", 0L), json.optLong("updated_at", 0L)),
+        )
+    }
+
+    private fun parseStoredCallNotes(context: Context, ref: NoteFileRef): List<LocalStoredCallNote> {
+        val fallbackUpdatedAt = when (ref) {
+            is NoteFileRef.Plain -> ref.file.lastModified()
+            is NoteFileRef.Saf -> ref.document.lastModified()
+        }
+        return runCatching {
+            readLines(context, ref).mapNotNull { line ->
+                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
+                val type = json.optString("type")
+                if (type.isNotBlank() && type != "call_note") return@mapNotNull null
+                val note = json.optString("note").trim()
+                if (note.isBlank()) return@mapNotNull null
+                val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
+                val phoneKey = PhoneNormalizer.key(json.optString("normalized_phone").ifBlank { phone })
+                if (phoneKey.isBlank()) return@mapNotNull null
+                LocalStoredCallNote(
+                    phone = phone.ifBlank { phoneKey },
+                    phoneKey = phoneKey,
+                    note = note,
+                    noteAt = json.optLong("at", fallbackUpdatedAt),
+                    callAt = json.optLong("call_at", 0L),
+                    direction = json.optString("direction"),
+                    durationSeconds = json.optLong("duration", 0L),
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun cleanupOrWriteProfile(
+        context: Context,
+        ref: NoteFileRef,
+        phoneNumber: String,
+        phoneKey: String,
+        profile: JSONObject,
+    ) {
+        val hasGeneral = profile.optString("general_note").trim().isNotBlank() || profile.optString("note").trim().isNotBlank()
+        val hasLatest = profile.optString("latest_note").trim().isNotBlank()
+        if (!hasGeneral && !hasLatest) {
+            deleteRef(ref)
+            return
+        }
+        profile.put("v", 1)
+        profile.put("phone", phoneNumber)
+        profile.put("normalized_phone", phoneKey)
+        profile.put("has_android_contact", false)
+        profile.put("updated_at", System.currentTimeMillis())
+        writeText(context, ref, profile.toString(2))
+    }
+
+    private fun refreshLatestProfileNote(context: Context, phoneNumber: String, phoneKey: String) {
+        val profileRef = profileRef(context, phoneKey, createDirs = false) ?: return
+        if (!exists(profileRef)) return
+        val profile = runCatching { JSONObject(readText(context, profileRef)) }.getOrDefault(JSONObject())
+        val latestLine = readLastNonBlankLine(context, callLogRef(context, phoneKey, createDirs = false))
+        val latestNote = if (latestLine.isBlank()) "" else runCatching { JSONObject(latestLine).optString("note") }.getOrDefault("").trim()
+        if (latestNote.isBlank()) {
+            profile.remove("latest_note")
+            profile.remove("latest_note_at")
+        } else {
+            profile.put("latest_note", latestNote)
+            profile.put("latest_note_at", System.currentTimeMillis())
+        }
+        cleanupOrWriteProfile(context, profileRef, phoneNumber, phoneKey, profile)
     }
 
     private fun copyDirectory(source: File, target: File) {
@@ -406,6 +594,15 @@ object LocalNotesFileStore {
         val existing = parent.listFiles().firstOrNull { it.isFile && safFileNameMatches(it.name.orEmpty(), name) }
         if (existing != null) return existing
         return if (createDirs) parent.createFile(mimeType, name) else null
+    }
+
+    private fun walkSafFiles(root: DocumentFile): Sequence<DocumentFile> = sequence {
+        root.listFiles().forEach { child ->
+            when {
+                child.isDirectory -> yieldAll(walkSafFiles(child))
+                child.isFile -> yield(child)
+            }
+        }
     }
 
     private fun safFileNameMatches(actual: String, expected: String): Boolean {
