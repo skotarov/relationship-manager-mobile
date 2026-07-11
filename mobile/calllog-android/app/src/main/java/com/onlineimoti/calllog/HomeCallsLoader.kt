@@ -168,7 +168,7 @@ internal class HomeCallsLoader(
         val requestedPage = pageIndex()
         val appContext = activity.applicationContext
         crmExecutor.execute {
-            val data = runCatching {
+            val calls = runCatching {
                 val localFiltered = HomeCrmFilterEngine.filterLocal(
                     context = appContext,
                     calls = HomeTimelineLoader.crmCandidates(appContext),
@@ -184,35 +184,47 @@ internal class HomeCallsLoader(
                 } else {
                     localFiltered
                 }
-                val calls = companyFiltered.drop(requestedPage * pageSize).take(pageSize)
-                HomeRenderData(
-                    calls = calls,
-                    contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
-                    contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
-                    callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
-                )
-            }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
+                companyFiltered.drop(requestedPage * pageSize).take(pageSize)
+            }.getOrDefault(emptyList())
+            val fastData = HomeRenderData(
+                calls = calls,
+                contactNotesByNumber = emptyMap(),
+                contactNamesByNumber = emptyMap(),
+                callNotesByCall = emptyMap(),
+            )
             handler.post {
-                val current = expectedGeneration == generation.get() &&
-                    !activity.isFinishing &&
-                    !activity.isDestroyed &&
-                    isCrmModeEnabled() &&
-                    activePhoneFilter().isBlank() &&
-                    activeSearchQuery().isBlank() &&
-                    pageIndex() == requestedPage &&
-                    crmFilters.state() == filterState
-                if (!current) return@post
-                if (data.calls.isEmpty()) {
+                if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@post
+                if (calls.isEmpty()) {
                     contentRenderer.renderEmptyState()
                     onCrmCallsEmpty()
                 } else {
-                    contentRenderer.applyRenderData(data, pageSize)
-                    onCrmCallsRendered(data.calls.size)
-                    serverCallNotes.enrichAsync(data) { enriched ->
-                        contentRenderer.applyRenderData(enriched, pageSize)
-                    }
+                    contentRenderer.applyRenderData(fastData, pageSize)
+                    onCrmCallsRendered(calls.size)
                 }
                 onRenderComplete()
+            }
+            if (calls.isEmpty()) return@execute
+
+            // CRM rows follow the same rule as the normal call log: show the
+            // page first, then enrich the already visible rows with notes.
+            runCatching {
+                localNotesExecutor.execute crmNotesTask@{
+                    if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@crmNotesTask
+                    val data = HomeRenderData(
+                        calls = calls,
+                        contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                        contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
+                        callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
+                    )
+                    handler.post {
+                        if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@post
+                        contentRenderer.applyRenderData(data, pageSize)
+                        serverCallNotes.enrichAsync(data) { enriched ->
+                            if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@enrichAsync
+                            contentRenderer.applyRenderData(enriched, pageSize)
+                        }
+                    }
+                }
             }
         }
     }
@@ -229,6 +241,21 @@ internal class HomeCallsLoader(
             activePhoneFilter() == phoneFilter &&
             activeSearchQuery() == searchQuery &&
             pageIndex() == requestedPage
+    }
+
+    private fun isCurrentCrmRender(
+        expectedGeneration: Int,
+        requestedPage: Int,
+        filterState: HomeCrmFilterState,
+    ): Boolean {
+        return expectedGeneration == generation.get() &&
+            !activity.isFinishing &&
+            !activity.isDestroyed &&
+            isCrmModeEnabled() &&
+            activePhoneFilter().isBlank() &&
+            activeSearchQuery().isBlank() &&
+            pageIndex() == requestedPage &&
+            crmFilters.state() == filterState
     }
 
     private companion object {
