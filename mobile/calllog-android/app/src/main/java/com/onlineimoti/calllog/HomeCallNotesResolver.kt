@@ -40,14 +40,29 @@ internal object HomeCallNotesResolver {
                 .filter { note -> sameLocalCall(call, note) }
                 .filterNot { note -> claimedNoteKey(note) in claimedNotes }
                 .maxWithOrNull(compareBy<ContactCallNote> { localMatchScore(call, it) }.thenBy(::localVersionMs))
-                ?: return@forEach
-            claimedNotes += claimedNoteKey(local)
-            result[keyFor(call)] = HomeCallNote(
-                text = local.note,
-                updatedAtMs = localVersionMs(local),
-                fromServer = false,
-                companyId = local.companyId.trim(),
-            )
+            if (local != null) {
+                claimedNotes += claimedNoteKey(local)
+                result[keyFor(call)] = HomeCallNote(
+                    text = local.note,
+                    updatedAtMs = localVersionMs(local),
+                    fromServer = false,
+                    companyId = local.companyId.trim(),
+                )
+                return@forEach
+            }
+
+            // Restored older calllog.notes files may not contain the v2 "type"
+            // marker, so they are skipped by the bulk parser. The direct lookup
+            // parses the row by call_at/direction and still recovers the note.
+            val directNote = ContactNoteReader.callNoteForPhone(context, call.number, call.startedAt, call.direction)
+            if (directNote.isNotBlank()) {
+                result[keyFor(call)] = HomeCallNote(
+                    text = directNote,
+                    updatedAtMs = call.startedAt,
+                    fromServer = false,
+                    companyId = LocalNotesFileStore.companyIdForCall(context, call.number, call.startedAt, call.direction),
+                )
+            }
         }
         return result
     }
