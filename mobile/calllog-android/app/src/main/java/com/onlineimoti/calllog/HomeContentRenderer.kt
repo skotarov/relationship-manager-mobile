@@ -95,9 +95,10 @@ internal class HomeContentRenderer(
     }
     private fun applyRenderData(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean) {
         val calls = data.calls.sortedByDescending { it.startedAt }
+        val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
         currentCalls = calls
         currentContactNotesByNumber = data.contactNotesByNumber
-        currentContactNamesByNumber = data.contactNamesByNumber
+        currentContactNamesByNumber = namesByNumber
         currentCallNotesByCall = data.callNotesByCall
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
         val filtered = activePhoneFilter().isNotBlank()
@@ -109,7 +110,7 @@ internal class HomeContentRenderer(
             if (day != null && day != previous) { binding.homeCallsContainer.addView(dateSeparator(call.startedAt, today - day)); previous = day }
             val key = HomeCallPageLoader.noteKey(call.number)
             binding.homeCallsContainer.addView(rowRenderer.compactCallRow(
-                call, data.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName },
+                call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
                 if (filtered) null else data.contactNotesByNumber[key], if (filtered) null else labels[key],
                 data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
@@ -117,6 +118,32 @@ internal class HomeContentRenderer(
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
     }
+
+    private fun normalizedContactNames(
+        resolvedNamesByNumber: Map<String, String>,
+        calls: List<PhoneCallRecord>,
+    ): Map<String, String> {
+        val merged = linkedMapOf<String, String>()
+        resolvedNamesByNumber.forEach { (key, value) ->
+            if (key.isNotBlank() && value.trim().isNotBlank()) merged[key] = value.trim()
+        }
+        calls.groupBy { HomeCallPageLoader.noteKey(it.number) }.forEach { (key, rows) ->
+            if (key.isBlank() || merged[key].orEmpty().isNotBlank()) return@forEach
+            rows.firstNotNullOfOrNull { row -> callLogNameForKey(row, key).takeIf { it.isNotBlank() } }
+                ?.let { merged[key] = it }
+        }
+        return merged
+    }
+
+    private fun callLogNameForKey(call: PhoneCallRecord, key: String): String {
+        return call.name.trim().takeIf { it.isNotBlank() && !looksLikeSamePhone(it, key) }.orEmpty()
+    }
+
+    private fun looksLikeSamePhone(value: String, key: String): Boolean {
+        val valueKey = PhoneNormalizer.key(value)
+        return valueKey.isNotBlank() && valueKey == key
+    }
+
     private fun dateSeparator(timestamp: Long, relativeDays: Long): TextView {
         val locale = if (AppLocaleText.isBulgarian()) Locale("bg", "BG") else Locale.US
         val label = "${SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(Date(timestamp))} (${HomeTimelineDateUi.relativeDaysLabel(activity, relativeDays)})"
