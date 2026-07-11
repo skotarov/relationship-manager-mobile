@@ -20,7 +20,7 @@ internal object HomeCrmPhaseLookup {
 
     fun invalidate() = cache.clear()
 
-    fun resolveCompanyPhases(config: AppConfig, phones: List<String>): Map<String, Map<String, Int>> {
+    fun resolveCompanyPhases(config: AppConfig, phones: List<String>, context: Context? = null): Map<String, Map<String, Int>> {
         if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
         val requested = linkedMapOf<String, String>()
         phones.forEach { phone ->
@@ -29,7 +29,7 @@ internal object HomeCrmPhaseLookup {
         if (requested.isEmpty()) return emptyMap()
         val scope = "${config.baseUrl.trim().trimEnd('/')}|${config.accessToken.hashCode()}"
         val missing = requested.filterKeys { cache["$scope|$it"] == null }.values.toList()
-        if (missing.isNotEmpty()) fetchMissing(scope, config, missing)
+        if (missing.isNotEmpty()) fetchMissing(scope, config, missing, context)
         return requested.keys.mapNotNull { key -> cache["$scope|$key"]?.let { key to it } }.toMap()
     }
 
@@ -51,7 +51,8 @@ internal object HomeCrmPhaseLookup {
 
         // A temporary endpoint/network issue should not discard locally assigned
         // phases and turn the selected phase filter into an empty list.
-        val remote = runCatching { resolveCompanyPhases(config, requested.values.toList()) }
+        val remote = runCatching { resolveCompanyPhases(config, requested.values.toList(), context.applicationContext) }
+            .onFailure { error -> ServerConnectionNotifier.notifyFailure(context.applicationContext, config, error) }
             .getOrDefault(emptyMap())
         val result = requested.keys.associateWithTo(linkedMapOf()) { phoneKey ->
             remote[phoneKey].orEmpty().toMutableMap()
@@ -67,6 +68,8 @@ internal object HomeCrmPhaseLookup {
         if (companyIds.isEmpty() && CallReportRemoteAccess.isReady(config)) {
             val loadedCompanies = runCatching {
                 CallReportTopicCompaniesRepository.load(context.applicationContext, config).companies
+            }.onFailure { error ->
+                ServerConnectionNotifier.notifyFailure(context.applicationContext, config, error)
             }.getOrDefault(emptyList())
             companyIds += loadedCompanies.map { it.id.trim() }.filter { it.isNotBlank() }
         }
@@ -103,12 +106,12 @@ internal object HomeCrmPhaseLookup {
         return result.filterValues { it.isNotEmpty() }
     }
 
-    private fun fetchMissing(scope: String, config: AppConfig, phones: List<String>) {
+    private fun fetchMissing(scope: String, config: AppConfig, phones: List<String>, context: Context? = null) {
         if (cache.size > MAX_CACHE) cache.clear()
         val batches = phones.chunked(MAX_PHONES)
         val executor = Executors.newFixedThreadPool(minOf(MAX_PARALLEL, batches.size))
         try {
-            batches.map { batch -> executor.submit(Callable { CompanyNegotiationPhaseBatchRemoteClient.fetch(config, batch) }) }
+            batches.map { batch -> executor.submit(Callable { CompanyNegotiationPhaseBatchRemoteClient.fetch(config, batch, context) }) }
                 .forEach { future -> future.get().forEach { (phone, phases) -> cache["$scope|$phone"] = phases } }
         } finally {
             executor.shutdownNow()
@@ -119,43 +122,53 @@ internal object HomeCrmPhaseLookup {
 internal object CompanyNegotiationPhaseBatchRemoteClient {
     private const val PATH = "/relationship-manager/company_phase.php"
 
-    fun fetch(config: AppConfig, phones: List<String>): Map<String, Map<String, Int>> {
+    fun fetch(config: AppConfig, phones: List<String>, context: Context? = null): Map<String, Map<String, Int>> {
         val requested = linkedMapOf<String, String>()
         phones.forEach { phone ->
             HomeCallPageLoader.noteKey(phone).takeIf { it.isNotBlank() }?.let { requested.putIfAbsent(it, phone) }
         }
         if (requested.isEmpty()) return emptyMap()
-        val connection = URL(config.baseUrl.trim().trimEnd('/') + PATH).openConnection() as HttpURLConnection
+        val connection = runCatching {
+            URL(config.baseUrl.trim().trimEnd('/') + PATH).openConnection() as HttpURLConnection
+        }.getOrElse { error ->
+            ServerConnectionNotifier.notifyFailure(context, config, error)
+            throw error
+        }
         try {
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
-            connection.doOutput = true
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            // The single-record phase client sends both headers. The batch lookup
-            // must authenticate identically, otherwise selecting a phase silently
-            // yields no CRM rows on installations still validating Callreport auth.
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
-            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            val payload = JSONObject().put("phones", JSONArray().apply { requested.values.forEach(::put) }).toString()
-            connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
-            val json = runCatching { JSONObject(body) }.getOrNull()
-            if (status !in 200..299 || json?.optBoolean("ok") != true) {
-                throw IOException(json?.optString("error").orEmpty().ifBlank { "CRM phase request failed (HTTP $status)." })
+            try {
+                connection.requestMethod = "POST"
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 10_000
+                connection.doOutput = true
+                connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                // The single-record phase client sends both headers. The batch lookup
+                // must authenticate identically, otherwise selecting a phase silently
+                // yields no CRM rows on installations still validating Callreport auth.
+                connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+                connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+                val payload = JSONObject().put("phones", JSONArray().apply { requested.values.forEach(::put) }).toString()
+                connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
+                val json = runCatching { JSONObject(body) }.getOrNull()
+                if (status !in 200..299 || json?.optBoolean("ok") != true) {
+                    throw IOException(json?.optString("error").orEmpty().ifBlank { "CRM phase request failed (HTTP $status)." })
+                }
+                val result = requested.keys.associateWith { linkedMapOf<String, Int>() }.toMutableMap()
+                val items = json.optJSONArray("items")
+                for (i in 0 until (items?.length() ?: 0)) {
+                    val item = items?.optJSONObject(i) ?: continue
+                    val phoneKey = HomeCallPageLoader.noteKey(item.optString("phone"))
+                    val companyId = item.optString("company_id").trim()
+                    if (phoneKey in result && companyId.isNotBlank()) result.getValue(phoneKey)[companyId] = item.optInt("phase", 0)
+                }
+                return result.mapValues { it.value.toMap() }
+            } catch (error: Throwable) {
+                ServerConnectionNotifier.notifyFailure(context, config, error)
+                throw error
             }
-            val result = requested.keys.associateWith { linkedMapOf<String, Int>() }.toMutableMap()
-            val items = json.optJSONArray("items")
-            for (i in 0 until (items?.length() ?: 0)) {
-                val item = items?.optJSONObject(i) ?: continue
-                val phoneKey = HomeCallPageLoader.noteKey(item.optString("phone"))
-                val companyId = item.optString("company_id").trim()
-                if (phoneKey in result && companyId.isNotBlank()) result.getValue(phoneKey)[companyId] = item.optInt("phase", 0)
-            }
-            return result.mapValues { it.value.toMap() }
         } finally {
             connection.disconnect()
         }
