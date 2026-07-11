@@ -38,7 +38,7 @@ internal class HomeServerCallNotesController(
 
         executor.execute {
             val history = runCatching {
-                CallReportHistoryLookupClient.lookupMany(config, phones)
+                CallReportHistoryLookupClient.lookupMany(config, phones, appContext)
             }.getOrDefault(CallReportHistoryLookupResult())
             val mergedNotes = HomeCallNotesResolver.mergeWithServer(
                 calls = renderData.calls,
