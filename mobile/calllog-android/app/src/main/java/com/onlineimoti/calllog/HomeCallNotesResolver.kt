@@ -82,26 +82,29 @@ internal object HomeCallNotesResolver {
         val callsByPhone = calls
             .filterNot { it.isSms }
             .groupBy { HomeCallPageLoader.noteKey(it.number) }
+        val claimedEvents = hashSetOf<String>()
 
-        serverEvents.forEach { event ->
-            if (!isConcreteCallNote(event)) return@forEach
+        serverEvents.forEachIndexed { index, event ->
+            if (!isConcreteCallNote(event)) return@forEachIndexed
             val candidates = callsByPhone[HomeCallPageLoader.noteKey(event.phone)].orEmpty()
-            candidates
-                .filter { call -> sameServerCall(call, event) }
-                .forEach { call ->
-                    val key = keyFor(call)
-                    val candidate = HomeCallNote(
-                        text = event.note.trim(),
-                        updatedAtMs = serverVersionMs(event),
-                        fromServer = true,
-                        authorName = event.authorBrokerName.trim(),
-                        companyId = event.companyId.trim(),
-                        serverClientEventId = event.clientEventId.trim(),
-                        editable = !isOtherBrokerAuthor(event, principal),
-                    )
-                    val current = merged[key]
-                    if (current == null || isNewer(candidate, current)) merged[key] = candidate
-                }
+            val call = candidates
+                .filter { candidate -> sameServerCall(candidate, event) }
+                .minByOrNull { candidate -> abs(candidate.startedAt - event.occurredAtMs) }
+                ?: return@forEachIndexed
+            val eventKey = event.clientEventId.ifBlank { "server:$index:${event.serverId}:${event.occurredAtMs}:${event.note.hashCode()}" }
+            if (!claimedEvents.add(eventKey)) return@forEachIndexed
+            val key = keyFor(call)
+            val candidate = HomeCallNote(
+                text = event.note.trim(),
+                updatedAtMs = serverVersionMs(event),
+                fromServer = true,
+                authorName = event.authorBrokerName.trim(),
+                companyId = event.companyId.trim(),
+                serverClientEventId = event.clientEventId.trim(),
+                editable = !isOtherBrokerAuthor(event, principal),
+            )
+            val current = merged[key]
+            if (current == null || isNewer(candidate, current)) merged[key] = candidate
         }
         return merged
     }
@@ -128,10 +131,7 @@ internal object HomeCallNotesResolver {
         if (!event.communicationType.equals("note", ignoreCase = true) || event.note.isBlank()) return false
         val id = event.clientEventId
         if (id.contains(":note:general:") || id.contains(":topic:general:")) return false
-        return event.direction.isNotBlank() ||
-            event.durationSeconds > 0L ||
-            id.contains(":note:call:") ||
-            id.contains(":topic:call:")
+        return event.occurredAtMs > 0L
     }
 
     private fun isOtherBrokerAuthor(
@@ -165,5 +165,5 @@ internal object HomeCallNotesResolver {
     }
 
     private const val LOCAL_NOTE_CALL_MATCH_WINDOW_MS = 5 * 60 * 1000L
-    private const val SERVER_NOTE_CALL_MATCH_WINDOW_MS = 90_000L
+    private const val SERVER_NOTE_CALL_MATCH_WINDOW_MS = 10 * 60 * 1000L
 }
