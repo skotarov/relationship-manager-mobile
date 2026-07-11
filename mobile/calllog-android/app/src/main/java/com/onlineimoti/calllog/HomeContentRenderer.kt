@@ -28,11 +28,18 @@ internal class HomeContentRenderer(
     private val scopeChipsUi: HomeCompanyScopeChipsUi,
 ) {
     var currentCalls: List<PhoneCallRecord> = emptyList(); private set
+    private var currentContactNotesByNumber: Map<String, String> = emptyMap()
+    private var currentContactNamesByNumber: Map<String, String> = emptyMap()
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
     private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) { currentCalls = calls }
-    fun clearCalls() { currentCalls = emptyList(); currentCallNotesByCall = emptyMap() }
+    fun clearCalls() {
+        currentCalls = emptyList()
+        currentContactNotesByNumber = emptyMap()
+        currentContactNamesByNumber = emptyMap()
+        currentCallNotesByCall = emptyMap()
+    }
     fun prepareForRender(pageSize: Int, keepExistingRows: Boolean) {
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, pageSize)
@@ -59,7 +66,16 @@ internal class HomeContentRenderer(
     fun renderCurrentRowsAfterCompanyLabels(pageSize: Int) {
         if (activePhoneFilter().isNotBlank()) { renderFilteredContactSummary(); return }
         if (currentCalls.isEmpty()) return
-        applyRenderData(HomeRenderData(currentCalls, HomeCallPageLoader.contactNotes(activity, currentCalls), HomeCallPageLoader.contactNames(activity, currentCalls), currentCallNotesByCall), pageSize, false)
+        applyRenderData(
+            HomeRenderData(
+                currentCalls,
+                currentContactNotesByNumber,
+                currentContactNamesByNumber,
+                currentCallNotesByCall,
+            ),
+            pageSize,
+            false,
+        )
     }
     fun renderEmptyState() {
         binding.fullLogProgress.visibility = View.GONE
@@ -78,7 +94,11 @@ internal class HomeContentRenderer(
         binding.paginationContainer.visibility = View.VISIBLE
     }
     private fun applyRenderData(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean) {
-        val calls = data.calls.sortedByDescending { it.startedAt }; currentCalls = calls; currentCallNotesByCall = data.callNotesByCall
+        val calls = data.calls.sortedByDescending { it.startedAt }
+        currentCalls = calls
+        currentContactNotesByNumber = data.contactNotesByNumber
+        currentContactNamesByNumber = data.contactNamesByNumber
+        currentCallNotesByCall = data.callNotesByCall
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
         val filtered = activePhoneFilter().isNotBlank()
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
@@ -183,6 +203,8 @@ internal class HomeContentRenderer(
     }
     private fun showResultsStatus(text: String) {
         currentCalls = emptyList()
+        currentContactNotesByNumber = emptyMap()
+        currentContactNamesByNumber = emptyMap()
         currentCallNotesByCall = emptyMap()
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
