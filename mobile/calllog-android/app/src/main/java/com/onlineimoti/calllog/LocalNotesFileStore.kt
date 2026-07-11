@@ -460,7 +460,7 @@ object LocalNotesFileStore {
         }
     }
 
-    private fun readLastNonBlankLine(file: File) {
+    private fun readLastNonBlankLine(file: File): String {
         if (!file.exists() || file.length() <= 0L) return ""
         return runCatching {
             RandomAccessFile(file, "r").use { raf ->
