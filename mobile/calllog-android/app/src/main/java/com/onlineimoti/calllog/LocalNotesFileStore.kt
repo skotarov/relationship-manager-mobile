@@ -22,7 +22,9 @@ object LocalNotesFileStore {
     private const val ROOT_DIR = ".callreport"
     private const val NOTES_DIR = "notes"
     private const val CALL_LOG_FILE = "calllog.notes"
+    private const val CALL_LOG_FILE_TEXT = "calllog.notes.txt"
     private const val PROFILE_FILE = "profile.json"
+    private const val PROFILE_FILE_JSON = "profile.json.json"
 
     fun canUsePublicFolder(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
@@ -87,10 +89,16 @@ object LocalNotesFileStore {
     /** Copies local note files to the user-selected folder after access is granted. */
     fun migratePrivateToSelected(context: Context): Boolean {
         if (!isEnabled(context) || !hasSelectedFolderAccess(context)) return false
-        val target = safRoot(context, createDirs = true) ?: return false
         return runCatching {
-            copyDirectoryToSaf(context, privateRoot(context), target)
-            if (canUsePublicFolder()) copyDirectoryToSaf(context, publicRoot(), target)
+            val selected = selectedRootDocument(context) ?: return false
+            if (selected.name == NOTES_DIR) {
+                copyDirectoryToSaf(context, File(privateRoot(context), NOTES_DIR), selected)
+                if (canUsePublicFolder()) copyDirectoryToSaf(context, File(publicRoot(), NOTES_DIR), selected)
+            } else {
+                val target = safRoot(context, createDirs = true) ?: return false
+                copyDirectoryToSaf(context, privateRoot(context), target)
+                if (canUsePublicFolder()) copyDirectoryToSaf(context, publicRoot(), target)
+            }
             true
         }.getOrDefault(false)
     }
@@ -174,7 +182,7 @@ object LocalNotesFileStore {
                 val callAt = json.optLong("call_at", 0L)
                 val direction = json.optString("direction")
                 val clientNoteId = json.optString("id").ifBlank { clientNoteIdForCall(phoneNumber, callAt, direction) }
-                val key = if (callAt > 0L) callAt.toString() else "$callAt-${direction.ifBlank { "call" }}"
+                val key = if (callAt > 0L) "$callAt-$direction" else "$callAt-${direction.ifBlank { "call" }}"
                 if (!seen.add(key)) return@mapNotNull null
                 ContactCallNote(
                     note = note,
@@ -194,7 +202,12 @@ object LocalNotesFileStore {
         if (phoneKey.isBlank() || !canUseConfiguredFolder(context)) return ""
         val ref = profileRef(context, phoneKey, createDirs = false) ?: return ""
         if (!exists(ref)) return ""
-        return runCatching { JSONObject(readText(context, ref)).optString("general_note") }.getOrDefault("").trim()
+        return runCatching {
+            val json = JSONObject(readText(context, ref))
+            json.optString("general_note").trim()
+                .ifBlank { json.optString("latest_note").trim() }
+                .ifBlank { json.optString("note").trim() }
+        }.getOrDefault("")
     }
 
     fun saveUnknownGeneralNote(context: Context, phoneNumber: String, note: String): Boolean {
@@ -299,7 +312,7 @@ object LocalNotesFileStore {
     private fun callLogRef(context: Context, phoneKey: String, createDirs: Boolean): NoteFileRef? {
         if (usesSelectedFolder(context)) {
             val dir = safPhoneDir(context, phoneKey, createDirs) ?: return null
-            return fileInSafDir(dir, CALL_LOG_FILE, "text/plain", createDirs)?.let(NoteFileRef::Saf)
+            return fileInSafDir(dir, CALL_LOG_FILE, "application/octet-stream", createDirs)?.let(NoteFileRef::Saf)
         }
         return NoteFileRef.Plain(callLogFile(context, phoneKey, createDirs))
     }
@@ -351,7 +364,10 @@ object LocalNotesFileStore {
     private fun selectedRootPath(context: Context): String {
         val tree = selectedRootDocument(context) ?: return "избрана папка/$ROOT_DIR"
         val folderName = tree.name.orEmpty().ifBlank { "избрана папка" }
-        return if (folderName == ROOT_DIR) folderName else "$folderName/$ROOT_DIR"
+        return when (folderName) {
+            ROOT_DIR, NOTES_DIR -> folderName
+            else -> "$folderName/$ROOT_DIR"
+        }
     }
 
     private fun selectedRootDocument(context: Context): DocumentFile? =
@@ -360,13 +376,20 @@ object LocalNotesFileStore {
     private fun safRoot(context: Context, createDirs: Boolean): DocumentFile? {
         val tree = selectedRootDocument(context) ?: return null
         if (tree.name == ROOT_DIR) return tree
+        if (tree.name == NOTES_DIR) return null
         return directoryInSafDir(tree, ROOT_DIR, createDirs)
+    }
+
+    private fun safNotesDir(context: Context, createDirs: Boolean): DocumentFile? {
+        val tree = selectedRootDocument(context) ?: return null
+        if (tree.name == NOTES_DIR) return tree
+        val root = safRoot(context, createDirs) ?: return null
+        return directoryInSafDir(root, NOTES_DIR, createDirs)
     }
 
     private fun safPhoneDir(context: Context, phoneKey: String, createDirs: Boolean): DocumentFile? {
         val key = PhoneNormalizer.key(phoneKey)
-        val root = safRoot(context, createDirs) ?: return null
-        val notes = directoryInSafDir(root, NOTES_DIR, createDirs) ?: return null
+        val notes = safNotesDir(context, createDirs) ?: return null
         val first = directoryInSafDir(notes, key.take(3), createDirs) ?: return null
         val second = directoryInSafDir(first, key.drop(3).take(3), createDirs) ?: return null
         return directoryInSafDir(second, key, createDirs)
@@ -379,9 +402,18 @@ object LocalNotesFileStore {
     }
 
     private fun fileInSafDir(parent: DocumentFile, name: String, mimeType: String, createDirs: Boolean): DocumentFile? {
-        val existing = parent.listFiles().firstOrNull { it.name == name && it.isFile }
+        val existing = parent.listFiles().firstOrNull { it.isFile && safFileNameMatches(it.name.orEmpty(), name) }
         if (existing != null) return existing
         return if (createDirs) parent.createFile(mimeType, name) else null
+    }
+
+    private fun safFileNameMatches(actual: String, expected: String): Boolean {
+        if (actual == expected) return true
+        return when (expected) {
+            CALL_LOG_FILE -> actual == CALL_LOG_FILE_TEXT
+            PROFILE_FILE -> actual == PROFILE_FILE_JSON
+            else -> false
+        }
     }
 
     private fun sameCall(json: JSONObject, callAt: Long, direction: String): Boolean {
