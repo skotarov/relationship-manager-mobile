@@ -46,6 +46,7 @@ internal object CallReportHistoryLookupClient {
     private const val PATH = "/relationship-manager/history_lookup.php"
     private const val DEFAULT_LIMIT = 200
     private const val MAX_LIMIT = 200
+    private const val MAX_PHONE_VARIANTS = 50
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(
@@ -54,19 +55,28 @@ internal object CallReportHistoryLookupClient {
         limit: Int = DEFAULT_LIMIT,
     ): CallReportHistoryLookupResult {
         if (!isReady(config) || phone.isBlank()) return CallReportHistoryLookupResult()
-        return request(config, listOf(phone), limit).also { result ->
-            updateGeneralNoteServerPresence(phone, result.events)
+        val candidates = phoneCandidatesForLookup(phone).take(MAX_PHONE_VARIANTS)
+        val result = when {
+            candidates.size <= 1 -> request(config, candidates.ifEmpty { listOf(phone) }, limit)
+            else -> request(config, candidates, limit)
         }
+        updateGeneralNoteServerPresence(phone, result.events)
+        return result
     }
 
-    /** One request for up to 50 phones; used by Home to avoid serial per-row lookups. */
+    /** One request for up to 50 phone variants; used by Home to avoid serial per-row lookups. */
     fun lookupMany(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
         if (!isReady(config)) return CallReportHistoryLookupResult()
-        val requestedPhones = phones
-            .map { it.trim() }
+        val requestedPhones = buildList {
+            phones
+                .map { it.trim() }
+                .filter { phoneKey(it).isNotBlank() }
+                .distinctBy(::phoneKey)
+                .forEach { phone -> addAll(phoneCandidatesForLookup(phone)) }
+        }
+            .distinct()
             .filter { phoneKey(it).isNotBlank() }
-            .distinctBy(::phoneKey)
-            .take(50)
+            .take(MAX_PHONE_VARIANTS)
         if (requestedPhones.isEmpty()) return CallReportHistoryLookupResult()
         return request(config, requestedPhones, DEFAULT_LIMIT)
     }
@@ -144,6 +154,16 @@ internal object CallReportHistoryLookupClient {
             event.clientEventId.contains(":topic:general:") ||
             (event.communicationType.equals("note", ignoreCase = true) &&
                 event.direction.isBlank() && event.durationSeconds <= 0L)
+    }
+
+    private fun phoneCandidatesForLookup(phone: String): List<String> {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return emptyList()
+        return linkedSetOf<String>().apply {
+            add(phone.trim())
+            add(PhoneNormalizer.normalize(phone))
+            addAll(PhoneNormalizer.candidates(phone))
+        }.filter { it.isNotBlank() }
     }
 
     private fun phoneKey(phone: String): String = HomeCallPageLoader.noteKey(phone)
