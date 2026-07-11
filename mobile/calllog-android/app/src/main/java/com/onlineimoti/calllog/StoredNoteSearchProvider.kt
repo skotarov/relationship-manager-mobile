@@ -1,8 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
-import org.json.JSONObject
-import java.io.File
 
 internal data class StoredNoteSearchResult(
     val phone: String,
@@ -58,7 +56,7 @@ internal object StoredNoteSearchProvider {
 
     private fun generalNotes(context: Context): List<StoredNoteSearchResult> {
         val prefs = context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE)
-        return prefs.all.mapNotNull { (key, value) ->
+        val fromPrefs = prefs.all.mapNotNull { (key, value) ->
             val note = (value as? String).orEmpty().trim()
             val phoneKey = PhoneNormalizer.key(key)
             if (phoneKey.isBlank() || note.isBlank()) return@mapNotNull null
@@ -73,39 +71,34 @@ internal object StoredNoteSearchProvider {
                 isCallNote = false,
             )
         }
+        val fromActiveStore = LocalNotesFileStore.storedGeneralNotes(context).map { note ->
+            StoredNoteSearchResult(
+                phone = note.phone,
+                phoneKey = note.phoneKey,
+                note = note.note,
+                noteAt = note.noteAt,
+                callAt = 0L,
+                direction = "",
+                durationSeconds = 0L,
+                isCallNote = false,
+            )
+        }
+        return (fromPrefs + fromActiveStore)
+            .distinctBy { it.phoneKey to it.note }
     }
 
     private fun callNotes(context: Context): List<StoredNoteSearchResult> {
-        if (!LocalNotesFileStore.canUseConfiguredFolder(context)) return emptyList()
-        val root = File(LocalNotesFileStore.activeRootPath(context), "notes")
-        if (!root.exists()) return emptyList()
-        return root.walkTopDown()
-            .filter { it.isFile && it.name == "calllog.notes" }
-            .flatMap { file -> parseCallNotes(file).asSequence() }
-            .toList()
-    }
-
-    private fun parseCallNotes(file: File): List<StoredNoteSearchResult> {
-        return runCatching {
-            file.readLines().mapNotNull { line ->
-                val json = runCatching { JSONObject(line) }.getOrNull() ?: return@mapNotNull null
-                if (json.optString("type") != "call_note") return@mapNotNull null
-                val note = json.optString("note").trim()
-                if (note.isBlank()) return@mapNotNull null
-                val phone = json.optString("phone").ifBlank { json.optString("normalized_phone") }
-                val phoneKey = PhoneNormalizer.key(json.optString("normalized_phone").ifBlank { phone })
-                if (phoneKey.isBlank()) return@mapNotNull null
-                StoredNoteSearchResult(
-                    phone = phone.ifBlank { phoneKey },
-                    phoneKey = phoneKey,
-                    note = note,
-                    noteAt = json.optLong("at", file.lastModified()),
-                    callAt = json.optLong("call_at", 0L),
-                    direction = json.optString("direction"),
-                    durationSeconds = json.optLong("duration", 0L),
-                    isCallNote = true,
-                )
-            }
-        }.getOrDefault(emptyList())
+        return LocalNotesFileStore.storedCallNotes(context).map { note ->
+            StoredNoteSearchResult(
+                phone = note.phone,
+                phoneKey = note.phoneKey,
+                note = note.note,
+                noteAt = note.noteAt,
+                callAt = note.callAt,
+                direction = note.direction,
+                durationSeconds = note.durationSeconds,
+                isCallNote = true,
+            )
+        }
     }
 }
