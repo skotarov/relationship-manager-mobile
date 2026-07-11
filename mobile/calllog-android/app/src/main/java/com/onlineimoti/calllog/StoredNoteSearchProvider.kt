@@ -23,6 +23,7 @@ internal object StoredNoteSearchProvider {
     private val cacheLock = Any()
     private var cachedNotes: List<StoredNoteSearchResult> = emptyList()
     private var cachedAtMs = 0L
+    private var cachedScope = ""
 
     fun search(context: Context, query: String): List<StoredNoteSearchResult> {
         val terms = SearchQueryTerms.from(query)
@@ -38,18 +39,21 @@ internal object StoredNoteSearchProvider {
         synchronized(cacheLock) {
             cachedNotes = emptyList()
             cachedAtMs = 0L
+            cachedScope = ""
         }
     }
 
     private fun allNotes(context: Context): List<StoredNoteSearchResult> {
         val now = System.currentTimeMillis()
+        val scope = activeNotesScope(context)
         synchronized(cacheLock) {
-            if (cachedAtMs > 0L && now - cachedAtMs < CACHE_MS) return cachedNotes
+            if (cachedAtMs > 0L && cachedScope == scope && now - cachedAtMs < CACHE_MS) return cachedNotes
         }
         val loaded = generalNotes(context) + callNotes(context)
         synchronized(cacheLock) {
             cachedNotes = loaded
             cachedAtMs = now
+            cachedScope = scope
             return cachedNotes
         }
     }
@@ -108,5 +112,14 @@ internal object StoredNoteSearchProvider {
 
     private fun usesExternalLocalNotesStore(context: Context): Boolean {
         return LocalNotesFileStore.usesSelectedFolder(context) || LocalNotesFileStore.usesPublicFolder(context)
+    }
+
+    private fun activeNotesScope(context: Context): String {
+        return when {
+            LocalNotesFileStore.usesSelectedFolder(context) -> "selected:${LocalNotesFileStore.selectedFolderUri(context)}"
+            LocalNotesFileStore.usesPublicFolder(context) -> "public:${LocalNotesFileStore.publicRootPath()}"
+            LocalNotesFileStore.isEnabled(context) -> "private:${LocalNotesFileStore.privateRootPath(context)}"
+            else -> "disabled"
+        }
     }
 }
