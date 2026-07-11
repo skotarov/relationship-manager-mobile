@@ -32,6 +32,7 @@ internal object HomeCrmCompanyMembershipStore {
         config: AppConfig,
         phones: List<String>,
     ): HomeCrmCompanyMembershipResult {
+        val appContext = context.applicationContext
         val requested = phones
             .associateBy { HomeCallPageLoader.noteKey(it) }
             .filterKeys { it.isNotBlank() }
@@ -39,7 +40,7 @@ internal object HomeCrmCompanyMembershipStore {
 
         val scope = scopeFor(config) ?: return HomeCrmCompanyMembershipResult(emptyMap(), complete = false)
         synchronized(lock) {
-            var entries = readLocked(context, scope)
+            var entries = readLocked(appContext, scope)
             val missing = requested.keys.filterNot { it in entries }
             if (missing.isNotEmpty() && CallReportRemoteAccess.isReady(config)) {
                 val updates = linkedMapOf<String, MembershipEntry>()
@@ -48,7 +49,11 @@ internal object HomeCrmCompanyMembershipStore {
                     .values
                     .chunked(MAX_PHONES_PER_REQUEST)
                     .forEach { batch ->
-                        val result = runCatching { CallReportHistoryLookupClient.lookupMany(config, batch) }.getOrNull() ?: return@forEach
+                        val result = runCatching {
+                            CallReportHistoryLookupClient.lookupMany(config, batch, appContext)
+                        }.onFailure { error ->
+                            ServerConnectionNotifier.notifyFailure(appContext, config, error)
+                        }.getOrNull() ?: return@forEach
                         val companiesByPhone = batch.associateBy(
                             keySelector = HomeCallPageLoader::noteKey,
                             valueTransform = { linkedSetOf<String>() },
@@ -67,7 +72,7 @@ internal object HomeCrmCompanyMembershipStore {
                     }
                 if (updates.isNotEmpty()) {
                     entries = entries.toMutableMap().apply { putAll(updates) }
-                    writeLocked(context, scope, trim(entries))
+                    writeLocked(appContext, scope, trim(entries))
                 }
             }
             val result = requested.keys.mapNotNull { phoneKey ->
@@ -87,23 +92,25 @@ internal object HomeCrmCompanyMembershipStore {
     fun invalidate(context: Context, phone: String) {
         val phoneKey = HomeCallPageLoader.noteKey(phone)
         if (phoneKey.isBlank()) return
-        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        val appContext = context.applicationContext
+        val scope = scopeFor(ConfigStore.load(appContext)) ?: return
         synchronized(lock) {
-            val entries = readLocked(context, scope)
+            val entries = readLocked(appContext, scope)
             if (phoneKey !in entries) return
-            writeLocked(context, scope, entries - phoneKey)
+            writeLocked(appContext, scope, entries - phoneKey)
         }
     }
 
     fun invalidate(context: Context, phones: Collection<String>) {
         val phoneKeys = phones.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it) }.filterTo(linkedSetOf()) { it.isNotBlank() }
         if (phoneKeys.isEmpty()) return
-        val scope = scopeFor(ConfigStore.load(context.applicationContext)) ?: return
+        val appContext = context.applicationContext
+        val scope = scopeFor(ConfigStore.load(appContext)) ?: return
         synchronized(lock) {
-            val entries = readLocked(context, scope)
+            val entries = readLocked(appContext, scope)
             val next = entries.filterKeys { it !in phoneKeys }
             if (next.size == entries.size) return
-            writeLocked(context, scope, next)
+            writeLocked(appContext, scope, next)
         }
     }
 
