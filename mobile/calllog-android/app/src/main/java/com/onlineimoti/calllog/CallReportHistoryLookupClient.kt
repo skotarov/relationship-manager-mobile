@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -54,17 +55,18 @@ internal object CallReportHistoryLookupClient {
         config: AppConfig,
         phone: String,
         limit: Int = DEFAULT_LIMIT,
+        context: Context? = null,
     ): CallReportHistoryLookupResult {
         if (!isReady(config) || phone.isBlank()) return CallReportHistoryLookupResult()
         // Keep the single-contact History screen compatible with older server code:
         // it is known to work with GET ?phone=..., while POST/batch support may be absent.
-        val result = lookupSinglePhoneVariants(config, phone, limit)
+        val result = lookupSinglePhoneVariants(config, phone, limit, context)
         updateGeneralNoteServerPresence(phone, result.events)
         return result
     }
 
     /** One request for Home, with safe fallback to the same single-phone GET used by History. */
-    fun lookupMany(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
+    fun lookupMany(config: AppConfig, phones: List<String>, context: Context? = null): CallReportHistoryLookupResult {
         if (!isReady(config)) return CallReportHistoryLookupResult()
         val originalPhones = phones
             .map { it.trim() }
@@ -80,7 +82,7 @@ internal object CallReportHistoryLookupClient {
             .filter { phoneKey(it).isNotBlank() }
             .take(MAX_PHONE_VARIANTS)
 
-        val batch = runCatching { request(config, requestedPhones, DEFAULT_LIMIT) }.getOrNull()
+        val batch = runCatching { request(config, requestedPhones, DEFAULT_LIMIT, context) }.getOrNull()
         val result = if (batch != null && batch.events.isNotEmpty()) {
             batch
         } else {
@@ -88,7 +90,7 @@ internal object CallReportHistoryLookupClient {
             // behave like the History screen where notes are already visible.
             mergeResults(
                 listOfNotNull(batch) + originalPhones.map { phone ->
-                    lookupSinglePhoneVariants(config, phone, DEFAULT_LIMIT)
+                    lookupSinglePhoneVariants(config, phone, DEFAULT_LIMIT, context)
                 },
             )
         }
@@ -113,10 +115,11 @@ internal object CallReportHistoryLookupClient {
         config: AppConfig,
         phone: String,
         limit: Int,
+        context: Context? = null,
     ): CallReportHistoryLookupResult {
         val variants = phoneCandidatesForLookup(phone).ifEmpty { listOf(phone) }
         return mergeResults(variants.mapNotNull { variant ->
-            runCatching { request(config, listOf(variant), limit) }.getOrNull()
+            runCatching { request(config, listOf(variant), limit, context) }.getOrNull()
         })
     }
 
@@ -148,6 +151,7 @@ internal object CallReportHistoryLookupClient {
         config: AppConfig,
         phones: List<String>,
         limit: Int,
+        context: Context? = null,
     ): CallReportHistoryLookupResult {
         val safeLimit = limit.coerceIn(1, MAX_LIMIT)
         val singlePhone = phones.singleOrNull()
@@ -156,30 +160,38 @@ internal object CallReportHistoryLookupClient {
         } else {
             buildEndpoint(config.baseUrl, PATH, linkedMapOf("limit" to safeLimit.toString()))
         }
-        val connection = URL(url).openConnection() as HttpURLConnection
+        val connection = runCatching { URL(url).openConnection() as HttpURLConnection }.getOrElse { error ->
+            ServerConnectionNotifier.notifyFailure(context, config, error)
+            throw error
+        }
         try {
-            connection.requestMethod = if (singlePhone != null) "GET" else "POST"
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            if (singlePhone == null) {
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                val payload = JSONObject().apply {
-                    put("phones", JSONArray().apply { phones.forEach(::put) })
-                }.toString()
-                connection.outputStream.use { output ->
-                    output.write(payload.toByteArray(Charsets.UTF_8))
+            try {
+                connection.requestMethod = if (singlePhone != null) "GET" else "POST"
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 10_000
+                connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+                if (singlePhone == null) {
+                    connection.doOutput = true
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    val payload = JSONObject().apply {
+                        put("phones", JSONArray().apply { phones.forEach(::put) })
+                    }.toString()
+                    connection.outputStream.use { output ->
+                        output.write(payload.toByteArray(Charsets.UTF_8))
+                    }
                 }
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
+                if (status !in 200..299) throw IllegalStateException("HTTP $status")
+                val json = JSONObject(body)
+                if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
+                return parse(json)
+            } catch (error: Throwable) {
+                ServerConnectionNotifier.notifyFailure(context, config, error)
+                throw error
             }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
-            if (status !in 200..299) throw IllegalStateException("HTTP $status")
-            val json = JSONObject(body)
-            if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
-            return parse(json)
         } finally {
             connection.disconnect()
         }
