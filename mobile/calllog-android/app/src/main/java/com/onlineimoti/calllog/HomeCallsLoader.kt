@@ -64,8 +64,8 @@ internal class HomeCallsLoader(
             // Never let slow SAF/local-note reads block the next call-log page.
             // The rows are already visible; names and notes are added afterwards.
             runCatching {
-                localNotesExecutor.execute {
-                    if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@execute
+                localNotesExecutor.execute notesTask@{
+                    if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@notesTask
                     val data = HomeRenderData(
                         calls = calls,
                         contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
