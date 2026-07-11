@@ -47,6 +47,7 @@ internal object CallReportHistoryLookupClient {
     private const val DEFAULT_LIMIT = 200
     private const val MAX_LIMIT = 200
     private const val MAX_PHONE_VARIANTS = 50
+    private const val MAX_SINGLE_FALLBACK_PHONES = 20
     private val generalNoteServerPhones = ConcurrentHashMap.newKeySet<String>()
 
     fun lookup(
@@ -55,30 +56,44 @@ internal object CallReportHistoryLookupClient {
         limit: Int = DEFAULT_LIMIT,
     ): CallReportHistoryLookupResult {
         if (!isReady(config) || phone.isBlank()) return CallReportHistoryLookupResult()
-        val candidates = phoneCandidatesForLookup(phone).take(MAX_PHONE_VARIANTS)
-        val result = when {
-            candidates.size <= 1 -> request(config, candidates.ifEmpty { listOf(phone) }, limit)
-            else -> request(config, candidates, limit)
-        }
+        // Keep the single-contact History screen compatible with older server code:
+        // it is known to work with GET ?phone=..., while POST/batch support may be absent.
+        val result = lookupSinglePhoneVariants(config, phone, limit)
         updateGeneralNoteServerPresence(phone, result.events)
         return result
     }
 
-    /** One request for up to 50 phone variants; used by Home to avoid serial per-row lookups. */
+    /** One request for Home, with safe fallback to the same single-phone GET used by History. */
     fun lookupMany(config: AppConfig, phones: List<String>): CallReportHistoryLookupResult {
         if (!isReady(config)) return CallReportHistoryLookupResult()
+        val originalPhones = phones
+            .map { it.trim() }
+            .filter { phoneKey(it).isNotBlank() }
+            .distinctBy(::phoneKey)
+            .take(MAX_SINGLE_FALLBACK_PHONES)
+        if (originalPhones.isEmpty()) return CallReportHistoryLookupResult()
+
         val requestedPhones = buildList {
-            phones
-                .map { it.trim() }
-                .filter { phoneKey(it).isNotBlank() }
-                .distinctBy(::phoneKey)
-                .forEach { phone -> addAll(phoneCandidatesForLookup(phone)) }
+            originalPhones.forEach { phone -> addAll(phoneCandidatesForLookup(phone)) }
         }
             .distinct()
             .filter { phoneKey(it).isNotBlank() }
             .take(MAX_PHONE_VARIANTS)
-        if (requestedPhones.isEmpty()) return CallReportHistoryLookupResult()
-        return request(config, requestedPhones, DEFAULT_LIMIT)
+
+        val batch = runCatching { request(config, requestedPhones, DEFAULT_LIMIT) }.getOrNull()
+        val result = if (batch != null && batch.events.isNotEmpty()) {
+            batch
+        } else {
+            // If the server ignores/doesn't support POST phones=[...], Home must still
+            // behave like the History screen where notes are already visible.
+            mergeResults(
+                listOfNotNull(batch) + originalPhones.map { phone ->
+                    lookupSinglePhoneVariants(config, phone, DEFAULT_LIMIT)
+                },
+            )
+        }
+        originalPhones.forEach { phone -> updateGeneralNoteServerPresence(phone, result.events) }
+        return result
     }
 
     /** Server presence of the main contact note, independent of this installation's client_event_id. */
@@ -92,6 +107,41 @@ internal object CallReportHistoryLookupClient {
         phoneKey(phone).takeIf { it.isNotBlank() }?.let { key ->
             generalNoteServerPhones.add(key)
         }
+    }
+
+    private fun lookupSinglePhoneVariants(
+        config: AppConfig,
+        phone: String,
+        limit: Int,
+    ): CallReportHistoryLookupResult {
+        val variants = phoneCandidatesForLookup(phone).ifEmpty { listOf(phone) }
+        return mergeResults(variants.mapNotNull { variant ->
+            runCatching { request(config, listOf(variant), limit) }.getOrNull()
+        })
+    }
+
+    private fun mergeResults(results: List<CallReportHistoryLookupResult>): CallReportHistoryLookupResult {
+        if (results.isEmpty()) return CallReportHistoryLookupResult()
+        val principal = results
+            .map { it.principal }
+            .firstOrNull { it.companies.isNotEmpty() || it.brokerId.isNotBlank() || it.brokerName.isNotBlank() }
+            ?: CallReportHistoryPrincipal()
+        val seen = linkedSetOf<String>()
+        val events = results.flatMap { it.events }.filter { event ->
+            val stableKey = event.clientEventId
+                .ifBlank { event.serverId }
+                .ifBlank {
+                    listOf(
+                        phoneKey(event.phone),
+                        event.communicationType,
+                        event.direction,
+                        event.occurredAtMs.toString(),
+                        event.note.hashCode().toString(),
+                    ).joinToString("|")
+                }
+            seen.add(stableKey)
+        }.sortedByDescending { event -> maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs) }
+        return CallReportHistoryLookupResult(principal, events)
     }
 
     private fun request(
@@ -191,6 +241,9 @@ internal object CallReportHistoryLookupClient {
             if (items != null) {
                 for (index in 0 until items.length()) {
                     val item = items.optJSONObject(index) ?: continue
+                    val occurredAt = item.numberMs("occurred_at_ms", "timestamp", "date")
+                    val updatedAt = item.numberMs("updated_at_ms", "updated_at")
+                    val createdAt = item.numberMs("created_at_ms", "created_at")
                     val event = CallReportHistoryEvent(
                         serverId = item.text("id", "server_id"),
                         clientEventId = item.text("client_event_id"),
@@ -198,12 +251,12 @@ internal object CallReportHistoryLookupClient {
                         phone = item.text("phone", "number"),
                         direction = item.text("direction"),
                         status = item.text("status"),
-                        occurredAtMs = item.number("occurred_at_ms", "timestamp", "date"),
+                        occurredAtMs = occurredAt.takeIf { it > 0L } ?: maxOf(updatedAt, createdAt),
                         durationSeconds = item.number("duration_seconds", "duration"),
                         note = item.text("note", "notes", "text"),
                         contactName = item.text("contact_name", "contact"),
-                        createdAtMs = item.number("created_at_ms", "created_at"),
-                        updatedAtMs = item.number("updated_at_ms", "updated_at"),
+                        createdAtMs = createdAt,
+                        updatedAtMs = updatedAt,
                         authorBrokerId = item.text("author_broker_id", "created_by_broker_id", "note_author_broker_id"),
                         authorBrokerName = item.text("author_broker_name", "created_by_broker_name", "note_author_broker_name", "author"),
                         companyId = item.text("company_id"),
@@ -232,5 +285,11 @@ internal object CallReportHistoryLookupClient {
             }
         }
         return 0L
+    }
+
+    private fun JSONObject.numberMs(vararg keys: String): Long {
+        val raw = number(*keys)
+        if (raw <= 0L) return 0L
+        return if (raw < 100_000_000_000L) raw * 1000L else raw
     }
 }
