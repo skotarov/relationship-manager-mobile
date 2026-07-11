@@ -26,8 +26,13 @@ object ContactNoteReader {
 
     fun generalNoteForPhone(context: Context, phoneNumber: String): String {
         if (phoneNumber.isBlank()) return ""
-        return readLocalNote(context, phoneNumber)
-            .ifBlank { LocalNotesFileStore.profileGeneralNote(context, phoneNumber) }
+        val activeStoreNote = LocalNotesFileStore.profileGeneralNote(context, phoneNumber)
+        // When the user selected an external/SAF folder, that folder is the source
+        // of truth. Do not fall back to SharedPreferences from the app install,
+        // because History would show stale private-install notes while Call Log
+        // works from the selected folder.
+        if (usesExternalLocalNotesStore(context)) return activeStoreNote
+        return readLocalNote(context, phoneNumber).ifBlank { activeStoreNote }
     }
 
     fun callNoteForPhone(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
@@ -40,8 +45,9 @@ object ContactNoteReader {
 
     fun saveGeneralNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
         if (phoneNumber.isBlank()) return false
+        val activeStoreSaved = LocalNotesFileStore.saveUnknownGeneralNote(context, phoneNumber, note)
+        if (usesExternalLocalNotesStore(context)) return activeStoreSaved
         saveLocalNote(context, phoneNumber, note)
-        LocalNotesFileStore.saveUnknownGeneralNote(context, phoneNumber, note)
         return PhoneNormalizer.key(phoneNumber).isNotBlank()
     }
 
@@ -70,6 +76,10 @@ object ContactNoteReader {
 
     fun saveNoteForPhone(context: Context, phoneNumber: String, note: String): Boolean {
         return saveGeneralNoteForPhone(context, phoneNumber, note)
+    }
+
+    private fun usesExternalLocalNotesStore(context: Context): Boolean {
+        return LocalNotesFileStore.usesSelectedFolder(context) || LocalNotesFileStore.usesPublicFolder(context)
     }
 
     private fun findContactId(context: Context, phoneNumber: String): Long? {
