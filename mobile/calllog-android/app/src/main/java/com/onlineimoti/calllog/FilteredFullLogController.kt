@@ -112,7 +112,7 @@ internal class FilteredFullLogController(
                 val localSms = SmsMessageReader.messagesForPhone(activity, requestedPhone, limit = SOURCE_SMS_LIMIT)
                 val localNotes = ContactNoteReader.callNotesForPhone(activity, requestedPhone)
                 val serverHistory = if (remoteEnabled) {
-                    runCatching { CallReportHistoryLookupClient.lookup(ConfigStore.load(activity), requestedPhone) }
+                    runCatching { CallReportHistoryLookupClient.lookup(ConfigStore.load(activity), requestedPhone, context = activity) }
                         .getOrDefault(CallReportHistoryLookupResult())
                 } else CallReportHistoryLookupResult()
                 val merged = CallReportHistoryMerge.merge(
