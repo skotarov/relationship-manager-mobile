@@ -15,7 +15,6 @@ import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.abs
 
 internal class HomeContentRenderer(
     private val activity: AppCompatActivity, private val binding: ActivityHomeBinding,
@@ -98,12 +97,13 @@ internal class HomeContentRenderer(
         val calls = data.calls.sortedByDescending { it.startedAt }
         val filtered = activePhoneFilter().isNotBlank()
         val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
-        val contactNotesByNumber = if (filtered) data.contactNotesByNumber else resolvedContactNotes(data.contactNotesByNumber, calls)
-        val callNotesByCall = if (filtered) data.callNotesByCall else resolvedCallNotes(data.callNotesByCall, calls)
+        // Important: do not read SAF/local-note files from this renderer. It runs
+        // on the main thread. HomeCallsLoader already loads notes in a background
+        // executor, then calls this method with a complete snapshot.
         currentCalls = calls
-        currentContactNotesByNumber = contactNotesByNumber
+        currentContactNotesByNumber = data.contactNotesByNumber
         currentContactNamesByNumber = namesByNumber
-        currentCallNotesByCall = callNotesByCall
+        currentCallNotesByCall = data.callNotesByCall
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
         val serverBackedKeys = if (filtered) emptySet() else companyGeneralNotes.serverBackedPhoneKeysFor(calls)
@@ -114,81 +114,12 @@ internal class HomeContentRenderer(
             val key = HomeCallPageLoader.noteKey(call.number)
             binding.homeCallsContainer.addView(rowRenderer.compactCallRow(
                 call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
-                if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
-                callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
+                if (filtered) null else data.contactNotesByNumber[key], if (filtered) null else labels[key],
+                data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
             ))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
-    }
-
-    private fun resolvedContactNotes(
-        loadedNotesByNumber: Map<String, String>,
-        calls: List<PhoneCallRecord>,
-    ): Map<String, String> {
-        val resolved = linkedMapOf<String, String>()
-        loadedNotesByNumber.forEach { (key, note) ->
-            if (key.isNotBlank() && note.trim().isNotBlank()) resolved[key] = note.trim()
-        }
-        val appContext = activity.applicationContext
-        calls.asSequence()
-            .filterNot { it.isSms }
-            .distinctBy { HomeCallPageLoader.noteKey(it.number) }
-            .forEach { call ->
-                val key = HomeCallPageLoader.noteKey(call.number)
-                if (key.isBlank() || resolved[key].orEmpty().isNotBlank()) return@forEach
-                val note = runCatching { ContactNoteReader.generalNoteForPhone(appContext, call.number) }
-                    .getOrDefault("")
-                    .trim()
-                if (note.isNotBlank()) resolved[key] = note
-            }
-        return resolved
-    }
-
-    private fun resolvedCallNotes(
-        loadedNotesByCall: Map<String, HomeCallNote>,
-        calls: List<PhoneCallRecord>,
-    ): Map<String, HomeCallNote> {
-        val resolved = loadedNotesByCall.toMutableMap()
-        val missingCalls = calls.filterNot { call -> call.isSms || HomeCallNotesResolver.keyFor(call) in resolved }
-        if (missingCalls.isEmpty()) return resolved
-        val appContext = activity.applicationContext
-        val notesByPhoneKey = missingCalls
-            .map { it.number }
-            .distinctBy(HomeCallPageLoader::noteKey)
-            .associateBy(
-                keySelector = HomeCallPageLoader::noteKey,
-                valueTransform = { phone -> runCatching { ContactNoteReader.callNotesForPhone(appContext, phone) }.getOrDefault(emptyList()) },
-            )
-        val claimedNotes = resolved.values.mapNotNull { note ->
-            note.serverClientEventId.takeIf { it.isNotBlank() }
-        }.toMutableSet()
-        missingCalls.forEach { call ->
-            val local = notesByPhoneKey[HomeCallPageLoader.noteKey(call.number)]
-                .orEmpty()
-                .filter { note -> sameLocalCall(call, note) }
-                .filterNot { note -> claimedLocalNoteKey(note) in claimedNotes }
-                .maxWithOrNull(compareBy<ContactCallNote> { -abs(call.startedAt - it.callAt) }.thenBy { maxOf(it.savedAt, it.callAt) })
-                ?: return@forEach
-            claimedNotes += claimedLocalNoteKey(local)
-            resolved[HomeCallNotesResolver.keyFor(call)] = HomeCallNote(
-                text = local.note,
-                updatedAtMs = maxOf(local.savedAt, local.callAt),
-                fromServer = false,
-                companyId = local.companyId.trim(),
-            )
-        }
-        return resolved
-    }
-
-    private fun sameLocalCall(call: PhoneCallRecord, note: ContactCallNote): Boolean {
-        if (call.startedAt <= 0L || note.callAt <= 0L) return false
-        if (abs(call.startedAt - note.callAt) > LOCAL_NOTE_CALL_MATCH_WINDOW_MS) return false
-        return call.direction.isBlank() || note.direction.isBlank() || call.direction == note.direction
-    }
-
-    private fun claimedLocalNoteKey(note: ContactCallNote): String {
-        return note.clientNoteId.ifBlank { "${note.callAt}|${note.direction}|${note.note.hashCode()}" }
     }
 
     private fun normalizedContactNames(
@@ -334,9 +265,5 @@ internal class HomeContentRenderer(
         binding.crmModeButton.backgroundTintList = ColorStateList.valueOf(fill)
         binding.crmModeButton.strokeColor = ColorStateList.valueOf(border)
         binding.crmModeButton.setTextColor(Color.rgb(51, 65, 85))
-    }
-
-    private companion object {
-        const val LOCAL_NOTE_CALL_MATCH_WINDOW_MS = 10 * 60 * 1000L
     }
 }
