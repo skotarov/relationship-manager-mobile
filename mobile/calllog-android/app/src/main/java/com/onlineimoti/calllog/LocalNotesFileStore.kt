@@ -204,8 +204,9 @@ object LocalNotesFileStore {
         if (!exists(ref)) return ""
         return runCatching {
             val json = JSONObject(readText(context, ref))
+            // latest_note tracks the most recent blue/call note and must never be
+            // shown as the yellow/general note after the general note is deleted.
             json.optString("general_note").trim()
-                .ifBlank { json.optString("latest_note").trim() }
                 .ifBlank { json.optString("note").trim() }
         }.getOrDefault("")
     }
@@ -459,7 +460,7 @@ object LocalNotesFileStore {
         }
     }
 
-    private fun readLastNonBlankLine(file: File): String {
+    private fun readLastNonBlankLine(file: File) {
         if (!file.exists() || file.length() <= 0L) return ""
         return runCatching {
             RandomAccessFile(file, "r").use { raf ->
