@@ -28,6 +28,7 @@ object ContactNoteReader {
         if (phoneNumber.isBlank()) return ""
         return readLocalNote(context, phoneNumber)
             .ifBlank { LocalNotesFileStore.profileGeneralNote(context, phoneNumber) }
+            .ifBlank { LocalNotesFileStore.latestNoteForPhone(context, phoneNumber) }
     }
 
     fun callNoteForPhone(context: Context, phoneNumber: String, callAt: Long, direction: String = ""): String {
