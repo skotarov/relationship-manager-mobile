@@ -55,6 +55,23 @@ internal object StoredNoteSearchProvider {
     }
 
     private fun generalNotes(context: Context): List<StoredNoteSearchResult> {
+        val fromActiveStore = LocalNotesFileStore.storedGeneralNotes(context).map { note ->
+            StoredNoteSearchResult(
+                phone = note.phone,
+                phoneKey = note.phoneKey,
+                note = note.note,
+                noteAt = note.noteAt,
+                callAt = 0L,
+                direction = "",
+                durationSeconds = 0L,
+                isCallNote = false,
+            )
+        }
+        // Once an external/public local notes folder is active, search must not mix
+        // in SharedPreferences from the app installation. Otherwise filters find
+        // stale notes from the private install while History/Call Log use the folder.
+        if (usesExternalLocalNotesStore(context)) return fromActiveStore
+
         val prefs = context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE)
         val fromPrefs = prefs.all.mapNotNull { (key, value) ->
             val note = (value as? String).orEmpty().trim()
@@ -71,20 +88,7 @@ internal object StoredNoteSearchProvider {
                 isCallNote = false,
             )
         }
-        val fromActiveStore = LocalNotesFileStore.storedGeneralNotes(context).map { note ->
-            StoredNoteSearchResult(
-                phone = note.phone,
-                phoneKey = note.phoneKey,
-                note = note.note,
-                noteAt = note.noteAt,
-                callAt = 0L,
-                direction = "",
-                durationSeconds = 0L,
-                isCallNote = false,
-            )
-        }
-        return (fromPrefs + fromActiveStore)
-            .distinctBy { it.phoneKey to it.note }
+        return (fromPrefs + fromActiveStore).distinctBy { it.phoneKey to it.note }
     }
 
     private fun callNotes(context: Context): List<StoredNoteSearchResult> {
@@ -100,5 +104,9 @@ internal object StoredNoteSearchProvider {
                 isCallNote = true,
             )
         }
+    }
+
+    private fun usesExternalLocalNotesStore(context: Context): Boolean {
+        return LocalNotesFileStore.usesSelectedFolder(context) || LocalNotesFileStore.usesPublicFolder(context)
     }
 }
