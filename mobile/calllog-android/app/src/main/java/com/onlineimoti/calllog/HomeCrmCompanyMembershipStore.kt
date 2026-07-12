@@ -54,6 +54,11 @@ internal object HomeCrmCompanyMembershipStore {
                         }.onFailure { error ->
                             ServerConnectionNotifier.notifyFailure(appContext, config, error)
                         }.getOrNull() ?: return@forEach
+                        // lookupMany returns an empty result both for "nothing found" and for
+                        // a swallowed network/token failure. Do not cache a negative answer in
+                        // that case; otherwise a bad token can make real server clients vanish
+                        // until the app cache is cleared.
+                        if (result.events.isEmpty()) return@forEach
                         val companiesByPhone = batch.associateBy(
                             keySelector = HomeCallPageLoader::noteKey,
                             valueTransform = { linkedSetOf<String>() },
@@ -174,5 +179,8 @@ internal object HomeCrmCompanyMembershipStore {
         val updatedAtMs: Long,
     )
 
-    private const val MAX_PHONES_PER_REQUEST = 50
+    // CallReportHistoryLookupClient.lookupMany intentionally falls back to at most
+    // 20 single-phone requests. Keep this batch size aligned so the remaining phones
+    // are not cached as empty just because lookupMany ignored them.
+    private const val MAX_PHONES_PER_REQUEST = 20
 }
