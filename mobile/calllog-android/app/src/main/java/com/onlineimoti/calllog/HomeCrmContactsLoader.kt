@@ -56,7 +56,10 @@ internal class HomeCrmContactsLoader(
                 val current = expectedGeneration == generation.get() &&
                     !activity.isFinishing &&
                     !activity.isDestroyed &&
-                    isCrmModeEnabled() &&
+                    // The Clients page is server-backed and does not depend on the
+                    // old local CRM call-log mode. Requiring isCrmModeEnabled() here
+                    // left the screen stuck on "Loading customers" after opening
+                    // Clients directly from the toolbar/overflow.
                     isCrmContactsMode() &&
                     activePhoneFilter().isBlank() &&
                     activeSearchQuery().isBlank() &&
