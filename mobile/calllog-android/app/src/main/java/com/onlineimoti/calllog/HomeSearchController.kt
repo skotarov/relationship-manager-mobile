@@ -51,7 +51,8 @@ internal class HomeSearchController(
         val crmMode = isCrmModeEnabled()
         val crmContactsMode = HomeCrmTimelineModeToggle.isContactsMode()
         val usesCrmFilters = phoneFilter.isBlank() && (crmMode || crmContactsMode)
-        val filterState = if (usesCrmFilters) HomeCrmFilterStore.load(context) else null
+        val filterScope = if (usesCrmFilters) HomeCrmFilterStore.scopeForContactsMode(crmContactsMode) else null
+        val filterState = filterScope?.let { HomeCrmFilterStore.load(context, it) }
         val page = pageIndex()
         showSearchStatus(context.getString(R.string.dynamic_home_searching, query.trim()))
         hideInlineStatusForSearch()
@@ -87,7 +88,7 @@ internal class HomeSearchController(
                     crmMode != isCrmModeEnabled() ||
                     crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
                     page != pageIndex() ||
-                    (filterState != null && filterState != HomeCrmFilterStore.load(context))
+                    !isFilterStateCurrent(filterState, filterScope)
                 ) {
                     return@post
                 }
@@ -107,7 +108,7 @@ internal class HomeSearchController(
                             crmMode != isCrmModeEnabled() ||
                             crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
                             page != pageIndex() ||
-                            (filterState != null && filterState != HomeCrmFilterStore.load(context))
+                            !isFilterStateCurrent(filterState, filterScope)
                         ) {
                             return@enrichAsync
                         }
@@ -219,6 +220,14 @@ internal class HomeSearchController(
         )
     }
 
+    private fun isFilterStateCurrent(
+        expected: HomeCrmFilterState?,
+        scope: HomeCrmFilterStore.Scope?,
+    ): Boolean {
+        if (expected == null) return true
+        return scope != null && expected == HomeCrmFilterStore.load(context, scope)
+    }
+
     private fun showSearchCount(count: Int) {
         if (activeSearchQuery().isBlank()) return
         showSearchStatus(context.getString(R.string.runtime_search_found_count, count))
@@ -258,7 +267,11 @@ internal class HomeSearchController(
 
 internal data class HomeRenderData(
     val calls: List<PhoneCallRecord>,
-    val contactNotesByNumber: Map<String, String>,
+    val contactNotesByNumber: Map<String, ContactNoteReader.ContactNote>,
     val contactNamesByNumber: Map<String, String>,
-    val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
+    val callNotesByCall: Map<HomeCallNotesResolver.CallNoteKey, HomeCallNotesResolver.CallNote> = emptyMap(),
+    val serverNotesByCall: Map<HomeCallNotesResolver.CallNoteKey, HomeCallNotesResolver.CallNote> = emptyMap(),
+    val serverGeneralNotesByNumber: Map<String, HomeServerCallNotesController.ServerGeneralNote> = emptyMap(),
+    val companyLabelsByNumber: Map<String, List<HomeCompanyGeneralNotesController.CompanyLabel>> = emptyMap(),
+    val serverBackedPhoneKeys: Set<String> = emptySet(),
 )
