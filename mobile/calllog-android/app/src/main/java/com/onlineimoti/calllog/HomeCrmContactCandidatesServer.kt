@@ -3,6 +3,10 @@ package com.onlineimoti.calllog
 import android.content.Context
 
 internal object HomeCrmContactCandidatesServer {
-    fun load(context: Context): List<PhoneCallRecord> =
-        ServerCrmContactsClient.lookup(ConfigStore.load(context.applicationContext))
+    fun load(context: Context, filterState: HomeCrmFilterState = HomeCrmFilterState()): List<PhoneCallRecord> =
+        ServerCrmContactsClient.lookup(
+            config = ConfigStore.load(context.applicationContext),
+            filterState = filterState,
+            context = context.applicationContext,
+        )
 }
