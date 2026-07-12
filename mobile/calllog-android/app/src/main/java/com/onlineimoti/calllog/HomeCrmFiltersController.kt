@@ -22,11 +22,13 @@ internal class HomeCrmFiltersController(
     private val handler: Handler,
     private val dp: (Int) -> Int,
     @Suppress("UNUSED_PARAMETER") roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
+    private val filterScope: () -> HomeCrmFilterStore.Scope,
     private val onFilterChanged: () -> Unit,
 ) {
     private val companyExecutor = Executors.newSingleThreadExecutor()
     private val companyGeneration = AtomicInteger(0)
-    private var state = HomeCrmFilterStore.load(activity)
+    private var activeScope = filterScope()
+    private var state = HomeCrmFilterStore.load(activity, activeScope)
     private var companies: List<CallReportTopicCompany> = emptyList()
     private var lastRequestedAccount = ""
 
@@ -49,17 +51,15 @@ internal class HomeCrmFiltersController(
         replaceCompanyPickerWithButtons()
     }
 
-    fun state(): HomeCrmFilterState = state
-    fun hasActiveFilters(): Boolean = state.isActive
+    fun state(): HomeCrmFilterState {
+        ensureCurrentScope()
+        return state
+    }
 
-    /**
-     * Applies the active phase and company filters to an already searched result set.
-     * It deliberately does not run a new text search, so the previous result set and
-     * its rendered text highlights stay intact while the user toggles filters.
-     * This function is called on Home's background search executor.
-     */
+    fun hasActiveFilters(): Boolean = state().isActive
+
     fun filterSearchResults(calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
-        val filterState = state
+        val filterState = state()
         val phaseFiltered = HomeCrmFilterEngine.filterLocal(activity.applicationContext, calls, filterState)
         if (!filterState.isCompanyFiltered || phaseFiltered.isEmpty()) return phaseFiltered
         val memberships = HomeCrmCompanyMembershipStore.resolve(
@@ -75,12 +75,9 @@ internal class HomeCrmFiltersController(
     }
 
     fun updateVisibility(filtersEnabled: Boolean) {
+        ensureCurrentScope()
         binding.crmPhaseFilterRow.visibility = if (filtersEnabled) View.VISIBLE else View.GONE
-        binding.filteredStatusContainer.gravity = if (filtersEnabled) {
-            Gravity.CENTER_VERTICAL or Gravity.END
-        } else {
-            Gravity.CENTER_VERTICAL
-        }
+        binding.filteredStatusContainer.gravity = if (filtersEnabled) Gravity.CENTER_VERTICAL or Gravity.END else Gravity.CENTER_VERTICAL
         if (!filtersEnabled) {
             showCompanyButtons(false)
             return
@@ -93,7 +90,7 @@ internal class HomeCrmFiltersController(
     fun refreshCompaniesIfNeeded(force: Boolean = false) {
         val config = ConfigStore.load(activity.applicationContext)
         if (!CallReportRemoteAccess.isReady(config)) return
-        val account = "${config.baseUrl.trim().trimEnd('/')}|${config.accessToken}"
+        val account = config.baseUrl.trim().trimEnd('/') + "|" + config.accessToken
         if (!force && account == lastRequestedAccount) return
         lastRequestedAccount = account
         val requestGeneration = companyGeneration.incrementAndGet()
@@ -137,33 +134,42 @@ internal class HomeCrmFiltersController(
     }
 
     private fun togglePhase(phase: Int) {
-        val phases = state.phases.toMutableSet()
+        val phases = state().phases.toMutableSet()
         if (!phases.add(phase)) phases.remove(phase)
         updateState(state.copy(phases = phases))
     }
 
     private fun toggleCompany(companyId: String) {
-        val selected = state.companyIds.toMutableSet()
+        val selected = state().companyIds.toMutableSet()
         if (!selected.add(companyId)) selected.remove(companyId)
-        // No selected companies means no company filter: all companies are shown.
         updateState(state.copy(companyIds = selected))
     }
 
     private fun updateState(next: HomeCrmFilterState) {
+        ensureCurrentScope()
         if (next == state) return
         state = next
-        HomeCrmFilterStore.save(activity, state)
+        HomeCrmFilterStore.save(activity, state, activeScope)
         renderButtons()
         onFilterChanged()
     }
 
+    private fun ensureCurrentScope(): Boolean {
+        val nextScope = filterScope()
+        if (nextScope == activeScope) return false
+        activeScope = nextScope
+        state = HomeCrmFilterStore.load(activity, activeScope)
+        return true
+    }
+
     private fun removeUnavailableCompanySelections(): Boolean {
+        ensureCurrentScope()
         if (companies.isEmpty() || state.companyIds.isEmpty()) return false
         val knownIds = companies.mapTo(hashSetOf()) { it.id }
         val availableSelection = state.companyIds.filterTo(linkedSetOf()) { it in knownIds }
         if (availableSelection == state.companyIds) return false
         state = state.copy(companyIds = availableSelection)
-        HomeCrmFilterStore.save(activity, state)
+        HomeCrmFilterStore.save(activity, state, activeScope)
         return true
     }
 
@@ -176,8 +182,7 @@ internal class HomeCrmFiltersController(
     }
 
     private fun renderCompanyButtons() {
-        val available = companies
-            .filter { it.id.isNotBlank() && it.name.isNotBlank() }
+        val available = companies.filter { it.id.isNotBlank() && it.name.isNotBlank() }
             .distinctBy { it.id }
             .sortedBy { it.name.lowercase() }
         companyButtonsContainer.removeAllViews()
@@ -200,10 +205,7 @@ internal class HomeCrmFiltersController(
             insetBottom = 0
             cornerRadius = dp(16)
             setPadding(dp(9), 0, dp(9), 0)
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                dp(36),
-            ).apply { marginEnd = dp(4) }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36)).apply { marginEnd = dp(4) }
             styleCompanyButton(this, company.id in state.companyIds)
             setOnClickListener { toggleCompany(company.id) }
         }
