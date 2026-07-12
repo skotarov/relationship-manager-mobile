@@ -128,11 +128,7 @@ object ConfigStore {
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
         )
-        val portable = SelectedFolderConfigBackup.load(context, local.localNotesFolderUri)
-        return normalize(portable?.copy(
-            localNotesFolderUri = local.localNotesFolderUri,
-            useLocalNotesStorage = true,
-        ) ?: local)
+        return normalize(local)
     }
 
     fun save(context: Context, config: AppConfig) {
@@ -166,7 +162,7 @@ object ConfigStore {
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .apply()
-        SelectedFolderConfigBackup.save(context.applicationContext, normalized)
+        SelectedFolderConfigBackup.saveAsync(context.applicationContext, normalized)
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
 
