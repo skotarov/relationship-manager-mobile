@@ -35,13 +35,13 @@ internal class HomeTimelineCoordinator(
         val crmEnabled = isCrmModeEnabled()
         val remoteReady = CallReportRemoteAccess.isReady(ConfigStore.load(activity))
         val contactsMode = remoteReady && isCrmContactsMode()
+        // Prepare first so the filter controller restores the correct page-specific state.
+        timelineToggle.prepare(remoteReady, contactsMode)
         // Search must not replace CRM filters. It searches first, then HomeSearchController
         // reapplies these visible filters over the cached search result set.
         val showCrmFilters = (crmEnabled || contactsMode) && activePhoneFilter().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
         contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
-        // Prepare after content controls so the CRM calls page can replace the brand group.
-        timelineToggle.prepare(remoteReady, contactsMode)
         // CRM Clients is server-backed and remains usable during a search even
         // on the public Play build, which intentionally has no Call Log permission.
         val contactsOnly = contactsMode && activePhoneFilter().isBlank()
