@@ -85,12 +85,14 @@ internal object HomeCallNotesResolver {
         val claimedEvents = hashSetOf<String>()
 
         serverEvents.forEachIndexed { index, event ->
-            if (!CallReportServerNoteClassifier.isConcreteCallNote(event)) return@forEachIndexed
+            if (!event.communicationType.equals("note", ignoreCase = true) || event.note.isBlank()) return@forEachIndexed
+            if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEachIndexed
             val candidates = callsByPhone[HomeCallPageLoader.noteKey(event.phone)].orEmpty()
             val call = candidates
                 .filter { candidate -> sameServerCall(candidate, event) }
                 .minByOrNull { candidate -> abs(candidate.startedAt - event.occurredAtMs) }
                 ?: return@forEachIndexed
+            if (!canAttachServerNoteToCall(event)) return@forEachIndexed
             val eventKey = event.clientEventId.ifBlank { "server:$index:${event.serverId}:${event.occurredAtMs}:${event.note.hashCode()}" }
             if (!claimedEvents.add(eventKey)) return@forEachIndexed
             val key = keyFor(call)
@@ -125,6 +127,15 @@ internal object HomeCallNotesResolver {
         if (call.startedAt <= 0L || event.occurredAtMs <= 0L) return false
         if (abs(call.startedAt - event.occurredAtMs) > SERVER_NOTE_CALL_MATCH_WINDOW_MS) return false
         return call.direction.isBlank() || event.direction.isBlank() || call.direction == event.direction
+    }
+
+    private fun canAttachServerNoteToCall(event: CallReportHistoryEvent): Boolean {
+        if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return false
+        // Full log attaches ordinary NOTE rows to nearby calls even when older
+        // server records do not carry the Android :note:call marker. Home should
+        // use the same rule once the timestamp has already matched a visible call.
+        return CallReportServerNoteClassifier.isConcreteCallNote(event) ||
+            (event.communicationType.equals("note", ignoreCase = true) && event.note.isNotBlank() && event.occurredAtMs > 0L)
     }
 
     private fun isOtherBrokerAuthor(
