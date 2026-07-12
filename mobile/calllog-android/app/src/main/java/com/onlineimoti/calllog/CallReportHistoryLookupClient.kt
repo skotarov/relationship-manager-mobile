@@ -203,19 +203,11 @@ internal object CallReportHistoryLookupClient {
     private fun updateGeneralNoteServerPresence(phone: String, events: List<CallReportHistoryEvent>) {
         val key = phoneKey(phone)
         if (key.isBlank()) return
-        if (events.any { event -> isGeneralNoteEvent(event, key) }) {
+        if (events.any { event -> phoneKey(event.phone) == key && CallReportServerNoteClassifier.isGeneralNote(event) }) {
             generalNoteServerPhones.add(key)
         } else {
             generalNoteServerPhones.remove(key)
         }
-    }
-
-    private fun isGeneralNoteEvent(event: CallReportHistoryEvent, requestedPhoneKey: String): Boolean {
-        if (phoneKey(event.phone) != requestedPhoneKey) return false
-        return event.clientEventId.contains(":note:general:") ||
-            event.clientEventId.contains(":topic:general:") ||
-            (event.communicationType.equals("note", ignoreCase = true) &&
-                event.direction.isBlank() && event.durationSeconds <= 0L)
     }
 
     private fun phoneCandidatesForLookup(phone: String): List<String> {
