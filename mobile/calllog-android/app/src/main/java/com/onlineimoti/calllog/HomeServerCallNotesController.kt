@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 
 /**
  * Enriches one rendered Home page with the newest matching server notes. The
@@ -83,6 +84,7 @@ internal class HomeServerCallNotesController(
         val latest = linkedMapOf<String, Pair<Long, String>>()
         serverEvents.forEach { event ->
             if (!CallReportServerNoteClassifier.isGeneralNote(event)) return@forEach
+            if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event) && matchesVisibleCall(calls, event)) return@forEach
             val key = HomeCallPageLoader.noteKey(event.phone)
             if (key.isBlank() || key !in requestedKeys) return@forEach
             val note = event.note.trim()
@@ -100,5 +102,21 @@ internal class HomeServerCallNotesController(
             if (merged[key].isNullOrBlank()) merged[key] = value.second
         }
         return merged
+    }
+
+    private fun matchesVisibleCall(calls: List<PhoneCallRecord>, event: CallReportHistoryEvent): Boolean {
+        if (!event.communicationType.equals("note", ignoreCase = true) || event.occurredAtMs <= 0L) return false
+        val eventKey = HomeCallPageLoader.noteKey(event.phone)
+        if (eventKey.isBlank()) return false
+        return calls.filterNot { it.isSms }.any { call ->
+            HomeCallPageLoader.noteKey(call.number) == eventKey &&
+                call.startedAt > 0L &&
+                abs(call.startedAt - event.occurredAtMs) <= SERVER_NOTE_CALL_MATCH_WINDOW_MS &&
+                (call.direction.isBlank() || event.direction.isBlank() || call.direction == event.direction)
+        }
+    }
+
+    private companion object {
+        const val SERVER_NOTE_CALL_MATCH_WINDOW_MS = 10 * 60 * 1000L
     }
 }
