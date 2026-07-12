@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 /**
  * Mirrors the app configuration into the user-selected public folder.
@@ -17,6 +18,7 @@ internal object SelectedFolderConfigBackup {
     private const val SETTINGS_FILE = "settings.json"
     private const val LEGACY_ROOT_DIR = ".callreport"
     private const val NOTES_DIR = "notes"
+    private val executor = Executors.newSingleThreadExecutor()
 
     fun load(context: Context, uriString: String): AppConfig? {
         val file = configFile(context, uriString, create = false) ?: return null
@@ -26,6 +28,13 @@ internal object SelectedFolderConfigBackup {
             .orEmpty()
         if (text.isBlank()) return null
         return runCatching { parse(JSONObject(text)) }.getOrNull()
+    }
+
+    fun saveAsync(context: Context, config: AppConfig) {
+        val appContext = context.applicationContext
+        executor.execute {
+            runCatching { save(appContext, config) }
+        }
     }
 
     fun save(context: Context, config: AppConfig) {
