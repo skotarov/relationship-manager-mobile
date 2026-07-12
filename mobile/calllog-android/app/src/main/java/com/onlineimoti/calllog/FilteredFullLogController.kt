@@ -162,6 +162,7 @@ internal class FilteredFullLogController(
         val attachedIndexes = mutableSetOf<Int>()
         timeline.forEachIndexed { noteIndex, note ->
             if (note.kind != CallReportHistoryRowKind.NOTE) return@forEachIndexed
+            if (note.serverEvent?.let(CallReportServerNoteClassifier::isGeneralNote) == true) return@forEachIndexed
             val callIndex = matchingCallIndex(note, callIndexes, timeline) ?: return@forEachIndexed
             notesByCall.getOrPut(callIndex) { mutableListOf() }.add(note)
             attachedIndexes += noteIndex
