@@ -24,8 +24,7 @@ internal object PermissionStatusRenderer {
         val config = ConfigStore.load(activity)
         val popup = binding.popupSettingsSection
         val notesState = notesState(config)
-        val selectedFolderActive = LocalNotesFileStore.hasSelectedFolderAccess(activity)
-        val selectedFolderState = if (selectedFolderActive) State.ACTIVE else State.DISABLED
+        val sharedNotesState = if (LocalNotesFileStore.canUsePublicFolder()) State.ACTIVE else State.DISABLED
         val overlayState = state(config.useOverlayPopups, Settings.canDrawOverlays(activity))
         val screeningState = state(config.useCallScreening, MainPermissionChecks.hasCallScreeningRole(activity))
 
@@ -58,7 +57,6 @@ internal object PermissionStatusRenderer {
         rows += Row(
             label = when {
                 !config.useLocalNotesStorage -> "Локални бележки"
-                LocalNotesFileStore.usesSelectedFolder(activity) -> "Локални бележки: избрана папка/.callreport"
                 LocalNotesFileStore.canUsePublicFolder() -> "Локални бележки: Documents/.callreport"
                 else -> "Локални бележки: лична папка на приложението"
             },
@@ -67,10 +65,10 @@ internal object PermissionStatusRenderer {
             disable = { setNotesStorage(activity, binding, false) },
         )
         rows += Row(
-            label = if (selectedFolderActive) "Избрана папка за локални бележки" else "Избери папка за локални бележки",
-            state = selectedFolderState,
+            label = "Достъп до Documents за локални бележки",
+            state = sharedNotesState,
             enable = { activity.requestSharedNotesStoragePermissionFromSummary() },
-            disable = { activity.clearSharedNotesStorageFromSummary() },
+            disable = { activity.openSharedNotesStorageSettingsFromSummary() },
         )
         rows += Row(
             label = activity.getString(R.string.permission_label_overlay),
@@ -103,7 +101,6 @@ internal object PermissionStatusRenderer {
         refresh(activity, binding)
         val message = when {
             !enabled -> activity.getString(R.string.settings_local_notes_disabled)
-            LocalNotesFileStore.usesSelectedFolder(activity) -> "Локалните бележки се пазят в избраната папка/.callreport."
             LocalNotesFileStore.canUsePublicFolder() -> "Локалните бележки се пазят в Documents/.callreport."
             else -> "Локалните бележки се пазят в личната папка на приложението."
         }
