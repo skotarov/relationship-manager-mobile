@@ -28,7 +28,7 @@ data class AppConfig(
     val useCallScreening: Boolean,
     val showRmDebugBox: Boolean,
     val useLocalNotesStorage: Boolean = true,
-    /** Persisted Storage Access Framework tree URI selected by the user for local notes. */
+    /** Persisted Storage Access Framework tree URI selected by the user for local notes and portable settings. */
     val localNotesFolderUri: String = "",
     /** Play builds deliberately use notifications/overlay fallback instead of full-screen intent. */
     val useFullScreenPopup: Boolean = false,
@@ -95,7 +95,7 @@ object ConfigStore {
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return AppConfig(
+        val local = AppConfig(
             remoteEnabled = prefs.getBoolean(KEY_REMOTE_ENABLED, false),
             baseUrl = normalizeBaseUrl(prefs.getString(KEY_BASE_URL, DEFAULT_BASE_URL).orEmpty()),
             // Never package a production access token in the APK/AAB.
@@ -128,38 +128,45 @@ object ConfigStore {
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
         )
+        val portable = SelectedFolderConfigBackup.load(context, local.localNotesFolderUri)
+        return normalize(portable?.copy(
+            localNotesFolderUri = local.localNotesFolderUri,
+            useLocalNotesStorage = true,
+        ) ?: local)
     }
 
     fun save(context: Context, config: AppConfig) {
+        val normalized = normalize(config)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(KEY_REMOTE_ENABLED, config.remoteEnabled && normalizeBaseUrl(config.baseUrl).isNotBlank())
-            .putString(KEY_BASE_URL, normalizeBaseUrl(config.baseUrl))
-            .putString(KEY_ACCESS_TOKEN, config.accessToken.trim())
-            .putString(KEY_CONTACT_GROUPS, config.contactGroups.trim())
-            .putBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, config.notifyUnknownContacts)
-            .putBoolean(KEY_NOTIFY_KNOWN_CONTACTS, config.notifyKnownContacts)
-            .putInt(KEY_HOME_CALL_PAGE_SIZE, config.homeCallPageSize.coerceHomeCallPageSize())
-            .putString(KEY_LOOKUP_PATH, normalizePath(config.lookupPath, DEFAULT_LOOKUP_PATH))
-            .putString(KEY_FORM_PATH, normalizePath(config.formPath, DEFAULT_FORM_PATH))
-            .putString(KEY_HISTORY_PATH, normalizePath(config.historyPath, DEFAULT_HISTORY_PATH))
-            .putInt(KEY_POST_CALL_TIMEOUT, config.postCallPromptTimeoutSeconds.coerceIn(3, 120))
-            .putBoolean(KEY_USE_OVERLAY_POPUPS, config.useOverlayPopups)
-            .putBoolean(KEY_USE_CUSTOM_START_POPUP, config.useCustomStartPopup)
-            .putBoolean(KEY_USE_CUSTOM_END_POPUP, config.useCustomEndPopup)
-            .putString(KEY_POST_CALL_END_ACTION, normalizePostCallEndAction(config.postCallEndAction))
-            .putString(KEY_CONTACT_LINK_MODE, normalizeContactLinkMode(config.contactLinkMode))
-            .putBoolean(KEY_SHOW_CRM_ACTION_BUTTONS, config.showCrmActionButtons)
-            .putBoolean(KEY_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS, config.showBulkContactSyncNotifications)
-            .putString(KEY_APP_LANGUAGE, normalizeAppLanguage(config.appLanguage))
+            .putBoolean(KEY_REMOTE_ENABLED, normalized.remoteEnabled)
+            .putString(KEY_BASE_URL, normalized.baseUrl)
+            .putString(KEY_ACCESS_TOKEN, normalized.accessToken)
+            .putString(KEY_CONTACT_GROUPS, normalized.contactGroups)
+            .putBoolean(KEY_NOTIFY_UNKNOWN_CONTACTS, normalized.notifyUnknownContacts)
+            .putBoolean(KEY_NOTIFY_KNOWN_CONTACTS, normalized.notifyKnownContacts)
+            .putInt(KEY_HOME_CALL_PAGE_SIZE, normalized.homeCallPageSize)
+            .putString(KEY_LOOKUP_PATH, normalized.lookupPath)
+            .putString(KEY_FORM_PATH, normalized.formPath)
+            .putString(KEY_HISTORY_PATH, normalized.historyPath)
+            .putInt(KEY_POST_CALL_TIMEOUT, normalized.postCallPromptTimeoutSeconds)
+            .putBoolean(KEY_USE_OVERLAY_POPUPS, normalized.useOverlayPopups)
+            .putBoolean(KEY_USE_CUSTOM_START_POPUP, normalized.useCustomStartPopup)
+            .putBoolean(KEY_USE_CUSTOM_END_POPUP, normalized.useCustomEndPopup)
+            .putString(KEY_POST_CALL_END_ACTION, normalized.postCallEndAction)
+            .putString(KEY_CONTACT_LINK_MODE, normalized.contactLinkMode)
+            .putBoolean(KEY_SHOW_CRM_ACTION_BUTTONS, normalized.showCrmActionButtons)
+            .putBoolean(KEY_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS, normalized.showBulkContactSyncNotifications)
+            .putString(KEY_APP_LANGUAGE, normalized.appLanguage)
             .putBoolean(KEY_USE_PUBLIC_NOTES_FOLDER, false)
-            .putBoolean(KEY_USE_CALL_SCREENING, config.useCallScreening)
-            .putBoolean(KEY_SHOW_RM_DEBUG_BOX, config.showRmDebugBox)
-            .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, config.useLocalNotesStorage)
-            .putString(KEY_LOCAL_NOTES_FOLDER_URI, config.localNotesFolderUri.trim())
+            .putBoolean(KEY_USE_CALL_SCREENING, normalized.useCallScreening)
+            .putBoolean(KEY_SHOW_RM_DEBUG_BOX, normalized.showRmDebugBox)
+            .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, normalized.useLocalNotesStorage)
+            .putString(KEY_LOCAL_NOTES_FOLDER_URI, normalized.localNotesFolderUri)
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .apply()
+        SelectedFolderConfigBackup.save(context.applicationContext, normalized)
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
 
@@ -170,6 +177,25 @@ object ConfigStore {
             else -> ""
         }
     }
+
+    private fun normalize(config: AppConfig): AppConfig = config.copy(
+        remoteEnabled = config.remoteEnabled && normalizeBaseUrl(config.baseUrl).isNotBlank(),
+        baseUrl = normalizeBaseUrl(config.baseUrl),
+        accessToken = config.accessToken.trim(),
+        contactGroups = config.contactGroups.trim(),
+        homeCallPageSize = config.homeCallPageSize.coerceHomeCallPageSize(),
+        lookupPath = normalizePath(config.lookupPath, DEFAULT_LOOKUP_PATH),
+        formPath = normalizePath(config.formPath, DEFAULT_FORM_PATH),
+        historyPath = normalizePath(config.historyPath, DEFAULT_HISTORY_PATH),
+        postCallPromptTimeoutSeconds = config.postCallPromptTimeoutSeconds.coerceIn(3, 120),
+        postCallEndAction = normalizePostCallEndAction(config.postCallEndAction),
+        contactLinkMode = normalizeContactLinkMode(config.contactLinkMode),
+        appLanguage = normalizeAppLanguage(config.appLanguage),
+        usePublicNotesFolder = false,
+        localNotesFolderUri = config.localNotesFolderUri.trim(),
+        useFullScreenPopup = false,
+        useInternalSmsComposer = false,
+    )
 
     private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
 
