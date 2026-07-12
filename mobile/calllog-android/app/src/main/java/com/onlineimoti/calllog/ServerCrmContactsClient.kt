@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -10,42 +11,77 @@ import java.net.URL
 internal object ServerCrmContactsClient {
     private const val PATH = "/relationship-manager/contacts_lookup.php"
 
-    fun lookup(config: AppConfig): List<PhoneCallRecord> {
+    fun lookup(
+        config: AppConfig,
+        filterState: HomeCrmFilterState = HomeCrmFilterState(),
+        context: Context? = null,
+    ): List<PhoneCallRecord> {
         if (!CallReportRemoteAccess.isReady(config)) return emptyList()
-        val endpoint = config.baseUrl.trim().trimEnd('/') + PATH
-        val connection = URL(endpoint).openConnection() as HttpURLConnection
+        val endpoint = buildEndpoint(config.baseUrl, PATH, queryParameters(config, filterState))
+        val connection = runCatching { URL(endpoint).openConnection() as HttpURLConnection }.getOrElse { error ->
+            ServerConnectionNotifier.notifyFailure(context, config, error)
+            throw error
+        }
         try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            connection.setRequestProperty("X-Callreport-Token", config.accessToken)
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
-            if (status !in 200..299) throw IllegalStateException("HTTP $status")
-            val json = JSONObject(body)
-            if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "Contacts lookup failed"))
-            val contacts = json.optJSONArray("contacts")
-            return buildList {
-                for (index in 0 until (contacts?.length() ?: 0)) {
-                    val item = contacts?.optJSONObject(index) ?: continue
-                    val phone = item.optString("phone").trim()
-                    if (HomeCallPageLoader.noteKey(phone).isBlank()) continue
-                    add(
-                        PhoneCallRecord(
-                            number = phone,
-                            name = item.optString("contact_name").trim(),
-                            direction = "",
-                            startedAt = item.optLong("last_activity_at_ms", 0L).coerceAtLeast(0L),
-                            durationSeconds = 0L,
-                        ),
-                    )
-                }
-            }.distinctBy { HomeCallPageLoader.noteKey(it.number) }
+            try {
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 10_000
+                connection.setRequestProperty("Accept", "application/json")
+                connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
+                connection.setRequestProperty("X-Callreport-Token", config.accessToken)
+                val status = connection.responseCode
+                val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+                val body = stream?.use { BufferedReader(InputStreamReader(it, Charsets.UTF_8)).readText() }.orEmpty()
+                if (status !in 200..299) throw IllegalStateException("HTTP $status")
+                val json = JSONObject(body)
+                if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "Contacts lookup failed"))
+                val contacts = json.optJSONArray("contacts") ?: json.optJSONArray("items")
+                return buildList {
+                    for (index in 0 until (contacts?.length() ?: 0)) {
+                        val item = contacts?.optJSONObject(index) ?: continue
+                        val phone = item.optString("phone").trim().ifBlank { item.optString("number").trim() }
+                        if (HomeCallPageLoader.noteKey(phone).isBlank()) continue
+                        add(
+                            PhoneCallRecord(
+                                number = phone,
+                                name = item.optString("local_contact_name").trim()
+                                    .ifBlank { item.optString("contact_name").trim() }
+                                    .ifBlank { item.optString("name").trim() },
+                                direction = "",
+                                startedAt = item.optLong("last_activity_at_ms", 0L)
+                                    .coerceAtLeast(item.optLong("updated_at_ms", 0L))
+                                    .coerceAtLeast(item.optLong("created_at_ms", 0L)),
+                                durationSeconds = 0L,
+                            ),
+                        )
+                    }
+                }.distinctBy { HomeCallPageLoader.noteKey(it.number) }
+            } catch (error: Throwable) {
+                ServerConnectionNotifier.notifyFailure(context, config, error)
+                throw error
+            }
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun queryParameters(config: AppConfig, filterState: HomeCrmFilterState): Map<String, String> {
+        val phase = if (filterState.phases.isEmpty()) {
+            "none"
+        } else {
+            filterState.phases.sorted().joinToString(",")
+        }
+        val companyId = if (filterState.companyIds.isEmpty()) {
+            "none"
+        } else {
+            filterState.companyIds.sorted().joinToString(",")
+        }
+        return linkedMapOf(
+            "access_token" to config.accessToken,
+            "phase" to phase,
+            "company_id" to companyId,
+            "limit" to "200",
+        )
     }
 }
