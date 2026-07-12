@@ -33,7 +33,9 @@ internal data class LocalStoredCallNote(
  * - legacy Documents/.callreport only when broad storage access already exists;
  * - otherwise the private .callreport folder of this app.
  *
- * Server notes are not handled here.
+ * The selected SAF folder is now the workspace itself. New writes go to
+ * <selected>/notes/..., while older <selected>/.callreport/notes/... files are
+ * still read so existing archives keep working.
  */
 object LocalNotesFileStore {
     private const val ROOT_DIR = ".callreport"
@@ -62,11 +64,14 @@ object LocalNotesFileStore {
     }
 
     fun setSelectedFolder(context: Context, uri: Uri) {
+        val uriString = uri.toString()
+        val current = ConfigStore.load(context)
+        val portable = SelectedFolderConfigBackup.load(context, uriString)
         ConfigStore.save(
             context,
-            ConfigStore.load(context).copy(
+            (portable ?: current).copy(
                 useLocalNotesStorage = true,
-                localNotesFolderUri = uri.toString(),
+                localNotesFolderUri = uriString,
             ),
         )
     }
@@ -399,11 +404,11 @@ object LocalNotesFileStore {
 
     private fun profileRefs(context: Context): List<NoteFileRef> {
         if (usesSelectedFolder(context)) {
-            val notes = safNotesDir(context, createDirs = false) ?: return emptyList()
-            return walkSafFiles(notes)
+            return safNotesDirs(context, createDirs = false)
+                .flatMap { notes -> walkSafFiles(notes).toList() }
                 .filter { it.isFile && safFileNameMatches(it.name.orEmpty(), PROFILE_FILE) }
+                .distinctBy { it.uri }
                 .map { NoteFileRef.Saf(it) }
-                .toList()
         }
         val notes = File(plainRoot(context), NOTES_DIR)
         if (!notes.exists()) return emptyList()
@@ -415,11 +420,11 @@ object LocalNotesFileStore {
 
     private fun callLogRefs(context: Context): List<NoteFileRef> {
         if (usesSelectedFolder(context)) {
-            val notes = safNotesDir(context, createDirs = false) ?: return emptyList()
-            return walkSafFiles(notes)
+            return safNotesDirs(context, createDirs = false)
+                .flatMap { notes -> walkSafFiles(notes).toList() }
                 .filter { it.isFile && safFileNameMatches(it.name.orEmpty(), CALL_LOG_FILE) }
+                .distinctBy { it.uri }
                 .map { NoteFileRef.Saf(it) }
-                .toList()
         }
         val notes = File(plainRoot(context), NOTES_DIR)
         if (!notes.exists()) return emptyList()
@@ -555,12 +560,8 @@ object LocalNotesFileStore {
     private fun plainRoot(context: Context): File = if (usesPublicFolder(context)) publicRoot() else privateRoot(context)
 
     private fun selectedRootPath(context: Context): String {
-        val tree = selectedRootDocument(context) ?: return "избрана папка/$ROOT_DIR"
-        val folderName = tree.name.orEmpty().ifBlank { "избрана папка" }
-        return when (folderName) {
-            ROOT_DIR, NOTES_DIR -> folderName
-            else -> "$folderName/$ROOT_DIR"
-        }
+        val tree = selectedRootDocument(context) ?: return "избрана папка"
+        return tree.name.orEmpty().ifBlank { "избрана папка" }
     }
 
     private fun selectedRootDocument(context: Context): DocumentFile? =
@@ -568,21 +569,43 @@ object LocalNotesFileStore {
 
     private fun safRoot(context: Context, createDirs: Boolean): DocumentFile? {
         val tree = selectedRootDocument(context) ?: return null
-        if (tree.name == ROOT_DIR) return tree
         if (tree.name == NOTES_DIR) return null
-        return directoryInSafDir(tree, ROOT_DIR, createDirs)
+        if (tree.name == ROOT_DIR) return tree
+        return tree.takeIf { it.canWrite() || !createDirs }
     }
 
-    private fun safNotesDir(context: Context, createDirs: Boolean): DocumentFile? {
-        val tree = selectedRootDocument(context) ?: return null
-        if (tree.name == NOTES_DIR) return tree
-        val root = safRoot(context, createDirs) ?: return null
-        return directoryInSafDir(root, NOTES_DIR, createDirs)
+    private fun safNotesDir(context: Context, createDirs: Boolean): DocumentFile? =
+        safNotesDirs(context, createDirs).firstOrNull()
+
+    private fun safNotesDirs(context: Context, createDirs: Boolean): List<DocumentFile> {
+        val tree = selectedRootDocument(context) ?: return emptyList()
+        if (tree.name == NOTES_DIR) return listOf(tree)
+        val result = arrayListOf<DocumentFile>()
+        val root = safRoot(context, createDirs)
+        if (root != null) {
+            directoryInSafDir(root, NOTES_DIR, createDirs)?.let { result += it }
+        }
+        if (tree.name != ROOT_DIR) {
+            val legacyRoot = directoryInSafDir(tree, ROOT_DIR, createDirs = false)
+            legacyRoot?.let { legacy ->
+                directoryInSafDir(legacy, NOTES_DIR, createDirs = false)?.let { result += it }
+            }
+        }
+        return result.distinctBy { it.uri }
     }
 
     private fun safPhoneDir(context: Context, phoneKey: String, createDirs: Boolean): DocumentFile? {
         val key = PhoneNormalizer.key(phoneKey)
-        val notes = safNotesDir(context, createDirs) ?: return null
+        if (key.isBlank()) return null
+        safNotesDirs(context, createDirs = false).forEach { notes ->
+            phoneDirInSafNotes(notes, key, createDirs = false)?.let { return it }
+        }
+        if (!createDirs) return null
+        val notes = safNotesDir(context, createDirs = true) ?: return null
+        return phoneDirInSafNotes(notes, key, createDirs = true)
+    }
+
+    private fun phoneDirInSafNotes(notes: DocumentFile, key: String, createDirs: Boolean): DocumentFile? {
         val first = directoryInSafDir(notes, key.take(3), createDirs) ?: return null
         val second = directoryInSafDir(first, key.drop(3).take(3), createDirs) ?: return null
         return directoryInSafDir(second, key, createDirs)
