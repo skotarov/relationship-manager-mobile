@@ -22,7 +22,9 @@ internal class HomeCrmFiltersController(
     private val handler: Handler,
     private val dp: (Int) -> Int,
     @Suppress("UNUSED_PARAMETER") roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
-    private val filterScope: () -> HomeCrmFilterStore.Scope,
+    private val filterScope: () -> HomeCrmFilterStore.Scope = {
+        HomeCrmFilterStore.scopeForContactsMode(HomeCrmTimelineModeToggle.isContactsMode())
+    },
     private val onFilterChanged: () -> Unit,
 ) {
     private val companyExecutor = Executors.newSingleThreadExecutor()
