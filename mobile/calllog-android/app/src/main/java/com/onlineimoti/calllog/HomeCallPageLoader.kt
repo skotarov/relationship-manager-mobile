@@ -239,8 +239,38 @@ object HomeCallPageLoader {
     }
 
     private fun filterCrmEligible(context: Context, calls: List<PhoneCallRecord>): List<PhoneCallRecord> {
-        val categories = crmContactKinds(context, calls.asSequence().map { it.number }.asIterable())
-        return calls.filter { call -> categories[noteKey(call.number)] != HomeCrmContactKind.NOT_ELIGIBLE }
+        if (calls.isEmpty()) return emptyList()
+        val appContext = context.applicationContext
+        val categories = crmContactKinds(appContext, calls.asSequence().map { it.number }.asIterable())
+        val localEligibleKeys = categories
+            .filterValues { it != HomeCrmContactKind.NOT_ELIGIBLE }
+            .keys
+        val knownButNotLocallyMarkedPhones = calls
+            .map { it.number }
+            .distinctBy(::noteKey)
+            .filter { phone -> categories[noteKey(phone)] == HomeCrmContactKind.NOT_ELIGIBLE }
+        val serverEligibleKeys = serverBackedCrmPhoneKeys(appContext, knownButNotLocallyMarkedPhones)
+        return calls.filter { call ->
+            val key = noteKey(call.number)
+            key in localEligibleKeys || key in serverEligibleKeys
+        }
+    }
+
+    private fun serverBackedCrmPhoneKeys(context: Context, phones: List<String>): Set<String> {
+        if (phones.isEmpty()) return emptySet()
+        val config = ConfigStore.load(context.applicationContext)
+        if (!CallReportRemoteAccess.isReady(config)) return emptySet()
+        return runCatching {
+            HomeCrmCompanyMembershipStore.resolve(
+                context = context.applicationContext,
+                config = config,
+                phones = phones,
+            ).companyIdsByPhoneKey
+                .filterValues { companyIds -> companyIds.isNotEmpty() }
+                .keys
+        }.onFailure { error ->
+            ServerConnectionNotifier.notifyFailure(context.applicationContext, config, error)
+        }.getOrDefault(emptySet())
     }
 
     /**
