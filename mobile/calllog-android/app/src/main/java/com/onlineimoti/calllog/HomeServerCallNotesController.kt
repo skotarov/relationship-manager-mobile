@@ -82,7 +82,7 @@ internal class HomeServerCallNotesController(
 
         val latest = linkedMapOf<String, Pair<Long, String>>()
         serverEvents.forEach { event ->
-            if (!isServerGeneralNote(event)) return@forEach
+            if (!CallReportServerNoteClassifier.isGeneralNote(event)) return@forEach
             val key = HomeCallPageLoader.noteKey(event.phone)
             if (key.isBlank() || key !in requestedKeys) return@forEach
             val note = event.note.trim()
@@ -100,12 +100,5 @@ internal class HomeServerCallNotesController(
             if (merged[key].isNullOrBlank()) merged[key] = value.second
         }
         return merged
-    }
-
-    private fun isServerGeneralNote(event: CallReportHistoryEvent): Boolean {
-        if (!event.communicationType.equals("note", ignoreCase = true) || event.note.isBlank()) return false
-        return event.clientEventId.contains(":note:general:") ||
-            event.clientEventId.contains(":topic:general:") ||
-            (event.direction.isBlank() && event.durationSeconds <= 0L)
     }
 }
