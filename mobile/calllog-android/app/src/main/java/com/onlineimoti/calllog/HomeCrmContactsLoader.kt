@@ -5,9 +5,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Loads all saved phone contacts explicitly marked CRM, plus CRM-marked unknown
- * numbers from the last two weeks of the call log. Both groups use the same
- * phase/company filters before paging.
+ * Loads the authenticated user's Clients page from the server. Local Contacts and
+ * local notes are used only as display enrichment after the server has selected
+ * the broker/profile, phase and company scope.
  */
 internal class HomeCrmContactsLoader(
     private val activity: HomeActivity,
@@ -38,30 +38,18 @@ internal class HomeCrmContactsLoader(
         contactsContent.showLoading()
         executor.execute {
             val data = runCatching {
-                val contacts = HomeCrmContactCandidates.load(appContext)
-                val phaseFiltered = HomeCrmFilterEngine.filterLocal(appContext, contacts, filterState)
-                val companyFiltered = if (filterState.isCompanyFiltered) {
-                    val memberships = HomeCrmCompanyMembershipStore.resolve(
-                        context = appContext,
-                        config = ConfigStore.load(appContext),
-                        phones = phaseFiltered.map { it.number },
-                    )
-                    HomeCrmFilterEngine.filterByCompany(
-                        calls = phaseFiltered,
-                        state = filterState,
-                        companyIdsByPhoneKey = memberships.companyIdsByPhoneKey,
-                    )
-                } else {
-                    phaseFiltered
-                }
-                val page = companyFiltered
+                val contacts = HomeCrmContactCandidates.load(appContext, filterState)
+                val page = contacts
+                    .map { contact -> enrichWithLocalName(contact) }
                     .sortedWith(contactListOrder)
                     .drop(requestedPage * pageSize)
                     .take(pageSize)
                 HomeRenderData(
                     calls = page,
                     contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, page),
-                    contactNamesByNumber = page.associate { HomeCallPageLoader.noteKey(it.number) to it.displayName },
+                    contactNamesByNumber = page.associate { call ->
+                        HomeCallPageLoader.noteKey(call.number) to call.displayName
+                    },
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
@@ -82,11 +70,17 @@ internal class HomeCrmContactsLoader(
         }
     }
 
+    private fun enrichWithLocalName(contact: PhoneCallRecord): PhoneCallRecord {
+        val localName = ContactGroupFilter.resolveDisplayName(activity.applicationContext, contact.number).orEmpty().trim()
+        if (localName.isBlank()) return contact
+        return contact.copy(name = localName)
+    }
+
     private companion object {
-        /** Saved contacts stay alphabetic; unsaved leads follow, newest call first. */
+        /** Saved contacts stay alphabetic; unsaved/server-only leads follow, newest activity first. */
         val contactListOrder = Comparator<PhoneCallRecord> { left, right ->
-            val leftUnknownLead = left.startedAt > 0L
-            val rightUnknownLead = right.startedAt > 0L
+            val leftUnknownLead = left.name.isBlank() && left.startedAt > 0L
+            val rightUnknownLead = right.name.isBlank() && right.startedAt > 0L
             when {
                 leftUnknownLead != rightUnknownLead -> if (leftUnknownLead) 1 else -1
                 leftUnknownLead -> right.startedAt.compareTo(left.startedAt)
