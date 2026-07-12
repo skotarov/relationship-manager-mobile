@@ -28,7 +28,7 @@ data class AppConfig(
     val useCallScreening: Boolean,
     val showRmDebugBox: Boolean,
     val useLocalNotesStorage: Boolean = true,
-    /** Persisted Storage Access Framework tree URI selected by the user for local notes and portable settings. */
+    /** Legacy SAF value retained for config compatibility; full-file-access builds keep it blank. */
     val localNotesFolderUri: String = "",
     /** Play builds deliberately use notifications/overlay fallback instead of full-screen intent. */
     val useFullScreenPopup: Boolean = false,
@@ -119,12 +119,12 @@ object ConfigStore {
                 DEFAULT_SHOW_BULK_CONTACT_SYNC_NOTIFICATIONS,
             ),
             appLanguage = normalizeAppLanguage(prefs.getString(KEY_APP_LANGUAGE, DEFAULT_APP_LANGUAGE).orEmpty()),
-            // The Play package only uses app-private storage or a user-selected SAF folder.
+            // Shared Documents is selected automatically when Android grants full file access.
             usePublicNotesFolder = false,
             useCallScreening = prefs.getBoolean(KEY_USE_CALL_SCREENING, DEFAULT_USE_CALL_SCREENING),
             showRmDebugBox = prefs.getBoolean(KEY_SHOW_RM_DEBUG_BOX, DEFAULT_SHOW_RM_DEBUG_BOX),
             useLocalNotesStorage = prefs.getBoolean(KEY_USE_LOCAL_NOTES_STORAGE, DEFAULT_USE_LOCAL_NOTES_STORAGE),
-            localNotesFolderUri = prefs.getString(KEY_LOCAL_NOTES_FOLDER_URI, "").orEmpty().trim(),
+            localNotesFolderUri = "",
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
         )
@@ -158,11 +158,10 @@ object ConfigStore {
             .putBoolean(KEY_USE_CALL_SCREENING, normalized.useCallScreening)
             .putBoolean(KEY_SHOW_RM_DEBUG_BOX, normalized.showRmDebugBox)
             .putBoolean(KEY_USE_LOCAL_NOTES_STORAGE, normalized.useLocalNotesStorage)
-            .putString(KEY_LOCAL_NOTES_FOLDER_URI, normalized.localNotesFolderUri)
+            .putString(KEY_LOCAL_NOTES_FOLDER_URI, "")
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .apply()
-        SelectedFolderConfigBackup.saveAsync(context.applicationContext, normalized)
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
 
@@ -188,7 +187,7 @@ object ConfigStore {
         contactLinkMode = normalizeContactLinkMode(config.contactLinkMode),
         appLanguage = normalizeAppLanguage(config.appLanguage),
         usePublicNotesFolder = false,
-        localNotesFolderUri = config.localNotesFolderUri.trim(),
+        localNotesFolderUri = "",
         useFullScreenPopup = false,
         useInternalSmsComposer = false,
     )

@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -62,9 +61,6 @@ class MainActivity : FontScaledAppCompatActivity() {
     }
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onStorageSettingsResult()
-    }
-    private val localNotesFolderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        onLocalNotesFolderPicked(uri)
     }
     private val smsRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onSmsRoleResult()
@@ -206,18 +202,11 @@ class MainActivity : FontScaledAppCompatActivity() {
 
     internal fun requestSharedNotesStoragePermissionFromSummary() {
         saveConfig()
-        setStatus("Избери папка за локалните бележки. В нея ще се създаде .callreport и ще остане след преинсталиране.")
-        localNotesFolderLauncher.launch(null)
+        permissionFlowController.requestSharedNotesStoragePermission()
     }
 
     internal fun openSharedNotesStorageSettingsFromSummary() {
-        requestSharedNotesStoragePermissionFromSummary()
-    }
-
-    internal fun clearSharedNotesStorageFromSummary() {
-        LocalNotesFileStore.clearSelectedFolder(this)
-        setStatus("Избраната папка е изключена. Локалните бележки ще се пазят в личната папка на приложението.")
-        refreshPermissionSummary()
+        permissionFlowController.openSharedNotesStorageSettings()
     }
 
     internal fun requestOverlayPermissionFromSummary() {
@@ -295,28 +284,7 @@ class MainActivity : FontScaledAppCompatActivity() {
     }
 
     private fun syncPrivateNotesToSharedStorageWhenAvailable() {
-        if (LocalNotesFileStore.hasSelectedFolderAccess(this)) LocalNotesFileStore.migratePrivateToSelected(this)
-        else if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
-    }
-
-    private fun onLocalNotesFolderPicked(uri: Uri?) {
-        if (uri == null) {
-            setStatus("Не е избрана папка. Локалните бележки остават в личната папка на приложението.")
-            refreshPermissionSummary()
-            return
-        }
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        val persisted = runCatching { contentResolver.takePersistableUriPermission(uri, flags) }.isSuccess
-        LocalNotesFileStore.setSelectedFolder(this, uri)
-        val migrated = LocalNotesFileStore.migratePrivateToSelected(this)
-        setStatus(
-            when {
-                !persisted -> "Папката е избрана, но Android не даде постоянен достъп. Избери папката отново."
-                migrated -> "Локалните бележки ще се пазят в избраната папка/.callreport и ще останат след преинсталиране."
-                else -> "Папката е избрана. Новите локални бележки ще се пазят в нея."
-            },
-        )
-        refreshPermissionSummary()
+        if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
     }
 
     private fun disableOverlayPopups() = MainPopupSettings.disableOverlayPopups(this)
