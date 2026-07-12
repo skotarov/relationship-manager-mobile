@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.content.Context
 import android.os.Handler
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Loads local and CRM call pages while protecting Home from stale async results. */
@@ -40,6 +41,7 @@ internal class HomeCallsLoader(
         val searchQuery = activeSearchQuery()
         val expectedGeneration = generation.get()
         val appContext = activity.applicationContext
+        val localNotesApplied = AtomicBoolean(false)
         contentRenderer.showLoading()
         localExecutor.execute {
             val calls = loadLocalCalls(appContext, phoneFilter, searchQuery, requestedPage, pageSize)
@@ -56,6 +58,13 @@ internal class HomeCallsLoader(
                     onRenderComplete()
                 } else {
                     contentRenderer.applyRenderData(fastData, pageSize)
+                    // Server blue notes must not wait for SAF/local note reads. Full log
+                    // already has them from history_lookup; Home should show them too.
+                    serverCallNotes.enrichAsync(fastData) { enriched ->
+                        if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@enrichAsync
+                        if (localNotesApplied.get()) return@enrichAsync
+                        contentRenderer.applyRenderData(enriched, pageSize)
+                    }
                     onRenderComplete()
                 }
             }
@@ -66,14 +75,17 @@ internal class HomeCallsLoader(
             runCatching {
                 localNotesExecutor.execute notesTask@{
                     if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@notesTask
-                    val data = HomeRenderData(
-                        calls = calls,
-                        contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
-                        contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
-                        callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
-                    )
+                    val data = runCatching {
+                        HomeRenderData(
+                            calls = calls,
+                            contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                            contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
+                            callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
+                        )
+                    }.getOrElse { return@notesTask }
                     handler.post {
                         if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
+                        localNotesApplied.set(true)
                         contentRenderer.applyRenderData(data, pageSize)
                         serverCallNotes.enrichAsync(data) { enriched ->
                             if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@enrichAsync
@@ -167,6 +179,7 @@ internal class HomeCallsLoader(
         if (contentRenderer.currentCalls.isEmpty()) contentRenderer.showCrmLoading()
         val requestedPage = pageIndex()
         val appContext = activity.applicationContext
+        val localNotesApplied = AtomicBoolean(false)
         crmExecutor.execute {
             val calls = runCatching {
                 val localFiltered = HomeCrmFilterEngine.filterLocal(
@@ -199,6 +212,11 @@ internal class HomeCallsLoader(
                     onCrmCallsEmpty()
                 } else {
                     contentRenderer.applyRenderData(fastData, pageSize)
+                    serverCallNotes.enrichAsync(fastData) { enriched ->
+                        if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@enrichAsync
+                        if (localNotesApplied.get()) return@enrichAsync
+                        contentRenderer.applyRenderData(enriched, pageSize)
+                    }
                     onCrmCallsRendered(calls.size)
                 }
                 onRenderComplete()
@@ -210,14 +228,17 @@ internal class HomeCallsLoader(
             runCatching {
                 localNotesExecutor.execute crmNotesTask@{
                     if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@crmNotesTask
-                    val data = HomeRenderData(
-                        calls = calls,
-                        contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
-                        contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
-                        callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
-                    )
+                    val data = runCatching {
+                        HomeRenderData(
+                            calls = calls,
+                            contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                            contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
+                            callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
+                        )
+                    }.getOrElse { return@crmNotesTask }
                     handler.post {
                         if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@post
+                        localNotesApplied.set(true)
                         contentRenderer.applyRenderData(data, pageSize)
                         serverCallNotes.enrichAsync(data) { enriched ->
                             if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@enrichAsync
