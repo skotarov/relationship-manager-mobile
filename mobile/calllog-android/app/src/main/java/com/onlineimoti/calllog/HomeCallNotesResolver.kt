@@ -85,7 +85,7 @@ internal object HomeCallNotesResolver {
         val claimedEvents = hashSetOf<String>()
 
         serverEvents.forEachIndexed { index, event ->
-            if (!isConcreteCallNote(event)) return@forEachIndexed
+            if (!CallReportServerNoteClassifier.isConcreteCallNote(event)) return@forEachIndexed
             val candidates = callsByPhone[HomeCallPageLoader.noteKey(event.phone)].orEmpty()
             val call = candidates
                 .filter { candidate -> sameServerCall(candidate, event) }
@@ -125,13 +125,6 @@ internal object HomeCallNotesResolver {
         if (call.startedAt <= 0L || event.occurredAtMs <= 0L) return false
         if (abs(call.startedAt - event.occurredAtMs) > SERVER_NOTE_CALL_MATCH_WINDOW_MS) return false
         return call.direction.isBlank() || event.direction.isBlank() || call.direction == event.direction
-    }
-
-    private fun isConcreteCallNote(event: CallReportHistoryEvent): Boolean {
-        if (!event.communicationType.equals("note", ignoreCase = true) || event.note.isBlank()) return false
-        val id = event.clientEventId
-        if (id.contains(":note:general:") || id.contains(":topic:general:")) return false
-        return event.occurredAtMs > 0L
     }
 
     private fun isOtherBrokerAuthor(
