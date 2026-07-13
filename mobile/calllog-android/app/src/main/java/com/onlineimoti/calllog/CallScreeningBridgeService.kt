@@ -20,18 +20,43 @@ class CallScreeningBridgeService : CallScreeningService() {
 
         // The service remains neutral for everyone. CRM processing begins only
         // after the device has a signed-in company session.
-        if (!CorporateAccess.isActive(this)) return
+        if (!CorporateAccess.isActive(this)) {
+            CallPopupDiagnosticsStore.recordCallScreening(
+                context = this,
+                number = callDetails.handle?.schemeSpecificPart.orEmpty(),
+                direction = callDetails.callDirection.toString(),
+                handled = false,
+                reason = "няма активна сървърна/корпоративна сесия",
+            )
+            return
+        }
 
-        val handle: Uri = callDetails.handle ?: return
+        val handle: Uri = callDetails.handle ?: run {
+            CallPopupDiagnosticsStore.recordCallScreening(this, "", callDetails.callDirection.toString(), false, "празен call handle")
+            return
+        }
         val number = handle.schemeSpecificPart?.trim().orEmpty()
-        if (number.isBlank()) return
+        if (number.isBlank()) {
+            CallPopupDiagnosticsStore.recordCallScreening(this, number, callDetails.callDirection.toString(), false, "празен номер от CallScreeningService")
+            return
+        }
 
         val direction = when (callDetails.callDirection) {
             Call.Details.DIRECTION_INCOMING -> "in"
             Call.Details.DIRECTION_OUTGOING -> "out"
-            else -> return
+            else -> {
+                CallPopupDiagnosticsStore.recordCallScreening(this, number, callDetails.callDirection.toString(), false, "неподдържана посока")
+                return
+            }
         }
 
+        CallPopupDiagnosticsStore.recordCallScreening(
+            context = this,
+            number = number,
+            direction = direction,
+            handled = true,
+            reason = "получено от активната Caller ID/спам роля",
+        )
         CallLifecycleStore.markActive(this, number, direction)
 
         EXECUTOR.execute {
