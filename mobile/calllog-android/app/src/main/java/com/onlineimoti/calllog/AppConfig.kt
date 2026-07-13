@@ -34,6 +34,8 @@ data class AppConfig(
     val useFullScreenPopup: Boolean = false,
     /** The public Play build is not an SMS app. */
     val useInternalSmsComposer: Boolean = false,
+    /** When true, external SMS intents open the contact history instead of the SMS compose dialog. */
+    val openSmsIconToHistory: Boolean = false,
 )
 
 object ConfigStore {
@@ -64,6 +66,7 @@ object ConfigStore {
     private const val KEY_LOCAL_NOTES_FOLDER_URI = "local_notes_folder_uri"
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
+    private const val KEY_OPEN_SMS_ICON_TO_HISTORY = "open_sms_icon_to_history"
 
     /** Empty by default: free mode works locally and does not connect to a server. */
     const val DEFAULT_BASE_URL = ""
@@ -92,6 +95,7 @@ object ConfigStore {
     const val DEFAULT_USE_LOCAL_NOTES_STORAGE = true
     const val DEFAULT_USE_FULL_SCREEN_POPUP = false
     const val DEFAULT_USE_INTERNAL_SMS_COMPOSER = false
+    const val DEFAULT_OPEN_SMS_ICON_TO_HISTORY = false
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -127,6 +131,7 @@ object ConfigStore {
             localNotesFolderUri = "",
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
+            openSmsIconToHistory = prefs.getBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, DEFAULT_OPEN_SMS_ICON_TO_HISTORY),
         )
         return normalize(local)
     }
@@ -161,6 +166,7 @@ object ConfigStore {
             .putString(KEY_LOCAL_NOTES_FOLDER_URI, "")
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
+            .putBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, normalized.openSmsIconToHistory)
             .apply()
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
