@@ -22,13 +22,14 @@ internal class HomeSearchInputController(
     }
 
     fun bind() {
-        updateButtonIcon()
+        showRestoredSearchIfNeeded()
         binding.searchButton.setOnClickListener { toggle() }
         binding.clearSearchButton.setOnClickListener { clear() }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
+                if (!s.isNullOrBlank()) showSearchRow(requestFocus = false)
                 handler.removeCallbacks(debounceRunnable)
                 handler.postDelayed(debounceRunnable, SEARCH_DEBOUNCE_MS)
             }
@@ -40,19 +41,16 @@ internal class HomeSearchInputController(
     }
 
     fun resetText() {
+        cancelPending()
         binding.searchInput.setText("")
+        binding.searchRow.visibility = View.GONE
+        updateButtonIcon()
     }
 
     private fun toggle() {
         val show = binding.searchRow.visibility != View.VISIBLE
         if (show) {
-            binding.searchRow.visibility = View.VISIBLE
-            updateButtonIcon()
-            binding.searchInput.requestFocus()
-            (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(
-                binding.searchInput,
-                InputMethodManager.SHOW_IMPLICIT,
-            )
+            showSearchRow(requestFocus = true)
         } else {
             clear()
             binding.searchRow.visibility = View.GONE
@@ -65,6 +63,22 @@ internal class HomeSearchInputController(
         binding.searchInput.setText("")
         onSearchCleared()
         updateButtonIcon()
+    }
+
+    private fun showRestoredSearchIfNeeded() {
+        if (!binding.searchInput.text.isNullOrBlank()) showSearchRow(requestFocus = false)
+        else updateButtonIcon()
+    }
+
+    private fun showSearchRow(requestFocus: Boolean) {
+        binding.searchRow.visibility = View.VISIBLE
+        updateButtonIcon()
+        if (!requestFocus) return
+        binding.searchInput.requestFocus()
+        (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(
+            binding.searchInput,
+            InputMethodManager.SHOW_IMPLICIT,
+        )
     }
 
     private fun updateButtonIcon() {
