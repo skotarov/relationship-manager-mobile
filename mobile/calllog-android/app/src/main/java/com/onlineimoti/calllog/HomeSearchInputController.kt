@@ -22,7 +22,10 @@ internal class HomeSearchInputController(
     }
 
     fun bind() {
-        showRestoredSearchIfNeeded()
+        // Android restores EditText contents after Activity.onCreate on some devices,
+        // while the row itself can remain at the XML default GONE. Check both now
+        // and after the view hierarchy/state restore has settled.
+        syncRestoredSearchVisibility()
         binding.searchButton.setOnClickListener { toggle() }
         binding.clearSearchButton.setOnClickListener { clear() }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
@@ -32,6 +35,7 @@ internal class HomeSearchInputController(
                 if (!s.isNullOrBlank()) showSearchRow(requestFocus = false)
                 handler.removeCallbacks(debounceRunnable)
                 handler.postDelayed(debounceRunnable, SEARCH_DEBOUNCE_MS)
+                syncRestoredSearchVisibility()
             }
         })
     }
@@ -65,13 +69,21 @@ internal class HomeSearchInputController(
         updateButtonIcon()
     }
 
+    private fun syncRestoredSearchVisibility() {
+        showRestoredSearchIfNeeded()
+        binding.root.post { showRestoredSearchIfNeeded() }
+        binding.searchInput.post { showRestoredSearchIfNeeded() }
+        handler.postDelayed({ showRestoredSearchIfNeeded() }, RESTORE_VISIBILITY_DELAY_MS)
+        handler.postDelayed({ showRestoredSearchIfNeeded() }, RESTORE_VISIBILITY_LATE_DELAY_MS)
+    }
+
     private fun showRestoredSearchIfNeeded() {
         if (!binding.searchInput.text.isNullOrBlank()) showSearchRow(requestFocus = false)
         else updateButtonIcon()
     }
 
     private fun showSearchRow(requestFocus: Boolean) {
-        binding.searchRow.visibility = View.VISIBLE
+        if (binding.searchRow.visibility != View.VISIBLE) binding.searchRow.visibility = View.VISIBLE
         updateButtonIcon()
         if (!requestFocus) return
         binding.searchInput.requestFocus()
@@ -89,5 +101,7 @@ internal class HomeSearchInputController(
 
     private companion object {
         private const val SEARCH_DEBOUNCE_MS = 250L
+        private const val RESTORE_VISIBILITY_DELAY_MS = 120L
+        private const val RESTORE_VISIBILITY_LATE_DELAY_MS = 450L
     }
 }
