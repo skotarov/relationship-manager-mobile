@@ -19,6 +19,7 @@ object MainSettingsConfigUi {
         popupFilter.notifyKnownContactsCheckBox.isChecked = config.notifyKnownContacts
         callLog.homeCallPageSizeInput.setText(config.homeCallPageSize.toString())
         defaultSms.useInternalSmsComposerCheckBox.isChecked = config.useInternalSmsComposer
+        defaultSms.openSmsIconToHistoryCheckBox.isChecked = config.openSmsIconToHistory
         popup.postCallTimeoutInput.setText(config.postCallPromptTimeoutSeconds.toString())
         when (config.postCallEndAction) {
             ConfigStore.POST_CALL_END_ACTION_HISTORY -> popup.postCallEndActionHistory.isChecked = true
@@ -102,6 +103,7 @@ object MainSettingsConfigUi {
             localNotesFolderUri = currentConfig.localNotesFolderUri,
             useFullScreenPopup = currentConfig.useFullScreenPopup,
             useInternalSmsComposer = defaultSms.useInternalSmsComposerCheckBox.isChecked,
+            openSmsIconToHistory = defaultSms.openSmsIconToHistoryCheckBox.isChecked,
         )
     }
 }
