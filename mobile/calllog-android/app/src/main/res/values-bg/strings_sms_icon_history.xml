@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sms_icon_opens_history">SMS иконката да отваря историята</string>
+    <string name="sms_icon_opens_history_description">Когато е включено, системните SMS преки пътища за даден номер отварят екрана с историята в Relationship Manager, вместо диалога за писане на SMS.</string>
+</resources>
