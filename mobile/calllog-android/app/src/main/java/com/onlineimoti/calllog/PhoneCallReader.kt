@@ -19,6 +19,8 @@ data class PhoneCallRecord(
     val smsBody: String = "",
     /** Android CallLog/SMS provider row ID. Empty only for synthetic search rows. */
     val providerId: String = "",
+    /** Server-provided search snippet that explains why a synthetic Clients result matched. */
+    val searchSnippet: String = "",
     /**
      * Exact Android [CallLog.Calls.TYPE] value. Direction alone is insufficient:
      * MISSED, REJECTED and BLOCKED are all incoming, but need different icons.
