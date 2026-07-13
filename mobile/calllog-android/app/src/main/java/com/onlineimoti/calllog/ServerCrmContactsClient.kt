@@ -54,6 +54,10 @@ internal object ServerCrmContactsClient {
                                     .coerceAtLeast(item.optLong("updated_at_ms", 0L))
                                     .coerceAtLeast(item.optLong("created_at_ms", 0L)),
                                 durationSeconds = 0L,
+                                searchSnippet = item.optString("search_match_text").trim()
+                                    .ifBlank { item.optString("search_snippet").trim() }
+                                    .ifBlank { item.optString("matched_note").trim() }
+                                    .ifBlank { item.optString("matched_text").trim() },
                             ),
                         )
                     }
