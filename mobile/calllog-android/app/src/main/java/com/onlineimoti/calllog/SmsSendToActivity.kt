@@ -8,13 +8,21 @@ import android.os.Bundle
 class SmsSendToActivity : FontScaledActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        openComposerAndFinish()
+        handleSmsTargetAndFinish()
     }
 
-    private fun openComposerAndFinish() {
+    private fun handleSmsTargetAndFinish() {
         val phone = phoneFromUri(intent.data).ifBlank {
             intent.getStringExtra("address").orEmpty()
         }
+        if (ConfigStore.load(this).openSmsIconToHistory && phone.isNotBlank()) {
+            openHistoryAndFinish(phone)
+            return
+        }
+        openComposerAndFinish(phone)
+    }
+
+    private fun openComposerAndFinish(phone: String) {
         val body = intent.getStringExtra(Intent.EXTRA_TEXT)
             ?: intent.getStringExtra("sms_body")
             ?: intent.getStringExtra("android.intent.extra.TEXT")
@@ -31,12 +39,23 @@ class SmsSendToActivity : FontScaledActivity() {
         )
     }
 
+    private fun openHistoryAndFinish(rawPhone: String) {
+        val phone = PhoneNormalizer.normalize(rawPhone).ifBlank { rawPhone.trim() }
+        val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+            .ifBlank { PhoneNormalizer.display(phone) }
+            .ifBlank { phone }
+        startActivity(
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, title),
+        )
+        finish()
+        overridePendingTransition(0, 0)
+    }
+
     private fun phoneFromUri(uri: Uri?): String {
         uri ?: return ""
-        return uri.schemeSpecificPart
-            .substringBefore('?')
-            .substringBefore(';')
-            .trim()
+        return Uri.decode(uri.schemeSpecificPart.orEmpty().substringBefore('?').substringBefore(';')).trim()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
