@@ -1,10 +1,13 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -108,7 +111,15 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
             textSize = 24f
             setTextColor(getColor(R.color.calllog_text))
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-        })
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        addView(ImageButton(this@SmsHistoryActivity).apply {
+            setImageResource(R.drawable.ic_chat_note)
+            contentDescription = "Нов SMS"
+            background = null
+            setColorFilter(getColor(R.color.calllog_text))
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+            setOnClickListener { openNewSmsDialog() }
+        }, LinearLayout.LayoutParams(dp(44), dp(44)))
     }
 
     private fun pagination(): LinearLayout = LinearLayout(this).apply {
@@ -238,6 +249,45 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
             ),
             onClick = { openContactNotes(sms) },
         )
+    }
+
+    private fun openNewSmsDialog() {
+        val input = EditText(this).apply {
+            hint = "Телефонен номер"
+            inputType = InputType.TYPE_CLASS_PHONE
+            setSingleLine(true)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+        }
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(4), dp(20), 0)
+            addView(input, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Нов SMS")
+            .setView(wrapper)
+            .setNegativeButton("Отказ", null)
+            .setPositiveButton("Напред", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val phone = input.text?.toString().orEmpty().trim()
+                if (phone.isBlank()) {
+                    input.error = "Въведи телефон"
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                val title = ContactGroupFilter.resolveDisplayName(this, phone).orEmpty()
+                    .ifBlank { PhoneNormalizer.display(phone) }
+                    .ifBlank { phone }
+                SmsComposeDialog(this, ::dp).show(phone = phone, title = title)
+            }
+        }
+        dialog.show()
+        input.requestFocus()
     }
 
     private fun openFilteredCallLog(phone: String) {
