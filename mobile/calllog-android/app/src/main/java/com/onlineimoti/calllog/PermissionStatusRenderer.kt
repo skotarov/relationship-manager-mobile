@@ -19,6 +19,7 @@ import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object PermissionStatusRenderer {
     private const val TAG = "callreport_permission_status_rows"
+    private const val DEBUG_TAG = "callreport_popup_diagnostics"
 
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val config = ConfigStore.load(activity)
@@ -26,7 +27,13 @@ internal object PermissionStatusRenderer {
         val notesState = notesState(config)
         val sharedNotesState = if (LocalNotesFileStore.canUsePublicFolder()) State.ACTIVE else State.DISABLED
         val overlayState = state(config.useOverlayPopups, Settings.canDrawOverlays(activity))
-        val screeningState = state(config.useCallScreening, MainPermissionChecks.hasCallScreeningRole(activity))
+        val callScreeningAvailable = MainPermissionChecks.isCallScreeningAvailable(activity)
+        val callScreeningHeld = MainPermissionChecks.hasCallScreeningRole(activity)
+        val screeningState = when {
+            !callScreeningAvailable -> State.DISABLED
+            callScreeningHeld -> State.ACTIVE
+            else -> State.MISSING
+        }
 
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.overlayPermissionWarningText.visibility = if (overlayState == State.MISSING) View.VISIBLE else View.GONE
@@ -77,7 +84,11 @@ internal object PermissionStatusRenderer {
             disable = { setOverlay(activity, binding, false) },
         )
         rows += Row(
-            label = activity.getString(R.string.permission_label_call_screening),
+            label = when {
+                !callScreeningAvailable -> "Caller ID / спам роля: не се поддържа"
+                callScreeningHeld -> "Caller ID / спам роля: Relationship Manager е активен"
+                else -> "Caller ID / спам роля: не е при нас — натисни Включи, за да я презапишеш"
+            },
             state = screeningState,
             enable = { setScreening(activity, binding, true) },
             disable = { setScreening(activity, binding, false) },
@@ -87,13 +98,24 @@ internal object PermissionStatusRenderer {
         summary.visibility = View.GONE
         val parent = summary.parent as? LinearLayout ?: return
         parent.findViewWithTag<View>(TAG)?.let(parent::removeView)
+        parent.findViewWithTag<View>(DEBUG_TAG)?.let(parent::removeView)
+
+        val debug = diagnosticView(
+            activity = activity,
+            config = config,
+            callScreeningHeld = callScreeningHeld,
+            callScreeningAvailable = callScreeningAvailable,
+            screeningState = screeningState,
+        )
+        parent.addView(debug, parent.indexOfChild(summary) + 1)
+
         val box = LinearLayout(activity).apply {
             tag = TAG
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 8) }
         }
         rows.forEach { box.addView(rowView(activity, it)) }
-        parent.addView(box, parent.indexOfChild(summary) + 1)
+        parent.addView(box, parent.indexOfChild(debug) + 1)
     }
 
     private fun setNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
@@ -123,6 +145,29 @@ internal object PermissionStatusRenderer {
 
     private fun save(activity: MainActivity, update: (AppConfig) -> AppConfig) {
         ConfigStore.save(activity, update(ConfigStore.load(activity)))
+    }
+
+    private fun diagnosticView(
+        activity: MainActivity,
+        config: AppConfig,
+        callScreeningHeld: Boolean,
+        callScreeningAvailable: Boolean,
+        screeningState: State,
+    ): TextView {
+        val colors = when (screeningState) {
+            State.ACTIVE -> Triple(Color.rgb(20, 83, 45), Color.rgb(220, 252, 231), Color.rgb(134, 239, 172))
+            State.MISSING -> Triple(ContextCompat.getColor(activity, R.color.calllog_error), Color.rgb(254, 242, 242), Color.rgb(252, 165, 165))
+            State.DISABLED -> Triple(Color.rgb(71, 85, 105), Color.rgb(241, 245, 249), Color.rgb(203, 213, 225))
+        }
+        return TextView(activity).apply {
+            tag = DEBUG_TAG
+            text = CallPopupDiagnosticsStore.summary(activity, config, callScreeningHeld, callScreeningAvailable)
+            textSize = 12.5f
+            setTextColor(colors.first)
+            setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 8))
+            background = shape(colors.second, dp(activity, 12), colors.third)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(activity, 8) }
+        }
     }
 
     private fun rowView(activity: MainActivity, row: Row): View {
