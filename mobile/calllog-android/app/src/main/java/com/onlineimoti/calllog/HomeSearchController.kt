@@ -282,11 +282,7 @@ internal class HomeSearchController(
 
 internal data class HomeRenderData(
     val calls: List<PhoneCallRecord>,
-    val contactNotesByNumber: Map<String, ContactNoteReader.ContactNote>,
+    val contactNotesByNumber: Map<String, String>,
     val contactNamesByNumber: Map<String, String>,
-    val callNotesByCall: Map<HomeCallNotesResolver.CallNoteKey, HomeCallNotesResolver.CallNote> = emptyMap(),
-    val serverNotesByCall: Map<HomeCallNotesResolver.CallNoteKey, HomeCallNotesResolver.CallNote> = emptyMap(),
-    val serverGeneralNotesByNumber: Map<String, HomeServerCallNotesController.ServerGeneralNote> = emptyMap(),
-    val companyLabelsByNumber: Map<String, List<HomeCompanyGeneralNotesController.CompanyLabel>> = emptyMap(),
-    val serverBackedPhoneKeys: Set<String> = emptySet(),
+    val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
 )
