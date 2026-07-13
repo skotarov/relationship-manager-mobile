@@ -167,14 +167,9 @@ internal class HomeSearchController(
                 filterState = filterState ?: HomeCrmFilterState(),
             )
             crmMode && phoneFilter.isBlank() -> searchCrmCalls(query)
-            else -> HomeCallPageLoader.calls(
-                context = context,
-                activePhoneFilter = phoneFilter,
-                searchQuery = query,
-                pageIndex = 0,
-                // Search sources are already bounded internally. Load the complete
-                // bounded set once, then page after CRM filters have been applied.
-                pageSize = SEARCH_RESULT_SCAN_LIMIT,
+            else -> searchMainCallLog(
+                query = query,
+                phoneFilter = phoneFilter,
                 crmMode = crmMode,
             )
         }
@@ -193,6 +188,79 @@ internal class HomeSearchController(
         filterState = filterState,
         searchQuery = query,
     )
+
+    /**
+     * The normal Call Log search must include both local Android/local-note data and
+     * server Relationship Manager data. Server-only notes/clients are returned as
+     * synthetic rows with the matched note as [PhoneCallRecord.searchSnippet].
+     */
+    private fun searchMainCallLog(
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+    ): List<PhoneCallRecord> {
+        val localResults = HomeCallPageLoader.calls(
+            context = context,
+            activePhoneFilter = phoneFilter,
+            searchQuery = query,
+            pageIndex = 0,
+            // Search sources are already bounded internally. Load the complete
+            // bounded set once, then page after CRM filters have been applied.
+            pageSize = SEARCH_RESULT_SCAN_LIMIT,
+            crmMode = crmMode,
+        )
+        if (crmMode) return localResults
+        val serverResults = searchServerCallLog(query, phoneFilter)
+        return mergeServerSearchResults(localResults, serverResults)
+    }
+
+    private fun searchServerCallLog(query: String, phoneFilter: String): List<PhoneCallRecord> {
+        val config = ConfigStore.load(context.applicationContext)
+        val serverResults = runCatching {
+            ServerCallLogSearchClient.search(
+                config = config,
+                query = query,
+                context = context.applicationContext,
+            )
+        }.getOrDefault(emptyList())
+        val selectedKey = HomeCallPageLoader.noteKey(phoneFilter)
+        return if (selectedKey.isBlank()) {
+            serverResults
+        } else {
+            serverResults.filter { row -> HomeCallPageLoader.noteKey(row.number) == selectedKey }
+        }
+    }
+
+    private fun mergeServerSearchResults(
+        localResults: List<PhoneCallRecord>,
+        serverResults: List<PhoneCallRecord>,
+    ): List<PhoneCallRecord> {
+        if (serverResults.isEmpty()) return localResults
+        val merged = localResults.toMutableList()
+        val firstIndexByPhoneKey = linkedMapOf<String, Int>()
+        merged.forEachIndexed { index, row ->
+            HomeCallPageLoader.noteKey(row.number)
+                .takeIf { it.isNotBlank() && it !in firstIndexByPhoneKey }
+                ?.let { key -> firstIndexByPhoneKey[key] = index }
+        }
+
+        serverResults.forEach { serverRow ->
+            val key = HomeCallPageLoader.noteKey(serverRow.number)
+            if (key.isBlank()) return@forEach
+            val existingIndex = firstIndexByPhoneKey[key]
+            if (existingIndex != null) {
+                val current = merged[existingIndex]
+                merged[existingIndex] = current.copy(
+                    name = current.name.ifBlank { serverRow.name },
+                    searchSnippet = current.searchSnippet.ifBlank { serverRow.searchSnippet },
+                )
+                return@forEach
+            }
+            firstIndexByPhoneKey[key] = merged.size
+            merged += serverRow
+        }
+        return merged.sortedByDescending { row -> row.startedAt }
+    }
 
     private fun contactNotesForRenderedSearch(
         calls: List<PhoneCallRecord>,
