@@ -17,10 +17,11 @@ internal object HomeCrmContactCandidates {
     fun load(
         context: Context,
         filterState: HomeCrmFilterState = HomeCrmFilterState(),
+        searchQuery: String = "",
         nowMs: Long = System.currentTimeMillis(),
     ): List<PhoneCallRecord> {
         val appContext = context.applicationContext
-        return HomeCrmContactCandidatesServer.load(appContext, filterState)
+        return HomeCrmContactCandidatesServer.load(appContext, filterState, searchQuery)
     }
 
     private fun recentUnknownCrmCalls(context: Context, nowMs: Long): List<PhoneCallRecord> {
