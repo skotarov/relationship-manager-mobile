@@ -83,7 +83,7 @@ internal class HomeSearchController(
                 .take(currentPageSize)
             val renderData = HomeRenderData(
                 calls = calls,
-                contactNotesByNumber = HomeCallPageLoader.contactNotes(context, calls),
+                contactNotesByNumber = contactNotesForRenderedSearch(calls, crmContactsMode, query),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
                 callNotesByCall = HomeCallNotesResolver.localNotes(context, calls),
             )
@@ -193,6 +193,70 @@ internal class HomeSearchController(
         filterState = filterState,
         searchQuery = query,
     )
+
+    private fun contactNotesForRenderedSearch(
+        calls: List<PhoneCallRecord>,
+        crmContactsMode: Boolean,
+        query: String,
+    ): Map<String, String> {
+        val notes = HomeCallPageLoader.contactNotes(context, calls).toMutableMap()
+        calls.forEach { call ->
+            val key = HomeCallPageLoader.noteKey(call.number)
+            val snippet = call.searchSnippet.trim()
+            if (key.isNotBlank() && snippet.isNotBlank()) notes[key] = snippet
+        }
+        if (crmContactsMode && query.trim().isNotBlank()) {
+            serverSearchSnippets(calls, query).forEach { (key, snippet) ->
+                if (key.isNotBlank() && snippet.isNotBlank()) notes[key] = snippet
+            }
+        }
+        return notes
+    }
+
+    /**
+     * contacts_lookup.php can find a client because a server note matched, while
+     * the returned contact row contains only name/phone. Load History for the
+     * visible result rows and surface the matching note so the searched text can
+     * be highlighted on the Clients page.
+     */
+    private fun serverSearchSnippets(calls: List<PhoneCallRecord>, query: String): Map<String, String> {
+        if (calls.isEmpty()) return emptyMap()
+        val terms = SearchQueryTerms.from(query)
+        if (terms.isEmpty) return emptyMap()
+        val config = ConfigStore.load(context.applicationContext)
+        if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
+        val requestedKeys = calls.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }.filterTo(linkedSetOf()) { it.isNotBlank() }
+        if (requestedKeys.isEmpty()) return emptyMap()
+        val phones = calls.map { it.number }.distinctBy(HomeCallPageLoader::noteKey)
+        val history = runCatching {
+            CallReportHistoryLookupClient.lookupMany(config, phones, context.applicationContext)
+        }.getOrDefault(CallReportHistoryLookupResult())
+        val latest = linkedMapOf<String, Pair<Long, String>>()
+        history.events.forEach { event ->
+            val key = HomeCallPageLoader.noteKey(event.phone)
+            if (key.isBlank() || key !in requestedKeys) return@forEach
+            val snippet = searchSnippetFromEvent(event, terms)
+            if (snippet.isBlank()) return@forEach
+            val changedAt = maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs)
+            val current = latest[key]
+            if (current == null || changedAt >= current.first) latest[key] = changedAt to snippet
+        }
+        return latest.mapValues { it.value.second }
+    }
+
+    private fun searchSnippetFromEvent(event: CallReportHistoryEvent, terms: SearchQueryTerms): String {
+        val note = event.note.trim()
+        if (note.isNotBlank() && containsAnyTextTerm(note, terms)) return note
+        if (note.isNotBlank() && terms.matches(note, event.phone, event.contactName, event.companyId)) return note
+        return listOf(event.contactName, event.phone, event.companyId)
+            .firstOrNull { value -> value.isNotBlank() && terms.matches(value) }
+            .orEmpty()
+    }
+
+    private fun containsAnyTextTerm(value: String, terms: SearchQueryTerms): Boolean {
+        val lower = value.lowercase()
+        return terms.textTerms().any { term -> lower.contains(term) }
+    }
 
     /**
      * CRM Calls searches the same complete bounded timeline that the CRM Calls
