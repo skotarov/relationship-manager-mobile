@@ -14,10 +14,11 @@ internal object ServerCrmContactsClient {
     fun lookup(
         config: AppConfig,
         filterState: HomeCrmFilterState = HomeCrmFilterState(),
+        searchQuery: String = "",
         context: Context? = null,
     ): List<PhoneCallRecord> {
         if (!CallReportRemoteAccess.isReady(config)) return emptyList()
-        val endpoint = buildEndpoint(config.baseUrl, PATH, queryParameters(config, filterState))
+        val endpoint = buildEndpoint(config.baseUrl, PATH, queryParameters(config, filterState, searchQuery))
         val connection = runCatching { URL(endpoint).openConnection() as HttpURLConnection }.getOrElse { error ->
             ServerConnectionNotifier.notifyFailure(context, config, error)
             throw error
@@ -66,7 +67,11 @@ internal object ServerCrmContactsClient {
         }
     }
 
-    private fun queryParameters(config: AppConfig, filterState: HomeCrmFilterState): Map<String, String> {
+    private fun queryParameters(
+        config: AppConfig,
+        filterState: HomeCrmFilterState,
+        searchQuery: String,
+    ): Map<String, String> {
         val phase = if (filterState.phases.isEmpty()) {
             "none"
         } else {
@@ -77,11 +82,17 @@ internal object ServerCrmContactsClient {
         } else {
             filterState.companyIds.sorted().joinToString(",")
         }
+        val query = searchQuery.trim()
         return linkedMapOf(
             "access_token" to config.accessToken,
             "phase" to phase,
             "company_id" to companyId,
-            "limit" to "200",
-        )
+            "limit" to if (query.isBlank()) "200" else "500",
+        ).apply {
+            if (query.isNotBlank()) {
+                put("q", query)
+                put("search", query)
+            }
+        }
     }
 }
