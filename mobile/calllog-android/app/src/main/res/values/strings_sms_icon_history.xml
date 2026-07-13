@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sms_icon_opens_history">Open contact history from SMS icon</string>
+    <string name="sms_icon_opens_history_description">When enabled, Android SMS shortcuts for a number open the Relationship Manager history screen instead of the SMS compose dialog.</string>
+</resources>
