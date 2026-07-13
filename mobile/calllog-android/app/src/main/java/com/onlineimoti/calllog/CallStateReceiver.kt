@@ -19,35 +19,100 @@ class CallStateReceiver : BroadcastReceiver() {
         if (intent.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
         // Do not turn the Play app into a free personal call tracker. Call-state
         // processing starts only after the user has a signed-in company CRM session.
-        if (!CorporateAccess.isActive(context)) return
+        if (!CorporateAccess.isActive(context)) {
+            CallPopupDiagnosticsStore.recordPhoneState(
+                context = context,
+                state = "ignored",
+                number = "",
+                handled = false,
+                reason = "няма активна сървърна/корпоративна сесия",
+            )
+            return
+        }
 
         val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
         val hasCallLog = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
-        if (!hasPhoneState) return
-
         val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE).orEmpty()
         val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER).orEmpty().trim()
+        if (!hasPhoneState) {
+            CallPopupDiagnosticsStore.recordPhoneState(
+                context = context,
+                state = state.ifBlank { "no_permission" },
+                number = number,
+                handled = false,
+                reason = "липсва READ_PHONE_STATE",
+            )
+            return
+        }
 
         if (state == TelephonyManager.EXTRA_STATE_IDLE) {
+            CallPopupDiagnosticsStore.recordPhoneState(
+                context = context,
+                state = state,
+                number = number,
+                handled = true,
+                reason = "край на разговор — търся активния разговор",
+            )
             handleCallEnded(context, hasCallLog)
             return
         }
-        if (number.isBlank()) return
+        if (number.isBlank()) {
+            CallPopupDiagnosticsStore.recordPhoneState(
+                context = context,
+                state = state,
+                number = number,
+                handled = false,
+                reason = "Android не подаде номер; често става когато друга Caller ID/спам роля е активна",
+            )
+            return
+        }
 
         val direction = when (state) {
             TelephonyManager.EXTRA_STATE_RINGING -> "in"
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 if (CallStateDeduper.wasRecentlyHandled(context, number, "in")) {
                     CallLifecycleStore.markActive(context, number, "in")
+                    CallPopupDiagnosticsStore.recordPhoneState(
+                        context = context,
+                        state = state,
+                        number = number,
+                        handled = false,
+                        reason = "OFFHOOK след вече обработено входящо — пропускам дубликат",
+                    )
                     return
                 }
                 "out"
             }
-            else -> return
+            else -> {
+                CallPopupDiagnosticsStore.recordPhoneState(
+                    context = context,
+                    state = state,
+                    number = number,
+                    handled = false,
+                    reason = "неподдържан call state",
+                )
+                return
+            }
         }
 
         CallLifecycleStore.markActive(context, number, direction)
-        if (!CallStateDeduper.markHandled(context, number, direction)) return
+        if (!CallStateDeduper.markHandled(context, number, direction)) {
+            CallPopupDiagnosticsStore.recordPhoneState(
+                context = context,
+                state = state,
+                number = number,
+                handled = false,
+                reason = "дублирано PHONE_STATE събитие",
+            )
+            return
+        }
+        CallPopupDiagnosticsStore.recordPhoneState(
+            context = context,
+            state = state,
+            number = number,
+            handled = true,
+            reason = "пускам стартов popup",
+        )
         val config = ConfigStore.load(context.applicationContext)
         showInstantLoading(context, config, number, "Зарежда се информация…", "Проверявам разговори и бележка…")
         showLookup(context, config, number, direction, fullscreen = direction == "in")
