@@ -72,11 +72,12 @@ internal class TimelineNotesUi(
         val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
         val colors = NoteUiStyle.Call
         val companyName = companyNameFor(note.companyId, companyLabels)
+        val textValue = ServerNoteVisuals.prefixedIfServer(note.text, note.fromServer)
         column.addView(noteCard(
             text = if (companyName.isBlank()) {
-                SearchTextHighlighter.highlightedText(note.text, highlightQuery, colors.text)
+                SearchTextHighlighter.highlightedText(textValue, highlightQuery, colors.text)
             } else {
-                companyScopedText(companyName, note.text, highlightQuery, colors.text)
+                companyScopedText(companyName, textValue, highlightQuery, colors.text)
             },
             colors = colors,
             maxLines = 3,
