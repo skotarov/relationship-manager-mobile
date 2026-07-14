@@ -38,6 +38,7 @@ class ServerNoteEditActivity : Activity() {
             gravity = Gravity.TOP or Gravity.START
             hint = "Бележка"
         }
+        val deleteButton = Button(this).apply { text = "Изтрий" }
         val saveButton = Button(this).apply { text = "Запази" }
         val cancelButton = Button(this).apply { text = "Отказ" }
 
@@ -64,6 +65,7 @@ class ServerNoteEditActivity : Activity() {
                 gravity = Gravity.END
                 orientation = LinearLayout.HORIZONTAL
                 setPadding(0, dp(12), 0, 0)
+                addView(deleteButton)
                 addView(cancelButton)
                 addView(saveButton)
             })
@@ -71,24 +73,55 @@ class ServerNoteEditActivity : Activity() {
         setContentView(root)
 
         cancelButton.setOnClickListener { finish() }
-        saveButton.setOnClickListener {
-            val queued = CallReportNoteOutbox.enqueueExistingServerNote(
-                context = this,
+        deleteButton.setOnClickListener {
+            queueAndClose(
                 phone = phone,
-                note = noteInput.text?.toString().orEmpty(),
-                serverClientEventId = clientEventId,
+                note = "",
+                clientEventId = clientEventId,
                 direction = direction,
                 callAt = callAt,
-                durationSeconds = duration,
+                duration = duration,
+                successMessage = "Изтривам. Синхронизирам…",
             )
-            if (!queued) {
-                Toast.makeText(this, "Бележката не може да бъде записана.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
-            Toast.makeText(this, "Запазено. Синхронизирам…", Toast.LENGTH_SHORT).show()
-            finish()
         }
+        saveButton.setOnClickListener {
+            queueAndClose(
+                phone = phone,
+                note = noteInput.text?.toString().orEmpty(),
+                clientEventId = clientEventId,
+                direction = direction,
+                callAt = callAt,
+                duration = duration,
+                successMessage = "Запазено. Синхронизирам…",
+            )
+        }
+    }
+
+    private fun queueAndClose(
+        phone: String,
+        note: String,
+        clientEventId: String,
+        direction: String,
+        callAt: Long,
+        duration: Long,
+        successMessage: String,
+    ) {
+        val queued = CallReportNoteOutbox.enqueueExistingServerNote(
+            context = this,
+            phone = phone,
+            note = note,
+            serverClientEventId = clientEventId,
+            direction = direction,
+            callAt = callAt,
+            durationSeconds = duration,
+        )
+        if (!queued) {
+            Toast.makeText(this, "Бележката не може да бъде записана.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        sendBroadcast(Intent(PostCallOverlayService.ACTION_NOTES_CHANGED).setPackage(packageName))
+        Toast.makeText(this, successMessage, Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
