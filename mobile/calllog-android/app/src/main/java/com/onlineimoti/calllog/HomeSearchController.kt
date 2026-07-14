@@ -82,8 +82,8 @@ internal class HomeSearchController(
                 .drop(page * currentPageSize)
                 .take(currentPageSize)
             val localCallNotes = HomeCallNotesResolver.localNotes(context, calls)
-            val clientSearchCallNotes = if (crmContactsMode && query.trim().isNotBlank()) {
-                serverSearchCallNotes(calls, query)
+            val clientLatestCallNotes = if (crmContactsMode) {
+                HomeCrmClientServerNotes.latestCallNotes(context.applicationContext, calls)
             } else {
                 emptyMap()
             }
@@ -91,7 +91,7 @@ internal class HomeSearchController(
                 calls = calls,
                 contactNotesByNumber = contactNotesForRenderedSearch(calls, crmContactsMode),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
-                callNotesByCall = localCallNotes + clientSearchCallNotes,
+                callNotesByCall = localCallNotes + clientLatestCallNotes,
             )
             if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
@@ -274,9 +274,10 @@ internal class HomeSearchController(
     ): Map<String, String> {
         val notes = HomeCallPageLoader.contactNotes(context, calls).toMutableMap()
         if (crmContactsMode) {
-            // Clients search results are canonical server contacts. A matching server
-            // NOTE belongs to the blue/call-note lane, not the yellow local/general
-            // lane. The row identity/company label already carries non-note matches.
+            // Clients search results are canonical server contacts. Server blue notes
+            // are rendered through callNotesByCall. Yellow server main notes come
+            // from company scope labels, so matched note snippets must not be pushed
+            // into the local/general yellow lane.
             return notes
         }
         calls.forEach { call ->
@@ -285,66 +286,6 @@ internal class HomeSearchController(
             if (key.isNotBlank() && snippet.isNotBlank()) notes[key] = snippet
         }
         return notes
-    }
-
-    /**
-     * contacts_lookup.php returns contacts matched by the server. For the visible
-     * Clients rows, load server History and draw the matching NOTE as a blue note,
-     * because it is conversation/server history data, not a local yellow note.
-     */
-    private fun serverSearchCallNotes(calls: List<PhoneCallRecord>, query: String): Map<String, HomeCallNote> {
-        if (calls.isEmpty()) return emptyMap()
-        val terms = SearchQueryTerms.from(query)
-        if (terms.isEmpty) return emptyMap()
-        val config = ConfigStore.load(context.applicationContext)
-        if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
-        val requestedKeys = calls.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }
-            .filterTo(linkedSetOf()) { it.isNotBlank() }
-        if (requestedKeys.isEmpty()) return emptyMap()
-        val phones = calls.map { it.number }.distinctBy(HomeCallPageLoader::noteKey)
-        val history = runCatching {
-            CallReportHistoryLookupClient.lookupMany(config, phones, context.applicationContext)
-        }.getOrDefault(CallReportHistoryLookupResult())
-        val rowByPhoneKey = calls.associateBy { HomeCallPageLoader.noteKey(it.number) }
-        val latest = linkedMapOf<String, Pair<Long, HomeCallNote>>()
-        history.events.forEach { event ->
-            val phoneKey = HomeCallPageLoader.noteKey(event.phone)
-            if (phoneKey.isBlank() || phoneKey !in requestedKeys) return@forEach
-            if (!event.communicationType.equals("note", ignoreCase = true)) return@forEach
-            if (event.note.trim().isBlank()) return@forEach
-            if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
-            val snippet = searchSnippetFromEvent(event, terms)
-            if (snippet.isBlank()) return@forEach
-            val row = rowByPhoneKey[phoneKey] ?: return@forEach
-            val changedAt = maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs)
-            val key = HomeCallNotesResolver.keyFor(row)
-            val note = HomeCallNote(
-                text = event.note.trim(),
-                updatedAtMs = changedAt,
-                fromServer = true,
-                authorName = event.authorBrokerName.trim(),
-                companyId = event.companyId.trim(),
-                serverClientEventId = event.clientEventId.trim(),
-                editable = !isOtherBrokerAuthor(event, history.principal),
-            )
-            val current = latest[key]
-            if (current == null || changedAt >= current.first) latest[key] = changedAt to note
-        }
-        return latest.mapValues { it.value.second }
-    }
-
-    private fun searchSnippetFromEvent(event: CallReportHistoryEvent, terms: SearchQueryTerms): String {
-        val note = event.note.trim()
-        if (note.isNotBlank() && containsAnyTextTerm(note, terms)) return note
-        if (note.isNotBlank() && terms.matches(note, event.phone, event.contactName, event.companyId)) return note
-        return listOf(event.contactName, event.phone, event.companyId)
-            .firstOrNull { value -> value.isNotBlank() && terms.matches(value) }
-            .orEmpty()
-    }
-
-    private fun containsAnyTextTerm(value: String, terms: SearchQueryTerms): Boolean {
-        val lower = value.lowercase()
-        return terms.textTerms().any { term -> lower.contains(term) }
     }
 
     /**
@@ -393,19 +334,6 @@ internal class HomeSearchController(
     ): Boolean {
         if (expected == null) return true
         return scope != null && expected == HomeCrmFilterStore.load(context, scope)
-    }
-
-    private fun isOtherBrokerAuthor(
-        event: CallReportHistoryEvent,
-        principal: CallReportHistoryPrincipal,
-    ): Boolean {
-        val authorId = event.authorBrokerId.trim()
-        val authorName = event.authorBrokerName.trim()
-        val currentId = principal.brokerId.trim()
-        val currentName = principal.brokerName.trim()
-        if (authorId.isNotBlank() && currentId.isNotBlank()) return authorId != currentId
-        if (authorName.isNotBlank() && currentName.isNotBlank()) return !authorName.equals(currentName, ignoreCase = true)
-        return false
     }
 
     private fun showSearchCount(count: Int) {
