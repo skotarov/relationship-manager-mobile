@@ -9,23 +9,64 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/contact_link_title"
+        android:text="@string/linked_app_section_title"
         android:textColor="@color/calllog_text"
         android:textSize="16sp"
         android:textStyle="bold" />
 
     <CheckBox
-        android:id="@+id/showCrmActionButtonsCheckBox"
+        android:id="@+id/useLinkedContactIntegrationCheckBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
+        android:checked="true"
+        android:text="@string/linked_app_enabled" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/linked_app_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <CheckBox
+        android:id="@+id/showCrmActionButtonsCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:checked="true"
         android:text="@string/contact_link_show_crm_buttons" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="18dp"
+        android:text="@string/contact_share_section_title"
+        android:textColor="@color/calllog_text"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <CheckBox
+        android:id="@+id/useContactShareIntegrationCheckBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:checked="true"
+        android:text="@string/contact_share_enabled" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="@string/contact_share_description"
+        android:textColor="@color/calllog_muted_text"
+        android:textSize="13sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
         android:text="@string/contact_link_bulk_title"
         android:textColor="@color/calllog_text"
         android:textSize="15sp"
