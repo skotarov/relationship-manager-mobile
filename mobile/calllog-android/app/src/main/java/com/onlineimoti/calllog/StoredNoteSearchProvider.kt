@@ -49,7 +49,8 @@ internal object StoredNoteSearchProvider {
         synchronized(cacheLock) {
             if (cachedAtMs > 0L && cachedScope == scope && now - cachedAtMs < CACHE_MS) return cachedNotes
         }
-        val loaded = generalNotes(context) + callNotes(context)
+        val callNotes = callNotes(context)
+        val loaded = generalNotes(context, callNotes) + callNotes
         synchronized(cacheLock) {
             cachedNotes = loaded
             cachedAtMs = now
@@ -58,12 +59,23 @@ internal object StoredNoteSearchProvider {
         }
     }
 
-    private fun generalNotes(context: Context): List<StoredNoteSearchResult> {
-        val fromActiveStore = LocalNotesFileStore.storedGeneralNotes(context).map { note ->
+    private fun generalNotes(
+        context: Context,
+        callNotes: List<StoredNoteSearchResult>,
+    ): List<StoredNoteSearchResult> {
+        val callNoteTextsByPhoneKey = callNotes
+            .groupBy { it.phoneKey }
+            .mapValues { (_, rows) -> rows.map { it.note } }
+        val fromActiveStore = LocalNotesFileStore.storedGeneralNotes(context).mapNotNull { note ->
+            val safeNote = LocalNoteMirrorClassifier.safeGeneralNote(
+                candidate = note.note,
+                callNoteTexts = callNoteTextsByPhoneKey[note.phoneKey].orEmpty(),
+            )
+            if (safeNote.isBlank()) return@mapNotNull null
             StoredNoteSearchResult(
                 phone = note.phone,
                 phoneKey = note.phoneKey,
-                note = note.note,
+                note = safeNote,
                 noteAt = note.noteAt,
                 callAt = 0L,
                 direction = "",
@@ -81,10 +93,15 @@ internal object StoredNoteSearchProvider {
             val note = (value as? String).orEmpty().trim()
             val phoneKey = PhoneNormalizer.key(key)
             if (phoneKey.isBlank() || note.isBlank()) return@mapNotNull null
+            val safeNote = LocalNoteMirrorClassifier.safeGeneralNote(
+                candidate = note,
+                callNoteTexts = callNoteTextsByPhoneKey[phoneKey].orEmpty(),
+            )
+            if (safeNote.isBlank()) return@mapNotNull null
             StoredNoteSearchResult(
                 phone = key,
                 phoneKey = phoneKey,
-                note = note,
+                note = safeNote,
                 noteAt = 0L,
                 callAt = 0L,
                 direction = "",
