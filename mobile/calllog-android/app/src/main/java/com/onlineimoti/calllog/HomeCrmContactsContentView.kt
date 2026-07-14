@@ -54,6 +54,7 @@ internal class HomeCrmContactsContentView(
                     displayName = data.contactNamesByNumber[key].orEmpty().ifBlank { contact.displayName },
                     contactNote = data.contactNotesByNumber[key],
                     companyLabels = companyLabels[key],
+                    latestCallNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(contact)],
                     highlightQuery = "",
                 ),
             )
