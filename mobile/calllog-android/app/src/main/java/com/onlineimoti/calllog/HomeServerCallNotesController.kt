@@ -93,14 +93,15 @@ internal class HomeServerCallNotesController(
             if (note.isBlank()) return@forEach
             val changedAt = maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs)
             val current = latest[key]
-            if (current == null || changedAt >= current.first) latest[key] = changedAt to note
+            if (current == null || changedAt >= current.first) latest[key] = changedAt to ServerNoteVisuals.prefixed(note)
         }
         if (latest.isEmpty()) return existing
 
         val merged = existing.toMutableMap()
         latest.forEach { (key, value) ->
             // Local/general notes still win while editing offline; server fills the
-            // blank rows that History can already display.
+            // blank rows that History can already display. Server text is visually
+            // marked so it cannot look like an ordinary local yellow note.
             if (merged[key].isNullOrBlank()) merged[key] = value.second
         }
         return merged
