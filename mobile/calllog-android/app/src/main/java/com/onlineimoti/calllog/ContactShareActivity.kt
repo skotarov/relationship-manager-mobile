@@ -26,6 +26,11 @@ class ContactShareActivity : Activity() {
     }
 
     private fun handleSharedContact(sourceIntent: Intent?) {
+        if (!ConfigStore.load(this).useContactShareIntegration) {
+            finish()
+            return
+        }
+
         val sharedText = unfoldVCardLines(readSharedText(sourceIntent))
         val phone = extractPhone(sharedText)
         val title = extractName(sharedText).ifBlank { phone }
