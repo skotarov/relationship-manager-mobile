@@ -118,7 +118,7 @@ internal class CallReportMergedHistoryController(
             // Do not infer a main note from blank call metadata. Some server responses
             // omit direction/duration for a conversation note; only the explicit
             // topic/general record id is allowed to populate the yellow main-note card.
-            if (!isExplicitCompanyMainNote(event.clientEventId)) return@forEach
+            if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
             val current = latestByCompany[event.companyId]
             if (current == null || event.updatedAtMs >= current.updatedAtMs) latestByCompany[event.companyId] = event
         }
@@ -140,6 +140,22 @@ internal class CallReportMergedHistoryController(
                 pending = pending,
             )
         }
+    }
+
+    /** Server main/general note saved without a company. It is shown only when it truly exists. */
+    fun unscopedServerMainNote(phone: String): CallReportHistoryEvent? {
+        if (!serverLoaded || phone.isBlank()) return null
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        if (phoneKey.isBlank()) return null
+        return serverHistory.events
+            .asSequence()
+            .filter { event ->
+                event.companyId.isBlank() &&
+                    event.note.trim().isNotBlank() &&
+                    HomeCallPageLoader.noteKey(event.phone) == phoneKey &&
+                    CallReportServerNoteClassifier.isExplicitGeneralNote(event)
+            }
+            .maxByOrNull { event -> maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs) }
     }
 
     fun addSection(
@@ -209,9 +225,10 @@ internal class CallReportMergedHistoryController(
 
     private fun serverNotesAndSms(remoteEnabled: Boolean): List<CallReportHistoryEvent> {
         if (!remoteEnabled) return emptyList()
-        return serverHistory.events.filter {
-            it.communicationType.equals("sms", ignoreCase = true) ||
-                it.communicationType.equals("note", ignoreCase = true)
+        return serverHistory.events.filter { event ->
+            event.communicationType.equals("sms", ignoreCase = true) ||
+                (event.communicationType.equals("note", ignoreCase = true) &&
+                    !CallReportServerNoteClassifier.isExplicitGeneralNote(event))
         }
     }
 
@@ -251,10 +268,6 @@ internal class CallReportMergedHistoryController(
         var current = error
         while (current.cause != null && current.cause !== current) current = current.cause!!
         return current
-    }
-
-    private fun isExplicitCompanyMainNote(clientEventId: String): Boolean {
-        return clientEventId.contains(":topic:general:") || clientEventId.contains(":note:general:")
     }
 
     private data class LocalSnapshot(
