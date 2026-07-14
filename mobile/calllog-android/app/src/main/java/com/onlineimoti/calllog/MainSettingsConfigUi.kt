@@ -29,6 +29,8 @@ object MainSettingsConfigUi {
         popup.overlayPopupOptionsGroup.visibility = if (config.useOverlayPopups) View.VISIBLE else View.GONE
         popup.useCustomStartPopupCheckBox.isChecked = config.useCustomStartPopup
         popup.useCustomEndPopupCheckBox.isChecked = config.useCustomEndPopup
+        contactLink.useLinkedContactIntegrationCheckBox.isChecked = config.useLinkedContactIntegration
+        contactLink.useContactShareIntegrationCheckBox.isChecked = config.useContactShareIntegration
         contactLink.showCrmActionButtonsCheckBox.isChecked = config.showCrmActionButtons
         contactLink.showBulkContactSyncNotificationsCheckBox.isChecked = config.showBulkContactSyncNotifications
         when (config.appLanguage) {
@@ -104,6 +106,8 @@ object MainSettingsConfigUi {
             useFullScreenPopup = currentConfig.useFullScreenPopup,
             useInternalSmsComposer = defaultSms.useInternalSmsComposerCheckBox.isChecked,
             openSmsIconToHistory = defaultSms.openSmsIconToHistoryCheckBox.isChecked,
+            useLinkedContactIntegration = contactLink.useLinkedContactIntegrationCheckBox.isChecked,
+            useContactShareIntegration = contactLink.useContactShareIntegrationCheckBox.isChecked,
         )
     }
 }
