@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_integrations_section">Integrations</string>
+    <string name="settings_integrations_description">Choose which Android system entry points Relationship Manager should use.</string>
+    <string name="linked_app_section_title">Linked app in Android Contacts</string>
+    <string name="linked_app_enabled">Show Relationship Manager as a linked app in contacts</string>
+    <string name="linked_app_description">Adds a Relationship Manager row inside matching Android contacts and opens the number history from there.</string>
+    <string name="contact_share_section_title">Share contact</string>
+    <string name="contact_share_enabled">Show Relationship Manager when sharing a contact/vCard</string>
+    <string name="contact_share_description">When another app shares a contact, Relationship Manager can open the history for the shared phone number.</string>
+</resources>
