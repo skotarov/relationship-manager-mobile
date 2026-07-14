@@ -53,13 +53,9 @@ internal object HomeCompanyGeneralNoteLabels {
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
             if (phoneKey.isBlank() || phoneKey !in requestedPhoneKeys) continue
 
-            // Yellow Home labels must match the History/editor rule: only an
-            // explicitly emitted company main-note id can populate the yellow
-            // card. Do not infer a main note from blank call metadata because
-            // some server call-note responses omit direction/duration.
-            val isGeneralNote = event.clientEventId.contains(":topic:general:") ||
-                event.clientEventId.contains(":note:general:")
-            if (isGeneralNote) {
+            // Same rule as HomeServerCallNotesController and History/editor:
+            // yellow company main notes only come from explicit general records.
+            if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) {
                 labelFor(phoneKey, event.companyId).setServerGeneralNote(
                     text = event.note,
                     changedAtMs = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs),
