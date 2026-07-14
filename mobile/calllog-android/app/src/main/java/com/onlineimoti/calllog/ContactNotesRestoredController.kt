@@ -126,8 +126,10 @@ internal class ContactNotesRestoredController(
             root = root,
             phone = phone,
             companyNotes = historyController.companyMainNotes(phone),
+            unscopedServerMainNote = historyController.unscopedServerMainNote(phone),
             showCompanyNotes = historyController.hasCompanyMainNoteScope(),
             onEditCompany = ::openGeneralNoteEditor,
+            onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
             phaseBarForCompany = if (phaseControlsVisible) {
                 { companyId ->
                     phaseUi.phaseBar(phone, companyId, true) {
@@ -217,6 +219,23 @@ internal class ContactNotesRestoredController(
             title = titleText,
             companyId = companyId,
         )
+    }
+
+    private fun openUnscopedServerMainNoteEditor(event: CallReportHistoryEvent) {
+        val clientEventId = event.clientEventId.trim()
+        if (clientEventId.isBlank()) {
+            Toast.makeText(activity, "Сървърната бележка няма ID за редакция.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        activity.startActivity(Intent(activity, ServerNoteEditActivity::class.java).apply {
+            putExtra(ServerNoteEditActivity.EXTRA_PHONE, phone)
+            putExtra(ServerNoteEditActivity.EXTRA_TITLE, titleText)
+            putExtra(ServerNoteEditActivity.EXTRA_DIRECTION, "")
+            putExtra(ServerNoteEditActivity.EXTRA_CALL_AT, event.occurredAtMs)
+            putExtra(ServerNoteEditActivity.EXTRA_DURATION, 0L)
+            putExtra(ServerNoteEditActivity.EXTRA_SERVER_CLIENT_EVENT_ID, clientEventId)
+            putExtra(ServerNoteEditActivity.EXTRA_INITIAL_NOTE_TEXT, event.note)
+        })
     }
 
     private fun openCallNoteEditor(note: ContactCallNote) {
