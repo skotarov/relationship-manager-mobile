@@ -26,7 +26,7 @@ internal class MainSettingsNavigationController(
         binding.settingsDetailBackButton.setOnClickListener { showMenu() }
         binding.settingsMenuGroup.settingsApplicationButton.setOnClickListener { showSection(SettingsSection.STATUS) }
         binding.settingsMenuGroup.settingsPopupButton.setOnClickListener { showSection(SettingsSection.CALLS) }
-        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.CONTACTS) }
+        binding.settingsMenuGroup.settingsRmContactsButton.setOnClickListener { showSection(SettingsSection.INTEGRATIONS) }
         binding.settingsMenuGroup.settingsServerButton.setOnClickListener { showSection(SettingsSection.SERVER) }
         binding.settingsMenuGroup.settingsRegistrationButton.setOnClickListener { showSection(SettingsSection.REGISTRATION) }
         binding.settingsMenuGroup.settingsDataArchiveButton.setOnClickListener { showSection(SettingsSection.DATA_AND_BACKUP) }
@@ -80,6 +80,9 @@ internal class MainSettingsNavigationController(
 
     private fun restoreServerSettingsArchive() {
         val code = archiveCode() ?: return
+        when (val result = ServerSettingsBackupStore.RestoreResult.Restored::class) {
+            else -> Unit
+        }
         when (val result = ServerSettingsArchiveFile.restore(activity, ConfigStore.load(activity), code)) {
             is ServerSettingsBackupStore.RestoreResult.Restored -> {
                 ConfigStore.save(activity, result.config)
@@ -131,7 +134,7 @@ internal class MainSettingsNavigationController(
     private enum class SettingsSection(val titleRes: Int) {
         STATUS(R.string.settings_application_section),
         CALLS(R.string.settings_popup_section),
-        CONTACTS(R.string.settings_crm_section),
+        INTEGRATIONS(R.string.settings_integrations_section),
         SERVER(R.string.settings_server_section),
         REGISTRATION(R.string.settings_registration_section),
         DATA_AND_BACKUP(R.string.settings_storage_section),
@@ -142,7 +145,7 @@ internal class MainSettingsNavigationController(
             return when (this) {
                 STATUS -> binding.settingsApplicationGroup.root
                 CALLS -> binding.settingsPopupGroup.root
-                CONTACTS -> binding.settingsRmContactsGroup.root
+                INTEGRATIONS -> binding.settingsRmContactsGroup.root
                 SERVER -> binding.settingsServerGroup.root
                 REGISTRATION -> binding.settingsRegistrationGroup.root
                 DATA_AND_BACKUP -> binding.settingsDataArchiveGroup.root
