@@ -97,11 +97,12 @@ internal class HomeContentRenderer(
         val calls = data.calls.sortedByDescending { it.startedAt }
         val filtered = activePhoneFilter().isNotBlank()
         val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
+        val contactNotesByNumber = safeContactNotesByNumber(data.contactNotesByNumber, data.callNotesByCall)
         // Important: do not read SAF/local-note files from this renderer. It runs
         // on the main thread. HomeCallsLoader already loads notes in a background
         // executor, then calls this method with a complete snapshot.
         currentCalls = calls
-        currentContactNotesByNumber = data.contactNotesByNumber
+        currentContactNotesByNumber = contactNotesByNumber
         currentContactNamesByNumber = namesByNumber
         currentCallNotesByCall = data.callNotesByCall
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
@@ -114,12 +115,34 @@ internal class HomeContentRenderer(
             val key = HomeCallPageLoader.noteKey(call.number)
             binding.homeCallsContainer.addView(rowRenderer.compactCallRow(
                 call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
-                if (filtered) null else data.contactNotesByNumber[key], if (filtered) null else labels[key],
+                if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
                 data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
             ))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
+    }
+
+    private fun safeContactNotesByNumber(
+        contactNotes: Map<String, String>,
+        callNotes: Map<String, HomeCallNote>,
+    ): Map<String, String> {
+        if (contactNotes.isEmpty() || callNotes.isEmpty()) return contactNotes
+        val callNoteTextsByPhoneKey = callNotes
+            .filterValues { note -> note.text.isNotBlank() }
+            .entries
+            .groupBy(
+                keySelector = { entry -> entry.key.substringBefore("|") },
+                valueTransform = { entry -> entry.value.text },
+            )
+        if (callNoteTextsByPhoneKey.isEmpty()) return contactNotes
+        return contactNotes.mapNotNull { (key, note) ->
+            val safeNote = LocalNoteMirrorClassifier.safeGeneralNote(
+                candidate = note,
+                callNoteTexts = callNoteTextsByPhoneKey[key].orEmpty(),
+            )
+            if (safeNote.isBlank()) null else key to safeNote
+        }.toMap()
     }
 
     private fun normalizedContactNames(
