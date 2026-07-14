@@ -5,7 +5,8 @@ import android.content.Context
 import android.provider.ContactsContract
 
 internal object CallReportLegacyContactWriter {
-    private const val ACCOUNT_NAME = "Call Report"
+    private const val HISTORY_TITLE = "Relationship Manager"
+    private const val HISTORY_DETAIL = "История"
 
     fun link(context: Context, phone: String, displayName: String): Boolean {
         val cleanedPhone = PhoneNormalizer.normalize(phone)
@@ -43,15 +44,21 @@ internal object CallReportLegacyContactWriter {
         if (cleanedPhone.isBlank() || !CallReportLegacyContactLookup.hasContactPermissions(context)) return false
 
         CrmContactAccountStore.ensureAccount(context)
-        if (CallReportLegacyContactLookup.findRawContactId(context, cleanedPhone) > 0L) return true
-
+        val rawId = CallReportLegacyContactLookup.findRawContactId(context, cleanedPhone)
         val operations = arrayListOf<ContentProviderOperation>()
-        addCreateOperations(
-            operations = operations,
-            phone = cleanedPhone,
-            title = cleanedPhone,
-            existingRawContactId = CallReportLegacyContactLookup.findExistingRawContactId(context, cleanedPhone),
-        )
+        if (rawId > 0L) {
+            // Existing RM raw contacts created by older versions may miss the visible
+            // custom history row after account-name migrations. Re-upsert it instead
+            // of returning early, so the Android Contacts app shows Relationship Manager again.
+            addUpdateOperations(operations, rawId, cleanedPhone, cleanedPhone, context)
+        } else {
+            addCreateOperations(
+                operations = operations,
+                phone = cleanedPhone,
+                title = cleanedPhone,
+                existingRawContactId = CallReportLegacyContactLookup.findExistingRawContactId(context, cleanedPhone),
+            )
+        }
         return runCatching {
             context.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations)
             CallReportLegacyContactLookup.findRawContactId(context, cleanedPhone) > 0L
@@ -67,7 +74,7 @@ internal object CallReportLegacyContactWriter {
         operations.add(
             ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
                 .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, CallReportContactIntegration.ACCOUNT_TYPE)
-                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, ACCOUNT_NAME)
+                .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, CrmContactAccountStore.ACCOUNT_NAME)
                 .withValue(ContactsContract.RawContacts.SYNC1, phone)
                 .withValue(ContactsContract.RawContacts.AGGREGATION_MODE, ContactsContract.RawContacts.AGGREGATION_MODE_DEFAULT)
                 .build(),
@@ -85,7 +92,7 @@ internal object CallReportLegacyContactWriter {
                 .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
                 .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
                 .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
-                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, "Call Report")
+                .withValue(ContactsContract.CommonDataKinds.Phone.LABEL, HISTORY_TITLE)
                 .build(),
         )
         operations.add(
@@ -93,8 +100,8 @@ internal object CallReportLegacyContactWriter {
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
                 .withValue(ContactsContract.Data.MIMETYPE, CallReportContactIntegration.HISTORY_MIME_TYPE)
                 .withValue(ContactsContract.Data.DATA1, phone)
-                .withValue(ContactsContract.Data.DATA2, "Call Report")
-                .withValue(ContactsContract.Data.DATA3, "История")
+                .withValue(ContactsContract.Data.DATA2, HISTORY_TITLE)
+                .withValue(ContactsContract.Data.DATA3, HISTORY_DETAIL)
                 .build(),
         )
         if (existingRawContactId > 0L) {
@@ -136,7 +143,7 @@ internal object CallReportLegacyContactWriter {
             insertValues = mapOf(
                 ContactsContract.CommonDataKinds.Phone.NUMBER to phone,
                 ContactsContract.CommonDataKinds.Phone.TYPE to ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE,
-                ContactsContract.CommonDataKinds.Phone.LABEL to "Call Report",
+                ContactsContract.CommonDataKinds.Phone.LABEL to HISTORY_TITLE,
             ),
         )
         upsertDataRow(
@@ -146,8 +153,8 @@ internal object CallReportLegacyContactWriter {
             mimeType = CallReportContactIntegration.HISTORY_MIME_TYPE,
             insertValues = mapOf(
                 ContactsContract.Data.DATA1 to phone,
-                ContactsContract.Data.DATA2 to "Call Report",
-                ContactsContract.Data.DATA3 to "История",
+                ContactsContract.Data.DATA2 to HISTORY_TITLE,
+                ContactsContract.Data.DATA3 to HISTORY_DETAIL,
             ),
         )
     }
