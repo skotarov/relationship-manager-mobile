@@ -141,6 +141,7 @@ internal object RmContactSyncLayerStore {
     }
 
     private fun ensureLayer(context: Context, phone: String, title: String): Boolean {
+        if (!ConfigStore.load(context).useLinkedContactIntegration) return true
         if (!RmContactPermissions.canReadAndWriteContacts(context)) return false
         val displayName = title.trim()
             .ifBlank { ContactGroupFilter.resolveDisplayName(context, phone).orEmpty() }
