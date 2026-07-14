@@ -48,6 +48,11 @@ internal class MainContactsCleanupController(
     }
 
     fun syncAllRmContacts() {
+        if (!ConfigStore.load(activity).useLinkedContactIntegration) {
+            setStatus("Включи интеграцията ‘Свързано приложение в контактите’, за да синхронизираш RM контактите.")
+            renderSettingsButton(BulkContactsTaskRunner.currentState())
+            return
+        }
         val state = BulkContactsTaskRunner.currentState()
         if (state.running && state.action == BulkContactsTaskAction.REGISTER) {
             BulkContactsTaskRunner.cancel()
@@ -170,6 +175,12 @@ internal class MainContactsCleanupController(
     }
 
     private fun renderSettingsButton(state: BulkContactsTaskState) {
+        val integrationEnabled = ConfigStore.load(activity).useLinkedContactIntegration
+        if (!integrationEnabled) {
+            syncButton.isEnabled = false
+            syncButton.text = activity.getString(R.string.contact_link_sync_all_button)
+            return
+        }
         if (state.running) {
             syncButton.isEnabled = state.action == BulkContactsTaskAction.REGISTER && !state.stopping
             syncButton.text = activity.getString(if (state.stopping) R.string.contacts_sync_stopping else R.string.contacts_sync_stop)
