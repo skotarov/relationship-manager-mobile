@@ -50,6 +50,7 @@ internal class HomeCrmContactsLoader(
                     contactNamesByNumber = page.associate { call ->
                         HomeCallPageLoader.noteKey(call.number) to call.displayName
                     },
+                    callNotesByCall = HomeCrmClientServerNotes.latestCallNotes(appContext, page),
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
