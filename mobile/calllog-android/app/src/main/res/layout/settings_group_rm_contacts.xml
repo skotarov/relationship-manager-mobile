@@ -50,6 +50,10 @@
             layout="@layout/section_default_sms" />
 
         <include
+            android:id="@+id/callScreeningIntegrationSection"
+            layout="@layout/section_call_screening_integration" />
+
+        <include
             android:id="@+id/contactLinkSection"
             layout="@layout/section_contact_link" />
     </LinearLayout>
