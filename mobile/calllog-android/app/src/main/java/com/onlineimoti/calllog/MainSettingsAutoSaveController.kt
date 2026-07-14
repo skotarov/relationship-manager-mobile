@@ -43,6 +43,8 @@ internal class MainSettingsAutoSaveController(
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
         defaultSms.useInternalSmsComposerCheckBox.autoSaveCheckedChanges()
         defaultSms.openSmsIconToHistoryCheckBox.autoSaveCheckedChanges()
+        contactLink.useLinkedContactIntegrationCheckBox.autoSaveCheckedChanges()
+        contactLink.useContactShareIntegrationCheckBox.autoSaveCheckedChanges()
         contactLink.showCrmActionButtonsCheckBox.autoSaveCheckedChanges()
         contactLink.showBulkContactSyncNotificationsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
