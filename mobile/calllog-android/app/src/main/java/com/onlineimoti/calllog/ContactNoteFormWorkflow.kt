@@ -86,6 +86,10 @@ internal object ContactNoteFormWorkflow {
     /** Returns null while an eligible CRM/unknown contact still needs a destination selection. */
     fun selectedTopicOrLocalFallback(state: ContactNoteTopicState): String? {
         if (!state.visible || state.localOnly) return ContactNoteTopicState.LOCAL_COMPANY_ID
+        // Explicit Local is a complete destination even while the server company
+        // list is still loading. Blocking it made the History main-note Local card
+        // look as if it did not save unless a remote/company destination was used.
+        if (state.selectedCompanyId == ContactNoteTopicState.LOCAL_COMPANY_ID) return ContactNoteTopicState.LOCAL_COMPANY_ID
         // Without a cached list, save locally and retain a durable reminder to choose
         // a firm later. The user never loses the note because of a connection error.
         if (state.loadError.isNotBlank()) return ContactNoteTopicState.LOCAL_COMPANY_ID
