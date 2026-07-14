@@ -146,8 +146,8 @@ object CallReportStableCrmContactWriter {
             CallReportContactIntegration.HISTORY_MIME_TYPE,
             mapOf(
                 ContactsContract.Data.DATA1 to fields.originalPhone,
-                ContactsContract.Data.DATA2 to fields.displayName,
-                ContactsContract.Data.DATA3 to CrmContactAccountStore.ACCOUNT_NAME,
+                ContactsContract.Data.DATA2 to CrmContactAccountStore.ACCOUNT_NAME,
+                ContactsContract.Data.DATA3 to "История",
             ),
         )
     }
