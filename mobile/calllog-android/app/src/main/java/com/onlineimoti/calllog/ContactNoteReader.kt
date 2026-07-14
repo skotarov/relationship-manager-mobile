@@ -26,21 +26,12 @@ object ContactNoteReader {
 
     fun generalNoteForPhone(context: Context, phoneNumber: String): String {
         if (phoneNumber.isBlank()) return ""
-        val activeStoreNote = LocalNoteMirrorClassifier.safeGeneralNote(
-            context = context,
-            phoneNumber = phoneNumber,
-            candidate = LocalNotesFileStore.profileGeneralNote(context, phoneNumber),
-        )
-        // When the user selected an external/SAF folder, that folder is the source
-        // of truth. Do not fall back to SharedPreferences from the app install,
-        // because History would show stale private-install notes while Call Log
-        // works from the selected folder.
+        val activeStoreNote = LocalNotesFileStore.profileGeneralNote(context, phoneNumber).trim()
+        // Explicitly saved local main notes must stay visible even when their text
+        // matches a blue/call note. Mirror filtering belongs only to legacy import
+        // paths; applying it here made a newly saved local main note look unsaved.
         if (usesExternalLocalNotesStore(context)) return activeStoreNote
-        val legacyPrefsNote = LocalNoteMirrorClassifier.safeGeneralNote(
-            context = context,
-            phoneNumber = phoneNumber,
-            candidate = readLocalNote(context, phoneNumber),
-        )
+        val legacyPrefsNote = readLocalNote(context, phoneNumber)
         return legacyPrefsNote.ifBlank { activeStoreNote }
     }
 
