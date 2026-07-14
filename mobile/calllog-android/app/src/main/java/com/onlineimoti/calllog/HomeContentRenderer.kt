@@ -97,10 +97,13 @@ internal class HomeContentRenderer(
         val calls = data.calls.sortedByDescending { it.startedAt }
         val filtered = activePhoneFilter().isNotBlank()
         val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
-        val contactNotesByNumber = safeContactNotesByNumber(data.contactNotesByNumber, data.callNotesByCall)
+        val contactNotesByNumber = data.contactNotesByNumber
         // Important: do not read SAF/local-note files from this renderer. It runs
         // on the main thread. HomeCallsLoader already loads notes in a background
-        // executor, then calls this method with a complete snapshot.
+        // executor, then calls this method with a complete snapshot. Source-level
+        // readers decide what is a true yellow/general note; the renderer must not
+        // hide an explicitly saved local main note just because its text matches a
+        // blue call note.
         currentCalls = calls
         currentContactNotesByNumber = contactNotesByNumber
         currentContactNamesByNumber = namesByNumber
@@ -121,28 +124,6 @@ internal class HomeContentRenderer(
             ))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
-    }
-
-    private fun safeContactNotesByNumber(
-        contactNotes: Map<String, String>,
-        callNotes: Map<String, HomeCallNote>,
-    ): Map<String, String> {
-        if (contactNotes.isEmpty() || callNotes.isEmpty()) return contactNotes
-        val callNoteTextsByPhoneKey = callNotes
-            .filterValues { note -> note.text.isNotBlank() }
-            .entries
-            .groupBy(
-                keySelector = { entry -> entry.key.substringBefore("|") },
-                valueTransform = { entry -> entry.value.text },
-            )
-        if (callNoteTextsByPhoneKey.isEmpty()) return contactNotes
-        return contactNotes.mapNotNull { (key, note) ->
-            val safeNote = LocalNoteMirrorClassifier.safeGeneralNote(
-                candidate = note,
-                callNoteTexts = callNoteTextsByPhoneKey[key].orEmpty(),
-            )
-            if (safeNote.isBlank()) null else key to safeNote
-        }.toMap()
     }
 
     private fun normalizedContactNames(
