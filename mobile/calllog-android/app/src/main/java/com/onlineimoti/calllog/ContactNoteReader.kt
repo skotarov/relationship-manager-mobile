@@ -82,16 +82,36 @@ object ContactNoteReader {
     private fun safeGeneralNote(context: Context, phoneNumber: String, candidate: String): String {
         val note = candidate.trim()
         if (note.isBlank()) return ""
-        // Older profile files may still mirror the latest blue/call note into a
-        // generic note field. History then shows it correctly as blue, but Home
-        // must not reuse the mirrored text as a yellow/general note for the number.
+        // Older profile/SharedPreferences records can mirror the latest blue/call note
+        // into a generic note field. History then renders it correctly as blue, but
+        // Home must not reuse the mirrored text as a yellow/general note for every row.
         return if (looksLikeExistingCallNote(context, phoneNumber, note)) "" else note
     }
 
     private fun looksLikeExistingCallNote(context: Context, phoneNumber: String, note: String): Boolean {
+        val normalizedNote = normalizedNoteText(note)
+        if (normalizedNote.isBlank()) return false
         return LocalNotesFileStore.allCallNotes(context, phoneNumber).any { callNote ->
-            callNote.note.trim() == note
+            val normalizedCallNote = normalizedNoteText(callNote.note)
+            when {
+                normalizedCallNote.isBlank() -> false
+                normalizedCallNote == normalizedNote -> true
+                normalizedNote.length >= MIRRORED_NOTE_MIN_MATCH_LENGTH && normalizedCallNote.startsWith(normalizedNote) -> true
+                normalizedCallNote.length >= MIRRORED_NOTE_MIN_MATCH_LENGTH && normalizedNote.startsWith(normalizedCallNote) -> true
+                normalizedNote.length >= MIRRORED_NOTE_STRONG_MATCH_LENGTH && normalizedCallNote.contains(normalizedNote) -> true
+                else -> false
+            }
         }
+    }
+
+    private fun normalizedNoteText(value: String): String {
+        return value.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .lowercase()
     }
 
     private fun usesExternalLocalNotesStore(context: Context): Boolean {
@@ -127,4 +147,7 @@ object ContactNoteReader {
         if (key.isBlank()) return
         context.getSharedPreferences(LOCAL_NOTE_PREFS, Context.MODE_PRIVATE).edit().putString(key, note.trim()).apply()
     }
+
+    private const val MIRRORED_NOTE_MIN_MATCH_LENGTH = 12
+    private const val MIRRORED_NOTE_STRONG_MATCH_LENGTH = 24
 }
