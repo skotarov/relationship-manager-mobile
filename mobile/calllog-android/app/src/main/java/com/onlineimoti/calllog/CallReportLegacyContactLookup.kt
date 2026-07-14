@@ -7,23 +7,22 @@ import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 
 internal object CallReportLegacyContactLookup {
-    private const val ACCOUNT_NAME = "Call Report"
-
     fun hasContactPermissions(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED
     }
 
     fun findRawContactId(context: Context, phone: String): Long {
+        val names = CrmContactAccountStore.accountNames()
         val bySync = runCatching {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
                 "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND " +
-                    "${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND " +
+                    "${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND " +
                     "${ContactsContract.RawContacts.SYNC1}=? AND " +
                     "${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME, phone),
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, names[0], names[1], names[2], phone),
                 null,
             )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L } ?: 0L
         }.getOrDefault(0L)
@@ -48,14 +47,15 @@ internal object CallReportLegacyContactLookup {
     }
 
     fun findAllRawContactIds(context: Context): List<Long> {
+        val names = CrmContactAccountStore.accountNames()
         return runCatching {
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
                 "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND " +
-                    "${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND " +
+                    "${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND " +
                     "${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME),
+                arrayOf(CallReportContactIntegration.ACCOUNT_TYPE, names[0], names[1], names[2]),
                 ContactsContract.RawContacts._ID + " ASC",
             )?.use { cursor ->
                 buildList {
@@ -67,14 +67,15 @@ internal object CallReportLegacyContactLookup {
 
     fun delete(context: Context, rawContactId: Long): Int {
         if (rawContactId <= 0L) return 0
+        val names = CrmContactAccountStore.accountNames()
         return runCatching {
             context.contentResolver.delete(
                 ContactsContract.RawContacts.CONTENT_URI,
                 "${ContactsContract.RawContacts._ID}=? AND " +
                     "${ContactsContract.RawContacts.ACCOUNT_TYPE}=? AND " +
-                    "${ContactsContract.RawContacts.ACCOUNT_NAME}=? AND " +
+                    "${ContactsContract.RawContacts.ACCOUNT_NAME} IN (?, ?, ?) AND " +
                     "${ContactsContract.RawContacts.DELETED}=0",
-                arrayOf(rawContactId.toString(), CallReportContactIntegration.ACCOUNT_TYPE, ACCOUNT_NAME),
+                arrayOf(rawContactId.toString(), CallReportContactIntegration.ACCOUNT_TYPE, names[0], names[1], names[2]),
             )
         }.getOrDefault(0)
     }
