@@ -43,6 +43,10 @@ internal object ServerCrmContactsClient {
                         val item = contacts?.optJSONObject(index) ?: continue
                         val phone = item.optString("phone").trim().ifBlank { item.optString("number").trim() }
                         if (HomeCallPageLoader.noteKey(phone).isBlank()) continue
+                        val rawSnippet = item.optString("search_match_text").trim()
+                            .ifBlank { item.optString("search_snippet").trim() }
+                            .ifBlank { item.optString("matched_note").trim() }
+                            .ifBlank { item.optString("matched_text").trim() }
                         add(
                             PhoneCallRecord(
                                 number = phone,
@@ -54,10 +58,7 @@ internal object ServerCrmContactsClient {
                                     .coerceAtLeast(item.optLong("updated_at_ms", 0L))
                                     .coerceAtLeast(item.optLong("created_at_ms", 0L)),
                                 durationSeconds = 0L,
-                                searchSnippet = item.optString("search_match_text").trim()
-                                    .ifBlank { item.optString("search_snippet").trim() }
-                                    .ifBlank { item.optString("matched_note").trim() }
-                                    .ifBlank { item.optString("matched_text").trim() },
+                                searchSnippet = ServerNoteVisuals.prefixed(rawSnippet),
                             ),
                         )
                     }
