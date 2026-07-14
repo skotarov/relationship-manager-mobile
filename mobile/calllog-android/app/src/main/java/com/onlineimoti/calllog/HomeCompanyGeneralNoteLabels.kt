@@ -156,7 +156,7 @@ internal object HomeCompanyGeneralNoteLabels {
             if (value.isBlank()) return
             hasGeneralNote = true
             if (generalNote.isBlank() || changedAtMs >= generalNoteChangedAtMs) {
-                generalNote = value
+                generalNote = ServerNoteVisuals.prefixed(value)
                 generalNoteChangedAtMs = changedAtMs
             }
         }
