@@ -2,6 +2,11 @@
 <resources>
     <string name="settings_integrations_section">Integrations</string>
     <string name="settings_integrations_description">Choose which Android system entry points Relationship Manager should use.</string>
+    <string name="call_screening_integration_title">Caller ID / spam role</string>
+    <string name="call_screening_integration_active">Relationship Manager is the active Caller ID / spam app.</string>
+    <string name="call_screening_integration_inactive">Relationship Manager is not the active Caller ID / spam app.</string>
+    <string name="call_screening_integration_activate">Activate / replace current app</string>
+    <string name="call_screening_integration_description">Use this when another app, such as a dialer or spam blocker, has taken the call-screening role.</string>
     <string name="linked_app_section_title">Linked app in Android Contacts</string>
     <string name="linked_app_enabled">Show Relationship Manager as a linked app in contacts</string>
     <string name="linked_app_description">Adds a Relationship Manager row inside matching Android contacts and opens the number history from there.</string>
