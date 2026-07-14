@@ -36,6 +36,10 @@ data class AppConfig(
     val useInternalSmsComposer: Boolean = false,
     /** When true, external SMS intents open the contact history instead of the SMS compose dialog. */
     val openSmsIconToHistory: Boolean = false,
+    /** Shows Relationship Manager as a linked app row inside Android Contacts. */
+    val useLinkedContactIntegration: Boolean = true,
+    /** Shows Relationship Manager in Android's Share contact / vCard targets. */
+    val useContactShareIntegration: Boolean = true,
 )
 
 object ConfigStore {
@@ -67,6 +71,8 @@ object ConfigStore {
     private const val KEY_USE_FULL_SCREEN_POPUP = "use_full_screen_popup"
     private const val KEY_USE_INTERNAL_SMS_COMPOSER = "use_internal_sms_composer"
     private const val KEY_OPEN_SMS_ICON_TO_HISTORY = "open_sms_icon_to_history"
+    private const val KEY_USE_LINKED_CONTACT_INTEGRATION = "use_linked_contact_integration"
+    private const val KEY_USE_CONTACT_SHARE_INTEGRATION = "use_contact_share_integration"
 
     /** Empty by default: free mode works locally and does not connect to a server. */
     const val DEFAULT_BASE_URL = ""
@@ -96,6 +102,8 @@ object ConfigStore {
     const val DEFAULT_USE_FULL_SCREEN_POPUP = false
     const val DEFAULT_USE_INTERNAL_SMS_COMPOSER = false
     const val DEFAULT_OPEN_SMS_ICON_TO_HISTORY = false
+    const val DEFAULT_USE_LINKED_CONTACT_INTEGRATION = true
+    const val DEFAULT_USE_CONTACT_SHARE_INTEGRATION = true
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -132,6 +140,8 @@ object ConfigStore {
             useFullScreenPopup = false,
             useInternalSmsComposer = false,
             openSmsIconToHistory = prefs.getBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, DEFAULT_OPEN_SMS_ICON_TO_HISTORY),
+            useLinkedContactIntegration = prefs.getBoolean(KEY_USE_LINKED_CONTACT_INTEGRATION, DEFAULT_USE_LINKED_CONTACT_INTEGRATION),
+            useContactShareIntegration = prefs.getBoolean(KEY_USE_CONTACT_SHARE_INTEGRATION, DEFAULT_USE_CONTACT_SHARE_INTEGRATION),
         )
         return normalize(local)
     }
@@ -167,7 +177,10 @@ object ConfigStore {
             .putBoolean(KEY_USE_FULL_SCREEN_POPUP, false)
             .putBoolean(KEY_USE_INTERNAL_SMS_COMPOSER, false)
             .putBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, normalized.openSmsIconToHistory)
+            .putBoolean(KEY_USE_LINKED_CONTACT_INTEGRATION, normalized.useLinkedContactIntegration)
+            .putBoolean(KEY_USE_CONTACT_SHARE_INTEGRATION, normalized.useContactShareIntegration)
             .apply()
+        AndroidIntegrationComponents.apply(context.applicationContext, normalized)
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
     }
 
