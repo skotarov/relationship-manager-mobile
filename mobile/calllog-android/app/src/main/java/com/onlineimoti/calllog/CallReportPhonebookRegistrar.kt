@@ -7,6 +7,7 @@ internal object CallReportPhonebookRegistrar {
     private const val MAX_CONTACTS_PER_SYNC = 2500
 
     fun registerAll(context: Context) {
+        if (!ConfigStore.load(context).useLinkedContactIntegration) return
         if (!CallReportLegacyContactLookup.hasContactPermissions(context)) return
         CrmContactAccountStore.ensureAccount(context)
 
