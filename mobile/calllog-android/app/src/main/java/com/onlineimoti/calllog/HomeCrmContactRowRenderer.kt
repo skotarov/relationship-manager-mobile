@@ -29,6 +29,7 @@ internal class HomeCrmContactRowRenderer(
         displayName: String,
         contactNote: String?,
         companyLabels: List<HomeCompanyScopeLabel>?,
+        latestCallNote: HomeCallNote? = null,
         highlightQuery: String,
     ): MaterialCardView {
         val title = displayName.ifBlank { contact.number }
@@ -68,6 +69,14 @@ internal class HomeCrmContactRowRenderer(
                     labels = companyLabels,
                     highlightQuery = highlightQuery,
                     visible = true,
+                )
+                notesUi.addCallNote(
+                    column = this,
+                    call = contact,
+                    callNote = latestCallNote,
+                    highlightQuery = highlightQuery,
+                    statusForCall = { null },
+                    companyLabels = companyLabels,
                 )
             })
         })
