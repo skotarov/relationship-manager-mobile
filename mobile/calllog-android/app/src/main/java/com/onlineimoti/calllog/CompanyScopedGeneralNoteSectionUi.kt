@@ -32,8 +32,11 @@ internal class CompanyScopedGeneralNoteSectionUi(
 
         companyNotes.forEach { companyNote ->
             section.addView(companyLabel(companyNote.companyName, showCloud = true))
+            val noteText = companyNote.note.trim().let { note ->
+                if (note.isBlank()) activity.getString(R.string.dynamic_notes_add_general) else ServerNoteVisuals.prefixed(note)
+            }
             val card = cards.generalNoteCard(
-                textValue = companyNote.note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
+                textValue = noteText,
                 muted = companyNote.note.isBlank(),
                 serverConfirmed = companyNote.confirmedByServer,
                 syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
