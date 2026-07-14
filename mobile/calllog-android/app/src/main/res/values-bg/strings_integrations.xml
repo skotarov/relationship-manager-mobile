@@ -2,6 +2,11 @@
 <resources>
     <string name="settings_integrations_section">Интеграции</string>
     <string name="settings_integrations_description">Избери кои Android системни входове да използва Relationship Manager.</string>
+    <string name="call_screening_integration_title">Caller ID / спам роля</string>
+    <string name="call_screening_integration_active">Relationship Manager е активното приложение за Caller ID / спам.</string>
+    <string name="call_screening_integration_inactive">Relationship Manager не е активното приложение за Caller ID / спам.</string>
+    <string name="call_screening_integration_activate">Активирай / презапиши текущото приложение</string>
+    <string name="call_screening_integration_description">Използвай това, когато друго приложение, например dialer или spam blocker, е взело ролята за разговорите.</string>
     <string name="linked_app_section_title">Свързано приложение в Android контактите</string>
     <string name="linked_app_enabled">Показвай Relationship Manager като свързано приложение в контактите</string>
     <string name="linked_app_description">Добавя ред Relationship Manager в съответния Android контакт и отваря историята за номера оттам.</string>
