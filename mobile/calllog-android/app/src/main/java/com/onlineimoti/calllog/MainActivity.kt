@@ -34,6 +34,9 @@ class MainActivity : FontScaledAppCompatActivity() {
     private val defaultSmsSettingsController: DefaultSmsSettingsController by lazy {
         DefaultSmsSettingsController(this, binding, ::requestDefaultSmsRole, ::requestSmsPermissions, ::setStatus)
     }
+    private val callScreeningIntegrationSettingsController: CallScreeningIntegrationSettingsController by lazy {
+        CallScreeningIntegrationSettingsController(this, binding, ::requestCallScreeningPermissionFromSummary)
+    }
     private val permissionFlowController: MainPermissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
@@ -58,6 +61,7 @@ class MainActivity : FontScaledAppCompatActivity() {
     }
     private val callScreeningRoleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onCallScreeningResult()
+        callScreeningIntegrationSettingsController.refresh()
     }
     private val storageSettingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         permissionFlowController.onStorageSettingsResult()
@@ -105,6 +109,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         settingsNavigationController.wire()
         settingsNavigationController.showMenu()
         defaultSmsSettingsController.refresh()
+        callScreeningIntegrationSettingsController.refresh()
         permissionFlowController.start()
     }
 
@@ -119,6 +124,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
         defaultSmsSettingsController.refresh()
+        callScreeningIntegrationSettingsController.refresh()
     }
 
     override fun onDestroy() {
@@ -143,6 +149,7 @@ class MainActivity : FontScaledAppCompatActivity() {
         }
         permissionsSection.visibility = android.view.View.VISIBLE
         defaultSmsSettingsController.wire()
+        callScreeningIntegrationSettingsController.wire()
     }
 
     private fun hydrateFields() = MainSettingsConfigUi.hydrate(binding, ConfigStore.load(this))
@@ -245,6 +252,8 @@ class MainActivity : FontScaledAppCompatActivity() {
         return saveConfig().also {
             refreshPermissionSummary()
             serverSyncQueueStatusController.refresh()
+            callScreeningIntegrationSettingsController.refresh()
+            contactsCleanupController.refreshFromCurrentTask()
         }
     }
 
