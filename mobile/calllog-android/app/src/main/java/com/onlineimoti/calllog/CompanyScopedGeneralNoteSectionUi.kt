@@ -20,14 +20,17 @@ internal class CompanyScopedGeneralNoteSectionUi(
         root: LinearLayout,
         phone: String,
         companyNotes: List<CallReportCompanyMainNote>,
+        unscopedServerMainNote: CallReportHistoryEvent?,
         showCompanyNotes: Boolean,
         onEditCompany: (String) -> Unit,
+        onEditUnscopedServerMainNote: (CallReportHistoryEvent) -> Unit,
         phaseBarForCompany: ((String) -> View)?,
     ) {
         val section = sectionContainer()
         root.addView(section)
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
         addLocalNote(section, phone, onEditCompany)
+        addUnscopedServerMainNote(section, unscopedServerMainNote, onEditUnscopedServerMainNote)
         if (!showCompanyNotes || !ContactServerCompanyScope.isAvailable(activity, phone)) return
 
         companyNotes.forEach { companyNote ->
@@ -61,6 +64,24 @@ internal class CompanyScopedGeneralNoteSectionUi(
                 serverConfirmed = false,
                 syncStatusText = if (pending) activity.getString(R.string.dynamic_note_pending_company_choice) else "",
                 onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
+            )
+        )
+    }
+
+    private fun addUnscopedServerMainNote(
+        section: LinearLayout,
+        note: CallReportHistoryEvent?,
+        onEdit: (CallReportHistoryEvent) -> Unit,
+    ) {
+        val serverNote = note?.takeIf { it.note.trim().isNotBlank() } ?: return
+        section.addView(companyLabel("Без фирма", showCloud = true))
+        section.addView(
+            cards.generalNoteCard(
+                textValue = ServerNoteVisuals.prefixed(serverNote.note.trim()),
+                muted = false,
+                serverConfirmed = true,
+                syncStatusText = "",
+                onClick = { onEdit(serverNote) },
             )
         )
     }
