@@ -47,6 +47,10 @@ internal class CompanyLicenseStatusController(
 
     fun message(): String = serverLicenseStatus?.message.orEmpty()
 
+    fun setPlayResponse(text: String) {
+        playResponse.text = text
+    }
+
     fun renderGoogleButton() {
         val activation = CompanyLicenseStore.loadValid(activity)
         val googleOption = googlePlayOption()
