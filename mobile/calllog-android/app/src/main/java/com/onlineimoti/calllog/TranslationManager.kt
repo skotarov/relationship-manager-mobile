@@ -1,8 +1,6 @@
 package com.onlineimoti.calllog
 
 import android.content.Context
-import android.content.res.Configuration
-import android.content.res.XmlResourceParser
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,123 +10,10 @@ import android.widget.TextView
 import com.google.android.material.textfield.TextInputLayout
 import java.lang.ref.WeakReference
 import java.lang.reflect.Modifier
-import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import org.xmlpull.v1.XmlPullParser
-
-internal data class TranslationEntry(
-    val key: String,
-    val resourceId: Int,
-    val englishDefault: String,
-    val bulgarianDefault: String,
-) {
-    fun defaultFor(language: String): String = if (language == LANGUAGE_BG) bulgarianDefault else englishDefault
-
-    companion object {
-        const val LANGUAGE_BG = "bg"
-        const val LANGUAGE_EN = "en"
-    }
-}
-
-/**
- * Reads every app string resource at runtime, so new strings automatically appear in the editor.
- * This method is deliberately safe to call from a background worker.
- */
-internal object TranslationCatalog {
-    @Volatile
-    private var cachedEntries: List<TranslationEntry>? = null
-
-    fun entries(context: Context): List<TranslationEntry> {
-        cachedEntries?.let { return it }
-        return synchronized(this) {
-            cachedEntries ?: buildEntries(context.applicationContext).also { cachedEntries = it }
-        }
-    }
-
-    private fun buildEntries(context: Context): List<TranslationEntry> {
-        return R.string::class.java.fields
-            .asSequence()
-            .filter { field -> Modifier.isStatic(field.modifiers) && field.type == Int::class.javaPrimitiveType }
-            .mapNotNull { field ->
-                val resourceId = runCatching { field.getInt(null) }.getOrNull() ?: return@mapNotNull null
-                val english = localizedString(context, resourceId, TranslationEntry.LANGUAGE_EN) ?: return@mapNotNull null
-                val bulgarian = localizedString(context, resourceId, TranslationEntry.LANGUAGE_BG) ?: english
-                TranslationEntry(
-                    key = field.name,
-                    resourceId = resourceId,
-                    englishDefault = english,
-                    bulgarianDefault = bulgarian,
-                )
-            }
-            .sortedBy { it.key }
-            .toList()
-    }
-
-    private fun localizedString(context: Context, resourceId: Int, language: String): String? {
-        return runCatching {
-            val configuration = Configuration(context.resources.configuration).apply {
-                setLocale(Locale.forLanguageTag(language))
-            }
-            context.createConfigurationContext(configuration).resources.getString(resourceId)
-        }.getOrNull()
-    }
-}
-
-/** Stores only edited values. An absent value always falls back to the bundled resource. */
-internal object TranslationOverridesStore {
-    private const val PREFS_NAME = "relationship_manager_translation_overrides"
-    private const val KEY_PREFIX = "translation_override"
-
-    fun valueOrDefault(context: Context, language: String, key: String, defaultValue: String): String {
-        return override(context, language, key) ?: defaultValue
-    }
-
-    fun override(context: Context, language: String, key: String): String? {
-        return preferences(context).getString(preferenceKey(language, key), null)
-    }
-
-    fun overrides(context: Context, language: String): Map<String, String> {
-        val prefix = "$KEY_PREFIX.${normalizeLanguage(language)}."
-        return preferences(context).all
-            .asSequence()
-            .filter { (key, value) -> key.startsWith(prefix) && value is String }
-            .associate { (key, value) -> key.removePrefix(prefix) to value.toString() }
-    }
-
-    fun save(context: Context, language: String, key: String, value: String, defaultValue: String) {
-        val editor = preferences(context).edit()
-        if (value == defaultValue) {
-            editor.remove(preferenceKey(language, key))
-        } else {
-            editor.putString(preferenceKey(language, key), value)
-        }
-        editor.apply()
-    }
-
-    fun clearLanguage(context: Context, language: String) {
-        val prefix = "$KEY_PREFIX.${normalizeLanguage(language)}."
-        val editor = preferences(context).edit()
-        preferences(context).all.keys
-            .filter { it.startsWith(prefix) }
-            .forEach(editor::remove)
-        editor.apply()
-    }
-
-    fun normalizeLanguage(language: String): String =
-        if (language.lowercase(Locale.ROOT).startsWith(TranslationEntry.LANGUAGE_BG)) {
-            TranslationEntry.LANGUAGE_BG
-        } else {
-            TranslationEntry.LANGUAGE_EN
-        }
-
-    private fun preferenceKey(language: String, key: String): String =
-        "$KEY_PREFIX.${normalizeLanguage(language)}.$key"
-
-    private fun preferences(context: Context) =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-}
 
 private data class ViewStringBinding(
     val textResourceId: Int = 0,
