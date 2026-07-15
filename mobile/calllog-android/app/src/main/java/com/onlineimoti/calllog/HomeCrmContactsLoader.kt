@@ -44,13 +44,17 @@ internal class HomeCrmContactsLoader(
                     .sortedWith(contactListOrder)
                     .drop(requestedPage * pageSize)
                     .take(pageSize)
+                val serverNotes = HomeCrmClientServerNotes.snapshot(appContext, page)
+                val contactNotes = HomeCallPageLoader.contactNotes(appContext, page).toMutableMap().apply {
+                    putAll(serverNotes.contactNotesByNumber)
+                }
                 HomeRenderData(
                     calls = page,
-                    contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, page),
+                    contactNotesByNumber = contactNotes,
                     contactNamesByNumber = page.associate { call ->
                         HomeCallPageLoader.noteKey(call.number) to call.displayName
                     },
-                    callNotesByCall = HomeCrmClientServerNotes.latestCallNotes(appContext, page),
+                    callNotesByCall = serverNotes.callNotesByCall,
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
