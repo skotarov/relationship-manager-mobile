@@ -82,16 +82,19 @@ internal class HomeSearchController(
                 .drop(page * currentPageSize)
                 .take(currentPageSize)
             val localCallNotes = HomeCallNotesResolver.localNotes(context, calls)
-            val clientLatestCallNotes = if (crmContactsMode) {
-                HomeCrmClientServerNotes.latestCallNotes(context.applicationContext, calls)
+            val clientServerNotes = if (crmContactsMode) {
+                HomeCrmClientServerNotes.snapshot(context.applicationContext, calls)
             } else {
-                emptyMap()
+                HomeCrmClientServerNotesSnapshot()
+            }
+            val contactNotes = contactNotesForRenderedSearch(calls, crmContactsMode).toMutableMap().apply {
+                putAll(clientServerNotes.contactNotesByNumber)
             }
             val renderData = HomeRenderData(
                 calls = calls,
-                contactNotesByNumber = contactNotesForRenderedSearch(calls, crmContactsMode),
+                contactNotesByNumber = contactNotes,
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
-                callNotesByCall = localCallNotes + clientLatestCallNotes,
+                callNotesByCall = localCallNotes + clientServerNotes.callNotesByCall,
             )
             if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
@@ -275,9 +278,9 @@ internal class HomeSearchController(
         val notes = HomeCallPageLoader.contactNotes(context, calls).toMutableMap()
         if (crmContactsMode) {
             // Clients search results are canonical server contacts. Server blue notes
-            // are rendered through callNotesByCall. Yellow server main notes come
-            // from company scope labels, so matched note snippets must not be pushed
-            // into the local/general yellow lane.
+            // are rendered through callNotesByCall. Unscoped server main notes are
+            // merged separately from HomeCrmClientServerNotes; matched snippets must
+            // not be pushed into the yellow lane.
             return notes
         }
         calls.forEach { call ->
