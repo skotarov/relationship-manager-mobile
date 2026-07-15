@@ -2,25 +2,43 @@ package com.onlineimoti.calllog
 
 import android.content.Context
 
+internal data class HomeCrmClientServerNotesSnapshot(
+    val contactNotesByNumber: Map<String, String> = emptyMap(),
+    val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
+)
+
 /** Server-only note helpers for the Clients page. */
 internal object HomeCrmClientServerNotes {
-    fun latestCallNotes(
+    fun snapshot(
         context: Context,
         contacts: List<PhoneCallRecord>,
-    ): Map<String, HomeCallNote> {
-        if (contacts.isEmpty()) return emptyMap()
+    ): HomeCrmClientServerNotesSnapshot {
+        if (contacts.isEmpty()) return HomeCrmClientServerNotesSnapshot()
         val config = ConfigStore.load(context.applicationContext)
-        if (!CallReportRemoteAccess.isReady(config)) return emptyMap()
+        if (!CallReportRemoteAccess.isReady(config)) return HomeCrmClientServerNotesSnapshot()
         val phones = contacts
             .map { it.number }
             .filter { HomeCallPageLoader.noteKey(it).isNotBlank() }
             .distinctBy(HomeCallPageLoader::noteKey)
-        if (phones.isEmpty()) return emptyMap()
+        if (phones.isEmpty()) return HomeCrmClientServerNotesSnapshot()
         val history = runCatching {
             CallReportHistoryLookupClient.lookupMany(config, phones, context.applicationContext)
         }.getOrDefault(CallReportHistoryLookupResult())
-        return latestCallNotes(contacts, history)
+        return HomeCrmClientServerNotesSnapshot(
+            contactNotesByNumber = unscopedGeneralNotes(contacts, history),
+            callNotesByCall = latestCallNotes(contacts, history),
+        )
     }
+
+    fun latestCallNotes(
+        context: Context,
+        contacts: List<PhoneCallRecord>,
+    ): Map<String, HomeCallNote> = snapshot(context, contacts).callNotesByCall
+
+    fun unscopedGeneralNotes(
+        context: Context,
+        contacts: List<PhoneCallRecord>,
+    ): Map<String, String> = snapshot(context, contacts).contactNotesByNumber
 
     fun latestCallNotes(
         contacts: List<PhoneCallRecord>,
@@ -50,6 +68,38 @@ internal object HomeCrmClientServerNotes {
             )
             val current = latest[key]
             if (current == null || changedAt >= current.first) latest[key] = changedAt to note
+        }
+        return latest.mapValues { it.value.second }
+    }
+
+    /**
+     * The Clients page has one yellow lane without a company label: the server main
+     * note saved without a firm. It is visually the same position as a local yellow
+     * note, but the text is still marked with a cloud because it came from server.
+     */
+    private fun unscopedGeneralNotes(
+        contacts: List<PhoneCallRecord>,
+        history: CallReportHistoryLookupResult,
+    ): Map<String, String> {
+        if (contacts.isEmpty() || history.events.isEmpty()) return emptyMap()
+        val requestedKeys = contacts
+            .mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }
+            .filterTo(linkedSetOf()) { it.isNotBlank() }
+        if (requestedKeys.isEmpty()) return emptyMap()
+
+        val latest = linkedMapOf<String, Pair<Long, String>>()
+        history.events.forEach { event ->
+            val phoneKey = HomeCallPageLoader.noteKey(event.phone)
+            if (phoneKey.isBlank() || phoneKey !in requestedKeys) return@forEach
+            if (event.companyId.isNotBlank()) return@forEach
+            if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
+            val note = event.note.trim()
+            if (note.isBlank()) return@forEach
+            val changedAt = maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs)
+            val current = latest[phoneKey]
+            if (current == null || changedAt >= current.first) {
+                latest[phoneKey] = changedAt to ServerNoteVisuals.prefixed(note)
+            }
         }
         return latest.mapValues { it.value.second }
     }
