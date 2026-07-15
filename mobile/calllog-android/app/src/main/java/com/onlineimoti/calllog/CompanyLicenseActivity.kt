@@ -1,14 +1,8 @@
 package com.onlineimoti.calllog
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.view.View
-import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
@@ -28,16 +22,14 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
     private var connected = false
     private var product: ProductDetails? = null
     private var offerToken = ""
-    private var serverLicenseStatus: CompanyLicenseApi.LicenseStatus? = null
 
     private lateinit var status: TextView
     private lateinit var price: TextView
-    private lateinit var paymentOptionsBox: LinearLayout
-    private lateinit var playResponse: TextView
-    private lateinit var spinner: ProgressBar
     private lateinit var buy: MaterialButton
     private lateinit var restore: MaterialButton
     private lateinit var create: MaterialButton
+    private lateinit var licenseStatus: CompanyLicenseStatusController
+    private lateinit var purchaseVerifier: CompanyLicensePurchaseVerifier
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -50,23 +42,43 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         )
         status = views.status
         price = views.price
-        paymentOptionsBox = views.paymentOptionsBox
-        playResponse = views.playResponse
-        spinner = views.spinner
         buy = views.buy
         restore = views.restore
         create = views.create
+        licenseStatus = CompanyLicenseStatusController(
+            activity = this,
+            executor = executor,
+            status = status,
+            price = price,
+            paymentOptionsBox = views.paymentOptionsBox,
+            playResponse = views.playResponse,
+            spinner = views.spinner,
+            buy = buy,
+            restore = restore,
+            create = create,
+            product = { product },
+            offerToken = { offerToken },
+        )
+        purchaseVerifier = CompanyLicensePurchaseVerifier(
+            activity = this,
+            executor = executor,
+            billingClient = { client },
+            connected = { connected },
+            status = status,
+            buy = buy,
+            licenseStatus = licenseStatus,
+        )
         setContentView(views.root)
-        refresh()
+        licenseStatus.refreshActivation()
         if (ConfigStore.load(this).baseUrl.isBlank()) {
             status.text = "Преди покупка въведи Server URL в Настройки."
-            playResponse.text = "Google Play още не е питан, защото Server URL липсва."
+            licenseStatus.setPlayResponse("Google Play още не е питан, защото Server URL липсва.")
             return
         }
-        syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(stage = "initial"))
+        licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(stage = "initial"))
         if (!BuildConfig.PLAY_BILLING_ENABLED) {
             status.text = "Фирмен лиценз се купува през версията от Google Play."
-            playResponse.text = "Google Play Billing е изключен в този build."
+            licenseStatus.setPlayResponse("Google Play Billing е изключен в този build.")
             return
         }
         connect()
@@ -80,12 +92,12 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
         val owned = purchases.orEmpty()
-        showPlayResponse(
+        licenseStatus.showPlayResponse(
             "Резултат от покупка",
             result,
             "purchases=${owned.size}\n${owned.joinToString("\n") { CompanyLicenseBillingDebug.purchaseDebug(it) }}",
         )
-        syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
+        licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(
             stage = "purchase_update",
             responseCode = result.responseCode,
             debugMessage = result.debugMessage,
@@ -93,7 +105,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             hasPurchaseToken = owned.any { it.purchaseToken.isNotBlank() },
         ))
         when (result.responseCode) {
-            BillingClient.BillingResponseCode.OK -> owned.forEach(::process)
+            BillingClient.BillingResponseCode.OK -> owned.forEach(purchaseVerifier::process)
             BillingClient.BillingResponseCode.USER_CANCELED -> status.text = "Покупката беше отменена."
             BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> restore(silent = false)
             else -> status.text = "Google Play не можа да завърши покупката: ${result.debugMessage.ifBlank { "опитай отново" }}"
@@ -106,22 +118,22 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
             .enableAutoServiceReconnection()
             .build()
-        loading(true)
+        licenseStatus.loading(true)
         client.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
                 connected = result.responseCode == BillingClient.BillingResponseCode.OK
-                showPlayResponse(
+                licenseStatus.showPlayResponse(
                     "Свързване с Google Play",
                     result,
                     "package=${applicationContext.packageName}\nproduct=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nbillingEnabled=${BuildConfig.PLAY_BILLING_ENABLED}",
                 )
-                syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
+                licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(
                     stage = "billing_setup",
                     responseCode = result.responseCode,
                     debugMessage = result.debugMessage,
                 ))
                 if (!connected) {
-                    loading(false)
+                    licenseStatus.loading(false)
                     status.text = "Неуспешна връзка с Google Play: ${result.debugMessage.ifBlank { "опитай отново" }}"
                     return
                 }
@@ -133,7 +145,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 connected = false
                 buy.isEnabled = false
                 restore.isEnabled = false
-                playResponse.text = "Google Play връзката беше прекъсната."
+                licenseStatus.setPlayResponse("Google Play връзката беше прекъсната.")
             }
         })
     }
@@ -146,13 +158,13 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
         client.queryProductDetailsAsync(
             QueryProductDetailsParams.newBuilder().setProductList(listOf(item)).build(),
         ) { result, detailsResult ->
-            loading(false)
+            licenseStatus.loading(false)
             product = detailsResult.productDetailsList.firstOrNull()
             val details = product
             val offer = details?.oneTimePurchaseOfferDetailsList?.firstOrNull()
                 ?: details?.oneTimePurchaseOfferDetails
             val unfetchedCount = CompanyLicenseBillingDebug.unfetchedProductsCount(detailsResult)
-            showPlayResponse(
+            licenseStatus.showPlayResponse(
                 "Заявка за продукт",
                 result,
                 listOf(
@@ -166,7 +178,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                     "offerToken=${CompanyLicenseBillingDebug.maskedToken(offer?.offerToken.orEmpty())}",
                 ).joinToString("\n"),
             )
-            syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
+            licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(
                 stage = "query_product",
                 responseCode = result.responseCode,
                 debugMessage = result.debugMessage,
@@ -188,7 +200,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             }
             price.text = offer?.formattedPrice?.let { "Цена: $it" } ?: "Еднократен фирмен лиценз"
             restore.isEnabled = true
-            renderGoogleButton()
+            licenseStatus.renderGoogleButton()
             if (CompanyLicenseStore.loadValid(this) == null && status.text.isBlank()) {
                 status.text = "Лицензът се потвърждава от сървъра."
             }
@@ -204,7 +216,7 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
             status.text = "Няма валидна оферта за покупка."
             return
         }
-        val googleOption = serverLicenseStatus?.googlePlayOption()
+        val googleOption = licenseStatus.googlePlayOption()
         if (googleOption?.enabled == false) {
             status.text = googleOption.description.ifBlank { "Google Play плащането не е активно от сървъра." }
             return
@@ -220,12 +232,12 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 .setObfuscatedAccountId(CompanyLicenseBillingDebug.obfuscatedInstallationId(this))
                 .build(),
         )
-        showPlayResponse(
+        licenseStatus.showPlayResponse(
             "Отваряне на покупка",
             result,
             "product=${BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID}\nofferToken=${CompanyLicenseBillingDebug.maskedToken(offerToken)}",
         )
-        syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
+        licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(
             stage = "launch_billing_flow",
             responseCode = result.responseCode,
             debugMessage = result.debugMessage,
@@ -237,17 +249,17 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
 
     private fun restore(silent: Boolean = false) {
         if (!connected) return
-        loading(true)
+        licenseStatus.loading(true)
         client.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build(),
         ) { result, purchases ->
-            loading(false)
-            showPlayResponse(
+            licenseStatus.loading(false)
+            licenseStatus.showPlayResponse(
                 "Възстановяване на покупки",
                 result,
                 "purchases=${purchases.size}\n${purchases.joinToString("\n") { CompanyLicenseBillingDebug.purchaseDebug(it) }}",
             )
-            syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
+            licenseStatus.sync(CompanyLicenseApi.PlayDiagnostics(
                 stage = "query_purchases",
                 responseCode = result.responseCode,
                 debugMessage = result.debugMessage,
@@ -258,145 +270,14 @@ class CompanyLicenseActivity : AppCompatActivity(), PurchasesUpdatedListener {
                 if (!silent) status.text = "Неуспешно възстановяване: ${result.debugMessage.ifBlank { "опитай отново" }}"
                 return@queryPurchasesAsync
             }
-            val licenses = purchases.filter { it.products.contains(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID) }
+            val licenses = purchases.filter {
+                it.products.contains(BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID)
+            }
             if (licenses.isEmpty() && !silent) {
-                status.text = serverLicenseStatus?.message?.takeIf { it.isNotBlank() }
+                status.text = licenseStatus.message().takeIf { it.isNotBlank() }
                     ?: "Няма намерен фирмен лиценз за този Google Play профил."
             }
-            licenses.forEach(::process)
-        }
-    }
-
-    private fun process(purchase: Purchase) {
-        when (purchase.purchaseState) {
-            Purchase.PurchaseState.PURCHASED -> verify(purchase)
-            Purchase.PurchaseState.PENDING -> status.text = "Плащането се обработва от Google Play."
-            else -> status.text = "Покупката не е завършена."
-        }
-    }
-
-    private fun verify(purchase: Purchase) {
-        loading(true)
-        buy.isEnabled = false
-        executor.execute {
-            val result = CompanyLicenseApi.verifyPurchase(
-                applicationContext,
-                BuildConfig.PLAY_COMPANY_LICENSE_PRODUCT_ID,
-                purchase.purchaseToken,
-            )
-            runOnUiThread {
-                result.onSuccess { activation ->
-                    CompanyLicenseStore.save(
-                        applicationContext,
-                        activation.activationToken,
-                        activation.expiresAtMs,
-                        activation.productId,
-                    )
-                    acknowledge(purchase)
-                    loading(false)
-                    refresh()
-                    status.text = "Лицензът е потвърден. Вече можеш да създадеш фирма."
-                    syncLicenseStatus(CompanyLicenseApi.PlayDiagnostics(
-                        stage = "verify_purchase",
-                        hasPurchaseToken = true,
-                    ))
-                }.onFailure { error ->
-                    loading(false)
-                    renderGoogleButton()
-                    status.text = "Покупката е направена, но проверката не успя: ${error.message ?: "опитай Възстанови покупка"}"
-                }
-            }
-        }
-    }
-
-    private fun acknowledge(purchase: Purchase) {
-        if (purchase.isAcknowledged || !connected) return
-        client.acknowledgePurchase(
-            AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build(),
-        ) { result ->
-            showPlayResponse("Acknowledge покупка", result, CompanyLicenseBillingDebug.purchaseDebug(purchase))
-            if (result.responseCode != BillingClient.BillingResponseCode.OK) {
-                status.text = "Лицензът е потвърден; acknowledgement ще бъде повторен при възстановяване."
-            }
-        }
-    }
-
-    private fun syncLicenseStatus(diagnostics: CompanyLicenseApi.PlayDiagnostics) {
-        if (ConfigStore.load(this).baseUrl.isBlank()) return
-        executor.execute {
-            val result = CompanyLicenseApi.licenseStatus(applicationContext, diagnostics)
-            runOnUiThread {
-                result.onSuccess { renderLicenseStatus(it) }
-                    .onFailure { error ->
-                        if (serverLicenseStatus == null) {
-                            status.text = "Сървърният статус на лиценза не се зареди: ${error.message ?: "опитай отново"}"
-                        }
-                    }
-            }
-        }
-    }
-
-    private fun renderLicenseStatus(value: CompanyLicenseApi.LicenseStatus) {
-        serverLicenseStatus = value
-        if (value.title.isNotBlank()) price.text = value.title
-        if (value.message.isNotBlank()) status.text = value.message
-        if (value.state == "active") {
-            buy.isEnabled = false
-            restore.isEnabled = false
-        }
-        CompanyLicensePaymentOptionsUi.render(
-            activity = this,
-            container = paymentOptionsBox,
-            options = value.paymentOptions,
-            onSelected = ::handlePaymentOption,
-        )
-        renderGoogleButton()
-    }
-
-    private fun handlePaymentOption(option: CompanyLicenseApi.PaymentOption) {
-        when (option.type) {
-            "webview", "web_url" -> if (option.url.isBlank()) {
-                status.text = option.description.ifBlank { "Сървърът не върна адрес за този начин на плащане." }
-            } else {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(option.url)))
-            }
-            "instructions", "manual", "contact" -> {
-                status.text = listOf(option.title, option.description)
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n")
-            }
-            else -> status.text = "Неподдържан начин на плащане: ${option.type}"
-        }
-    }
-
-    private fun renderGoogleButton() {
-        val activation = CompanyLicenseStore.loadValid(this)
-        val googleOption = serverLicenseStatus?.googlePlayOption()
-        if (googleOption != null) buy.text = googleOption.title.ifBlank { "Плати през Google Play" }
-        buy.isEnabled = activation == null && product != null && offerToken.isNotBlank() && googleOption?.enabled != false
-    }
-
-    private fun refresh() {
-        val activation = CompanyLicenseStore.loadValid(this)
-        create.visibility = if (activation == null) View.GONE else View.VISIBLE
-        if (activation != null) {
-            price.text = "Фирменият лиценз е потвърден до ${android.text.format.DateFormat.format("dd.MM.yyyy HH:mm", activation.expiresAtMs)}"
-            buy.isEnabled = false
-        }
-    }
-
-    private fun loading(value: Boolean) {
-        spinner.visibility = if (value) View.VISIBLE else View.GONE
-    }
-
-    private fun showPlayResponse(stage: String, result: BillingResult, extra: String = "") {
-        playResponse.text = buildString {
-            appendLine(stage)
-            appendLine(
-                "responseCode=${result.responseCode} (${CompanyLicenseBillingDebug.billingCodeName(result.responseCode)})",
-            )
-            appendLine("debugMessage=${result.debugMessage.ifBlank { "-" }}")
-            if (extra.isNotBlank()) append(extra.trim())
+            licenses.forEach(purchaseVerifier::process)
         }
     }
 }
