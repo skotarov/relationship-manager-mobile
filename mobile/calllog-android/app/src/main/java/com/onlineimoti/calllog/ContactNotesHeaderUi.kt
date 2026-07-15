@@ -4,20 +4,12 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.view.animation.Animation
-import android.view.animation.LinearInterpolator
-import android.view.animation.RotateAnimation
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 
@@ -25,6 +17,8 @@ class ContactNotesHeaderUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
 ) {
+    private val actions by lazy { ContactNotesHeaderActionsUi(activity, dp) }
+
     fun headerRow(
         title: String,
         phone: String,
@@ -55,16 +49,16 @@ class ContactNotesHeaderUi(
             addView(LinearLayout(activity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(backButton(
+                addView(actions.backButton(
                     goBack = goBack,
                     openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
                 ).apply {
                     layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
                 })
                 if (showCrmSyncButton) {
-                    addView(crmSyncButton(crmSyncEnabled, crmSyncBusy, crmSyncServerBacked, toggleCrmSync))
+                    addView(actions.crmSyncButton(crmSyncEnabled, crmSyncBusy, crmSyncServerBacked, toggleCrmSync))
                 }
-                addView(iconButton(
+                addView(actions.iconButton(
                     R.drawable.ic_calendar_event,
                     activity.getString(R.string.dynamic_action_calendar),
                     openCalendarEvent,
@@ -74,10 +68,10 @@ class ContactNotesHeaderUi(
                 })
                 if (phone.isNotBlank()) {
                     if (contactExists) {
-                        addView(contactMenuButton(contactDescription, openDefaultContact, openRmContact))
+                        addView(actions.contactMenuButton(contactDescription, openDefaultContact, openRmContact))
                     }
-                    addView(iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
-                    addView(iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
+                    addView(actions.iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
+                    addView(actions.iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
                         SmsComposeAction.open(
                             activity = activity,
                             phone = phone,
@@ -101,7 +95,7 @@ class ContactNotesHeaderUi(
                         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     })
                 } else {
-                    addView(iconButton(R.drawable.ic_contact_person_add, contactDescription, openDefaultContact))
+                    addView(actions.iconButton(R.drawable.ic_contact_person_add, contactDescription, openDefaultContact))
                 }
             })
         }
@@ -201,156 +195,13 @@ class ContactNotesHeaderUi(
             textSize = 17f
             setTextColor(Color.rgb(148, 163, 184))
             gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply {
                 marginStart = dp(6)
                 marginEnd = dp(9)
             }
-        }
-    }
-
-    private fun crmSyncButton(enabled: Boolean, busy: Boolean, serverBacked: Boolean, action: () -> Unit): LinearLayout {
-        val activeColor = activity.getColor(R.color.callreport_icon_background)
-        val filledCloud = !enabled && serverBacked
-        val cloudColor = when {
-            enabled -> Color.WHITE
-            filledCloud -> activeColor
-            else -> Color.BLACK
-        }
-        val labelColor = if (enabled) Color.WHITE else Color.BLACK
-        val description = when {
-            busy -> activity.getString(R.string.dynamic_crm_sync_changing)
-            enabled -> activity.getString(R.string.dynamic_crm_sync_enabled)
-            serverBacked -> "Има сървърна история. Включи CRM"
-            else -> activity.getString(R.string.dynamic_crm_sync_enable)
-        }
-        val cloudIcon = ImageView(activity).apply {
-            setImageResource(if (filledCloud) R.drawable.ic_cloud_note_filled else R.drawable.ic_cloud_note)
-            imageTintList = ColorStateList.valueOf(cloudColor)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(30), dp(36))
-        }
-        val crmLabel = TextView(activity).apply {
-            text = "CRM"
-            textSize = 11.5f
-            setTypeface(typeface, Typeface.BOLD)
-            setTextColor(labelColor)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, dp(9), 0)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.MATCH_PARENT,
-            )
-        }
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), 0, 0, 0)
-            background = if (enabled) roundedIconBackground(activeColor) else null
-            contentDescription = description
-            isClickable = !busy
-            isFocusable = !busy
-            isEnabled = !busy
-            alpha = if (busy) 0.78f else 1f
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                dp(36),
-            ).apply { marginEnd = dp(8) }
-            addView(cloudIcon)
-            addView(crmLabel)
-            setOnClickListener { action() }
-            if (busy) cloudIcon.startAnimation(cloudSpinAnimation())
-        }
-    }
-
-    private fun cloudSpinAnimation(): RotateAnimation {
-        return RotateAnimation(
-            0f,
-            360f,
-            Animation.RELATIVE_TO_SELF,
-            0.5f,
-            Animation.RELATIVE_TO_SELF,
-            0.5f,
-        ).apply {
-            duration = 720L
-            repeatCount = Animation.INFINITE
-            interpolator = LinearInterpolator()
-        }
-    }
-
-    private fun roundedIconBackground(color: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(10).toFloat()
-            setColor(color)
-        }
-    }
-
-    private fun backButton(
-        goBack: () -> Unit,
-        openCleanCallList: (() -> Unit)?,
-    ): ImageButton {
-        val button = iconButton(
-            R.drawable.ic_arrow_back,
-            activity.getString(R.string.dynamic_action_back),
-            goBack,
-        )
-        if (openCleanCallList == null) return button
-        button.setOnLongClickListener {
-            PopupMenu(activity, button).apply {
-                menu.add(0, MENU_CLEAN_CALL_LIST, 0, activity.getString(R.string.dynamic_action_all_calls))
-                setOnMenuItemClickListener { item ->
-                    if (item.itemId == MENU_CLEAN_CALL_LIST) openCleanCallList()
-                    true
-                }
-                show()
-            }
-            true
-        }
-        return button
-    }
-
-    private fun contactMenuButton(
-        description: String,
-        openDefaultContact: () -> Unit,
-        openRmContact: () -> Unit,
-    ): ImageButton {
-        val button = ImageButton(activity).apply {
-            setImageResource(R.drawable.ic_contact_person)
-            contentDescription = description
-            background = null
-            setBackgroundColor(Color.TRANSPARENT)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
-        }
-        button.setOnClickListener {
-            PopupMenu(activity, button).apply {
-                menu.add(0, MENU_PHONE_CONTACT, 0, activity.getString(R.string.history_phone_contact))
-                menu.add(0, MENU_RM_CONTACT, 1, activity.getString(R.string.history_rm_contact))
-                setOnMenuItemClickListener { item ->
-                    when (item.itemId) {
-                        MENU_PHONE_CONTACT -> openDefaultContact()
-                        MENU_RM_CONTACT -> openRmContact()
-                    }
-                    true
-                }
-                show()
-            }
-        }
-        return button
-    }
-
-    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton {
-        return ImageButton(activity).apply {
-            setImageResource(drawableRes)
-            contentDescription = description
-            background = null
-            setBackgroundColor(Color.TRANSPARENT)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
-            setOnClickListener { action() }
         }
     }
 
@@ -358,11 +209,5 @@ class ContactNotesHeaderUi(
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-    }
-
-    private companion object {
-        const val MENU_PHONE_CONTACT = 1
-        const val MENU_RM_CONTACT = 2
-        const val MENU_CLEAN_CALL_LIST = 3
     }
 }
