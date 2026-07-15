@@ -3,23 +3,15 @@ package com.onlineimoti.calllog
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.view.Gravity
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.google.android.material.button.MaterialButton
 import com.onlineimoti.calllog.databinding.ActivityMainBinding
 
 internal object MainPermissionSummary {
-    private const val STATUS_ROWS_TAG = "callreport_permission_status_rows"
-
     fun refresh(activity: MainActivity, binding: ActivityMainBinding) {
         val permissions = binding.permissionsSection
         val popup = binding.popupSettingsSection
@@ -36,7 +28,7 @@ internal object MainPermissionSummary {
 
         val rows = buildList {
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Notifications",
                     active = notificationsGranted,
                     onEnable = {
@@ -50,7 +42,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Phone",
                     active = phoneGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_PHONE_STATE, "Phone") },
@@ -58,7 +50,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Call log",
                     active = callLogGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CALL_LOG, "Call log") },
@@ -66,7 +58,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Contacts read",
                     active = contactsGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.READ_CONTACTS, "Contacts read") },
@@ -74,7 +66,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Contacts write",
                     active = contactsWriteGranted,
                     onEnable = { activity.requestAppPermissionFromSummary(Manifest.permission.WRITE_CONTACTS, "Contacts write") },
@@ -82,7 +74,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Private notes storage",
                     active = config.useLocalNotesStorage,
                     inactiveLabel = "изключено",
@@ -91,7 +83,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Display over other apps",
                     active = overlaySelected && overlayGranted,
                     inactiveLabel = if (overlaySelected) "липсва" else "изключено",
@@ -100,7 +92,7 @@ internal object MainPermissionSummary {
                 ),
             )
             add(
-                PermissionRow(
+                MainPermissionRow(
                     label = "Call screening",
                     active = callScreeningSelected && callScreeningGranted,
                     inactiveLabel = if (callScreeningSelected) "липсва" else "изключено",
@@ -111,7 +103,7 @@ internal object MainPermissionSummary {
         }
 
         permissions.permissionsSummaryText.visibility = View.GONE
-        renderStatusRows(activity, binding, rows)
+        MainPermissionStatusRowsUi.render(activity, binding, rows)
 
         val overlayMissing = overlaySelected && !overlayGranted
         popup.overlayPermissionWarningText.visibility = if (overlayMissing) View.VISIBLE else View.GONE
@@ -124,87 +116,6 @@ internal object MainPermissionSummary {
         permissions.openCallScreeningButton.visibility = View.GONE
         permissions.openSmsRoleButton.visibility = View.GONE
         permissions.openFullscreenIntentButton.visibility = View.GONE
-    }
-
-    private fun renderStatusRows(activity: MainActivity, binding: ActivityMainBinding, rows: List<PermissionRow>) {
-        val permissions = binding.permissionsSection
-        val parent = permissions.permissionsSummaryText.parent as? LinearLayout ?: return
-        parent.findViewWithTag<View>(STATUS_ROWS_TAG)?.let { parent.removeView(it) }
-
-        val container = LinearLayout(activity).apply {
-            tag = STATUS_ROWS_TAG
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(activity, 8) }
-        }
-
-        rows.forEach { row ->
-            container.addView(permissionRowView(activity, row))
-        }
-
-        val insertIndex = parent.indexOfChild(permissions.permissionsSummaryText).coerceAtLeast(0) + 1
-        parent.addView(container, insertIndex)
-    }
-
-    private fun permissionRowView(activity: MainActivity, row: PermissionRow): View {
-        val activeColor = Color.rgb(20, 83, 45)
-        val activeBg = Color.rgb(220, 252, 231)
-        val activeBorder = Color.rgb(134, 239, 172)
-        val missingColor = ContextCompat.getColor(activity, R.color.calllog_error)
-        val missingBg = Color.rgb(254, 242, 242)
-        val missingBorder = Color.rgb(252, 165, 165)
-
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 8))
-            background = roundedRect(
-                if (row.active) activeBg else missingBg,
-                dp(activity, 12),
-                if (row.active) activeBorder else missingBorder,
-                dp(activity, 1),
-            )
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(activity, 6) }
-
-            addView(
-                TextView(activity).apply {
-                    text = "${row.label}: ${permissionStateLabel(row)}"
-                    textSize = 13.5f
-                    typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(if (row.active) activeColor else missingColor)
-                    layoutParams = LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f,
-                    )
-                },
-            )
-
-            when {
-                !row.active -> addView(actionButton(activity, "Включи", row.onEnable))
-                row.onDisable != null -> addView(actionButton(activity, "Изключи", row.onDisable))
-            }
-        }
-    }
-
-    private fun actionButton(activity: MainActivity, text: String, action: () -> Unit): MaterialButton {
-        return MaterialButton(activity).apply {
-            this.text = text
-            textSize = 13f
-            minHeight = dp(activity, 36)
-            minimumHeight = dp(activity, 36)
-            setPadding(dp(activity, 10), 0, dp(activity, 10), 0)
-            setOnClickListener { action() }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { marginStart = dp(activity, 8) }
-        }
     }
 
     private fun setLocalNotesStorage(activity: MainActivity, binding: ActivityMainBinding, enabled: Boolean) {
@@ -302,8 +213,6 @@ internal object MainPermissionSummary {
         Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
     }
 
-    private fun permissionStateLabel(row: PermissionRow): String = if (row.active) "активно" else row.inactiveLabel
-
     private fun hasNotificationPermission(activity: MainActivity): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return hasPermission(activity, Manifest.permission.POST_NOTIFICATIONS)
@@ -312,23 +221,4 @@ internal object MainPermissionSummary {
     private fun hasPermission(activity: MainActivity, permission: String): Boolean {
         return ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED
     }
-
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): android.graphics.drawable.GradientDrawable {
-        return android.graphics.drawable.GradientDrawable().apply {
-            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-            cornerRadius = radius.toFloat()
-            setColor(color)
-            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
-        }
-    }
-
-    private fun dp(activity: MainActivity, value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
-
-    private data class PermissionRow(
-        val label: String,
-        val active: Boolean,
-        val inactiveLabel: String = "липсва",
-        val onEnable: () -> Unit,
-        val onDisable: (() -> Unit)? = null,
-    )
 }
