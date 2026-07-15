@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/calllog_bg"
     android:orientation="vertical"
     android:padding="16dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
+    <LinearLayout style="@style/RelationshipManagerHomeHorizontalRow">
         <com.onlineimoti.calllog.RelationshipManagerWordmarkView
             android:id="@+id/relationshipManagerWordmark"
             android:layout_width="0dp"
@@ -25,21 +19,16 @@
 
         <LinearLayout
             android:id="@+id/crmContactsHeader"
+            style="@style/RelationshipManagerHomeHorizontalRow"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
             android:visibility="gone">
 
             <ImageButton
                 android:id="@+id/crmContactsBackButton"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@android:color/transparent"
+                style="@style/RelationshipManagerHomeBackAction"
                 android:contentDescription="@string/settings_back_content_description"
-                android:padding="8dp"
-                android:scaleType="center"
                 android:src="@drawable/ic_arrow_back" />
 
             <TextView
@@ -57,44 +46,29 @@
 
         <ImageButton
             android:id="@+id/searchButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            style="@style/RelationshipManagerHomeHeaderAction"
             android:layout_marginEnd="4dp"
-            android:background="@android:color/transparent"
             android:contentDescription="@string/search_content_description"
-            android:padding="10dp"
-            android:scaleType="center"
             android:src="@drawable/ic_search" />
 
         <com.onlineimoti.calllog.HomeDialPadButton
             android:id="@+id/dialPadButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            style="@style/RelationshipManagerHomeHeaderAction"
             android:layout_marginEnd="4dp"
-            android:background="@android:color/transparent"
             android:contentDescription="Клавиатура за набиране"
-            android:padding="10dp"
-            android:scaleType="center"
             android:src="@drawable/ic_dial_pad" />
 
         <ImageButton
             android:id="@+id/settingsButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@android:color/transparent"
+            style="@style/RelationshipManagerHomeHeaderAction"
             android:contentDescription="@string/home_overflow_menu_content_description"
-            android:padding="10dp"
-            android:scaleType="center"
             android:src="@drawable/ic_more_vert" />
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/searchRow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/RelationshipManagerHomeHorizontalRow"
         android:layout_marginTop="10dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
         android:visibility="gone">
 
         <EditText
@@ -114,13 +88,9 @@
 
         <ImageButton
             android:id="@+id/clearSearchButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            style="@style/RelationshipManagerHomeClearSearchAction"
             android:layout_marginStart="6dp"
-            android:background="@android:color/transparent"
             android:contentDescription="@string/search_clear_content_description"
-            android:padding="8dp"
-            android:scaleType="center"
             android:src="@drawable/ic_popup_close" />
     </LinearLayout>
 
@@ -138,21 +108,14 @@
 
     <LinearLayout
         android:id="@+id/homeStatusRow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        style="@style/RelationshipManagerHomeHorizontalRow"
+        android:layout_marginTop="8dp">
 
         <ImageButton
             android:id="@+id/clearFilterButton"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            style="@style/RelationshipManagerHomeClearFilterAction"
             android:layout_marginEnd="4dp"
-            android:background="@android:color/transparent"
             android:contentDescription="@string/clear_filter_content_description"
-            android:padding="1dp"
-            android:scaleType="center"
             android:src="@drawable/ic_filter_clear"
             android:visibility="gone" />
 
@@ -167,17 +130,8 @@
 
             <com.onlineimoti.calllog.HomeCrmModeButton
                 android:id="@+id/crmModeButton"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:minHeight="0dp"
-                android:minWidth="0dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:text="@string/crm_mode_toggle"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                app:cornerRadius="16dp" />
+                style="@style/RelationshipManagerHomeCrmModeButton"
+                android:text="@string/crm_mode_toggle" />
         </LinearLayout>
 
         <LinearLayout
@@ -207,21 +161,9 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/crmCompanyFilterButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:maxWidth="104dp"
-                    android:minHeight="0dp"
-                    android:minWidth="0dp"
-                    android:paddingStart="7dp"
-                    android:paddingEnd="7dp"
+                    style="@style/RelationshipManagerHomeCompanyFilterButton"
                     android:text="@string/crm_filter_companies_all"
-                    android:textAllCaps="false"
-                    android:textSize="12sp"
-                    android:visibility="gone"
-                    app:cornerRadius="16dp" />
+                    android:visibility="gone" />
             </LinearLayout>
 
             <ProgressBar
@@ -235,12 +177,8 @@
 
             <ImageButton
                 android:id="@+id/filteredDialButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="@android:color/transparent"
+                style="@style/RelationshipManagerHomeFilteredDialAction"
                 android:contentDescription="@string/dynamic_action_call"
-                android:padding="6dp"
-                android:scaleType="center"
                 android:src="@drawable/ic_phone_call"
                 android:visibility="gone" />
         </LinearLayout>
@@ -256,70 +194,26 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/crmPhase1Button"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+            style="@style/RelationshipManagerHomePhaseButton"
             android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
-            android:text="@string/crm_phase_filter_1"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            app:cornerRadius="0dp" />
+            android:text="@string/crm_phase_filter_1" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/crmPhase2Button"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+            style="@style/RelationshipManagerHomePhaseButton"
             android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
-            android:text="@string/crm_phase_filter_2"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            app:cornerRadius="0dp" />
+            android:text="@string/crm_phase_filter_2" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/crmPhase3Button"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
+            style="@style/RelationshipManagerHomePhaseButton"
             android:layout_marginEnd="2dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
-            android:text="@string/crm_phase_filter_3"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            app:cornerRadius="0dp" />
+            android:text="@string/crm_phase_filter_3" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/crmPhase4Button"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
-            android:text="@string/crm_phase_filter_4"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            app:cornerRadius="0dp" />
+            style="@style/RelationshipManagerHomePhaseButton"
+            android:text="@string/crm_phase_filter_4" />
     </LinearLayout>
 
     <LinearLayout
@@ -352,18 +246,12 @@
 
     <LinearLayout
         android:id="@+id/paginationContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        style="@style/RelationshipManagerHomeHorizontalRow"
+        android:layout_marginTop="10dp">
 
         <com.onlineimoti.calllog.HomePaginationButton
             android:id="@+id/previousCallsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            style="@style/RelationshipManagerHomePaginationButton"
             android:text="@string/previous_20" />
 
         <TextView
@@ -377,10 +265,7 @@
 
         <com.onlineimoti.calllog.HomePaginationButton
             android:id="@+id/nextCallsButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            style="@style/RelationshipManagerHomePaginationButton"
             android:text="@string/next_20" />
     </LinearLayout>
 </LinearLayout>
