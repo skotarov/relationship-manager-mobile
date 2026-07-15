@@ -4,14 +4,11 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -35,14 +32,14 @@ internal object CallReportNotifications {
                 CHANNEL_ID,
                 context.getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_HIGH,
-            ).apply { description = context.getString(R.string.notification_channel_description) }
+            ).apply { description = context.getString(R.string.notification_channel_description) },
         )
         manager.createNotificationChannel(
             NotificationChannel(
                 PASSIVE_CHANNEL_ID,
                 context.getString(R.string.notification_passive_channel_name),
                 NotificationManager.IMPORTANCE_LOW,
-            ).apply { description = context.getString(R.string.notification_passive_channel_description) }
+            ).apply { description = context.getString(R.string.notification_passive_channel_description) },
         )
     }
 
@@ -148,80 +145,15 @@ internal object CallReportNotifications {
         )
     }
 
-    fun showPostCallPromptNotification(context: Context, formUrl: String, phone: String, direction: String, title: String) {
-        cancelNotificationsIfAllowed(context, POST_CALL_NOTIFICATION_ID)
-        PostCallActionRouter.route(context, phone, direction, title, formUrl)
-    }
-
-    private fun editorPendingIntent(
+    fun showPostCallPromptNotification(
         context: Context,
-        requestCode: Int,
-        mode: String,
+        formUrl: String,
         phone: String,
         direction: String,
         title: String,
-        callAt: Long = 0L,
-        durationSeconds: Long = 0L,
-        actionIssuedAt: Long = 0L,
-    ): PendingIntent {
-        val intent = Intent(context, NoteEditorLaunchActivity::class.java)
-            .putExtra(PostCallOverlayService.EXTRA_MODE, mode)
-            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-            .putExtra(PostCallOverlayService.EXTRA_TITLE, title)
-            .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
-            .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
-            .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
-        return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    }
-
-    private fun inlineNotePendingIntent(
-        context: Context,
-        requestCode: Int,
-        phone: String,
-        direction: String,
-        callAt: Long,
-        durationSeconds: Long,
-        actionIssuedAt: Long,
-    ): PendingIntent {
-        val intent = Intent(context, InlineNoteReplyReceiver::class.java)
-            .putExtra(PostCallOverlayService.EXTRA_PHONE, phone)
-            .putExtra(PostCallOverlayService.EXTRA_DIRECTION, direction)
-            .putExtra(PostCallOverlayService.EXTRA_CALL_AT, callAt)
-            .putExtra(PostCallOverlayService.EXTRA_DURATION, durationSeconds)
-            .putExtra(CallNoteTargetResolver.EXTRA_ACTION_ISSUED_AT, actionIssuedAt)
-        return PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-    }
-
-    private fun inlineNoteAction(
-        context: Context,
-        phone: String,
-        direction: String,
-        callAt: Long,
-        durationSeconds: Long,
-        actionIssuedAt: Long,
-    ): NotificationCompat.Action {
-        val remoteInput = RemoteInput.Builder(KEY_INLINE_NOTE_REPLY)
-            .setLabel(context.getString(R.string.notification_inline_note_hint))
-            .build()
-        return NotificationCompat.Action.Builder(
-            R.drawable.ic_chat_note,
-            context.getString(R.string.notification_note_action),
-            inlineNotePendingIntent(context, 1101, phone, direction, callAt, durationSeconds, actionIssuedAt),
-        )
-            .addRemoteInput(remoteInput)
-            .setAllowGeneratedReplies(false)
-            .setShowsUserInterface(false)
-            .build()
-    }
-
-    private fun contactNotesPendingIntent(context: Context, requestCode: Int, phone: String, title: String): PendingIntent {
-        return PendingIntent.getActivity(
-            context,
-            requestCode,
-            CallNoteEditorLauncher.historyIntent(context, phone, title),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+    ) {
+        cancelNotificationsIfAllowed(context, POST_CALL_NOTIFICATION_ID)
+        PostCallActionRouter.route(context, phone, direction, title, formUrl)
     }
 
     private fun showLookupNotificationInternal(
@@ -251,7 +183,11 @@ internal object CallReportNotifications {
         )
 
         val actionIssuedAt = System.currentTimeMillis()
-        val latestCall = if (skipDeviceLookups) null else PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        val latestCall = if (skipDeviceLookups) {
+            null
+        } else {
+            PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull()
+        }
         val resolvedDirection = direction.ifBlank { latestCall?.direction.orEmpty() }
         val displayName = if (skipDeviceLookups) {
             result.title.takeIf { it.isNotBlank() && it != phone }.orEmpty()
@@ -267,9 +203,29 @@ internal object CallReportNotifications {
             else -> result.title.ifBlank { unknownContactTitle }
         }
 
-        val editIntent = editorPendingIntent(context, 1001, PostCallOverlayService.MODE_NOTE, phone, resolvedDirection, result.title, actionIssuedAt = actionIssuedAt)
-        val allNotesIntent = contactNotesPendingIntent(context, 1003, phone, notificationIdentity)
-        val noteReplyAction = inlineNoteAction(context, phone, resolvedDirection, 0L, 0L, actionIssuedAt)
+        val editIntent = CallReportNotificationActions.editorPendingIntent(
+            context = context,
+            requestCode = 1001,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = phone,
+            direction = resolvedDirection,
+            title = result.title,
+            actionIssuedAt = actionIssuedAt,
+        )
+        val allNotesIntent = CallReportNotificationActions.contactNotesPendingIntent(
+            context,
+            1003,
+            phone,
+            notificationIdentity,
+        )
+        val noteReplyAction = CallReportNotificationActions.inlineNoteAction(
+            context,
+            phone,
+            resolvedDirection,
+            0L,
+            0L,
+            actionIssuedAt,
+        )
         val content = PostCallLookupDisplayRows.build(
             context = context,
             phone = phone,
@@ -281,7 +237,12 @@ internal object CallReportNotifications {
         val expandedRows = content.rows.map { row -> row.plainText() }
         val inboxStyle = NotificationCompat.InboxStyle().setBigContentTitle(content.header)
         expandedRows.forEach { row -> inboxStyle.addLine(row) }
-        val customView = SystemLookupNotificationView.build(context, content, editIntent, allNotesIntent)
+        val customView = SystemLookupNotificationView.build(
+            context,
+            content,
+            editIntent,
+            allNotesIntent,
+        )
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_transparent)
@@ -305,7 +266,9 @@ internal object CallReportNotifications {
         val useFullScreen = fullscreen && ConfigStore.load(context).useFullScreenPopup
         if (useFullScreen || alertAgain) builder.setFullScreenIntent(editIntent, useFullScreen)
 
-        if (markPopup && phone.isNotBlank()) CallPopupTracker.markPopupOpened(context, phone, direction)
+        if (markPopup && phone.isNotBlank()) {
+            CallPopupTracker.markPopupOpened(context, phone, direction)
+        }
         notifyIfAllowed(context, notificationId, builder)
 
         if (requestRemoteRows && PostCallLookupRemoteRows.shouldLookup(context, phone)) {
@@ -336,7 +299,12 @@ internal object CallReportNotifications {
             val remoteRows = runCatching {
                 PostCallLookupRemoteRows.load(context, phone)
             }.getOrDefault(emptyList())
-            if (remoteRows.isEmpty() || lookupRenderTokens[notificationId] != renderToken) return@Thread
+            if (
+                remoteRows.isEmpty() ||
+                lookupRenderTokens[notificationId] != renderToken
+            ) {
+                return@Thread
+            }
             showLookupNotificationInternal(
                 context = context,
                 result = result,
@@ -365,11 +333,18 @@ internal object CallReportNotifications {
 
     private fun canPostNotifications(context: Context): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("MissingPermission")
-    private fun notifyIfAllowed(context: Context, notificationId: Int, builder: NotificationCompat.Builder) {
+    private fun notifyIfAllowed(
+        context: Context,
+        notificationId: Int,
+        builder: NotificationCompat.Builder,
+    ) {
         if (!canPostNotifications(context)) return
         NotificationManagerCompat.from(context).notify(notificationId, builder.build())
     }
