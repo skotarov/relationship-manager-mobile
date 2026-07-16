@@ -79,15 +79,27 @@ internal class SmsComposeDialog(
         val selectedSubscriptionId = subscriptionChooser.addTo(root)
         val messageInput = messageInput(initialBody)
         val status = statusText()
+        val historyButton = secondaryButton(activity.getString(R.string.dynamic_sms_history))
         val sendButton = primaryButton(activity.getString(R.string.dynamic_sms_send))
         root.addView(messageInput)
         root.addView(status)
-        root.addView(sendButton.apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(48),
-            ).apply { topMargin = dp(16) }
-        })
+        root.addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(historyButton, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginEnd = dp(10)
+            })
+            addView(sendButton, LinearLayout.LayoutParams(0, dp(48), 1f))
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(16) })
+        historyButton.setOnClickListener {
+            dialog.dismiss()
+            activity.startActivity(
+                Intent(activity, SmsHistoryActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
+        }
         sendButton.setOnClickListener {
             send(
                 dialog = dialog,
@@ -206,6 +218,15 @@ internal class SmsComposeDialog(
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         setTextColor(Color.WHITE)
         background = roundedRect(Color.rgb(15, 23, 42), dp(13), Color.TRANSPARENT, 0)
+    }
+
+    private fun secondaryButton(label: String): Button = Button(activity).apply {
+        text = label
+        isAllCaps = false
+        textSize = 16f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 23, 42))
+        background = roundedRect(Color.WHITE, dp(13), Color.rgb(148, 163, 184), dp(1))
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
