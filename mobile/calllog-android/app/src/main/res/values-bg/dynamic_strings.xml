@@ -64,6 +64,7 @@
     <string name="dynamic_sms_new">Нов SMS</string>
     <string name="dynamic_sms_close">Затвори</string>
     <string name="dynamic_sms_message_hint">Напиши съобщение</string>
+    <string name="dynamic_sms_history">История</string>
     <string name="dynamic_sms_send">Изпрати</string>
     <string name="dynamic_sms_sending">Изпращане…</string>
     <string name="dynamic_sms_send_from">Изпращане от</string>
