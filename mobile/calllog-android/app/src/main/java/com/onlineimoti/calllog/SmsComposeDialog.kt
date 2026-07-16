@@ -94,11 +94,11 @@ internal class SmsComposeDialog(
             LinearLayout.LayoutParams.WRAP_CONTENT,
         ).apply { topMargin = dp(16) })
         historyButton.setOnClickListener {
-            dialog.dismiss()
             activity.startActivity(
                 Intent(activity, SmsHistoryActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             )
+            dialog.dismiss()
         }
         sendButton.setOnClickListener {
             send(
