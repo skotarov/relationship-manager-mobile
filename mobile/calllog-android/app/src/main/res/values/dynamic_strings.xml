@@ -69,6 +69,7 @@
     <string name="dynamic_sms_new">New SMS</string>
     <string name="dynamic_sms_close">Close</string>
     <string name="dynamic_sms_message_hint">Write a message</string>
+    <string name="dynamic_sms_history">History</string>
     <string name="dynamic_sms_send">Send</string>
     <string name="dynamic_sms_sending">Sending…</string>
     <string name="dynamic_sms_send_from">Send from</string>
