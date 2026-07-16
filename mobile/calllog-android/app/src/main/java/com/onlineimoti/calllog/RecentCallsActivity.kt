@@ -1,6 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -125,7 +124,7 @@ class RecentCallsActivity : AppCompatActivity() {
             ).apply {
                 topMargin = dp(12)
             }
-            setOnClickListener { openPromptForCall(call) }
+            setOnClickListener { openNoteEditorForCall(call) }
         })
 
         card.addView(content)
@@ -139,27 +138,31 @@ class RecentCallsActivity : AppCompatActivity() {
         }
     }
 
-    private fun openPromptForCall(call: PhoneCallRecord) {
-        val config = ConfigStore.load(this)
-        val formUrl = buildEndpoint(
-            baseUrl = config.baseUrl,
-            path = "/broker/callreport/form.php",
-            params = linkedMapOf(
-                "phone" to call.number,
-                "direction" to call.direction,
-                "call_at" to call.startedAt.toString(),
-                "duration" to call.durationSeconds.toString(),
-                "access_token" to config.accessToken,
-            )
+    private fun openNoteEditorForCall(call: PhoneCallRecord) {
+        val existingNote = existingCallNote(call)
+        CallNoteEditorLauncher.startEditor(
+            context = this,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = call.number,
+            title = resolveContactName(call.number).ifBlank { call.displayName },
+            direction = call.direction,
+            callAt = call.startedAt,
+            durationSeconds = call.durationSeconds,
+            companyId = existingNote?.companyId.orEmpty(),
+            initialNoteText = existingNote?.note.orEmpty(),
+            serverClientEventId = existingNote?.serverClientEventId.orEmpty(),
         )
+    }
 
-        startActivity(
-            Intent(this, PostCallPromptActivity::class.java)
-                .putExtra(PostCallPromptActivity.EXTRA_FORM_URL, formUrl)
-                .putExtra(PostCallPromptActivity.EXTRA_PHONE, call.number)
-                .putExtra(PostCallPromptActivity.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallPromptActivity.EXTRA_TITLE, call.displayName)
-        )
+    private fun existingCallNote(call: PhoneCallRecord): ContactCallNote? {
+        if (call.startedAt <= 0L) return null
+        return ContactNoteReader.callNotesForPhone(applicationContext, call.number)
+            .asSequence()
+            .filter { note ->
+                note.callAt == call.startedAt &&
+                    (call.direction.isBlank() || note.direction.isBlank() || note.direction == call.direction)
+            }
+            .maxByOrNull { note -> maxOf(note.savedAt, note.callAt) }
     }
 
     private fun dp(value: Int): Int {
