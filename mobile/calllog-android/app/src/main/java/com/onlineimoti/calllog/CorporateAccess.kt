@@ -3,8 +3,9 @@ package com.onlineimoti.calllog
 import android.content.Context
 
 /**
- * The Play-facing app treats phone/call-log functions as a signed-in corporate
- * CRM capability, never as a free personal call tracker.
+ * Phone/call-log processing is available only after cloud CRM access is configured.
+ * A dedicated Play-business distribution may additionally require proof that the
+ * token was issued by the company login flow on this device.
  */
 object CorporateAccess {
     fun isActive(context: Context): Boolean {
@@ -12,9 +13,12 @@ object CorporateAccess {
         val config = ConfigStore.load(appContext)
         val configured = config.remoteEnabled && config.baseUrl.isNotBlank() && config.accessToken.isNotBlank()
         if (!configured) return false
-        // Existing sideloaded/internal installations keep their legacy device-token
-        // compatibility. The Play product additionally requires a token produced
-        // by the company login or invitation flow on this device.
-        return !BuildConfig.PLAY_BILLING_ENABLED || CompanySessionStore.isCurrent(appContext, config.accessToken)
+
+        // Billing support is shared by the normal app and must not silently turn
+        // every APK into the restricted Play-business product. Existing configured
+        // installations keep working; only an explicitly restricted distribution
+        // requires a token saved by CompanyAccountApi.applySession().
+        return !DistributionCapabilities.isPlayBusinessBuild ||
+            CompanySessionStore.isCurrent(appContext, config.accessToken)
     }
 }
