@@ -57,7 +57,7 @@ internal class CallReportMergedHistoryController(
                     return@post
                 }
                 serverLoading = false
-                result.onSuccess(::acceptServerHistory).onFailure {
+                result.onSuccess { history -> acceptServerHistory(phone, history) }.onFailure {
                     serverLoaded = false
                     loadError = serverErrorText(it)
                 }
@@ -96,7 +96,11 @@ internal class CallReportMergedHistoryController(
         if (!serverLoaded || phone.isBlank()) return false
         val phoneKey = HomeCallPageLoader.noteKey(phone)
         if (phoneKey.isBlank()) return false
-        return serverHistory.events.any { HomeCallPageLoader.noteKey(it.phone) == phoneKey }
+        return serverHistory.events.any { event ->
+            HomeCallPageLoader.noteKey(event.phone) == phoneKey &&
+                event.communicationType.equals("note", ignoreCase = true) &&
+                event.note.trim().isNotBlank()
+        }
     }
 
     /** Temporary remote-loading text rendered in the fixed slot below the contact header. */
@@ -216,11 +220,22 @@ internal class CallReportMergedHistoryController(
         if (hadServerState) rerender()
     }
 
-    private fun acceptServerHistory(history: CallReportHistoryLookupResult) {
+    private fun acceptServerHistory(phone: String, history: CallReportHistoryLookupResult) {
         serverHistory = history
         serverLoaded = true
         loadError = ""
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        val confirmedNoteIds = history.events.asSequence()
+            .filter { event ->
+                event.communicationType.equals("note", ignoreCase = true) &&
+                    event.note.trim().isNotBlank() &&
+                    HomeCallPageLoader.noteKey(event.phone) == phoneKey
+            }
+            .map { event -> event.clientEventId.trim() }
+            .filter { id -> id.isNotBlank() }
+            .toList()
         ServerRecordIndex.markConfirmed(activity, history.events.map { it.clientEventId })
+        ServerRecordIndex.reconcileConfirmedNotesForPhone(activity, phone, confirmedNoteIds)
     }
 
     private fun serverNotesAndSms(remoteEnabled: Boolean): List<CallReportHistoryEvent> {
@@ -228,6 +243,7 @@ internal class CallReportMergedHistoryController(
         return serverHistory.events.filter { event ->
             event.communicationType.equals("sms", ignoreCase = true) ||
                 (event.communicationType.equals("note", ignoreCase = true) &&
+                    event.note.trim().isNotBlank() &&
                     !CallReportServerNoteClassifier.isExplicitGeneralNote(event))
         }
     }
