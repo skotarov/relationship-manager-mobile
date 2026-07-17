@@ -95,9 +95,13 @@ internal class HomeServerCallNotesController(
             val current = latest[key]
             if (current == null || changedAt >= current.first) latest[key] = changedAt to ServerNoteVisuals.prefixed(note)
         }
-        if (latest.isEmpty()) return existing
 
+        // Remove values injected by an older server enrichment before applying the
+        // new authoritative result. Ordinary local yellow notes are left intact.
         val merged = existing.toMutableMap()
+        requestedKeys.forEach { key ->
+            if (ServerNoteVisuals.isPrefixed(merged[key].orEmpty())) merged.remove(key)
+        }
         latest.forEach { (key, value) ->
             // Local/general notes still win while editing offline; server fills the
             // blank rows that History can already display. Server text is visually
