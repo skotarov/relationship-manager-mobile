@@ -48,16 +48,15 @@ internal class HomeCrmContactsContentView(
         val companyLabels = companyGeneralNotes.labelsFor(data.calls)
         data.calls.forEach { contact ->
             val key = HomeCallPageLoader.noteKey(contact.number)
-            binding.homeCallsContainer.addView(
-                rowRenderer.compactRow(
-                    contact = contact,
-                    displayName = data.contactNamesByNumber[key].orEmpty().ifBlank { contact.displayName },
-                    contactNote = data.contactNotesByNumber[key],
-                    companyLabels = companyLabels[key],
-                    latestCallNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(contact)],
-                    highlightQuery = "",
-                ),
+            val row = rowRenderer.compactRow(
+                contact = contact,
+                displayName = data.contactNamesByNumber[key].orEmpty().ifBlank { contact.displayName },
+                contactNote = data.contactNotesByNumber[key],
+                companyLabels = companyLabels[key],
+                latestCallNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(contact)],
+                highlightQuery = "",
             )
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, ::dp))
         }
         if (refreshCompanyLabels) companyGeneralNotes.refresh(data.calls)
     }
