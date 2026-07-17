@@ -1,10 +1,20 @@
 package com.onlineimoti.calllog
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 
 class ContactNotesActivity : FontScaledActivity() {
     private val controller by lazy { ContactNotesRestoredController(this) }
+    private var notesChangedReceiverRegistered = false
+    private val notesChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!isFinishing && !isDestroyed) controller.onResume()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
@@ -18,9 +28,33 @@ class ContactNotesActivity : FontScaledActivity() {
         controller.onCreate(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (!notesChangedReceiverRegistered) {
+            ContextCompat.registerReceiver(
+                this,
+                notesChangedReceiver,
+                IntentFilter().apply {
+                    addAction(HomeActivity.ACTION_CONTACT_NOTE_SAVED)
+                    addAction(PostCallOverlayService.ACTION_NOTES_CHANGED)
+                },
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            notesChangedReceiverRegistered = true
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         controller.onResume()
+    }
+
+    override fun onStop() {
+        if (notesChangedReceiverRegistered) {
+            runCatching { unregisterReceiver(notesChangedReceiver) }
+            notesChangedReceiverRegistered = false
+        }
+        super.onStop()
     }
 
     override fun onDestroy() {
