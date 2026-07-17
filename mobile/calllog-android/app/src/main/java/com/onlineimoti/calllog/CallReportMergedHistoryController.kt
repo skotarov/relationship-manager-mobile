@@ -130,10 +130,13 @@ internal class CallReportMergedHistoryController(
             val remote = latestByCompany[company.id]
             val pending = CallReportCompanyGeneralNotePending.isPending(activity, phone, company.id)
             val cached = CallReportCompanyGeneralNoteStore.noteFor(activity, phone, company.id)
+            if (!pending && remote == null && cached.isNotBlank()) {
+                CallReportCompanyGeneralNoteStore.saveOrDelete(activity, phone, company.id, "")
+            }
             val note = when {
                 pending && cached.isNotBlank() -> cached
                 remote != null -> remote.note
-                else -> cached
+                else -> ""
             }
             CallReportCompanyMainNote(
                 companyId = company.id,
