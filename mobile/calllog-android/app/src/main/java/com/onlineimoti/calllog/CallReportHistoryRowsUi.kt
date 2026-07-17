@@ -72,9 +72,10 @@ internal class CallReportHistoryRowsUi(
             ).apply { bottomMargin = dp(14) }
             addView(titleRow(openFilteredLog))
             latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
-                addView(addLatestCallNoteCard(call) {
+                val latestRow = addLatestCallNoteCard(call) {
                     onEditCallNote(call.toContactCallNote())
-                })
+                }
+                addView(ListThemeUi.applyRowSpacing(latestRow, activity, dp))
             }
             val currentWeekSerial = weekUi.currentWeekSerial()
             var previousWeekSerial: Long? = null
@@ -89,16 +90,15 @@ internal class CallReportHistoryRowsUi(
                     addView(weekUi.separator(row.timeMs, relativeWeeks))
                     previousWeekSerial = rowWeekSerial
                 }
-                addView(
-                    historyRow(
-                        phone,
-                        row,
-                        onEditCallNote,
-                        onEditSms,
-                        remoteEnabled,
-                        companyNames,
-                    ),
+                val item = historyRow(
+                    phone,
+                    row,
+                    onEditCallNote,
+                    onEditSms,
+                    remoteEnabled,
+                    companyNames,
                 )
+                addView(ListThemeUi.applyRowSpacing(item, activity, dp))
             }
             paginationUi.addNavigation(this, page, onPageChanged)
             addStatus(
