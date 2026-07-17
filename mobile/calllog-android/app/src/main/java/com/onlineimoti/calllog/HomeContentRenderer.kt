@@ -116,12 +116,13 @@ internal class HomeContentRenderer(
             val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
             if (day != null && day != previous) { binding.homeCallsContainer.addView(dateSeparator(call.startedAt, today - day)); previous = day }
             val key = HomeCallPageLoader.noteKey(call.number)
-            binding.homeCallsContainer.addView(rowRenderer.compactCallRow(
+            val row = rowRenderer.compactCallRow(
                 call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
                 if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
                 data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
-            ))
+            )
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
     }
