@@ -91,6 +91,35 @@ internal object ServerRecordIndex {
         return isConfirmed(context, callNoteEventId(context, clientNoteId))
     }
 
+    /**
+     * Returns true when this phone has a locally known note that the server has
+     * already acknowledged. Company-scoped main notes use a company suffix, so
+     * they are detected by their stable phone prefix instead of requiring the
+     * currently loaded company list.
+     */
+    fun hasConfirmedNoteForPhone(
+        context: Context,
+        phone: String,
+        callNotes: Collection<ContactCallNote>,
+    ): Boolean {
+        if (!CallReportRemoteAccess.isEnabled(context)) return false
+        val key = phoneKey(phone)
+        if (key.isBlank()) return false
+        val installationId = CallReportInstallationId.get(context.applicationContext)
+        val generalId = "$installationId:note:general:$key"
+        val companyGeneralPrefix = "$installationId:topic:general:$key:"
+        synchronized(lock) {
+            val known = readLocked(context)
+            if (generalId in known || known.any { it.startsWith(companyGeneralPrefix) }) return true
+            return callNotes.any { note ->
+                val clientNoteId = note.clientNoteId.ifBlank {
+                    LocalNotesFileStore.clientNoteIdForCall(phone, note.callAt, note.direction)
+                }
+                clientNoteId.isNotBlank() && callNoteEventId(context, clientNoteId) in known
+            }
+        }
+    }
+
     fun communicationEventId(context: Context, communicationType: String, providerId: String): String {
         return "${CallReportInstallationId.get(context.applicationContext)}:$communicationType:${providerId.trim()}"
     }
