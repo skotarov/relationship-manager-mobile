@@ -36,10 +36,16 @@ internal object HomeCompanyGeneralNoteLabels {
         val requestedPhoneKeys = requestedPhones.mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it) }
         val result = CallReportHistoryLookupClient.lookupMany(config, requestedPhones)
         val serverBackedPhoneKeys = result.events
+            .asSequence()
+            .filter { event ->
+                event.communicationType.equals("note", ignoreCase = true) &&
+                    event.note.trim().isNotBlank()
+            }
             .mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.phone) }
             .filterTo(linkedSetOf()) { it.isNotBlank() && it in requestedPhoneKeys }
         val companiesById = result.principal.companies.associate { it.id to it.name }
         val labelsByPhone = linkedMapOf<String, LinkedHashMap<String, MutableScopeLabel>>()
+        val confirmedGeneralScopes = linkedSetOf<String>()
 
         fun labelFor(phoneKey: String, companyId: String): MutableScopeLabel {
             val companyName = companiesById[companyId].orEmpty().ifBlank { companyId }
@@ -56,6 +62,7 @@ internal object HomeCompanyGeneralNoteLabels {
             // Same rule as HomeServerCallNotesController and History/editor:
             // yellow company main notes only come from explicit general records.
             if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) {
+                confirmedGeneralScopes += "$phoneKey|${event.companyId}"
                 labelFor(phoneKey, event.companyId).setServerGeneralNote(
                     text = event.note,
                     changedAtMs = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs),
@@ -63,16 +70,22 @@ internal object HomeCompanyGeneralNoteLabels {
             }
         }
 
-        // A locally saved company note is useful immediately, before the durable
-        // topic outbox has completed its server round trip. It intentionally wins
-        // over the server copy because it may be the newer unsynced edit.
+        // A locally saved company note is shown only while its durable outbox item
+        // is pending. Once History returns an authoritative response, a missing
+        // server note means it was deleted and the temporary local cache is cleared.
         for (phone in requestedPhones) {
             val phoneKey = HomeCallPageLoader.noteKey(phone)
             if (phoneKey.isBlank()) continue
             for (company in result.principal.companies) {
                 val localNote = CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id)
-                if (localNote.isNotBlank()) {
-                    labelFor(phoneKey, company.id).setLocalGeneralNote(localNote)
+                val pending = CallReportCompanyGeneralNotePending.isPending(context, phone, company.id)
+                when {
+                    pending && localNote.isNotBlank() -> {
+                        labelFor(phoneKey, company.id).setLocalGeneralNote(localNote)
+                    }
+                    !pending && "$phoneKey|${company.id}" !in confirmedGeneralScopes && localNote.isNotBlank() -> {
+                        CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, company.id, "")
+                    }
                 }
             }
         }
