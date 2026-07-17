@@ -218,7 +218,8 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     private fun renderRows(messages: List<SmsTimelineMessage>, displayNames: Map<String, String>) {
         listContainer.removeAllViews()
         messages.forEach { message ->
-            listContainer.addView(smsRow(message, displayNames[message.providerId].orEmpty()))
+            val row = smsRow(message, displayNames[message.providerId].orEmpty())
+            listContainer.addView(ListThemeUi.applyRowSpacing(row, this, ::dp))
         }
     }
 
