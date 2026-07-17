@@ -22,6 +22,8 @@ internal class ContactNotesRestoredController(
     private var titleText: String = ""
     private var crmSyncBusy = false
     private var pullRefreshRequested = false
+    private var confirmedNoteVersion = Long.MIN_VALUE
+    private var confirmedLocalServerNote = false
     private val handler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
@@ -55,6 +57,8 @@ internal class ContactNotesRestoredController(
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
         }
+        confirmedNoteVersion = Long.MIN_VALUE
+        confirmedLocalServerNote = false
         render()
         historyController.loadOnce(phone)
     }
@@ -90,13 +94,8 @@ internal class ContactNotesRestoredController(
         if (pullRefreshRequested && !showPullRefresh) pullRefreshRequested = false
         val config = ConfigStore.load(activity)
         val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
-        val confirmedLocalServerNote = ServerRecordIndex.hasConfirmedNoteForPhone(
-            context = activity,
-            phone = phone,
-            callNotes = ContactNoteReader.callNotesForPhone(activity, phone),
-        )
         val crmSyncServerBacked = !crmSyncEnabled && (
-            historyController.hasServerRecordsFor(phone) || confirmedLocalServerNote
+            historyController.hasServerRecordsFor(phone) || hasConfirmedLocalServerNote()
         )
         val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
         val root = LinearLayout(activity).apply {
@@ -167,6 +166,18 @@ internal class ContactNotesRestoredController(
             setOnRefreshListener(::refreshFromPull)
             if (showPullRefresh) setRefreshing(true)
         })
+    }
+
+    private fun hasConfirmedLocalServerNote(): Boolean {
+        val currentVersion = ServerRecordIndex.confirmationVersion(activity)
+        if (currentVersion == confirmedNoteVersion) return confirmedLocalServerNote
+        confirmedNoteVersion = currentVersion
+        confirmedLocalServerNote = ServerRecordIndex.hasConfirmedNoteForPhone(
+            context = activity,
+            phone = phone,
+            callNotes = ContactNoteReader.callNotesForPhone(activity, phone),
+        )
+        return confirmedLocalServerNote
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
