@@ -66,7 +66,11 @@ class RecentCallsActivity : AppCompatActivity() {
             getString(R.string.recent_calls_showing, calls.size)
         }
         calls.forEach { call ->
-            binding.recentCallsContainer.addView(callCard(call))
+            val row = callCard(call)
+            val normalSpacingDp = if (call.isSms) 8 else 12
+            binding.recentCallsContainer.addView(
+                ListThemeUi.applyRowSpacing(row, this, ::dp, normalSpacingDp),
+            )
         }
     }
 
