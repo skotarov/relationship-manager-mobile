@@ -78,7 +78,10 @@ internal object HomeCallNotesResolver {
         principal: CallReportHistoryPrincipal = CallReportHistoryPrincipal(),
     ): Map<String, HomeCallNote> {
         if (calls.isEmpty()) return emptyMap()
-        val merged = localNotes.toMutableMap()
+        // An earlier enrichment may have left server-only rows in the current
+        // render snapshot. Start again from local rows so an authoritative empty
+        // server response removes deleted records from Call Log immediately.
+        val merged = localNotes.filterValues { note -> !note.fromServer }.toMutableMap()
         val callsByPhone = calls
             .filterNot { it.isSms }
             .groupBy { HomeCallPageLoader.noteKey(it.number) }
