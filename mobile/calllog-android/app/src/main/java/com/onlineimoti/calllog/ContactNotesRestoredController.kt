@@ -90,7 +90,14 @@ internal class ContactNotesRestoredController(
         if (pullRefreshRequested && !showPullRefresh) pullRefreshRequested = false
         val config = ConfigStore.load(activity)
         val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
-        val crmSyncServerBacked = !crmSyncEnabled && historyController.hasServerRecordsFor(phone)
+        val confirmedLocalServerNote = ServerRecordIndex.hasConfirmedNoteForPhone(
+            context = activity,
+            phone = phone,
+            callNotes = ContactNoteReader.callNotesForPhone(activity, phone),
+        )
+        val crmSyncServerBacked = !crmSyncEnabled && (
+            historyController.hasServerRecordsFor(phone) || confirmedLocalServerNote
+        )
         val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
