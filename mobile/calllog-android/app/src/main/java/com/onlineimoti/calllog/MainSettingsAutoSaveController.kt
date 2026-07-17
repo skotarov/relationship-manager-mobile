@@ -50,6 +50,9 @@ internal class MainSettingsAutoSaveController(
         popupFilter.notifyUnknownContactsCheckBox.autoSaveCheckedChanges()
         popupFilter.notifyKnownContactsCheckBox.autoSaveCheckedChanges()
         tests.showRmDebugBoxCheckBox.autoSaveCheckedChanges()
+        binding.settingsGeneralGroup.listThemeGroup.setOnCheckedChangeListener { _, _ ->
+            autoSaveSettings()
+        }
         binding.settingsGeneralGroup.fontScaleGroup.setOnCheckedChangeListener { _, checkedId ->
             autoSaveSettings()
             val scale = when (checkedId) {
