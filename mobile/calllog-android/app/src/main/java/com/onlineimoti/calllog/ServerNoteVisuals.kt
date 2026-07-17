@@ -7,15 +7,24 @@ internal object ServerNoteVisuals {
     fun prefixed(text: String): String {
         val value = text.trim()
         if (value.isBlank()) return ""
-        return if (hasCloudPrefix(value)) value else CLOUD_PREFIX + value
+        return if (isPrefixed(value)) value else CLOUD_PREFIX + value
     }
 
     fun prefixedIfServer(text: String, fromServer: Boolean): String {
         return if (fromServer) prefixed(text) else text.trim()
     }
 
-    private fun hasCloudPrefix(text: String): Boolean {
+    fun isPrefixed(text: String): Boolean {
         val value = text.trimStart()
         return value.startsWith("☁") || value.startsWith("☁️")
+    }
+
+    fun withoutPrefix(text: String): String {
+        val value = text.trimStart()
+        return when {
+            value.startsWith("☁️") -> value.removePrefix("☁️").trimStart()
+            value.startsWith("☁") -> value.removePrefix("☁").trimStart()
+            else -> text.trim()
+        }
     }
 }
