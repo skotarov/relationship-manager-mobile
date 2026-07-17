@@ -3,7 +3,6 @@ package com.onlineimoti.calllog
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.provider.Settings
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
 internal class HomeActions(
@@ -39,7 +38,6 @@ internal class HomeActions(
             binding.homeStatusText.text = activity.getString(R.string.runtime_foreign_note_view_only)
             return
         }
-        val config = ConfigStore.load(activity)
         val existingNote = existingCallNote(call)
         val companyId = renderedNote?.companyId?.trim().takeUnless { it.isNullOrBlank() }
             ?: existingNote?.companyId.orEmpty().trim()
@@ -49,34 +47,14 @@ internal class HomeActions(
             ?.takeIf { it.fromServer && it.editable }
             ?.serverClientEventId
             .orEmpty()
-        if (!config.useOverlayPopups) {
-            openContactNoteEditorForCall(
-                call = call,
-                displayName = displayName,
-                companyId = companyId,
-                initialNoteText = noteText,
-                serverClientEventId = serverClientEventId,
-            )
-            return
-        }
 
-        if (!Settings.canDrawOverlays(activity)) {
-            binding.homeStatusText.text = activity.getString(R.string.dynamic_home_overlay_note_permission)
-            return
-        }
-        activity.startService(
-            Intent(activity, PostCallOverlayService::class.java)
-                .putExtra(PostCallOverlayService.EXTRA_MODE, PostCallOverlayService.MODE_NOTE)
-                .putExtra(PostCallOverlayService.EXTRA_PHONE, call.number)
-                .putExtra(PostCallOverlayService.EXTRA_DIRECTION, call.direction)
-                .putExtra(PostCallOverlayService.EXTRA_TITLE, displayName)
-                .putExtra(PostCallOverlayService.EXTRA_CALL_AT, call.startedAt)
-                .putExtra(PostCallOverlayService.EXTRA_DURATION, call.durationSeconds)
-                .putExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID, companyId)
-                .putExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT, noteText)
-                .putExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID, serverClientEventId)
+        openContactNoteEditorForCall(
+            call = call,
+            displayName = displayName,
+            companyId = companyId,
+            initialNoteText = noteText,
+            serverClientEventId = serverClientEventId,
         )
-        startTemporaryNoteRefresh()
     }
 
     private fun openContactNoteEditorForCall(
