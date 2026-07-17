@@ -226,15 +226,18 @@ internal class ContactNotesRestoredController(
             Toast.makeText(activity, "Сървърната бележка няма ID за редакция.", Toast.LENGTH_SHORT).show()
             return
         }
-        activity.startActivity(Intent(activity, ServerNoteEditActivity::class.java).apply {
-            putExtra(ServerNoteEditActivity.EXTRA_PHONE, phone)
-            putExtra(ServerNoteEditActivity.EXTRA_TITLE, titleText)
-            putExtra(ServerNoteEditActivity.EXTRA_DIRECTION, "")
-            putExtra(ServerNoteEditActivity.EXTRA_CALL_AT, event.occurredAtMs)
-            putExtra(ServerNoteEditActivity.EXTRA_DURATION, 0L)
-            putExtra(ServerNoteEditActivity.EXTRA_SERVER_CLIENT_EVENT_ID, clientEventId)
-            putExtra(ServerNoteEditActivity.EXTRA_INITIAL_NOTE_TEXT, event.note)
-        })
+        CallNoteEditorLauncher.startEditor(
+            context = activity,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = phone,
+            title = titleText,
+            direction = event.direction,
+            callAt = event.occurredAtMs.takeIf { it > 0L } ?: event.updatedAtMs,
+            durationSeconds = event.durationSeconds,
+            companyId = event.companyId,
+            initialNoteText = event.note,
+            serverClientEventId = clientEventId,
+        )
     }
 
     private fun openCallNoteEditor(note: ContactCallNote) {
