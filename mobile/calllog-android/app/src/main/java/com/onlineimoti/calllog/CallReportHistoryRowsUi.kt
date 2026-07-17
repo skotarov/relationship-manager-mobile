@@ -10,7 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Renders the Notes and SMS card; loading and remote state stay in its controller. */
+/** Renders Notes and SMS directly on the History background. */
 internal class CallReportHistoryRowsUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -57,60 +57,47 @@ internal class CallReportHistoryRowsUi(
         )
         val companyNames = principal.companies.associate { it.id to it.name }
         val page = paginationUi.currentPage(rows)
-        root.addView(LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(8), dp(14), dp(12))
-            background = roundedRect(
-                Color.WHITE,
-                dp(18),
-                Color.rgb(218, 220, 224),
-                dp(1),
-            )
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { bottomMargin = dp(14) }
-            addView(titleRow(openFilteredLog))
-            latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
-                val latestRow = addLatestCallNoteCard(call) {
-                    onEditCallNote(call.toContactCallNote())
-                }
-                addView(ListThemeUi.applyRowSpacing(latestRow, activity, dp))
+
+        root.addView(titleRow(openFilteredLog))
+        latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
+            val latestRow = addLatestCallNoteCard(call) {
+                onEditCallNote(call.toContactCallNote())
             }
-            val currentWeekSerial = weekUi.currentWeekSerial()
-            var previousWeekSerial: Long? = null
-            page.rows.forEach { row ->
-                val rowWeekSerial = weekUi.weekStartSerial(row.timeMs)
-                if (rowWeekSerial != null && rowWeekSerial != previousWeekSerial) {
-                    val relativeWeeks = currentWeekSerial
-                        ?.let {
-                            (it - rowWeekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK
-                        }
-                        ?: 0L
-                    addView(weekUi.separator(row.timeMs, relativeWeeks))
-                    previousWeekSerial = rowWeekSerial
-                }
-                val item = historyRow(
-                    phone,
-                    row,
-                    onEditCallNote,
-                    onEditSms,
-                    remoteEnabled,
-                    companyNames,
-                )
-                addView(ListThemeUi.applyRowSpacing(item, activity, dp))
+            root.addView(ListThemeUi.applyRowSpacing(latestRow, activity, dp))
+        }
+        val currentWeekSerial = weekUi.currentWeekSerial()
+        var previousWeekSerial: Long? = null
+        page.rows.forEach { row ->
+            val rowWeekSerial = weekUi.weekStartSerial(row.timeMs)
+            if (rowWeekSerial != null && rowWeekSerial != previousWeekSerial) {
+                val relativeWeeks = currentWeekSerial
+                    ?.let {
+                        (it - rowWeekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK
+                    }
+                    ?: 0L
+                root.addView(weekUi.separator(row.timeMs, relativeWeeks))
+                previousWeekSerial = rowWeekSerial
             }
-            paginationUi.addNavigation(this, page, onPageChanged)
-            addStatus(
-                container = this,
-                rows = rows,
-                latestCall = latestLocalCall,
-                localNotes = localNotes,
-                localLoading = localLoading,
-                serverLoading = serverLoading,
-                remoteEnabled = remoteEnabled,
+            val item = historyRow(
+                phone,
+                row,
+                onEditCallNote,
+                onEditSms,
+                remoteEnabled,
+                companyNames,
             )
-        })
+            root.addView(ListThemeUi.applyRowSpacing(item, activity, dp))
+        }
+        paginationUi.addNavigation(root, page, onPageChanged)
+        addEmptyState(
+            container = root,
+            rows = rows,
+            latestCall = latestLocalCall,
+            localNotes = localNotes,
+            localLoading = localLoading,
+            serverLoading = serverLoading,
+            remoteEnabled = remoteEnabled,
+        )
     }
 
     private fun latestCallWithoutNote(
@@ -131,7 +118,7 @@ internal class CallReportHistoryRowsUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(14), 0, dp(8))
+            setPadding(0, dp(4), 0, dp(8))
             addView(ImageView(activity).apply {
                 setImageResource(R.drawable.ic_system_call_log)
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -217,7 +204,7 @@ internal class CallReportHistoryRowsUi(
         }
     }
 
-    private fun addStatus(
+    private fun addEmptyState(
         container: LinearLayout,
         rows: List<CallReportHistoryRow>,
         latestCall: PhoneCallRecord?,
@@ -226,14 +213,10 @@ internal class CallReportHistoryRowsUi(
         serverLoading: Boolean,
         remoteEnabled: Boolean,
     ) {
-        val text = when {
-            localLoading -> "Зареждам SMS и бележки…"
-            remoteEnabled && serverLoading -> "Добавям сървърни бележки и SMS…"
-            rows.isEmpty() && latestCallWithoutNote(latestCall, localNotes) == null ->
-                "Няма SMS или бележки за този номер"
-            else -> ""
+        if (localLoading || (remoteEnabled && serverLoading)) return
+        if (rows.isEmpty() && latestCallWithoutNote(latestCall, localNotes) == null) {
+            container.addView(status("Няма SMS или бележки за този номер"))
         }
-        if (text.isNotBlank()) container.addView(status(text))
     }
 
     private fun status(textValue: String): TextView = TextView(activity).apply {
