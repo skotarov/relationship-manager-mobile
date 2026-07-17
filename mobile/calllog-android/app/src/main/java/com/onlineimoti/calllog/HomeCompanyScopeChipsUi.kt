@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -8,12 +9,15 @@ import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.text.style.ImageSpan
 import android.text.style.StyleSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 
 /** Compact Home row for CRM status and company scopes. */
 internal class HomeCompanyScopeChipsUi(
@@ -112,17 +116,24 @@ internal class HomeCompanyScopeChipsUi(
     }
 
     private fun appendCloudPrefix(builder: SpannableStringBuilder) {
-        val cloudStart = builder.length
-        builder.append("☁")
+        val start = builder.length
+        val drawable = ContextCompat.getDrawable(activity, R.drawable.ic_cloud_note_filled)?.mutate()
+        if (drawable == null) {
+            builder.append("☁")
+            builder.setSpan(
+                ForegroundColorSpan(activity.getColor(R.color.callreport_icon_background)),
+                start,
+                builder.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+            return
+        }
+        drawable.setTint(activity.getColor(R.color.callreport_icon_background))
+        drawable.setBounds(0, 0, dp(18), dp(18))
+        builder.append("\uFFFC")
         builder.setSpan(
-            ForegroundColorSpan(COLOR_CLOUD),
-            cloudStart,
-            builder.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-        )
-        builder.setSpan(
-            StyleSpan(Typeface.BOLD),
-            cloudStart,
+            ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM),
+            start,
             builder.length,
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
         )
@@ -143,14 +154,12 @@ internal class HomeCompanyScopeChipsUi(
         bindHistoryClick(onClick, "CRM. Отвори историята на контакта")
     }
 
-    private fun cloudLabel(onClick: (() -> Unit)?): TextView = TextView(activity).apply {
-        text = "☁"
-        textSize = 13f
-        setTypeface(typeface, Typeface.BOLD)
-        setTextColor(Color.WHITE)
-        gravity = android.view.Gravity.CENTER
-        setPadding(dp(8), dp(4), dp(8), dp(4))
-        background = roundedRect(COLOR_CLOUD, dp(9), Color.TRANSPARENT, 0)
+    private fun cloudLabel(onClick: (() -> Unit)?): ImageView = ImageView(activity).apply {
+        setImageResource(R.drawable.ic_cloud_note_filled)
+        imageTintList = ColorStateList.valueOf(activity.getColor(R.color.callreport_icon_background))
+        scaleType = ImageView.ScaleType.CENTER
+        setPadding(dp(4), dp(3), dp(4), dp(3))
+        layoutParams = LinearLayout.LayoutParams(dp(30), dp(28))
         bindHistoryClick(onClick, "Има сървърна история. Отвори историята на контакта")
     }
 
@@ -224,8 +233,4 @@ internal class HomeCompanyScopeChipsUi(
         border = Color.TRANSPARENT,
         text = Color.rgb(71, 85, 105),
     )
-
-    private companion object {
-        val COLOR_CLOUD: Int = Color.rgb(59, 130, 246)
-    }
 }
