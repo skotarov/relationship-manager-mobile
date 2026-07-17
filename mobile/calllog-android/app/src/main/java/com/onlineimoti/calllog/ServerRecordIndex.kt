@@ -120,6 +120,38 @@ internal object ServerRecordIndex {
         }
     }
 
+    /**
+     * Reconciles only note IDs for one phone against an authoritative History
+     * response. This removes stale blue-cloud state after the last server note
+     * has been deleted, without touching confirmations for other contacts.
+     */
+    fun reconcileConfirmedNotesForPhone(
+        context: Context,
+        phone: String,
+        authoritativeClientEventIds: Collection<String>,
+    ) {
+        val key = phoneKey(phone)
+        if (key.isBlank()) return
+        val installationId = CallReportInstallationId.get(context.applicationContext)
+        val generalId = "$installationId:note:general:$key"
+        val companyGeneralPrefix = "$installationId:topic:general:$key:"
+        val callNotePrefix = "$installationId:note:call:$key-"
+        val authoritative = authoritativeClientEventIds
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .toSet()
+        synchronized(lock) {
+            val known = readLocked(context)
+            val changed = known.removeAll { id ->
+                val belongsToPhoneNote = id == generalId ||
+                    id.startsWith(companyGeneralPrefix) ||
+                    id.startsWith(callNotePrefix)
+                belongsToPhoneNote && id !in authoritative
+            }
+            writeLocked(context, known, changed)
+        }
+    }
+
     fun communicationEventId(context: Context, communicationType: String, providerId: String): String {
         return "${CallReportInstallationId.get(context.applicationContext)}:$communicationType:${providerId.trim()}"
     }
