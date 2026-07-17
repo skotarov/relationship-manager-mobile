@@ -1,31 +1,56 @@
 package com.onlineimoti.calllog
 
+import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 
 internal object ContactNotesServerStatusUi {
     /**
-     * Occupies the header's existing lower 12dp padding through a negative margin.
-     * It is always present, including when hidden, so refreshes never shift sections.
+     * A tooltip-like loading chip that floats between the contact header and the
+     * first section. Its negative margins keep the content position unchanged when
+     * the chip appears or disappears.
      */
-    fun create(activity: ContactNotesActivity, dp: (Int) -> Int, textValue: String): TextView =
-        TextView(activity).apply {
-            text = textValue
-            textSize = 11f
-            includeFontPadding = false
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
+    fun create(activity: ContactNotesActivity, dp: (Int) -> Int, textValue: String): LinearLayout =
+        LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setTextColor(Color.rgb(100, 116, 139))
             visibility = if (textValue.isBlank()) View.INVISIBLE else View.VISIBLE
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(12),
-            ).apply {
-                topMargin = -dp(12)
+            elevation = dp(8).toFloat()
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(51, 65, 85))
+                cornerRadius = dp(13).toFloat()
             }
+            setPadding(dp(9), 0, dp(11), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(26),
+            ).apply {
+                gravity = Gravity.END
+                topMargin = -dp(13)
+                bottomMargin = -dp(13)
+                marginEnd = dp(4)
+            }
+            addView(
+                ProgressBar(activity, null, android.R.attr.progressBarStyleSmall).apply {
+                    isIndeterminate = true
+                    indeterminateTintList = ColorStateList.valueOf(Color.WHITE)
+                },
+                LinearLayout.LayoutParams(dp(14), dp(14)).apply {
+                    marginEnd = dp(7)
+                },
+            )
+            addView(TextView(activity).apply {
+                text = textValue
+                textSize = 11.5f
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(Color.WHITE)
+            })
         }
 }
