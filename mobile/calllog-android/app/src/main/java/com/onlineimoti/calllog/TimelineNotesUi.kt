@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -24,20 +25,15 @@ internal class TimelineNotesUi(
     ) {
         if (!visible || contactNote.isNullOrBlank()) return
         val colors = NoteUiStyle.General
-        column.addView(TextView(activity).apply {
-            text = SearchTextHighlighter.highlightedText(contactNote, highlightQuery, colors.text)
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_note_lines, 0, 0, 0)
-            compoundDrawablePadding = dp(4)
-            setTextColor(colors.text)
-            textSize = 12.5f
-            maxLines = 2
-            setPadding(dp(8), dp(5), dp(8), dp(5))
-            background = roundedRect(colors.background, dp(9), colors.border, dp(1))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(5) }
-        })
+        val serverBacked = ServerNoteVisuals.isPrefixed(contactNote)
+        val visibleText = ServerNoteVisuals.withoutPrefix(contactNote)
+        column.addView(noteCard(
+            text = SearchTextHighlighter.highlightedText(visibleText, highlightQuery, colors.text),
+            colors = colors,
+            maxLines = 2,
+            serverBacked = serverBacked,
+            localDrawableRes = R.drawable.ic_note_lines,
+        ))
     }
 
     /** Shows each yellow company-scoped main note after the ordinary local main note. */
@@ -53,10 +49,13 @@ internal class TimelineNotesUi(
             .forEach { label ->
                 val colors = NoteUiStyle.General
                 val companyName = label.companyName.ifBlank { label.companyId }
+                val serverBacked = ServerNoteVisuals.isPrefixed(label.generalNote)
+                val visibleNote = ServerNoteVisuals.withoutPrefix(label.generalNote)
                 column.addView(noteCard(
-                    text = companyScopedText(companyName, label.generalNote, highlightQuery, colors.text),
+                    text = companyScopedText(companyName, visibleNote, highlightQuery, colors.text),
                     colors = colors,
                     maxLines = 3,
+                    serverBacked = serverBacked,
                 ))
             }
     }
@@ -72,7 +71,7 @@ internal class TimelineNotesUi(
         val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
         val colors = NoteUiStyle.Call
         val companyName = companyNameFor(note.companyId, companyLabels)
-        val textValue = ServerNoteVisuals.prefixedIfServer(note.text, note.fromServer)
+        val textValue = note.text.trim()
         column.addView(noteCard(
             text = if (companyName.isBlank()) {
                 SearchTextHighlighter.highlightedText(textValue, highlightQuery, colors.text)
@@ -81,6 +80,7 @@ internal class TimelineNotesUi(
             },
             colors = colors,
             maxLines = 3,
+            serverBacked = note.fromServer,
         ))
         statusForCall(call)?.let { status ->
             column.addView(TextView(activity).apply {
@@ -92,7 +92,13 @@ internal class TimelineNotesUi(
         }
     }
 
-    private fun noteCard(text: CharSequence, colors: NoteCardColors, maxLines: Int): TextView {
+    private fun noteCard(
+        text: CharSequence,
+        colors: NoteCardColors,
+        maxLines: Int,
+        serverBacked: Boolean = false,
+        localDrawableRes: Int = 0,
+    ): TextView {
         return TextView(activity).apply {
             this.text = text
             setTextColor(colors.text)
@@ -100,6 +106,20 @@ internal class TimelineNotesUi(
             this.maxLines = maxLines
             setPadding(dp(8), dp(5), dp(8), dp(5))
             background = roundedRect(colors.background, dp(9), colors.border, dp(1))
+            val drawableRes = when {
+                serverBacked -> R.drawable.ic_cloud_note_filled
+                localDrawableRes != 0 -> localDrawableRes
+                else -> 0
+            }
+            if (drawableRes != 0) {
+                setCompoundDrawablesWithIntrinsicBounds(drawableRes, 0, 0, 0)
+                compoundDrawablePadding = dp(4)
+                if (serverBacked) {
+                    compoundDrawableTintList = ColorStateList.valueOf(
+                        activity.getColor(R.color.callreport_icon_background),
+                    )
+                }
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
