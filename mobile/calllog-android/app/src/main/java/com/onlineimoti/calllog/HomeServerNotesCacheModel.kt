@@ -24,11 +24,27 @@ internal object HomeServerNotesCacheMerger {
             }
         val nextEvents = state.eventsByPhoneKey.toMutableMap()
         val nextUpdated = state.phoneUpdatedAtMs.toMutableMap()
+        val accessibleCompanyIds = when {
+            result.principalCompaniesAuthoritative -> result.principal.companies.mapTo(hashSetOf()) { it.id.trim() }
+            state.accessibleCompaniesAuthoritative -> state.principal.companies.mapTo(hashSetOf()) { it.id.trim() }
+            else -> null
+        }
         authoritativePhoneKeys.forEach { phoneKey ->
-            val normalizedEvents = result.events
+            val incoming = result.events
                 .filter { event -> HomeCallPageLoader.noteKey(event.phone) == phoneKey }
+            // A successful response is authoritative only for unscoped notes and firms
+            // that are currently accessible. Keep old events from removed firms hidden
+            // in the cache so they can reappear immediately if access is restored.
+            val retainedHidden = accessibleCompanyIds?.let { allowed ->
+                state.eventsByPhoneKey[phoneKey].orEmpty().filter { event ->
+                    val companyId = event.companyId.trim()
+                    companyId.isNotBlank() && companyId !in allowed
+                }
+            }.orEmpty()
+            val normalizedEvents = (incoming + retainedHidden)
                 .distinctBy(::stableEventKey)
                 .sortedByDescending(::eventVersionMs)
+                .take(MAX_EVENTS_PER_PHONE)
             if (normalizedEvents.isEmpty()) {
                 nextEvents.remove(phoneKey)
                 nextUpdated.remove(phoneKey)
@@ -128,4 +144,5 @@ internal object HomeServerNotesCacheMerger {
     }
 
     private const val MAX_PHONE_GROUPS = 1_500
+    private const val MAX_EVENTS_PER_PHONE = 100
 }
