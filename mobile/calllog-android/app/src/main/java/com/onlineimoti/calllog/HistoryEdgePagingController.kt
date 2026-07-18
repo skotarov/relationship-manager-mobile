@@ -3,7 +3,7 @@ package com.onlineimoti.calllog
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
-/** Connects a rendered History page to the shared edge-paging behavior. */
+/** Connects cumulative History rendering to shared buffered paging. */
 internal class HistoryEdgePagingController(
     private val history: CallReportMergedHistoryController,
 ) {
@@ -13,6 +13,9 @@ internal class HistoryEdgePagingController(
         previousPage = { history.previousPage() },
         nextPage = { history.nextPage() },
         pageReady = { true },
+        retainPreviousPages = false,
+        protectRetainedPrefix = false,
+        prefetchNext = true,
     )
 
     fun reset() {
