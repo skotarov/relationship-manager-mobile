@@ -71,9 +71,6 @@ internal class HomeSearchController(
             )
             if (Thread.currentThread().isInterrupted) return@submit
             val filteredResults = when {
-                // The Clients page search is already filtered by the server using
-                // the current owner/profile, phase and company filters. Do not run
-                // a second local filter over a partial client list.
                 crmContactsMode -> rawResults
                 filterState != null -> filterCrmSearchResults(rawResults, filterState)
                 else -> rawResults
@@ -81,20 +78,11 @@ internal class HomeSearchController(
             val calls = filteredResults
                 .drop(page * currentPageSize)
                 .take(currentPageSize)
-            val localCallNotes = HomeCallNotesResolver.localNotes(context, calls)
-            val clientServerNotes = if (crmContactsMode) {
-                HomeCrmClientServerNotes.snapshot(context.applicationContext, calls)
-            } else {
-                HomeCrmClientServerNotesSnapshot()
-            }
-            val contactNotes = contactNotesForRenderedSearch(calls, crmContactsMode).toMutableMap().apply {
-                putAll(clientServerNotes.contactNotesByNumber)
-            }
             val renderData = HomeRenderData(
                 calls = calls,
-                contactNotesByNumber = contactNotes,
+                contactNotesByNumber = contactNotesForRenderedSearch(calls, crmContactsMode),
                 contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
-                callNotesByCall = localCallNotes + clientServerNotes.callNotesByCall,
+                callNotesByCall = HomeCallNotesResolver.localNotes(context, calls),
             )
             if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
@@ -143,16 +131,10 @@ internal class HomeSearchController(
     fun cancelActiveTask() {
         activeTask?.cancel(true)
         activeTask = null
-        // Invalidate a callback that may have been posted immediately before
-        // cancellation, such as when Home goes to the background.
         searchGeneration.incrementAndGet()
         if (activeSearchQuery().isBlank()) hideSearchStatus()
     }
 
-    /**
-     * Search is the first operation. The cache retains that complete result set
-     * while the user changes CRM buttons; filters are reapplied later to this list.
-     */
     private fun searchResultsFor(
         query: String,
         phoneFilter: String,
@@ -188,7 +170,6 @@ internal class HomeSearchController(
         return loaded
     }
 
-    /** CRM Clients searches the authenticated server list, not Android's call log. */
     private fun searchCrmContacts(
         query: String,
         filterState: HomeCrmFilterState,
@@ -198,11 +179,6 @@ internal class HomeSearchController(
         searchQuery = query,
     )
 
-    /**
-     * The normal Call Log search must include both local Android/local-note data and
-     * server Relationship Manager data. Server-only notes/clients are returned as
-     * synthetic rows with the matched note as [PhoneCallRecord.searchSnippet].
-     */
     private fun searchMainCallLog(
         query: String,
         phoneFilter: String,
@@ -213,8 +189,6 @@ internal class HomeSearchController(
             activePhoneFilter = phoneFilter,
             searchQuery = query,
             pageIndex = 0,
-            // Search sources are already bounded internally. Load the complete
-            // bounded set once, then page after CRM filters have been applied.
             pageSize = SEARCH_RESULT_SCAN_LIMIT,
             crmMode = crmMode,
         )
@@ -233,11 +207,8 @@ internal class HomeSearchController(
             )
         }.getOrDefault(emptyList())
         val selectedKey = HomeCallPageLoader.noteKey(phoneFilter)
-        return if (selectedKey.isBlank()) {
-            serverResults
-        } else {
-            serverResults.filter { row -> HomeCallPageLoader.noteKey(row.number) == selectedKey }
-        }
+        return if (selectedKey.isBlank()) serverResults
+        else serverResults.filter { row -> HomeCallPageLoader.noteKey(row.number) == selectedKey }
     }
 
     private fun mergeServerSearchResults(
@@ -252,7 +223,6 @@ internal class HomeSearchController(
                 .takeIf { it.isNotBlank() && it !in firstIndexByPhoneKey }
                 ?.let { key -> firstIndexByPhoneKey[key] = index }
         }
-
         serverResults.forEach { serverRow ->
             val key = HomeCallPageLoader.noteKey(serverRow.number)
             if (key.isBlank()) return@forEach
@@ -276,13 +246,7 @@ internal class HomeSearchController(
         crmContactsMode: Boolean,
     ): Map<String, String> {
         val notes = HomeCallPageLoader.contactNotes(context, calls).toMutableMap()
-        if (crmContactsMode) {
-            // Clients search results are canonical server contacts. Server blue notes
-            // are rendered through callNotesByCall. Unscoped server main notes are
-            // merged separately from HomeCrmClientServerNotes; matched snippets must
-            // not be pushed into the yellow lane.
-            return notes
-        }
+        if (crmContactsMode) return notes
         calls.forEach { call ->
             val key = HomeCallPageLoader.noteKey(call.number)
             val snippet = call.searchSnippet.trim()
@@ -291,12 +255,6 @@ internal class HomeSearchController(
         return notes
     }
 
-    /**
-     * CRM Calls searches the same complete bounded timeline that the CRM Calls
-     * page shows before company/phase buttons are applied. It does not consult the
-     * broad device contact/note index, so search results never leak in from another
-     * page or from non-CRM phone activity.
-     */
     private fun searchCrmCalls(query: String): List<PhoneCallRecord> {
         val terms = SearchQueryTerms.from(query)
         val candidates = HomeTimelineLoader.crmCandidates(context.applicationContext)
