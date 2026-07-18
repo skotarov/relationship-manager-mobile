@@ -42,6 +42,15 @@ internal class ContactNotesRestoredController(
             rerender = ::render,
         )
     }
+    private val edgePageScrollController by lazy {
+        EdgePageScrollController(
+            canPrevious = historyController::canPreviousPage,
+            canNext = historyController::canNextPage,
+            previousPage = { historyController.previousPage() },
+            nextPage = { historyController.nextPage() },
+            pageReady = { true },
+        )
+    }
     private val generalNoteSectionUi by lazy {
         CompanyScopedGeneralNoteSectionUi(
             activity = activity,
@@ -53,6 +62,8 @@ internal class ContactNotesRestoredController(
     }
 
     fun onCreate(intent: Intent?) {
+        edgePageScrollController.cancelPending()
+        historyController.resetPage()
         phone = intent?.getStringExtra(ContactNotesActivity.EXTRA_PHONE).orEmpty()
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
@@ -73,6 +84,7 @@ internal class ContactNotesRestoredController(
 
     fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        edgePageScrollController.release()
         crmSyncExecutor.shutdownNow()
         historyController.release()
     }
@@ -117,9 +129,7 @@ internal class ContactNotesRestoredController(
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
             openRmContact = { openRmContactForm() },
-            toggleCrmSync = {
-                setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone))
-            },
+            toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone)) },
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
@@ -139,14 +149,8 @@ internal class ContactNotesRestoredController(
             onEditCompany = ::openGeneralNoteEditor,
             onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
             phaseBarForCompany = if (phaseControlsVisible) {
-                { companyId ->
-                    phaseUi.phaseBar(phone, companyId, true) {
-                        render()
-                    }
-                }
-            } else {
-                null
-            },
+                { companyId -> phaseUi.phaseBar(phone, companyId, true) { render() } }
+            } else null,
         )
         PendingCallNoteStore.reconcilePendingForPhone(activity, phone)
         historyController.addSection(
@@ -161,6 +165,7 @@ internal class ContactNotesRestoredController(
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
         }
+        edgePageScrollController.bind(scrollView, root)
         activity.setContentView(PullToRefreshLayout(activity).apply {
             addView(scrollView)
             setOnRefreshListener(::refreshFromPull)
