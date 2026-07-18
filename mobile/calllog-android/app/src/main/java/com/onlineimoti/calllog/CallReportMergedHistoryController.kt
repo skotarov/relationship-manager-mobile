@@ -89,6 +89,11 @@ internal class CallReportMergedHistoryController(
     }
 
     fun isLoading(): Boolean = localLoading || serverLoading
+    fun canPreviousPage(): Boolean = rowsUi.canPreviousPage()
+    fun canNextPage(): Boolean = rowsUi.canNextPage()
+    fun previousPage(): Boolean = rowsUi.previousPage(rerender)
+    fun nextPage(): Boolean = rowsUi.nextPage(rerender)
+    fun resetPage() = rowsUi.resetPage()
 
     fun hasCompanyMainNoteScope(): Boolean = serverLoaded && serverHistory.principal.companies.isNotEmpty()
 
@@ -119,9 +124,6 @@ internal class CallReportMergedHistoryController(
         serverHistory.events.forEach { event ->
             if (!event.communicationType.equals("note", ignoreCase = true)) return@forEach
             if (event.companyId.isBlank() || HomeCallPageLoader.noteKey(event.phone) != phoneKey) return@forEach
-            // Do not infer a main note from blank call metadata. Some server responses
-            // omit direction/duration for a conversation note; only the explicit
-            // topic/general record id is allowed to populate the yellow main-note card.
             if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
             val current = latestByCompany[event.companyId]
             if (current == null || event.updatedAtMs >= current.updatedAtMs) latestByCompany[event.companyId] = event
@@ -184,8 +186,6 @@ internal class CallReportMergedHistoryController(
             localSms = localSms,
             localNotes = localNotes,
             localLoading = localLoading,
-            // The remote loading message is shown in the fixed header slot,
-            // not at the bottom of the Notes and SMS section.
             serverLoading = false,
             openFilteredLog = openFilteredLog,
             onEditCallNote = onEditCallNote,
