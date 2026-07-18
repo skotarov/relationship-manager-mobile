@@ -41,6 +41,12 @@ internal data class CallReportHistoryEvent(
 internal data class CallReportHistoryLookupResult(
     val principal: CallReportHistoryPrincipal = CallReportHistoryPrincipal(),
     val events: List<CallReportHistoryEvent> = emptyList(),
+    /** True only after a valid HTTP 2xx JSON response with ok=true. */
+    val requestSuccessful: Boolean = false,
+    /** Phone keys whose history snapshot is safe to replace in a local cache. */
+    val successfulPhoneKeys: Set<String> = emptySet(),
+    /** True only when the response explicitly contained principal.companies. */
+    val principalCompaniesAuthoritative: Boolean = false,
 )
 
 internal object CallReportHistoryLookupClient {
@@ -61,7 +67,7 @@ internal object CallReportHistoryLookupClient {
         // Keep the single-contact History screen compatible with older server code:
         // it is known to work with GET ?phone=..., while POST/batch support may be absent.
         val result = lookupSinglePhoneVariants(config, phone, limit, context)
-        updateGeneralNoteServerPresence(phone, result.events)
+        if (result.requestSuccessful) updateGeneralNoteServerPresence(phone, result.events)
         return result
     }
 
@@ -86,15 +92,25 @@ internal object CallReportHistoryLookupClient {
         val result = if (batch != null && batch.events.isNotEmpty()) {
             batch
         } else {
-            // If the server ignores/doesn't support POST phones=[...], Home must still
-            // behave like the History screen where notes are already visible.
-            mergeResults(
-                listOfNotNull(batch) + originalPhones.map { phone ->
-                    lookupSinglePhoneVariants(config, phone, DEFAULT_LIMIT, context)
-                },
-            )
+            // An empty POST response may be either a valid empty snapshot or an older
+            // endpoint that ignored the batch payload. Confirm it with the established
+            // single-phone GET flow before allowing an empty result to clear a cache.
+            val singles = originalPhones.map { phone ->
+                lookupSinglePhoneVariants(config, phone, DEFAULT_LIMIT, context)
+            }
+            val merged = mergeResults(listOfNotNull(batch) + singles)
+            if (batch?.requestSuccessful == true && singles.none { it.requestSuccessful }) {
+                merged.copy(successfulPhoneKeys = emptySet())
+            } else {
+                merged
+            }
         }
-        originalPhones.forEach { phone -> updateGeneralNoteServerPresence(phone, result.events) }
+        if (result.requestSuccessful) {
+            originalPhones.forEach { phone ->
+                val key = phoneKey(phone)
+                if (key in result.successfulPhoneKeys) updateGeneralNoteServerPresence(phone, result.events)
+            }
+        }
         return result
     }
 
@@ -125,26 +141,24 @@ internal object CallReportHistoryLookupClient {
 
     private fun mergeResults(results: List<CallReportHistoryLookupResult>): CallReportHistoryLookupResult {
         if (results.isEmpty()) return CallReportHistoryLookupResult()
-        val principal = results
-            .map { it.principal }
-            .firstOrNull { it.companies.isNotEmpty() || it.brokerId.isNotBlank() || it.brokerName.isNotBlank() }
-            ?: CallReportHistoryPrincipal()
+        val principalSource = results.firstOrNull { it.principalCompaniesAuthoritative }
+            ?: results.firstOrNull {
+                it.principal.companies.isNotEmpty() ||
+                    it.principal.brokerId.isNotBlank() ||
+                    it.principal.brokerName.isNotBlank()
+            }
+        val principal = principalSource?.principal ?: CallReportHistoryPrincipal()
         val seen = linkedSetOf<String>()
         val events = results.flatMap { it.events }.filter { event ->
-            val stableKey = event.clientEventId
-                .ifBlank { event.serverId }
-                .ifBlank {
-                    listOf(
-                        phoneKey(event.phone),
-                        event.communicationType,
-                        event.direction,
-                        event.occurredAtMs.toString(),
-                        event.note.hashCode().toString(),
-                    ).joinToString("|")
-                }
-            seen.add(stableKey)
+            seen.add(stableEventKey(event))
         }.sortedByDescending { event -> maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs) }
-        return CallReportHistoryLookupResult(principal, events)
+        return CallReportHistoryLookupResult(
+            principal = principal,
+            events = events,
+            requestSuccessful = results.any { it.requestSuccessful },
+            successfulPhoneKeys = results.flatMapTo(linkedSetOf()) { it.successfulPhoneKeys },
+            principalCompaniesAuthoritative = results.any { it.principalCompaniesAuthoritative },
+        )
     }
 
     private fun request(
@@ -187,7 +201,17 @@ internal object CallReportHistoryLookupClient {
                 if (status !in 200..299) throw IllegalStateException("HTTP $status")
                 val json = JSONObject(body)
                 if (!json.optBoolean("ok", false)) throw IllegalStateException(json.optString("error", "History lookup failed"))
-                return parse(json)
+                val principalJson = json.optJSONObject("principal") ?: json.optJSONObject("authenticated_principal")
+                val companiesAuthoritative = principalJson?.let { principal ->
+                    principal.has("companies") && principal.optJSONArray("companies") != null
+                } == true
+                return parse(json).copy(
+                    requestSuccessful = true,
+                    successfulPhoneKeys = phones
+                        .mapTo(linkedSetOf(), ::phoneKey)
+                        .filterTo(linkedSetOf()) { it.isNotBlank() },
+                    principalCompaniesAuthoritative = companiesAuthoritative,
+                )
             } catch (error: Throwable) {
                 ServerConnectionNotifier.notifyFailure(context, config, error)
                 throw error
@@ -221,6 +245,21 @@ internal object CallReportHistoryLookupClient {
     }
 
     private fun phoneKey(phone: String): String = HomeCallPageLoader.noteKey(phone)
+
+    private fun stableEventKey(event: CallReportHistoryEvent): String {
+        return event.clientEventId
+            .ifBlank { event.serverId }
+            .ifBlank {
+                listOf(
+                    phoneKey(event.phone),
+                    event.companyId,
+                    event.communicationType,
+                    event.direction,
+                    event.occurredAtMs.toString(),
+                    event.note.hashCode().toString(),
+                ).joinToString("|")
+            }
+    }
 
     private fun parse(json: JSONObject): CallReportHistoryLookupResult {
         val principalJson = json.optJSONObject("principal") ?: json.optJSONObject("authenticated_principal")
