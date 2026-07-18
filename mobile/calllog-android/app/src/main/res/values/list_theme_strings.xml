@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="list_theme_title">List appearance</string>
-    <string name="list_theme_normal">Normal</string>
-    <string name="list_theme_compact">Compact</string>
-    <string name="list_theme_description">Compact removes the spacing between consecutive rows. Time-group headings keep their own spacing.</string>
-</resources>
