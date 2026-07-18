@@ -18,6 +18,7 @@ internal class HomeCrmContactsContentView(
     private val rowRenderer: HomeCrmContactRowRenderer,
     private val timelineToggle: HomeCrmTimelineModeToggle,
     private val hasActiveCrmFilters: () -> Boolean,
+    private val retainRowsDuringEdgePaging: () -> Boolean = { false },
 ) {
     private var currentData: HomeRenderData? = null
 
@@ -30,11 +31,13 @@ internal class HomeCrmContactsContentView(
         timelineToggle.prepare(visible = true, contactsMode = true)
         currentData = null
         contentRenderer.clearCalls()
-        binding.homeCallsContainer.removeAllViews()
-        binding.fullLogProgress.visibility = View.GONE
+        if (!retainRowsDuringEdgePaging()) {
+            binding.homeCallsContainer.removeAllViews()
+            addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
+        }
+        binding.fullLogProgress.visibility = if (retainRowsDuringEdgePaging()) View.VISIBLE else View.GONE
         binding.homeStatusText.text = ""
         binding.homeStatusText.visibility = View.GONE
-        addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
         binding.paginationContainer.visibility = View.GONE
     }
 
