@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="list_theme_title">Вид на списъците</string>
-    <string name="list_theme_normal">Нормален</string>
-    <string name="list_theme_compact">Компактен</string>
-    <string name="list_theme_description">Компактният вид премахва разстоянието между последователните редове. Заглавията на времевите групи запазват собствените си отстояния.</string>
-</resources>
