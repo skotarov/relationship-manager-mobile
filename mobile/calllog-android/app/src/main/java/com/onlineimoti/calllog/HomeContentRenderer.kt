@@ -68,12 +68,7 @@ internal class HomeContentRenderer(
         if (activePhoneFilter().isNotBlank()) { renderFilteredContactSummary(); return }
         if (currentCalls.isEmpty()) return
         applyRenderData(
-            HomeRenderData(
-                currentCalls,
-                currentContactNotesByNumber,
-                currentContactNamesByNumber,
-                currentCallNotesByCall,
-            ),
+            HomeRenderData(currentCalls, currentContactNotesByNumber, currentContactNamesByNumber, currentCallNotesByCall),
             pageSize,
             false,
         )
@@ -100,12 +95,6 @@ internal class HomeContentRenderer(
         val fullLog = isFilteredFullLogMode()
         val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
         val contactNotesByNumber = data.contactNotesByNumber
-        // Important: do not read SAF/local-note files from this renderer. It runs
-        // on the main thread. HomeCallsLoader already loads notes in a background
-        // executor, then calls this method with a complete snapshot. Source-level
-        // readers decide what is a true yellow/general note; the renderer must not
-        // hide an explicitly saved local main note just because its text matches a
-        // blue call note.
         currentCalls = calls
         currentContactNotesByNumber = contactNotesByNumber
         currentContactNamesByNumber = namesByNumber
@@ -121,9 +110,7 @@ internal class HomeContentRenderer(
             if (fullLog) {
                 val weekSerial = weekUi.weekStartSerial(call.startedAt)
                 if (weekSerial != null && weekSerial != previousWeekSerial) {
-                    val relativeWeeks = currentWeekSerial
-                        ?.let { (it - weekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK }
-                        ?: 0L
+                    val relativeWeeks = currentWeekSerial?.let { (it - weekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK } ?: 0L
                     binding.homeCallsContainer.addView(weekUi.separator(call.startedAt, relativeWeeks))
                     previousWeekSerial = weekSerial
                 }
@@ -137,21 +124,11 @@ internal class HomeContentRenderer(
             val key = HomeCallPageLoader.noteKey(call.number)
             val displayName = namesByNumber[key].orEmpty().ifBlank { call.displayName }
             val callNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
-            val row = if (fullLog) {
-                rowRenderer.fullLogTimelineRow(call, displayName, callNote)
-            } else {
-                rowRenderer.compactCallRow(
-                    call, displayName,
-                    if (filtered) null else contactNotesByNumber[key],
-                    if (filtered) null else labels[key],
-                    callNote,
-                    activeSearchQuery(),
-                    !filtered,
-                    !filtered,
-                    !filtered,
-                    serverBacked = !filtered && key in serverBackedKeys,
-                )
-            }
+            val row = if (fullLog) rowRenderer.fullLogTimelineRow(call, displayName, callNote) else rowRenderer.compactCallRow(
+                call, displayName, if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
+                callNote, activeSearchQuery(), !filtered, !filtered, !filtered,
+                serverBacked = !filtered && key in serverBackedKeys,
+            )
             binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
@@ -201,9 +178,7 @@ internal class HomeContentRenderer(
         val labels = companyGeneralNotes.labelsFor(listOf(summary))[HomeCallPageLoader.noteKey(phone)]
         val crm = CallReportRemoteAccess.isReady(ConfigStore.load(activity.applicationContext)) && CrmContactSyncStore.isEnabled(activity.applicationContext, phone)
         val identity = scopeChipsUi.inlineCrmIdentity(
-            name.ifBlank { phone },
-            labels,
-            crm,
+            name.ifBlank { phone }, labels, crm,
             serverBacked = companyGeneralNotes.hasServerBackedPhone(phone),
         )
         val note = ContactNoteReader.generalNoteForPhone(activity, phone).orEmpty()
@@ -251,10 +226,8 @@ internal class HomeContentRenderer(
         val fullLog = isFilteredFullLogMode()
         val crmTopLevelStatusInResults = isTopLevelCrmPage()
         val plainCallLogRange = hidePlainTimelineRange &&
-            activePhoneFilter().isBlank() &&
-            activeSearchQuery().isBlank() &&
-            !isCrmModeEnabled() &&
-            !isCrmContactsMode()
+            activePhoneFilter().isBlank() && activeSearchQuery().isBlank() &&
+            !isCrmModeEnabled() && !isCrmContactsMode()
         binding.homeStatusRow.visibility = if (fullLog || plainCallLogRange) View.GONE else View.VISIBLE
         binding.homeStatusText.visibility = if (plainCallLogRange || crmTopLevelStatusInResults) View.GONE else View.VISIBLE
         binding.filteredDialButton.visibility = if (filtered && !fullLog) View.VISIBLE else View.GONE
@@ -267,24 +240,14 @@ internal class HomeContentRenderer(
         }
     }
     private fun showResultsStatus(text: String) {
-        currentCalls = emptyList()
-        currentContactNotesByNumber = emptyMap()
-        currentContactNamesByNumber = emptyMap()
-        currentCallNotesByCall = emptyMap()
-        binding.homeCallsContainer.removeAllViews()
-        binding.fullLogProgress.visibility = View.GONE
-        binding.homeStatusText.text = ""
-        binding.homeStatusText.visibility = View.GONE
+        currentCalls = emptyList(); currentContactNotesByNumber = emptyMap()
+        currentContactNamesByNumber = emptyMap(); currentCallNotesByCall = emptyMap()
+        binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE
+        binding.homeStatusText.text = ""; binding.homeStatusText.visibility = View.GONE
         binding.homeCallsContainer.addView(TextView(activity).apply {
-            this.text = text
-            gravity = Gravity.CENTER
-            textSize = 14f
-            setTextColor(Color.rgb(100, 116, 139))
-            setPadding(dp(18), dp(28), dp(18), dp(28))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            )
+            this.text = text; gravity = Gravity.CENTER; textSize = 14f
+            setTextColor(Color.rgb(100, 116, 139)); setPadding(dp(18), dp(28), dp(18), dp(28))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
     }
     private fun isTopLevelCrmPage() = activePhoneFilter().isBlank() && (isCrmModeEnabled() || isCrmContactsMode())
