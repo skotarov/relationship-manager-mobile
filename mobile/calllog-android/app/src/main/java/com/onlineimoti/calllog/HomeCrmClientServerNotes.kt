@@ -7,23 +7,19 @@ internal data class HomeCrmClientServerNotesSnapshot(
     val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
 )
 
-/** Server-only note helpers for the Clients page. */
+/** Cache-backed server note helpers for the Clients page. */
 internal object HomeCrmClientServerNotes {
     fun snapshot(
         context: Context,
         contacts: List<PhoneCallRecord>,
     ): HomeCrmClientServerNotesSnapshot {
         if (contacts.isEmpty()) return HomeCrmClientServerNotesSnapshot()
-        val config = ConfigStore.load(context.applicationContext)
-        if (!CallReportRemoteAccess.isReady(config)) return HomeCrmClientServerNotesSnapshot()
         val phones = contacts
             .map { it.number }
             .filter { HomeCallPageLoader.noteKey(it).isNotBlank() }
             .distinctBy(HomeCallPageLoader::noteKey)
         if (phones.isEmpty()) return HomeCrmClientServerNotesSnapshot()
-        val history = runCatching {
-            CallReportHistoryLookupClient.lookupMany(config, phones, context.applicationContext)
-        }.getOrDefault(CallReportHistoryLookupResult())
+        val history = HomeServerNotesCacheStore.snapshot(context.applicationContext, phones)
         return HomeCrmClientServerNotesSnapshot(
             contactNotesByNumber = unscopedGeneralNotes(contacts, history),
             callNotesByCall = latestCallNotes(contacts, history),
@@ -72,11 +68,7 @@ internal object HomeCrmClientServerNotes {
         return latest.mapValues { it.value.second }
     }
 
-    /**
-     * The Clients page has one yellow lane without a company label: the server main
-     * note saved without a firm. It is visually the same position as a local yellow
-     * note, but the text is still marked with a cloud because it came from server.
-     */
+    /** The unscoped server main note occupies the yellow/general lane. */
     private fun unscopedGeneralNotes(
         contacts: List<PhoneCallRecord>,
         history: CallReportHistoryLookupResult,
@@ -104,11 +96,6 @@ internal object HomeCrmClientServerNotes {
         return latest.mapValues { it.value.second }
     }
 
-    /**
-     * On the Clients page, ordinary server NOTE rows are conversation/blue notes.
-     * Yellow notes come from the explicit company/main-note channel, not from these
-     * contact history events. This keeps the Clients card able to show both lanes.
-     */
     private fun isBlueServerNote(event: CallReportHistoryEvent): Boolean {
         return event.communicationType.equals("note", ignoreCase = true) &&
             event.note.trim().isNotBlank() &&
