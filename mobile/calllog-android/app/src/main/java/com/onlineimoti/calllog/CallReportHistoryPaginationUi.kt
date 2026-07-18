@@ -53,7 +53,7 @@ internal class CallReportHistoryPaginationUi(
     }
 
     fun addNavigation(container: LinearLayout, page: HistoryPage, onPageChanged: () -> Unit) {
-        if (page.totalPages <= 1) return
+        if (page.totalPages <= 1 || PageLoadingModeStore.usesPrefetch(activity)) return
         container.addView(LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
