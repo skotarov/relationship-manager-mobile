@@ -33,6 +33,16 @@ internal class HomeCallRowRenderer(
             openContactNotesScreen, togglePhoneFilter, ::noteSyncStatus,
         )
     }
+    private val fullLogTimelineRowUi by lazy {
+        FullLogTimelineRowUi(
+            activity = activity,
+            dp = dp,
+            roundedRect = roundedRect,
+            openHistory = openContactNotesScreen,
+            openNoteEditor = openContactNotePopupForCall,
+            syncStatus = ::noteSyncStatus,
+        )
+    }
 
     fun compactCallRow(
         call: PhoneCallRecord,
@@ -98,6 +108,27 @@ internal class HomeCallRowRenderer(
         row.addView(actions(call, displayName, callNote, showQuickActions))
         card.addView(row)
         return card
+    }
+
+    /** Full Log uses the flatter History timeline style while Home keeps its original rows. */
+    fun fullLogTimelineRow(
+        call: PhoneCallRecord,
+        displayName: String,
+        callNote: HomeCallNote?,
+    ): MaterialCardView {
+        if (call.isSms) return smsRowRenderer.compactRow(
+            call = call,
+            displayName = displayName,
+            contactNote = null,
+            companyGeneralNoteLabels = null,
+            callNote = callNote,
+            highlightQuery = "",
+            showContactIdentity = false,
+            showGeneralContactNote = false,
+            showQuickActions = false,
+            serverBacked = false,
+        )
+        return fullLogTimelineRowUi.create(call, displayName, callNote)
     }
 
     private fun isCrmClient(call: PhoneCallRecord, visible: Boolean): Boolean {
