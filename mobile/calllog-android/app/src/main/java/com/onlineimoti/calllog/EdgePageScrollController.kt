@@ -45,11 +45,14 @@ internal class EdgePageScrollController(
         }
 
         override fun onChildViewRemoved(parent: View?, child: View?) {
-            if (suppressCallbacks || pendingNext || !protectRetainedPrefix) return
-            if (child === retainedPages) {
-                hierarchyScrollY = scrollView?.scrollY ?: 0
-                schedulePrefixRestore()
+            if (suppressCallbacks || pendingNext || child !== retainedPages) return
+            if (!protectRetainedPrefix) {
+                retainedPages = null
+                initialPrefetchDone = false
+                return
             }
+            hierarchyScrollY = scrollView?.scrollY ?: 0
+            schedulePrefixRestore()
         }
     }
 
