@@ -205,11 +205,20 @@ internal object CallReportHistoryLookupClient {
                 val companiesAuthoritative = principalJson?.let { principal ->
                     principal.has("companies") && principal.optJSONArray("companies") != null
                 } == true
-                return parse(json).copy(
+                val parsed = parse(json)
+                // A single-phone GET is an authoritative empty/non-empty snapshot for
+                // that phone. A multi-phone response has one shared result limit, so
+                // only phone keys actually present in its events are safe to replace.
+                val successfulKeys = if (singlePhone != null) {
+                    setOf(phoneKey(singlePhone)).filterTo(linkedSetOf()) { it.isNotBlank() }
+                } else {
+                    parsed.events
+                        .mapTo(linkedSetOf()) { event -> phoneKey(event.phone) }
+                        .filterTo(linkedSetOf()) { it.isNotBlank() }
+                }
+                return parsed.copy(
                     requestSuccessful = true,
-                    successfulPhoneKeys = phones
-                        .mapTo(linkedSetOf(), ::phoneKey)
-                        .filterTo(linkedSetOf()) { it.isNotBlank() },
+                    successfulPhoneKeys = successfulKeys,
                     principalCompaniesAuthoritative = companiesAuthoritative,
                 )
             } catch (error: Throwable) {
