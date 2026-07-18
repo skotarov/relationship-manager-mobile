@@ -15,10 +15,11 @@ internal class CallReportHistoryPaginationUi(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
     private var pageIndex = 0
+    private var totalPages = 1
 
     fun currentPage(rows: List<CallReportHistoryRow>): HistoryPage {
         val pageSize = ConfigStore.load(activity).homeCallPageSize
-        val totalPages = maxOf(1, (rows.size + pageSize - 1) / pageSize)
+        totalPages = maxOf(1, (rows.size + pageSize - 1) / pageSize)
         pageIndex = pageIndex.coerceIn(0, totalPages - 1)
         val firstIndex = pageIndex * pageSize
         val lastExclusive = minOf(rows.size, firstIndex + pageSize)
@@ -30,6 +31,28 @@ internal class CallReportHistoryPaginationUi(
         )
     }
 
+    fun canPrevious(): Boolean = pageIndex > 0
+    fun canNext(): Boolean = pageIndex < totalPages - 1
+
+    fun previousPage(onPageChanged: () -> Unit): Boolean {
+        if (!canPrevious()) return false
+        pageIndex--
+        onPageChanged()
+        return true
+    }
+
+    fun nextPage(onPageChanged: () -> Unit): Boolean {
+        if (!canNext()) return false
+        pageIndex++
+        onPageChanged()
+        return true
+    }
+
+    fun reset() {
+        pageIndex = 0
+        totalPages = 1
+    }
+
     fun addNavigation(container: LinearLayout, page: HistoryPage, onPageChanged: () -> Unit) {
         if (page.totalPages <= 1) return
         container.addView(LinearLayout(activity).apply {
@@ -38,11 +61,8 @@ internal class CallReportHistoryPaginationUi(
             setPadding(0, dp(6), 0, 0)
             addView(pageButton(
                 label = activity.getString(R.string.history_page_previous, page.pageSize),
-                enabled = page.pageIndex > 0,
-            ) {
-                pageIndex -= 1
-                onPageChanged()
-            }, LinearLayout.LayoutParams(0, dp(38), 1f))
+                enabled = canPrevious(),
+            ) { previousPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
             addView(TextView(activity).apply {
                 text = activity.getString(R.string.history_page_status, page.pageIndex + 1, page.totalPages)
                 textSize = 12.5f
@@ -51,11 +71,8 @@ internal class CallReportHistoryPaginationUi(
             }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.9f))
             addView(pageButton(
                 label = activity.getString(R.string.history_page_next, page.pageSize),
-                enabled = page.pageIndex < page.totalPages - 1,
-            ) {
-                pageIndex += 1
-                onPageChanged()
-            }, LinearLayout.LayoutParams(0, dp(38), 1f))
+                enabled = canNext(),
+            ) { nextPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
