@@ -38,10 +38,6 @@ object MainSettingsConfigUi {
             ConfigStore.LANGUAGE_EN -> language.appLanguageEn.isChecked = true
             else -> language.appLanguageSystem.isChecked = true
         }
-        when (config.listTheme) {
-            ConfigStore.LIST_THEME_COMPACT -> binding.settingsGeneralGroup.listThemeCompactRadio.isChecked = true
-            else -> binding.settingsGeneralGroup.listThemeNormalRadio.isChecked = true
-        }
         when (AppFontScaleStore.loadMultiplier(binding.root.context)) {
             AppFontScaleStore.LARGE -> binding.settingsGeneralGroup.fontScaleLargestRadio.isChecked = true
             AppFontScaleStore.NORMAL -> binding.settingsGeneralGroup.fontScaleLargerRadio.isChecked = true
@@ -112,11 +108,6 @@ object MainSettingsConfigUi {
             openSmsIconToHistory = defaultSms.openSmsIconToHistoryCheckBox.isChecked,
             useLinkedContactIntegration = contactLink.useLinkedContactIntegrationCheckBox.isChecked,
             useContactShareIntegration = contactLink.useContactShareIntegrationCheckBox.isChecked,
-            listTheme = if (binding.settingsGeneralGroup.listThemeCompactRadio.isChecked) {
-                ConfigStore.LIST_THEME_COMPACT
-            } else {
-                ConfigStore.LIST_THEME_NORMAL
-            },
         )
     }
 }
