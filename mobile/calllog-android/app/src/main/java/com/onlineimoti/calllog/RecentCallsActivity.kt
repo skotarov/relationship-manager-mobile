@@ -67,7 +67,7 @@ class RecentCallsActivity : AppCompatActivity() {
         }
         calls.forEach { call ->
             binding.recentCallsContainer.addView(
-                ListThemeUi.applyRowSpacing(callCard(call), this, ::dp),
+                ListThemeUi.applyRowSpacing(callCard(call), ::dp),
             )
         }
     }
