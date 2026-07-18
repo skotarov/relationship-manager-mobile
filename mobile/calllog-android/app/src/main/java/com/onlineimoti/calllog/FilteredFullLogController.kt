@@ -108,7 +108,8 @@ internal class FilteredFullLogController(
                 binding.homeCallsContainer.addView(weekUi.separator(entry.row.timeMs, relativeWeeks))
                 previousWeekSerial = weekSerial
             }
-            binding.homeCallsContainer.addView(rowRenderer.rowView(phone, entry, remoteEnabled))
+            val row = rowRenderer.rowView(phone, entry, remoteEnabled)
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
         }
     }
 
