@@ -19,12 +19,15 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     private val executor = Executors.newSingleThreadExecutor()
     private lateinit var statusText: TextView
     private lateinit var progress: ProgressBar
+    private lateinit var scrollView: ScrollView
     private lateinit var listContainer: LinearLayout
     private lateinit var previousButton: MaterialButton
     private lateinit var nextButton: MaterialButton
     private lateinit var pageText: TextView
+    private lateinit var edgePager: EdgePageScrollController
     private var pageIndex = 0
     private var loading = false
+    private var hasNext = false
 
     private val readSmsPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         renderPage()
@@ -34,15 +37,22 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         setContentView(createContent())
+        edgePager = EdgePageScrollController(
+            canPrevious = { pageIndex > 0 },
+            canNext = { hasNext },
+            previousPage = ::previousPage,
+            nextPage = ::nextPage,
+            pageReady = { !loading && progress.visibility != View.VISIBLE },
+        ).also { it.bind(scrollView, listContainer) }
         renderPage()
     }
 
-    /** A second tap on a new-SMS notification must show the latest page immediately. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        edgePager.cancelPending()
         pageIndex = 0
-        if (::listContainer.isInitialized && !loading) renderPage()
+        if (!loading) renderPage()
     }
 
     override fun onResume() {
@@ -51,6 +61,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (::edgePager.isInitialized) edgePager.release()
         executor.shutdownNow()
         super.onDestroy()
     }
@@ -67,9 +78,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
             setPadding(dp(18), 0, dp(18), dp(6))
         }
         root.addView(statusText)
-        progress = ProgressBar(this).apply {
-            visibility = View.GONE
-        }
+        progress = ProgressBar(this).apply { visibility = View.GONE }
         root.addView(progress, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -81,9 +90,8 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(4), dp(16), dp(16))
         }
-        root.addView(ScrollView(this).apply {
-            addView(listContainer)
-        }, LinearLayout.LayoutParams(
+        scrollView = ScrollView(this).apply { addView(listContainer) }
+        root.addView(scrollView, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             0,
             1f,
@@ -123,16 +131,8 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
         gravity = Gravity.CENTER_VERTICAL
         orientation = LinearLayout.HORIZONTAL
         setPadding(dp(12), dp(8), dp(12), dp(12))
-        previousButton = pageButton("Предишни") {
-            if (pageIndex > 0) {
-                pageIndex--
-                renderPage()
-            }
-        }
-        nextButton = pageButton("Следващи") {
-            pageIndex++
-            renderPage()
-        }
+        previousButton = pageButton("Предишни", ::previousPage)
+        nextButton = pageButton("Следващи", ::nextPage)
         pageText = TextView(this@SmsHistoryActivity).apply {
             gravity = Gravity.CENTER
             textSize = 12.5f
@@ -147,6 +147,18 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
         text = label
         isAllCaps = false
         setOnClickListener { action() }
+    }
+
+    private fun previousPage() {
+        if (loading || pageIndex <= 0) return
+        pageIndex--
+        renderPage()
+    }
+
+    private fun nextPage() {
+        if (loading || !hasNext) return
+        pageIndex++
+        renderPage()
     }
 
     private fun renderPage() {
@@ -175,7 +187,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
                 if (isFinishing || isDestroyed || requestedPage != pageIndex) return@runOnUiThread
                 loading = false
                 progress.visibility = View.GONE
-                val hasNext = loaded.size > pageSize
+                hasNext = loaded.size > pageSize
                 val messages = loaded.take(pageSize)
                 renderRows(messages, displayNames)
                 val first = requestedPage * pageSize + 1
@@ -196,6 +208,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
 
     private fun renderPermissionRequired() {
         loading = false
+        hasNext = false
         progress.visibility = View.GONE
         listContainer.removeAllViews()
         statusText.text = "Нужно е разрешение за четене на SMS"
@@ -268,8 +281,6 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     }
 
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
-
     private fun hasSmsPermission(): Boolean = SmsMessageReader.hasReadSmsPermission(this)
-
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
