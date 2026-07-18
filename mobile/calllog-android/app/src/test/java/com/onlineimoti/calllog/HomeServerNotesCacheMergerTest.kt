@@ -106,6 +106,27 @@ class HomeServerNotesCacheMergerTest {
     }
 
     @Test
+    fun successfulPhoneRefreshRetainsRemovedCompanyEventsHidden() {
+        val initial = stateWith(
+            event(companyId = "firm-a"),
+            principal = principal(listOf(CallReportHistoryCompany("firm-a", "A"))),
+            authoritative = true,
+        )
+        val next = HomeServerNotesCacheMerger.apply(
+            initial,
+            CallReportHistoryLookupResult(
+                principal = principal(emptyList()),
+                requestSuccessful = true,
+                successfulPhoneKeys = setOf(phoneKey),
+                principalCompaniesAuthoritative = true,
+            ),
+            200L,
+        )
+        assertTrue(HomeServerNotesCacheMerger.visibleResult(next, listOf(phone)).events.isEmpty())
+        assertEquals("firm-a", next.eventsByPhoneKey.getValue(phoneKey).single().companyId)
+    }
+
+    @Test
     fun restoringCompanyMakesRetainedNotesVisibleAgain() {
         val hidden = stateWith(event(companyId = "firm-a"), principal = principal(emptyList()), authoritative = true)
         val restored = HomeServerNotesCacheMerger.apply(
