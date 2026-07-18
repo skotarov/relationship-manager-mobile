@@ -40,8 +40,6 @@ data class AppConfig(
     val useLinkedContactIntegration: Boolean = true,
     /** Shows Relationship Manager in Android's Share contact / vCard targets. */
     val useContactShareIntegration: Boolean = true,
-    /** Visual list density only: normal spacing or rows touching vertically. */
-    val listTheme: String = ConfigStore.DEFAULT_LIST_THEME,
 )
 
 object ConfigStore {
@@ -75,7 +73,6 @@ object ConfigStore {
     private const val KEY_OPEN_SMS_ICON_TO_HISTORY = "open_sms_icon_to_history"
     private const val KEY_USE_LINKED_CONTACT_INTEGRATION = "use_linked_contact_integration"
     private const val KEY_USE_CONTACT_SHARE_INTEGRATION = "use_contact_share_integration"
-    private const val KEY_LIST_THEME = "list_theme"
 
     /** Empty by default: free mode works locally and does not connect to a server. */
     const val DEFAULT_BASE_URL = ""
@@ -107,9 +104,6 @@ object ConfigStore {
     const val DEFAULT_OPEN_SMS_ICON_TO_HISTORY = false
     const val DEFAULT_USE_LINKED_CONTACT_INTEGRATION = true
     const val DEFAULT_USE_CONTACT_SHARE_INTEGRATION = true
-    const val LIST_THEME_NORMAL = "normal"
-    const val LIST_THEME_COMPACT = "compact"
-    const val DEFAULT_LIST_THEME = LIST_THEME_NORMAL
 
     fun load(context: Context): AppConfig {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -148,7 +142,6 @@ object ConfigStore {
             openSmsIconToHistory = prefs.getBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, DEFAULT_OPEN_SMS_ICON_TO_HISTORY),
             useLinkedContactIntegration = prefs.getBoolean(KEY_USE_LINKED_CONTACT_INTEGRATION, DEFAULT_USE_LINKED_CONTACT_INTEGRATION),
             useContactShareIntegration = prefs.getBoolean(KEY_USE_CONTACT_SHARE_INTEGRATION, DEFAULT_USE_CONTACT_SHARE_INTEGRATION),
-            listTheme = normalizeListTheme(prefs.getString(KEY_LIST_THEME, DEFAULT_LIST_THEME).orEmpty()),
         )
         return normalize(local)
     }
@@ -186,7 +179,6 @@ object ConfigStore {
             .putBoolean(KEY_OPEN_SMS_ICON_TO_HISTORY, normalized.openSmsIconToHistory)
             .putBoolean(KEY_USE_LINKED_CONTACT_INTEGRATION, normalized.useLinkedContactIntegration)
             .putBoolean(KEY_USE_CONTACT_SHARE_INTEGRATION, normalized.useContactShareIntegration)
-            .putString(KEY_LIST_THEME, normalized.listTheme)
             .apply()
         AndroidIntegrationComponents.apply(context.applicationContext, normalized)
         CallReportNoteOutboxScheduler.enqueue(context.applicationContext, reason = "settings_saved")
@@ -217,7 +209,6 @@ object ConfigStore {
         localNotesFolderUri = "",
         useFullScreenPopup = false,
         useInternalSmsComposer = false,
-        listTheme = normalizeListTheme(config.listTheme),
     )
 
     private fun Int.coerceHomeCallPageSize(): Int = coerceIn(MIN_HOME_CALL_PAGE_SIZE, MAX_HOME_CALL_PAGE_SIZE)
@@ -258,13 +249,6 @@ object ConfigStore {
             LANGUAGE_BG -> LANGUAGE_BG
             LANGUAGE_EN -> LANGUAGE_EN
             else -> LANGUAGE_SYSTEM
-        }
-    }
-
-    private fun normalizeListTheme(value: String): String {
-        return when (value.trim()) {
-            LIST_THEME_COMPACT -> LIST_THEME_COMPACT
-            else -> LIST_THEME_NORMAL
         }
     }
 }
