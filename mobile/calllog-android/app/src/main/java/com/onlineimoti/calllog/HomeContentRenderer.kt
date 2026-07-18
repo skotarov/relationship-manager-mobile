@@ -26,6 +26,7 @@ internal class HomeContentRenderer(
     private val rowRenderer: HomeCallRowRenderer, private val dialFilteredPhone: (String) -> Unit,
     private val companyGeneralNotes: HomeCompanyGeneralNotesController,
     private val scopeChipsUi: HomeCompanyScopeChipsUi,
+    private val retainRowsDuringEdgePaging: () -> Boolean = { false },
 ) {
     var currentCalls: List<PhoneCallRecord> = emptyList(); private set
     private var currentContactNotesByNumber: Map<String, String> = emptyMap()
@@ -44,7 +45,8 @@ internal class HomeContentRenderer(
     fun prepareForRender(pageSize: Int, keepExistingRows: Boolean) {
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, pageSize)
-        if (!keepExistingRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
+        val retainRows = keepExistingRows || retainRowsDuringEdgePaging()
+        if (!retainRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (isFilteredFullLogMode() || activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
         updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
