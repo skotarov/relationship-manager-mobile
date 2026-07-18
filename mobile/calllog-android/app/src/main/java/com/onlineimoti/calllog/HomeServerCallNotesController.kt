@@ -25,16 +25,26 @@ internal class HomeServerCallNotesController(
     fun enrichAsync(
         renderData: HomeRenderData,
         onUpdated: (HomeRenderData) -> Unit,
+        onFinished: () -> Unit = {},
     ) {
-        if (renderData.calls.isEmpty()) return
+        if (renderData.calls.isEmpty()) {
+            handler.post(onFinished)
+            return
+        }
         val config = ConfigStore.load(appContext)
-        if (!CallReportRemoteAccess.isReady(config)) return
+        if (!CallReportRemoteAccess.isReady(config)) {
+            handler.post(onFinished)
+            return
+        }
         val expectedGeneration = generation.get()
         val phones = renderData.calls
             .filterNot { it.isSms }
             .map { it.number }
             .distinctBy(HomeCallPageLoader::noteKey)
-        if (phones.isEmpty()) return
+        if (phones.isEmpty()) {
+            handler.post(onFinished)
+            return
+        }
 
         executor.execute {
             val history = runCatching {
@@ -51,15 +61,14 @@ internal class HomeServerCallNotesController(
                 existing = renderData.contactNotesByNumber,
                 serverEvents = history.events,
             )
-            if (mergedNotes == renderData.callNotesByCall && mergedGeneralNotes == renderData.contactNotesByNumber) {
-                return@execute
-            }
             val updated = renderData.copy(
                 contactNotesByNumber = mergedGeneralNotes,
                 callNotesByCall = mergedNotes,
             )
             handler.post {
-                if (expectedGeneration == generation.get()) onUpdated(updated)
+                if (expectedGeneration != generation.get()) return@post
+                if (updated != renderData) onUpdated(updated)
+                onFinished()
             }
         }
     }
