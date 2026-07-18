@@ -23,12 +23,17 @@ internal class HomeCrmContactsLoader(
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
+    private val serverCallNotes = HomeServerCallNotesController(activity, handler)
 
-    fun invalidate(): Int = generation.incrementAndGet()
+    fun invalidate(): Int {
+        serverCallNotes.invalidate()
+        return generation.incrementAndGet()
+    }
 
     fun release() {
         generation.incrementAndGet()
         executor.shutdownNow()
+        serverCallNotes.release()
     }
 
     fun renderAsync(pageSize: Int, expectedGeneration: Int) {
@@ -44,38 +49,44 @@ internal class HomeCrmContactsLoader(
                     .sortedWith(contactListOrder)
                     .drop(requestedPage * pageSize)
                     .take(pageSize)
-                val serverNotes = HomeCrmClientServerNotes.snapshot(appContext, page)
-                val contactNotes = HomeCallPageLoader.contactNotes(appContext, page).toMutableMap().apply {
-                    putAll(serverNotes.contactNotesByNumber)
-                }
                 HomeRenderData(
                     calls = page,
-                    contactNotesByNumber = contactNotes,
+                    contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, page),
                     contactNamesByNumber = page.associate { call ->
                         HomeCallPageLoader.noteKey(call.number) to call.displayName
                     },
-                    callNotesByCall = serverNotes.callNotesByCall,
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
-                val current = expectedGeneration == generation.get() &&
-                    !activity.isFinishing &&
-                    !activity.isDestroyed &&
-                    // The Clients page is server-backed and does not depend on the
-                    // old local CRM call-log mode. Requiring isCrmModeEnabled() here
-                    // left the screen stuck on "Loading customers" after opening
-                    // Clients directly from the toolbar/overflow.
-                    isCrmContactsMode() &&
-                    activePhoneFilter().isBlank() &&
-                    activeSearchQuery().isBlank() &&
-                    pageIndex() == requestedPage &&
-                    crmFilters.state() == filterState
-                if (!current) return@post
-                if (data.calls.isEmpty()) contactsContent.renderEmpty(pageSize)
-                else contactsContent.render(data, pageSize)
+                if (!isCurrent(expectedGeneration, requestedPage, filterState)) return@post
+                if (data.calls.isEmpty()) {
+                    contactsContent.renderEmpty(pageSize)
+                } else {
+                    contactsContent.render(data, pageSize)
+                    serverCallNotes.enrichAsync(data) { enriched ->
+                        if (isCurrent(expectedGeneration, requestedPage, filterState)) {
+                            contactsContent.render(enriched, pageSize)
+                        }
+                    }
+                }
                 onRenderComplete()
             }
         }
+    }
+
+    private fun isCurrent(
+        expectedGeneration: Int,
+        requestedPage: Int,
+        filterState: HomeCrmFilterState,
+    ): Boolean {
+        return expectedGeneration == generation.get() &&
+            !activity.isFinishing &&
+            !activity.isDestroyed &&
+            isCrmContactsMode() &&
+            activePhoneFilter().isBlank() &&
+            activeSearchQuery().isBlank() &&
+            pageIndex() == requestedPage &&
+            crmFilters.state() == filterState
     }
 
     private fun enrichWithLocalName(contact: PhoneCallRecord): PhoneCallRecord {
