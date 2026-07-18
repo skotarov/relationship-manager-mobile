@@ -10,16 +10,12 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 
-/**
- * Presentation controller for [ContactNotesActivity]. Server data is read from the
- * already loaded history response, so it remains visible when local note storage
- * switches between shared and private folders.
- */
+/** Presentation controller for [ContactNotesActivity]. */
 internal class ContactNotesRestoredController(
     private val activity: ContactNotesActivity,
 ) {
-    private var phone: String = ""
-    private var titleText: String = ""
+    private var phone = ""
+    private var titleText = ""
     private var crmSyncBusy = false
     private var pullRefreshRequested = false
     private var confirmedNoteVersion = Long.MIN_VALUE
@@ -29,7 +25,6 @@ internal class ContactNotesRestoredController(
     private val delayedServerRefresh = Runnable {
         if (!activity.isFinishing && !activity.isDestroyed) historyController.refreshServer(phone)
     }
-
     private val externalActions by lazy { ContactNotesExternalActions(activity) }
     private val headerUi by lazy { ContactNotesHeaderUi(activity, ::dp) }
     private val phaseUi by lazy { ContactNegotiationPhaseUi(activity, ::dp) }
@@ -42,15 +37,7 @@ internal class ContactNotesRestoredController(
             rerender = ::render,
         )
     }
-    private val edgePageScrollController by lazy {
-        EdgePageScrollController(
-            canPrevious = historyController::canPreviousPage,
-            canNext = historyController::canNextPage,
-            previousPage = { historyController.previousPage() },
-            nextPage = { historyController.nextPage() },
-            pageReady = { true },
-        )
-    }
+    private val edgePaging by lazy { HistoryEdgePagingController(historyController) }
     private val generalNoteSectionUi by lazy {
         CompanyScopedGeneralNoteSectionUi(
             activity = activity,
@@ -62,8 +49,7 @@ internal class ContactNotesRestoredController(
     }
 
     fun onCreate(intent: Intent?) {
-        edgePageScrollController.cancelPending()
-        historyController.resetPage()
+        edgePaging.reset()
         phone = intent?.getStringExtra(ContactNotesActivity.EXTRA_PHONE).orEmpty()
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
@@ -84,7 +70,7 @@ internal class ContactNotesRestoredController(
 
     fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        edgePageScrollController.release()
+        edgePaging.release()
         crmSyncExecutor.shutdownNow()
         historyController.release()
     }
@@ -128,18 +114,16 @@ internal class ContactNotesRestoredController(
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
-            openRmContact = { openRmContactForm() },
+            openRmContact = ::openRmContactForm,
             toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone)) },
             openRmCallLog = { openRmCallLog(false) },
             openRmCallLogFiltered = { openRmCallLog(true) },
         ))
-        root.addView(
-            ContactNotesServerStatusUi.create(
-                activity = activity,
-                dp = ::dp,
-                textValue = historyController.serverLoadingStatusText(),
-            ),
-        )
+        root.addView(ContactNotesServerStatusUi.create(
+            activity = activity,
+            dp = ::dp,
+            textValue = historyController.serverLoadingStatusText(),
+        ))
         generalNoteSectionUi.add(
             root = root,
             phone = phone,
@@ -149,7 +133,7 @@ internal class ContactNotesRestoredController(
             onEditCompany = ::openGeneralNoteEditor,
             onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
             phaseBarForCompany = if (phaseControlsVisible) {
-                { companyId -> phaseUi.phaseBar(phone, companyId, true) { render() } }
+                { companyId -> phaseUi.phaseBar(phone, companyId, true, ::render) }
             } else null,
         )
         PendingCallNoteStore.reconcilePendingForPhone(activity, phone)
@@ -165,7 +149,7 @@ internal class ContactNotesRestoredController(
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
         }
-        edgePageScrollController.bind(scrollView, root)
+        edgePaging.bind(scrollView, root)
         activity.setContentView(PullToRefreshLayout(activity).apply {
             addView(scrollView)
             setOnRefreshListener(::refreshFromPull)
@@ -190,7 +174,6 @@ internal class ContactNotesRestoredController(
         val requestedPhone = phone
         crmSyncBusy = true
         render()
-
         crmSyncExecutor.execute {
             val updated = runCatching {
                 RmContactSyncLayerStore.setCloudSyncWithoutRmLayer(
@@ -199,7 +182,6 @@ internal class ContactNotesRestoredController(
                     enabled = enabled,
                 )
             }.getOrDefault(false)
-
             handler.post {
                 if (activity.isFinishing || activity.isDestroyed) return@post
                 crmSyncBusy = false
@@ -217,12 +199,7 @@ internal class ContactNotesRestoredController(
     }
 
     private fun openGeneralNoteEditor(companyId: String = "") {
-        CompanyMainNoteEditorLauncher.start(
-            context = activity,
-            phone = phone,
-            title = titleText,
-            companyId = companyId,
-        )
+        CompanyMainNoteEditorLauncher.start(activity, phone, titleText, companyId)
     }
 
     private fun openUnscopedServerMainNoteEditor(event: CallReportHistoryEvent) {
@@ -261,8 +238,7 @@ internal class ContactNotesRestoredController(
     }
 
     private fun openSmsCompanyEditor(sms: SmsMessageRecord, companyId: String) {
-        val config = ConfigStore.load(activity)
-        if (!CallReportRemoteAccess.isReady(config)) {
+        if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) {
             Toast.makeText(activity, "За SMS фирма включи и настрой Server", Toast.LENGTH_SHORT).show()
             return
         }
@@ -297,15 +273,13 @@ internal class ContactNotesRestoredController(
         })
     }
 
-    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable {
-        return GradientDrawable().apply {
+    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) =
+        GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius.toFloat()
             setColor(color)
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
-    }
-
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
 
     private companion object {
