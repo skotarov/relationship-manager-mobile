@@ -19,7 +19,8 @@ internal class HomeEdgePagingController(
         previousPage = previousPage,
         nextPage = nextPage,
         pageReady = {
-            binding.paginationContainer.visibility == View.VISIBLE &&
+            HomePageReadyState.isReady() &&
+                binding.paginationContainer.visibility == View.VISIBLE &&
                 binding.fullLogProgress.visibility != View.VISIBLE
         },
         retainPreviousPages = true,
