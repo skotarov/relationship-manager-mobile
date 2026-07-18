@@ -10,15 +10,19 @@ internal class HomeEdgePagingController(
     previousPage: () -> Unit,
     nextPage: () -> Unit,
 ) {
+    private val paginationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        hideAutomaticModeNavigation()
+    }
     private val delegate = EdgePageScrollController(
         canPrevious = canPrevious,
         canNext = { PageLoadingModeStore.usesPrefetch(binding.root.context) && canNext() },
         previousPage = previousPage,
         nextPage = nextPage,
         pageReady = {
+            val prefetch = PageLoadingModeStore.usesPrefetch(binding.root.context)
             HomePageReadyState.isReady() &&
-                binding.paginationContainer.visibility == View.VISIBLE &&
-                binding.fullLogProgress.visibility != View.VISIBLE
+                binding.fullLogProgress.visibility != View.VISIBLE &&
+                (prefetch || binding.paginationContainer.visibility == View.VISIBLE)
         },
         retainPreviousPages = true,
         protectRetainedPrefix = true,
@@ -27,14 +31,42 @@ internal class HomeEdgePagingController(
     )
 
     init {
+        binding.paginationContainer.addOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.setOnReady { bind() }
+        updateNavigationVisibility()
     }
 
-    fun bind() = delegate.bind(binding.homeCallsScrollView, binding.homeCallsContainer)
+    fun bind() {
+        updateNavigationVisibility()
+        delegate.bind(binding.homeCallsScrollView, binding.homeCallsContainer)
+    }
+
     fun cancel() = delegate.cancelPending()
     fun isTransitioning(): Boolean = delegate.isTransitioning()
+
     fun release() {
+        binding.paginationContainer.removeOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.clearOnReady()
         delegate.release()
+    }
+
+    private fun updateNavigationVisibility() {
+        if (PageLoadingModeStore.usesPrefetch(binding.root.context)) {
+            hideAutomaticModeNavigation()
+        } else if (
+            HomePageReadyState.isReady() &&
+            binding.fullLogProgress.visibility != View.VISIBLE
+        ) {
+            binding.paginationContainer.visibility = View.VISIBLE
+        }
+    }
+
+    private fun hideAutomaticModeNavigation() {
+        if (
+            PageLoadingModeStore.usesPrefetch(binding.root.context) &&
+            binding.paginationContainer.visibility != View.GONE
+        ) {
+            binding.paginationContainer.visibility = View.GONE
+        }
     }
 }
