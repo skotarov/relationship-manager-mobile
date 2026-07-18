@@ -131,7 +131,7 @@ internal class HomeContentRenderer(
                 callNote, activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
             )
-            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, dp))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
     }
