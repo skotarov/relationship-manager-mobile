@@ -275,28 +275,19 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
 
     override fun onDestroy() {
-        searchGeneration.incrementAndGet()
-        edgePaging.release()
-        pullRefreshController.cancel()
-        searchController.cancelActiveTask()
-        searchExecutor.shutdownNow()
-        refreshExecutor.shutdownNow()
+        searchGeneration.incrementAndGet(); edgePaging.release(); pullRefreshController.cancel()
+        searchController.cancelActiveTask(); searchExecutor.shutdownNow(); refreshExecutor.shutdownNow()
         callsLoader.release(); crmContactsLoader.release(); serverCallNotesController.release()
         crmFiltersController.release(); companyGeneralNotesController.release()
-        filteredFullLogController.release(); contactsSyncPreparer.release()
-        super.onDestroy()
+        filteredFullLogController.release(); contactsSyncPreparer.release(); super.onDestroy()
     }
 
-    private fun renderCalls() {
-        runtimeController.updateHeader()
-        timelineCoordinator.renderCalls()
-    }
+    private fun renderCalls() { runtimeController.updateHeader(); timelineCoordinator.renderCalls() }
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
     private fun isServerReady() = CallReportRemoteAccess.isReady(ConfigStore.load(this))
     private fun isCrmContactsMode() = DistributionCapabilities.isPlayBusinessBuild || crmContactsMode
     private fun isFilteredFullLogMode() = activePhoneFilter.isNotBlank() && activeSearchQuery.isBlank()
     private fun pageSize() = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
-
     companion object {
         const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
         const val EXTRA_PHONE_FILTER = "phone_filter"
