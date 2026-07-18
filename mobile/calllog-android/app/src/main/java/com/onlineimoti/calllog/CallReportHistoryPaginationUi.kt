@@ -8,7 +8,7 @@ import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Keeps Notes and SMS history compact by showing the configured number of rows per page. */
+/** Renders History incrementally while keeping all earlier pages visible. */
 internal class CallReportHistoryPaginationUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -21,10 +21,9 @@ internal class CallReportHistoryPaginationUi(
         val pageSize = ConfigStore.load(activity).homeCallPageSize
         totalPages = maxOf(1, (rows.size + pageSize - 1) / pageSize)
         pageIndex = pageIndex.coerceIn(0, totalPages - 1)
-        val firstIndex = pageIndex * pageSize
-        val lastExclusive = minOf(rows.size, firstIndex + pageSize)
+        val lastExclusive = minOf(rows.size, (pageIndex + 1) * pageSize)
         return HistoryPage(
-            rows = if (firstIndex < rows.size) rows.subList(firstIndex, lastExclusive) else emptyList(),
+            rows = rows.subList(0, lastExclusive),
             pageIndex = pageIndex,
             pageSize = pageSize,
             totalPages = totalPages,
