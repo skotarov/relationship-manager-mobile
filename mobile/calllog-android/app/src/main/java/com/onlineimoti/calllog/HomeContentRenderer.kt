@@ -32,6 +32,7 @@ internal class HomeContentRenderer(
     private var currentContactNamesByNumber: Map<String, String> = emptyMap()
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
     private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
+    private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) { currentCalls = calls }
     fun clearCalls() {
@@ -96,6 +97,7 @@ internal class HomeContentRenderer(
     private fun applyRenderData(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean) {
         val calls = data.calls.sortedByDescending { it.startedAt }
         val filtered = activePhoneFilter().isNotBlank()
+        val fullLog = isFilteredFullLogMode()
         val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
         val contactNotesByNumber = data.contactNotesByNumber
         // Important: do not read SAF/local-note files from this renderer. It runs
@@ -111,10 +113,27 @@ internal class HomeContentRenderer(
         binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
         val serverBackedKeys = if (filtered) emptySet() else companyGeneralNotes.serverBackedPhoneKeysFor(calls)
-        val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L; var previous: Long? = null
+        val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L
+        val currentWeekSerial = if (fullLog) weekUi.currentWeekSerial() else null
+        var previousDay: Long? = null
+        var previousWeekSerial: Long? = null
         calls.forEach { call ->
-            val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
-            if (day != null && day != previous) { binding.homeCallsContainer.addView(dateSeparator(call.startedAt, today - day)); previous = day }
+            if (fullLog) {
+                val weekSerial = weekUi.weekStartSerial(call.startedAt)
+                if (weekSerial != null && weekSerial != previousWeekSerial) {
+                    val relativeWeeks = currentWeekSerial
+                        ?.let { (it - weekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK }
+                        ?: 0L
+                    binding.homeCallsContainer.addView(weekUi.separator(call.startedAt, relativeWeeks))
+                    previousWeekSerial = weekSerial
+                }
+            } else {
+                val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
+                if (day != null && day != previousDay) {
+                    binding.homeCallsContainer.addView(dateSeparator(call.startedAt, today - day))
+                    previousDay = day
+                }
+            }
             val key = HomeCallPageLoader.noteKey(call.number)
             val row = rowRenderer.compactCallRow(
                 call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
