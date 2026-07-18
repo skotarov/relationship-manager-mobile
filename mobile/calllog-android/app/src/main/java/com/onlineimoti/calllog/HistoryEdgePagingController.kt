@@ -6,14 +6,13 @@ import android.widget.ScrollView
 
 /** Connects cumulative History rendering to shared buffered paging. */
 internal class HistoryEdgePagingController(
-    context: Context,
     private val history: CallReportMergedHistoryController,
 ) {
-    private val appContext = context.applicationContext
+    private var appContext: Context? = null
     private val delegate = EdgePageScrollController(
         canPrevious = history::canPreviousPage,
         canNext = {
-            PageLoadingModeStore.usesPrefetch(appContext) && history.canNextPage()
+            appContext?.let(PageLoadingModeStore::usesPrefetch) == true && history.canNextPage()
         },
         previousPage = { history.previousPage() },
         nextPage = { history.nextPage() },
@@ -28,6 +27,13 @@ internal class HistoryEdgePagingController(
         history.resetPage()
     }
 
-    fun bind(scrollView: ScrollView, root: LinearLayout) = delegate.bind(scrollView, root)
-    fun release() = delegate.release()
+    fun bind(scrollView: ScrollView, root: LinearLayout) {
+        appContext = root.context.applicationContext
+        delegate.bind(scrollView, root)
+    }
+
+    fun release() {
+        appContext = null
+        delegate.release()
+    }
 }
