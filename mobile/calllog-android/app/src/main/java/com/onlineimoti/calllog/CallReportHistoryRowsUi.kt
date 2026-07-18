@@ -16,19 +16,17 @@ internal class CallReportHistoryRowsUi(
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
 ) {
-    private val paginationUi by lazy {
-        CallReportHistoryPaginationUi(activity, dp, roundedRect)
-    }
-    private val sharedUi by lazy {
-        CallReportHistorySharedUi(activity, dp, roundedRect)
-    }
+    private val paginationUi by lazy { CallReportHistoryPaginationUi(activity, dp, roundedRect) }
+    private val sharedUi by lazy { CallReportHistorySharedUi(activity, dp, roundedRect) }
     private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
-    private val noteRowUi by lazy {
-        CallReportHistoryNoteRowUi(activity, dp, roundedRect, sharedUi)
-    }
-    private val smsRowUi by lazy {
-        CallReportHistorySmsRowUi(activity, dp, sharedUi)
-    }
+    private val noteRowUi by lazy { CallReportHistoryNoteRowUi(activity, dp, roundedRect, sharedUi) }
+    private val smsRowUi by lazy { CallReportHistorySmsRowUi(activity, dp, sharedUi) }
+
+    fun canPreviousPage(): Boolean = paginationUi.canPrevious()
+    fun canNextPage(): Boolean = paginationUi.canNext()
+    fun previousPage(onPageChanged: () -> Unit): Boolean = paginationUi.previousPage(onPageChanged)
+    fun nextPage(onPageChanged: () -> Unit): Boolean = paginationUi.nextPage(onPageChanged)
+    fun resetPage() = paginationUi.reset()
 
     fun addSection(
         root: LinearLayout,
@@ -60,9 +58,7 @@ internal class CallReportHistoryRowsUi(
 
         root.addView(titleRow(openFilteredLog))
         latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
-            val latestRow = addLatestCallNoteCard(call) {
-                onEditCallNote(call.toContactCallNote())
-            }
+            val latestRow = addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) }
             root.addView(ListThemeUi.applyRowSpacing(latestRow, activity, dp))
         }
         val currentWeekSerial = weekUi.currentWeekSerial()
@@ -71,9 +67,7 @@ internal class CallReportHistoryRowsUi(
             val rowWeekSerial = weekUi.weekStartSerial(row.timeMs)
             if (rowWeekSerial != null && rowWeekSerial != previousWeekSerial) {
                 val relativeWeeks = currentWeekSerial
-                    ?.let {
-                        (it - rowWeekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK
-                    }
+                    ?.let { (it - rowWeekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK }
                     ?: 0L
                 root.addView(weekUi.separator(row.timeMs, relativeWeeks))
                 previousWeekSerial = rowWeekSerial
@@ -107,9 +101,7 @@ internal class CallReportHistoryRowsUi(
         val call = latestCall ?: return null
         val alreadyHasNote = localNotes.any { note ->
             note.callAt == call.startedAt &&
-                (note.direction.isBlank() ||
-                    call.direction.isBlank() ||
-                    note.direction == call.direction)
+                (note.direction.isBlank() || call.direction.isBlank() || note.direction == call.direction)
         }
         return call.takeUnless { alreadyHasNote }
     }
@@ -122,9 +114,7 @@ internal class CallReportHistoryRowsUi(
             addView(ImageView(activity).apply {
                 setImageResource(R.drawable.ic_system_call_log)
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                    marginEnd = dp(6)
-                }
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
             })
             addView(TextView(activity).apply {
                 text = "Бележки и SMS"
@@ -144,10 +134,7 @@ internal class CallReportHistoryRowsUi(
         }
     }
 
-    private fun addLatestCallNoteCard(
-        call: PhoneCallRecord,
-        action: () -> Unit,
-    ): LinearLayout {
+    private fun addLatestCallNoteCard(call: PhoneCallRecord, action: () -> Unit): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
