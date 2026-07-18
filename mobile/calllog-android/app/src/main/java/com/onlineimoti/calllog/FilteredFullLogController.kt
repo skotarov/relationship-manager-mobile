@@ -109,7 +109,7 @@ internal class FilteredFullLogController(
                 previousWeekSerial = weekSerial
             }
             val row = rowRenderer.rowView(phone, entry, remoteEnabled)
-            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, dp))
         }
     }
 
