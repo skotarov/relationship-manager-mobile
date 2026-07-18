@@ -59,7 +59,7 @@ internal class HomeCrmContactsContentView(
                 latestCallNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(contact)],
                 highlightQuery = "",
             )
-            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, ::dp))
+            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, ::dp))
         }
         if (refreshCompanyLabels) companyGeneralNotes.refresh(data.calls)
     }
