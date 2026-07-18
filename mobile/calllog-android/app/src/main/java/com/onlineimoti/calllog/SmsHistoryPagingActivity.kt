@@ -21,6 +21,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     private lateinit var progress: ProgressBar
     private lateinit var scrollView: ScrollView
     private lateinit var listContainer: LinearLayout
+    private lateinit var paginationContainer: LinearLayout
     private lateinit var previousButton: MaterialButton
     private lateinit var nextButton: MaterialButton
     private lateinit var pageText: TextView
@@ -37,6 +38,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
         setContentView(createContent())
+        updatePaginationVisibility()
         edgePager = EdgePageScrollController(
             canPrevious = { pageIndex > 0 },
             canNext = { PageLoadingModeStore.usesPrefetch(this) && hasNext },
@@ -57,6 +59,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::paginationContainer.isInitialized) updatePaginationVisibility()
         if (::listContainer.isInitialized && !loading) renderPage()
     }
 
@@ -96,7 +99,8 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
             0,
             1f,
         ))
-        root.addView(pagination())
+        paginationContainer = pagination()
+        root.addView(paginationContainer)
         return root
     }
 
@@ -162,6 +166,7 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
     }
 
     private fun renderPage() {
+        updatePaginationVisibility()
         if (!hasSmsPermission()) {
             renderPermissionRequired()
             return
@@ -202,8 +207,13 @@ class SmsHistoryActivity : FontScaledAppCompatActivity() {
                 nextButton.text = "Следващи $pageSize"
                 previousButton.isEnabled = requestedPage > 0
                 nextButton.isEnabled = hasNext
+                updatePaginationVisibility()
             }
         }
+    }
+
+    private fun updatePaginationVisibility() {
+        paginationContainer.visibility = if (PageLoadingModeStore.usesPrefetch(this)) View.GONE else View.VISIBLE
     }
 
     private fun renderPermissionRequired() {
