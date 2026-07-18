@@ -137,7 +137,7 @@ internal class EdgePageScrollController(
             this.content = list
             list.setOnHierarchyChangeListener(hierarchyListener)
         }
-        preservedScrollY = scrollView.scrollY
+        if (!pendingNext) preservedScrollY = scrollView.scrollY
         if (lastPageToken == null) lastPageToken = pageToken()
         if (pendingNext) scheduleReadyCheck() else scheduleInitialPrefetch()
     }
