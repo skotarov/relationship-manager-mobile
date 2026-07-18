@@ -47,48 +47,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/list_theme_title"
-            android:textColor="@color/calllog_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <RadioGroup
-            android:id="@+id/listThemeGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="vertical">
-
-            <RadioButton
-                android:id="@+id/listThemeNormalRadio"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/list_theme_normal"
-                android:textColor="@color/calllog_text"
-                android:textSize="15sp" />
-
-            <RadioButton
-                android:id="@+id/listThemeCompactRadio"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/list_theme_compact"
-                android:textColor="@color/calllog_text"
-                android:textSize="15sp" />
-        </RadioGroup>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="32dp"
-            android:layout_marginTop="2dp"
-            android:text="@string/list_theme_description"
-            android:textColor="@color/calllog_muted_text"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:text="@string/font_scale_title"
             android:textColor="@color/calllog_text"
             android:textSize="15sp"
