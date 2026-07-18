@@ -1,6 +1,5 @@
 package com.onlineimoti.calllog
 
-import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.view.ViewGroup
@@ -15,11 +14,7 @@ internal object ListThemeUi {
     private val pendingParents = Collections.newSetFromMap(WeakHashMap<ViewGroup, Boolean>())
     private val originalRadii = WeakHashMap<View, Float>()
 
-    fun applyRowSpacing(
-        view: View,
-        @Suppress("UNUSED_PARAMETER") context: Context,
-        dp: (Int) -> Int,
-    ): View {
+    fun applyRowSpacing(view: View, dp: (Int) -> Int): View {
         val params = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return view
         rememberRadius(view, dp)
         groupedRows.add(view)
