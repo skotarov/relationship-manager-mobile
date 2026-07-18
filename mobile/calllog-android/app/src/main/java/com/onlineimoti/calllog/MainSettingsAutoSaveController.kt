@@ -38,6 +38,16 @@ internal class MainSettingsAutoSaveController(
             popupFilter.contactGroupsInput,
         ).forEach { input -> input.autoSaveTextChanges() }
 
+        callLog.pageLoadingModeGroup.setOnCheckedChangeListener { _, checkedId ->
+            PageLoadingModeStore.save(
+                binding.root.context,
+                if (checkedId == callLog.pageLoadingModeButtonsRadio.id) {
+                    PageLoadingModeStore.MODE_BUTTONS
+                } else {
+                    PageLoadingModeStore.MODE_PREFETCH
+                },
+            )
+        }
         popup.postCallEndActionGroup.setOnCheckedChangeListener { _, _ -> autoSaveSettings() }
         popup.useCustomStartPopupCheckBox.autoSaveCheckedChanges()
         popup.useCustomEndPopupCheckBox.autoSaveCheckedChanges()
