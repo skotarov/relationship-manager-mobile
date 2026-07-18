@@ -135,12 +135,23 @@ internal class HomeContentRenderer(
                 }
             }
             val key = HomeCallPageLoader.noteKey(call.number)
-            val row = rowRenderer.compactCallRow(
-                call, namesByNumber[key].orEmpty().ifBlank { call.displayName },
-                if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
-                data.callNotesByCall[HomeCallNotesResolver.keyFor(call)], activeSearchQuery(), !filtered, !filtered, !filtered,
-                serverBacked = !filtered && key in serverBackedKeys,
-            )
+            val displayName = namesByNumber[key].orEmpty().ifBlank { call.displayName }
+            val callNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
+            val row = if (fullLog) {
+                rowRenderer.fullLogTimelineRow(call, displayName, callNote)
+            } else {
+                rowRenderer.compactCallRow(
+                    call, displayName,
+                    if (filtered) null else contactNotesByNumber[key],
+                    if (filtered) null else labels[key],
+                    callNote,
+                    activeSearchQuery(),
+                    !filtered,
+                    !filtered,
+                    !filtered,
+                    serverBacked = !filtered && key in serverBackedKeys,
+                )
+            }
             binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, activity, dp))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
