@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class HomeActivity : FontScaledAppCompatActivity() {
     private lateinit var binding: ActivityHomeBinding
+    private lateinit var edgePageScrollController: EdgePageScrollController
     private val handler = Handler(Looper.getMainLooper())
     private val uiGeometry: HomeUiGeometry by lazy { HomeUiGeometry(resources) }
     private val searchExecutor = Executors.newFixedThreadPool(2)
@@ -70,6 +71,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
     private val crmFiltersController: HomeCrmFiltersController by lazy {
         HomeCrmFiltersController(this, binding, handler, uiGeometry::dp, uiGeometry::roundedRect) {
+            cancelEdgePaging()
             homeContentRenderer.clearCalls()
             crmContactsContentView.invalidate()
             pageIndex = 0
@@ -99,13 +101,14 @@ class HomeActivity : FontScaledAppCompatActivity() {
             this, binding, { activePhoneFilter }, { activeSearchQuery }, { pageIndex },
             ::isCrmModeEnabled, ::isCrmContactsMode, { crmFiltersController.hasActiveFilters() },
             uiGeometry::dp, uiGeometry::roundedRect, homeCallRowRenderer, homeActions::openDialer,
-            companyGeneralNotesController, filteredContactSummaryChipsUi,
+            companyGeneralNotesController, filteredContactSummaryChipsUi, ::isEdgePagingTransition,
         )
     }
     private val crmContactsContentView: HomeCrmContactsContentView by lazy {
         HomeCrmContactsContentView(
             this, binding, { pageIndex }, homeContentRenderer, companyGeneralNotesController,
             crmContactRowRenderer, crmTimelineToggle, { crmFiltersController.hasActiveFilters() },
+            ::isEdgePagingTransition,
         )
     }
     private val pullRefreshController: HomePullRefreshController by lazy {
@@ -141,8 +144,8 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private val searchInputController: HomeSearchInputController by lazy {
         HomeSearchInputController(
             this, binding, handler,
-            { query -> activeSearchQuery = query; pageIndex = 0; renderCalls() },
-            { activeSearchQuery = ""; pageIndex = 0; renderCalls() },
+            { query -> cancelEdgePaging(); activeSearchQuery = query; pageIndex = 0; renderCalls() },
+            { cancelEdgePaging(); activeSearchQuery = ""; pageIndex = 0; renderCalls() },
         )
     }
     private val filteredFullLogController: FilteredFullLogController by lazy {
@@ -196,8 +199,21 @@ class HomeActivity : FontScaledAppCompatActivity() {
         }
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        edgePageScrollController = EdgePageScrollController(
+            canPrevious = { timelineCoordinator.isOnLaterPage() },
+            canNext = { binding.nextCallsButton.isEnabled },
+            previousPage = { timelineCoordinator.previousPage() },
+            nextPage = { timelineCoordinator.nextPage() },
+            pageReady = {
+                binding.paginationContainer.visibility == View.VISIBLE &&
+                    binding.fullLogProgress.visibility != View.VISIBLE
+            },
+        ).also { controller ->
+            controller.bind(binding.homeCallsScrollView, binding.homeCallsContainer)
+        }
         crmContactsMode = DistributionCapabilities.isPlayBusinessBuild
         binding.crmContactsBackButton.setOnClickListener {
+            cancelEdgePaging()
             if (!timelineCoordinator.returnFromFullLog()) timelineCoordinator.returnToCallLog()
         }
         crmTimelineToggle
@@ -219,6 +235,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
 
     override fun onBackPressed() {
+        cancelEdgePaging()
         if (timelineCoordinator.returnFromFullLog()) return
         super.onBackPressed()
     }
@@ -226,6 +243,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
+        cancelEdgePaging()
         val phone = intent?.getStringExtra(EXTRA_PHONE_FILTER).orEmpty()
         activePhoneFilter = if (
             isCrmModeEnabled() && phone.isNotBlank() && !HomeCallPageLoader.isCrmEligible(this, phone)
@@ -267,6 +285,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
 
     override fun onDestroy() {
         searchGeneration.incrementAndGet()
+        if (::edgePageScrollController.isInitialized) edgePageScrollController.release()
         pullRefreshController.cancel()
         searchController.cancelActiveTask()
         searchExecutor.shutdownNow()
@@ -284,6 +303,14 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private fun renderCalls() {
         runtimeController.updateHeader()
         timelineCoordinator.renderCalls()
+    }
+
+    private fun cancelEdgePaging() {
+        if (::edgePageScrollController.isInitialized) edgePageScrollController.cancelPending()
+    }
+
+    private fun isEdgePagingTransition(): Boolean {
+        return ::edgePageScrollController.isInitialized && edgePageScrollController.isTransitioning()
     }
 
     private fun isCrmModeEnabled() = HomeCrmModeStore.isEnabled(this)
