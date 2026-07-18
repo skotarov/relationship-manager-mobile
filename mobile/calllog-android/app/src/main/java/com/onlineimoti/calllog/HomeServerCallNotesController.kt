@@ -6,9 +6,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Enriches one rendered Home page with the newest matching server notes. The
- * visible Call Log rows are shown first; this controller then adds server blue
- * call notes and explicit yellow/general notes just like the History screen.
+ * Enriches one rendered Home page using stale-while-revalidate. Cached server
+ * notes are emitted first, then a successful network result updates the cache
+ * and only re-renders when the visible data really changed.
  */
 internal class HomeServerCallNotesController(
     context: Context,
@@ -27,8 +27,6 @@ internal class HomeServerCallNotesController(
         onUpdated: (HomeRenderData) -> Unit,
     ) {
         if (renderData.calls.isEmpty()) return
-        val config = ConfigStore.load(appContext)
-        if (!CallReportRemoteAccess.isReady(config)) return
         val expectedGeneration = generation.get()
         val phones = renderData.calls
             .filterNot { it.isSms }
@@ -37,36 +35,55 @@ internal class HomeServerCallNotesController(
         if (phones.isEmpty()) return
 
         executor.execute {
-            val history = runCatching {
+            var lastVisible = renderData
+            fun emitIfChanged(candidate: HomeRenderData) {
+                if (candidate == lastVisible) return
+                lastVisible = candidate
+                handler.post {
+                    if (expectedGeneration == generation.get()) onUpdated(candidate)
+                }
+            }
+
+            val cachedHistory = HomeServerNotesCacheStore.snapshot(appContext, phones)
+            emitIfChanged(mergeHistory(renderData, cachedHistory))
+
+            val config = ConfigStore.load(appContext)
+            if (!CallReportRemoteAccess.isReady(config)) return@execute
+            val remote = runCatching {
                 CallReportHistoryLookupClient.lookupMany(config, phones, appContext)
             }.getOrDefault(CallReportHistoryLookupResult())
-            val mergedNotes = HomeCallNotesResolver.mergeWithServer(
-                calls = renderData.calls,
-                localNotes = renderData.callNotesByCall,
-                serverEvents = history.events,
-                principal = history.principal,
-            )
-            val mergedGeneralNotes = mergeServerGeneralNotes(
-                calls = renderData.calls,
-                existing = renderData.contactNotesByNumber,
-                serverEvents = history.events,
-            )
-            if (mergedNotes == renderData.callNotesByCall && mergedGeneralNotes == renderData.contactNotesByNumber) {
-                return@execute
-            }
-            val updated = renderData.copy(
-                contactNotesByNumber = mergedGeneralNotes,
-                callNotesByCall = mergedNotes,
-            )
-            handler.post {
-                if (expectedGeneration == generation.get()) onUpdated(updated)
-            }
+            if (!remote.requestSuccessful) return@execute
+
+            HomeServerNotesCacheStore.update(appContext, remote)
+            val refreshedHistory = HomeServerNotesCacheStore.snapshot(appContext, phones)
+            emitIfChanged(mergeHistory(renderData, refreshedHistory))
         }
     }
 
     fun release() {
         generation.incrementAndGet()
         executor.shutdownNow()
+    }
+
+    private fun mergeHistory(
+        renderData: HomeRenderData,
+        history: CallReportHistoryLookupResult,
+    ): HomeRenderData {
+        val localCallNotes = renderData.callNotesByCall.filterValues { !it.fromServer }
+        val localGeneralNotes = renderData.contactNotesByNumber.filterValues { !ServerNoteVisuals.isServerText(it) }
+        return renderData.copy(
+            callNotesByCall = HomeCallNotesResolver.mergeWithServer(
+                calls = renderData.calls,
+                localNotes = localCallNotes,
+                serverEvents = history.events,
+                principal = history.principal,
+            ),
+            contactNotesByNumber = mergeServerGeneralNotes(
+                calls = renderData.calls,
+                existing = localGeneralNotes,
+                serverEvents = history.events,
+            ),
+        )
     }
 
     private fun mergeServerGeneralNotes(
@@ -82,9 +99,6 @@ internal class HomeServerCallNotesController(
 
         val latest = linkedMapOf<String, Pair<Long, String>>()
         serverEvents.forEach { event ->
-            // Do not infer a yellow/general Home note from an ordinary server NOTE row.
-            // History may correctly render those rows as blue conversation notes even
-            // when older server records do not carry the Android :note:call marker.
             // Yellow on Home is allowed only for explicit general records.
             if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
             val key = HomeCallPageLoader.noteKey(event.phone)
@@ -99,9 +113,7 @@ internal class HomeServerCallNotesController(
 
         val merged = existing.toMutableMap()
         latest.forEach { (key, value) ->
-            // Local/general notes still win while editing offline; server fills the
-            // blank rows that History can already display. Server text is visually
-            // marked so it cannot look like an ordinary local yellow note.
+            // Local/general notes still win while editing offline.
             if (merged[key].isNullOrBlank()) merged[key] = value.second
         }
         return merged
