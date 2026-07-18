@@ -22,6 +22,7 @@ internal class FilteredFullLogController(
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
     private val rowRenderer by lazy { FilteredFullLogRowRenderer(activity, dp, roundedRect, openContactNotes, openCallNoteEditor) }
+    private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
     private var selectedPhone = ""
     private var loadedPhone = ""
     private var loadedRemoteEnabled: Boolean? = null
@@ -83,12 +84,32 @@ internal class FilteredFullLogController(
         PaginationButtonAppearance.apply(binding.nextCallsButton, !loading && pageIndex < pageCount - 1)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex + 1)
         binding.homeStatusText.text = statusText(remoteEnabled, pageEntries)
-        pageEntries.forEach { binding.homeCallsContainer.addView(rowRenderer.rowView(phone, it, remoteEnabled)) }
+        renderPageEntries(phone, pageEntries, remoteEnabled)
     }
 
     fun release() {
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
+    }
+
+    private fun renderPageEntries(
+        phone: String,
+        pageEntries: List<FilteredFullLogEntry>,
+        remoteEnabled: Boolean,
+    ) {
+        val currentWeekSerial = weekUi.currentWeekSerial()
+        var previousWeekSerial: Long? = null
+        pageEntries.forEach { entry ->
+            val weekSerial = weekUi.weekStartSerial(entry.row.timeMs)
+            if (weekSerial != null && weekSerial != previousWeekSerial) {
+                val relativeWeeks = currentWeekSerial
+                    ?.let { (it - weekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK }
+                    ?: 0L
+                binding.homeCallsContainer.addView(weekUi.separator(entry.row.timeMs, relativeWeeks))
+                previousWeekSerial = weekSerial
+            }
+            binding.homeCallsContainer.addView(rowRenderer.rowView(phone, entry, remoteEnabled))
+        }
     }
 
     private fun statusText(remoteEnabled: Boolean, pageEntries: List<FilteredFullLogEntry>): String = when {
