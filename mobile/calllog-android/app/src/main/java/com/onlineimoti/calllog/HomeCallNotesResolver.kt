@@ -14,12 +14,20 @@ internal data class HomeCallNote(
     val serverClientEventId: String = "",
     /** Foreign server notes stay visible but must not be opened for mutation. */
     val editable: Boolean = true,
-)
+    /** Other independent Local/company notes attached to the same call. */
+    val relatedNotes: List<HomeCallNote> = emptyList(),
+) {
+    fun expandedNotes(): List<HomeCallNote> = buildList {
+        add(copy(relatedNotes = emptyList()))
+        relatedNotes.forEach { related ->
+            add(related.copy(relatedNotes = emptyList()))
+        }
+    }
+}
 
 /**
  * Resolves notes for the exact Call Log rows visible on Home. General/contact
- * notes are deliberately excluded: the blue card below a call belongs only to
- * that concrete conversation.
+ * notes are deliberately excluded: blue cards belong only to that conversation.
  */
 internal object HomeCallNotesResolver {
     fun localNotes(context: android.content.Context, calls: List<PhoneCallRecord>): Map<String, HomeCallNote> {
@@ -52,8 +60,7 @@ internal object HomeCallNotesResolver {
             }
 
             // Restored older calllog.notes files may not contain the v2 "type"
-            // marker, so they are skipped by the bulk parser. The direct lookup
-            // parses the row by call_at/direction and still recovers the note.
+            // marker, so the direct lookup still recovers the note.
             val directNote = ContactNoteReader.callNoteForPhone(context, call.number, call.startedAt, call.direction)
             if (directNote.isNotBlank()) {
                 result[keyFor(call)] = HomeCallNote(
@@ -67,10 +74,7 @@ internal object HomeCallNotesResolver {
         return result
     }
 
-    /**
-     * Keeps the latest note for each visible call. Server is the tie-breaker
-     * because it is the shared/canonical copy when both timestamps are equal.
-     */
+    /** Keeps one independent latest note for Local and for every company. */
     fun mergeWithServer(
         calls: List<PhoneCallRecord>,
         localNotes: Map<String, HomeCallNote>,
@@ -78,44 +82,87 @@ internal object HomeCallNotesResolver {
         principal: CallReportHistoryPrincipal = CallReportHistoryPrincipal(),
     ): Map<String, HomeCallNote> {
         if (calls.isEmpty()) return emptyMap()
-        // An earlier enrichment may have left server-only rows in the current
-        // render snapshot. Start again from local rows so an authoritative empty
-        // server response removes deleted records from Call Log immediately.
-        val merged = localNotes.filterValues { note -> !note.fromServer }.toMutableMap()
         val callsByPhone = calls
             .filterNot { it.isSms }
             .groupBy { HomeCallPageLoader.noteKey(it.number) }
-        val claimedEvents = hashSetOf<String>()
+        val notesByCallAndScope = linkedMapOf<String, LinkedHashMap<String, HomeCallNote>>()
 
-        serverEvents.forEachIndexed { index, event ->
-            if (!event.communicationType.equals("note", ignoreCase = true) || event.note.isBlank()) return@forEachIndexed
-            if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEachIndexed
+        calls.filterNot { it.isSms }.forEach { call ->
+            val key = keyFor(call)
+            localNotes[key]
+                ?.expandedNotes()
+                ?.filter { it.text.isNotBlank() && !it.fromServer }
+                ?.forEach { note -> putLatest(notesByCallAndScope, key, scopeKey(note), note) }
+        }
+
+        serverEvents.forEach { event ->
+            if (!event.communicationType.equals("note", ignoreCase = true)) return@forEach
+            if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
             val candidates = callsByPhone[HomeCallPageLoader.noteKey(event.phone)].orEmpty()
             val call = candidates
                 .filter { candidate -> sameServerCall(candidate, event) }
                 .minByOrNull { candidate -> abs(candidate.startedAt - event.occurredAtMs) }
-                ?: return@forEachIndexed
-            if (!canAttachServerNoteToCall(event)) return@forEachIndexed
-            val eventKey = event.clientEventId.ifBlank { "server:$index:${event.serverId}:${event.occurredAtMs}:${event.note.hashCode()}" }
-            if (!claimedEvents.add(eventKey)) return@forEachIndexed
-            val key = keyFor(call)
+                ?: return@forEach
+            if (!canAttachServerNoteToCall(event)) return@forEach
+
+            val callKey = keyFor(call)
+            val companyId = event.companyId.trim()
+            val scope = if (companyId.isBlank()) UNSCOPED_SERVER_SCOPE else "company:$companyId"
+            val version = serverVersionMs(event)
+            if (event.note.isBlank()) {
+                val current = notesByCallAndScope[callKey]?.get(scope)
+                if (current == null || version >= current.updatedAtMs) {
+                    notesByCallAndScope[callKey]?.remove(scope)
+                }
+                return@forEach
+            }
+
             val candidate = HomeCallNote(
                 text = event.note.trim(),
-                updatedAtMs = serverVersionMs(event),
+                updatedAtMs = version,
                 fromServer = true,
                 authorName = event.authorBrokerName.trim(),
-                companyId = event.companyId.trim(),
+                companyId = companyId,
                 serverClientEventId = event.clientEventId.trim(),
                 editable = !isOtherBrokerAuthor(event, principal),
             )
-            val current = merged[key]
-            if (current == null || isNewer(candidate, current)) merged[key] = candidate
+            putLatest(notesByCallAndScope, callKey, scope, candidate)
         }
-        return merged
+
+        return buildMap {
+            calls.filterNot { it.isSms }.forEach { call ->
+                val key = keyFor(call)
+                val notes = notesByCallAndScope[key].orEmpty().values
+                    .filter { it.text.isNotBlank() }
+                    .sortedWith(noteDisplayOrder)
+                if (notes.isEmpty()) return@forEach
+                val primary = notes.first()
+                put(key, primary.copy(relatedNotes = notes.drop(1)))
+            }
+        }
     }
 
-    fun keyFor(call: PhoneCallRecord): String {
-        return "${HomeCallPageLoader.noteKey(call.number)}|${call.startedAt}|${call.direction.trim()}"
+    fun keyFor(call: PhoneCallRecord): String =
+        "${HomeCallPageLoader.noteKey(call.number)}|${call.startedAt}|${call.direction.trim()}"
+
+    private fun putLatest(
+        target: MutableMap<String, LinkedHashMap<String, HomeCallNote>>,
+        callKey: String,
+        scope: String,
+        note: HomeCallNote,
+    ) {
+        val bucket = target.getOrPut(callKey) { linkedMapOf() }
+        val current = bucket[scope]
+        if (current == null || isNewer(note, current)) bucket[scope] = note.copy(relatedNotes = emptyList())
+    }
+
+    private fun scopeKey(note: HomeCallNote): String {
+        val companyId = note.companyId.trim()
+        return when {
+            companyId.isNotBlank() -> "company:$companyId"
+            note.fromServer -> UNSCOPED_SERVER_SCOPE
+            else -> LOCAL_SCOPE
+        }
     }
 
     private fun sameLocalCall(call: PhoneCallRecord, note: ContactCallNote): Boolean {
@@ -134,11 +181,11 @@ internal object HomeCallNotesResolver {
 
     private fun canAttachServerNoteToCall(event: CallReportHistoryEvent): Boolean {
         if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return false
-        // Full log attaches ordinary NOTE rows to nearby calls even when older
-        // server records do not carry the Android :note:call marker. Home should
-        // use the same rule once the timestamp has already matched a visible call.
-        return CallReportServerNoteClassifier.isConcreteCallNote(event) ||
-            (event.communicationType.equals("note", ignoreCase = true) && event.note.isNotBlank() && event.occurredAtMs > 0L)
+        return event.occurredAtMs > 0L && (
+            CallReportServerNoteClassifier.isConcreteCallNote(event) ||
+                event.companyId.isNotBlank() ||
+                event.note.isNotBlank()
+            )
     }
 
     private fun isOtherBrokerAuthor(
@@ -154,9 +201,8 @@ internal object HomeCallNotesResolver {
         return false
     }
 
-    private fun claimedNoteKey(note: ContactCallNote): String {
-        return note.clientNoteId.ifBlank { "${note.callAt}|${note.direction}|${note.note.hashCode()}" }
-    }
+    private fun claimedNoteKey(note: ContactCallNote): String =
+        note.clientNoteId.ifBlank { "${note.callAt}|${note.direction}|${note.note.hashCode()}" }
 
     private fun localVersionMs(note: ContactCallNote): Long = maxOf(note.savedAt, note.callAt)
 
@@ -166,11 +212,21 @@ internal object HomeCallNotesResolver {
         event.occurredAtMs,
     )
 
-    private fun isNewer(candidate: HomeCallNote, current: HomeCallNote): Boolean {
-        return candidate.updatedAtMs > current.updatedAtMs ||
+    private fun isNewer(candidate: HomeCallNote, current: HomeCallNote): Boolean =
+        candidate.updatedAtMs > current.updatedAtMs ||
             (candidate.updatedAtMs == current.updatedAtMs && candidate.fromServer && !current.fromServer)
-    }
 
+    private val noteDisplayOrder = compareBy<HomeCallNote> {
+        when {
+            !it.fromServer && it.companyId.isBlank() -> 0
+            it.editable -> 1
+            else -> 2
+        }
+    }.thenBy { it.companyId.lowercase() }
+        .thenByDescending { it.updatedAtMs }
+
+    private const val LOCAL_SCOPE = "local"
+    private const val UNSCOPED_SERVER_SCOPE = "server"
     private const val LOCAL_NOTE_CALL_MATCH_WINDOW_MS = 5 * 60 * 1000L
     private const val SERVER_NOTE_CALL_MATCH_WINDOW_MS = 10 * 60 * 1000L
 }
