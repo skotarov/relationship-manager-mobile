@@ -116,25 +116,6 @@ internal object ContactNoteFormWorkflow {
     ): ContactNoteFormSaveResult {
         val appContext = context.applicationContext
         val existingServerNoteId = draft.serverClientEventId.trim()
-        if (existingServerNoteId.isNotBlank()) {
-            val queued = CallReportNoteOutbox.enqueueExistingServerNote(
-                context = appContext,
-                phone = draft.phone,
-                note = noteText,
-                serverClientEventId = existingServerNoteId,
-                direction = draft.direction,
-                callAt = draft.callAt,
-                durationSeconds = draft.durationSeconds,
-            )
-            return ContactNoteFormSaveResult(
-                writeResult = CallNoteWriteResult(
-                    saved = queued,
-                    savedAsGeneralNote = false,
-                    target = CallNoteTarget(draft.direction, draft.callAt, draft.durationSeconds),
-                ),
-                pendingServerSync = queued,
-            )
-        }
 
         // A stale UI or a direct caller cannot send an ordinary known non-CRM
         // contact to the server.
@@ -144,6 +125,23 @@ internal object ContactNoteFormWorkflow {
         val serverCompanyId = if (isLocalSelection) "" else selectedTopic
 
         val writeResult = when {
+            // A server-only unscoped note still uses the legacy in-place edit path.
+            existingServerNoteId.isNotBlank() && serverCompanyId.isBlank() && !draft.isGeneralNote -> {
+                val queued = CallReportNoteOutbox.enqueueExistingServerNote(
+                    context = appContext,
+                    phone = draft.phone,
+                    note = noteText,
+                    serverClientEventId = existingServerNoteId,
+                    direction = draft.direction,
+                    callAt = draft.callAt,
+                    durationSeconds = draft.durationSeconds,
+                )
+                CallNoteWriteResult(
+                    saved = queued,
+                    savedAsGeneralNote = false,
+                    target = CallNoteTarget(draft.direction, draft.callAt, draft.durationSeconds),
+                )
+            }
             serverCompanyId.isNotBlank() && draft.isGeneralNote -> {
                 CallNoteTopicWriter.writeGeneral(appContext, draft.phone, noteText, serverCompanyId)
             }
@@ -157,6 +155,7 @@ internal object ContactNoteFormWorkflow {
                     durationSeconds = draft.durationSeconds,
                     actionIssuedAt = draft.actionIssuedAt,
                     companyId = serverCompanyId,
+                    existingClientEventId = existingServerNoteId,
                 )
             }
             draft.isGeneralNote -> {
@@ -196,37 +195,18 @@ internal object ContactNoteFormWorkflow {
             pendingCompanyChoice = pendingCompanyChoice,
         )
 
-        // Selecting Local for an eligible concrete call removes any previous
-        // server firm assignment for that same call only. A forced offline local
-        // fallback deliberately does not unassign the existing server firm.
-        if (
-            isLocalSelection &&
-            !localOnlyFallback &&
-            serverDestinationAllowed &&
-            !draft.isGeneralNote &&
-            writeResult.target.hasCall &&
-            CallReportRemoteAccess.isReady(ConfigStore.load(appContext))
-        ) {
-            CallReportTopicNoteOutbox.enqueueUnassignCall(
+        // Local, Firm A, Firm B, etc. are independent note scopes. Selecting Local
+        // must not unassign or delete the notes already stored for other firms.
+        val pendingServerSync = when {
+            existingServerNoteId.isNotBlank() && serverCompanyId.isBlank() -> true
+            serverCompanyId.isNotBlank() -> isTopicSyncPending(
                 context = appContext,
                 phone = draft.phone,
-                direction = writeResult.target.direction,
-                callAt = writeResult.target.callAt,
-                durationSeconds = writeResult.target.durationSeconds,
-                clientNoteId = LocalNotesFileStore.clientNoteIdForCall(
-                    draft.phone,
-                    writeResult.target.callAt,
-                    writeResult.target.direction,
-                ),
+                writeResult = writeResult,
+                companyId = serverCompanyId,
             )
+            else -> false
         }
-
-        val pendingServerSync = serverCompanyId.isNotBlank() && isTopicSyncPending(
-            context = appContext,
-            phone = draft.phone,
-            writeResult = writeResult,
-            companyId = serverCompanyId,
-        )
         return ContactNoteFormSaveResult(
             writeResult = writeResult,
             localOnlyFallback = localOnlyFallback,
@@ -278,11 +258,11 @@ internal object ContactNoteFormWorkflow {
         return if (writeResult.savedAsGeneralNote) {
             CallReportTopicNoteOutbox.isGeneralPending(context, phone, companyId)
         } else if (writeResult.target.hasCall) {
-            CallReportTopicNoteOutbox.isCallPending(
+            CompanyCallNoteOutbox.isCallPending(
                 context = context,
                 phone = phone,
                 direction = writeResult.target.direction,
-                callAt = writeResult.target.callAt,
+                callAtMs = writeResult.target.callAt,
             )
         } else {
             false
