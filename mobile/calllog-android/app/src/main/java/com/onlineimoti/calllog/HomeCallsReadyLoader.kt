@@ -170,13 +170,7 @@ internal class HomeCallsLoader(
         val combined = (baseResults + smsResults)
             .filter { seen.add(searchResultKey(it)) }
             .sortedByDescending { it.startedAt }
-        return TimelinePageMode.page(
-            context = context,
-            items = combined,
-            pageIndex = requestedPage,
-            pageSize = pageSize,
-            groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
-        )
+        return TimelinePageMode.phoneDayPage(context, combined, requestedPage, pageSize)
     }
 
     private fun searchResultKey(row: PhoneCallRecord): String {
@@ -210,13 +204,7 @@ internal class HomeCallsLoader(
                     )
                     HomeCrmFilterEngine.filterByCompany(localFiltered, filterState, memberships.companyIdsByPhoneKey)
                 } else localFiltered
-                TimelinePageMode.page(
-                    context = appContext,
-                    items = companyFiltered,
-                    pageIndex = requestedPage,
-                    pageSize = pageSize,
-                    groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
-                )
+                TimelinePageMode.phoneDayPage(appContext, companyFiltered, requestedPage, pageSize)
             }.getOrDefault(emptyList())
             val fastData = HomeRenderData(calls, emptyMap(), emptyMap(), emptyMap())
             handler.post {
