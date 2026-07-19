@@ -65,15 +65,16 @@ internal object CallReportTopicSyncClient {
         put("occurred_at_ms", occurredAtMs)
         put("duration_seconds", durationSeconds)
         put("note", note)
-        val isCompanyMainNote = companyId.isNotBlank() &&
-            communicationType.equals("note", ignoreCase = true) &&
+        val isCompanyNote = companyId.isNotBlank() &&
+            communicationType.equals("note", ignoreCase = true)
+        val isCompanyMainNote = isCompanyNote &&
             direction.isBlank() &&
             durationSeconds <= 0L &&
             clientEventId.contains(":topic:general:")
-        if (isCompanyMainNote) {
-            put("note_scope", "company_main")
-            if (note.isBlank()) put("deleted", true)
-        }
+        if (isCompanyMainNote) put("note_scope", "company_main")
+        // Empty company notes are explicit deletions, both for main notes and
+        // for concrete call notes. Sending only note="" was treated as an edit.
+        if (isCompanyNote && note.isBlank()) put("deleted", true)
         if (clearCompanyAssignment) put("clear_company_assignment", true)
         put("source", JSONObject().apply {
             put("channel", "android")
