@@ -33,7 +33,6 @@ internal class HomeCrmContactsContentView(
         if (!retainingRows) {
             currentData = null
             contentRenderer.clearCalls()
-            binding.homeCallsContainer.removeAllViews()
             addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
         }
         binding.fullLogProgress.visibility = View.GONE
@@ -47,7 +46,12 @@ internal class HomeCrmContactsContentView(
         prepareCustomersHeader()
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
-        binding.homeCallsContainer.removeAllViews()
+        val page = HomePagedListUi.page(
+            binding.homeCallsContainer,
+            PageLoadingModeStore.usesPrefetch(activity),
+            pageIndex(),
+        )
+        page.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         renderPagination(pageSize, data.calls.size)
         val companyLabels = companyGeneralNotes.labelsFor(data.calls)
@@ -61,7 +65,7 @@ internal class HomeCrmContactsContentView(
                 latestCallNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(contact)],
                 highlightQuery = "",
             )
-            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, ::dp))
+            page.addView(ListThemeUi.applyRowSpacing(row, ::dp))
         }
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         if (refreshCompanyLabels) companyGeneralNotes.refresh(data.calls)
@@ -74,9 +78,18 @@ internal class HomeCrmContactsContentView(
 
     fun renderEmpty(pageSize: Int) {
         prepareCustomersHeader()
+        if (retainRowsDuringEdgePaging() && pageIndex() > 0) {
+            currentData = null
+            contentRenderer.replaceCurrentCalls(emptyList())
+            binding.fullLogProgress.visibility = View.GONE
+            HomeLoadingFooterUi.hide(binding.homeCallsContainer)
+            PaginationButtonAppearance.apply(binding.nextCallsButton, enabled = false)
+            binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex() + 1)
+            binding.paginationContainer.visibility = View.VISIBLE
+            return
+        }
         currentData = null
         contentRenderer.clearCalls()
-        binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = View.GONE
         binding.homeStatusText.text = ""
         binding.homeStatusText.visibility = View.GONE
