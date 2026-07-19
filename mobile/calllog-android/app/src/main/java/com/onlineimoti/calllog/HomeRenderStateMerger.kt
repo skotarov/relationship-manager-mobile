@@ -52,15 +52,15 @@ internal object HomeRenderStateMerger {
         val contactNotes = when (mode) {
             HomeRenderMergeMode.AUTHORITATIVE -> incoming.contactNotesByNumber
             else -> linkedMapOf<String, String>().apply {
-                currentContactNotes.filterKeys { it in phoneKeys }.forEach(::put)
-                incoming.contactNotesByNumber.forEach(::put)
+                currentContactNotes.forEach { (key, value) -> if (key in phoneKeys) put(key, value) }
+                incoming.contactNotesByNumber.forEach { (key, value) -> put(key, value) }
             }
         }
         val callNotes = when (mode) {
             HomeRenderMergeMode.AUTHORITATIVE -> incoming.callNotesByCall
             else -> linkedMapOf<String, HomeCallNote>().apply {
-                currentCallNotes.filterKeys { it in callKeys }.forEach(::put)
-                incoming.callNotesByCall.forEach(::put)
+                currentCallNotes.forEach { (key, value) -> if (key in callKeys) put(key, value) }
+                incoming.callNotesByCall.forEach { (key, value) -> put(key, value) }
             }
         }
         return HomeRenderState(contactNotes, names, callNotes)
