@@ -26,7 +26,9 @@ internal class HomeCallRowRenderer(
     private val togglePhoneFilter: (String) -> Unit = {},
 ) {
     private val companyScopeChipsUi by lazy { HomeCompanyScopeChipsUi(activity, dp, roundedRect) }
-    private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
+    private val notesUi by lazy {
+        TimelineNotesUi(activity, dp, roundedRect)
+    }
     private val smsRowRenderer by lazy {
         HomeSmsRowRenderer(
             activity, dp, noteKey, roundedRect, companyScopeChipsUi,
@@ -194,17 +196,21 @@ internal class HomeCallRowRenderer(
             activity.getString(R.string.dynamic_action_filter),
             { togglePhoneFilter(call.number) },
         ))
-        val editable = note?.editable != false
+        val editableNote = note?.expandedNotes()?.firstOrNull { it.editable }
+        val editable = note == null || editableNote != null
         addView(iconButton(
             R.drawable.ic_chat_note,
             if (editable) activity.getString(R.string.dynamic_action_note) else activity.getString(R.string.runtime_view_only),
-            { openContactNotePopupForCall(call, name, note) }, editable,
+            { openContactNotePopupForCall(call, name, editableNote) }, editable,
         ))
     }
 
     private fun noteSyncStatus(call: PhoneCallRecord): String? {
         if (CallReportDeferredCompanyAssignmentStore.isCallPending(activity, call.number, call.direction, call.startedAt)) {
             return activity.getString(R.string.dynamic_note_pending_company_choice)
+        }
+        if (CompanyCallNoteOutbox.isCallPending(activity, call.number, call.direction, call.startedAt)) {
+            return activity.getString(R.string.dynamic_note_pending_server_sync)
         }
         if (!CallReportTopicNoteOutbox.isCallPending(activity, call.number, call.direction, call.startedAt)) return null
         val failure = CallReportTopicNoteOutbox.lastFailure(activity)
