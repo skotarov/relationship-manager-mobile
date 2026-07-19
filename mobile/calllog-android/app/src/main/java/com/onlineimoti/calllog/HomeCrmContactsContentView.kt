@@ -29,13 +29,15 @@ internal class HomeCrmContactsContentView(
     fun showLoading() {
         prepareCustomersHeader()
         timelineToggle.prepare(visible = true, contactsMode = true)
-        currentData = null
-        contentRenderer.clearCalls()
-        if (!retainRowsDuringEdgePaging()) {
+        val retainingRows = retainRowsDuringEdgePaging()
+        if (!retainingRows) {
+            currentData = null
+            contentRenderer.clearCalls()
             binding.homeCallsContainer.removeAllViews()
             addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
         }
-        binding.fullLogProgress.visibility = if (retainRowsDuringEdgePaging()) View.VISIBLE else View.GONE
+        binding.fullLogProgress.visibility = View.GONE
+        HomeLoadingFooterUi.show(binding.homeCallsContainer)
         binding.homeStatusText.text = ""
         binding.homeStatusText.visibility = View.GONE
         binding.paginationContainer.visibility = View.GONE
@@ -61,6 +63,7 @@ internal class HomeCrmContactsContentView(
             )
             binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, ::dp))
         }
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         if (refreshCompanyLabels) companyGeneralNotes.refresh(data.calls)
     }
 
@@ -83,6 +86,7 @@ internal class HomeCrmContactsContentView(
             AppLocaleText.isBulgarian() -> "Няма клиенти в RM."
             else -> "No customers in RM."
         })
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         timelineToggle.showEmpty(contactsMode = true)
         PaginationButtonAppearance.apply(binding.previousCallsButton, pageIndex() > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, enabled = false)
