@@ -77,9 +77,17 @@ internal class HomeSearchController(
                 filterState != null -> dataSource.filterCrmSearchResults(rawResults, filterState)
                 else -> rawResults
             }
-            val calls = filteredResults
-                .drop(page * currentPageSize)
-                .take(currentPageSize)
+            val calls = if (crmContactsMode) {
+                filteredResults.drop(page * currentPageSize).take(currentPageSize)
+            } else {
+                TimelinePageMode.page(
+                    context = context,
+                    items = filteredResults,
+                    pageIndex = page,
+                    pageSize = currentPageSize,
+                    groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
+                )
+            }
             val localCallNotes = HomeCallNotesResolver.localNotes(context, calls)
             val clientServerNotes = if (crmContactsMode) {
                 HomeCrmClientServerNotes.snapshot(context.applicationContext, calls)
