@@ -139,4 +139,5 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.android.billingclient:billing-ktx:9.1.0")
+    testImplementation("junit:junit:4.13.2")
 }
