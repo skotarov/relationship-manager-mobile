@@ -42,6 +42,7 @@ internal class HomeContentRenderer(
         currentContactNotesByNumber = emptyMap()
         currentContactNamesByNumber = emptyMap()
         currentCallNotesByCall = emptyMap()
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
     }
     fun prepareForRender(pageSize: Int, keepExistingRows: Boolean) {
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
@@ -53,17 +54,21 @@ internal class HomeContentRenderer(
         updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
     }
     fun showLoading() {
-        binding.fullLogProgress.visibility = View.VISIBLE
+        binding.fullLogProgress.visibility = View.GONE
+        HomeLoadingFooterUi.show(binding.homeCallsContainer)
         binding.paginationContainer.visibility = View.GONE
         if (currentCalls.isEmpty()) binding.homeStatusText.text = activity.getString(R.string.runtime_crm_calls_loading)
     }
     fun showMissingCallLogPermission() {
         val text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
         if (isTopLevelCrmPage()) showResultsStatus(text) else binding.homeStatusText.text = text
+        binding.fullLogProgress.visibility = View.GONE
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         binding.paginationContainer.visibility = View.GONE
     }
     fun showCrmLoading() {
         showResultsStatus(activity.getString(R.string.runtime_crm_calls_loading))
+        HomeLoadingFooterUi.show(binding.homeCallsContainer)
         binding.paginationContainer.visibility = View.GONE
     }
     fun applyRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(
@@ -88,6 +93,7 @@ internal class HomeContentRenderer(
     }
     fun renderEmptyState() {
         binding.fullLogProgress.visibility = View.GONE
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         val phone = activePhoneFilter(); val query = activeSearchQuery(); val page = pageIndex()
         val message = when {
             query.isNotBlank() -> activity.getString(R.string.dynamic_home_no_search_results, query.trim())
@@ -131,7 +137,10 @@ internal class HomeContentRenderer(
         currentCallNotesByCall = state.callNotesByCall
         binding.fullLogProgress.visibility = View.GONE
         renderStatusAndPagination(pageSize)
-        if (unchanged && !forceRender) return
+        if (unchanged && !forceRender) {
+            HomeLoadingFooterUi.hide(binding.homeCallsContainer)
+            return
+        }
 
         binding.homeCallsContainer.removeAllViews()
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
@@ -165,6 +174,7 @@ internal class HomeContentRenderer(
             )
             binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, dp))
         }
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
     }
 
@@ -258,6 +268,7 @@ internal class HomeContentRenderer(
             setTextColor(Color.rgb(100, 116, 139)); setPadding(dp(18), dp(28), dp(18), dp(28))
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         })
+        HomeLoadingFooterUi.hide(binding.homeCallsContainer)
     }
     private fun isTopLevelCrmPage() = activePhoneFilter().isBlank() && (isCrmModeEnabled() || isCrmContactsMode())
     private fun isFilteredFullLogMode() = activePhoneFilter().isNotBlank() && activeSearchQuery().isBlank()
