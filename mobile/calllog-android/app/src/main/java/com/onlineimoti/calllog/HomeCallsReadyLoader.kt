@@ -170,7 +170,13 @@ internal class HomeCallsLoader(
         val combined = (baseResults + smsResults)
             .filter { seen.add(searchResultKey(it)) }
             .sortedByDescending { it.startedAt }
-        return pageForMode(context, combined, requestedPage, pageSize)
+        return TimelinePageMode.page(
+            context = context,
+            items = combined,
+            pageIndex = requestedPage,
+            pageSize = pageSize,
+            groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
+        )
     }
 
     private fun searchResultKey(row: PhoneCallRecord): String {
@@ -204,7 +210,13 @@ internal class HomeCallsLoader(
                     )
                     HomeCrmFilterEngine.filterByCompany(localFiltered, filterState, memberships.companyIdsByPhoneKey)
                 } else localFiltered
-                pageForMode(appContext, companyFiltered, requestedPage, pageSize)
+                TimelinePageMode.page(
+                    context = appContext,
+                    items = companyFiltered,
+                    pageIndex = requestedPage,
+                    pageSize = pageSize,
+                    groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
+                )
             }.getOrDefault(emptyList())
             val fastData = HomeRenderData(calls, emptyMap(), emptyMap(), emptyMap())
             handler.post {
@@ -268,24 +280,6 @@ internal class HomeCallsLoader(
                 }
             }
         }
-    }
-
-    private fun pageForMode(
-        context: Context,
-        rows: List<PhoneCallRecord>,
-        requestedPage: Int,
-        pageSize: Int,
-    ): List<PhoneCallRecord> {
-        if (PageLoadingModeStore.usesPrefetch(context)) {
-            return TimelineGroupedPager.page(
-                items = rows,
-                pageIndex = requestedPage,
-                minimumPageSize = pageSize,
-                groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
-            )
-        }
-        val offset = (requestedPage.toLong() * pageSize.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return rows.drop(offset).take(pageSize)
     }
 
     private fun isCurrentLocalRender(
