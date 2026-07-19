@@ -23,6 +23,7 @@
     <string name="dynamic_note_general_hint">Основна бележка към контакта или номера</string>
     <string name="dynamic_note_call_hint">Бележка към този разговор</string>
     <string name="dynamic_note_cancel">Отказ</string>
+    <string name="dynamic_note_delete">Изтрий</string>
     <string name="dynamic_note_save">Запази</string>
     <string name="dynamic_note_crm_enabled">Към CRM: тази бележка ще се изпрати към сървъра</string>
     <string name="dynamic_note_local_only">Само локално: тази бележка остава в телефона</string>
