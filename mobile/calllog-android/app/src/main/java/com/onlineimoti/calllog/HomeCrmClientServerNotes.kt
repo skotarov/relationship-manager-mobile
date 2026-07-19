@@ -50,13 +50,14 @@ internal object HomeCrmClientServerNotes {
             .associateBy { HomeCallPageLoader.noteKey(it.number) }
         if (rowByPhoneKey.isEmpty()) return emptyMap()
 
-        val latest = linkedMapOf<String, Pair<Long, HomeCallNote>>()
+        val byRowAndScope = linkedMapOf<String, LinkedHashMap<String, HomeCallNote>>()
         history.events.forEach { event ->
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
             val row = rowByPhoneKey[phoneKey] ?: return@forEach
             if (!isBlueServerNote(event)) return@forEach
             val changedAt = maxOf(event.updatedAtMs, event.createdAtMs, event.occurredAtMs)
             val key = HomeCallNotesResolver.keyFor(row)
+            val scope = event.companyId.trim().ifBlank { "server" }
             val note = HomeCallNote(
                 text = event.note.trim(),
                 updatedAtMs = changedAt,
@@ -66,17 +67,20 @@ internal object HomeCrmClientServerNotes {
                 serverClientEventId = event.clientEventId.trim(),
                 editable = !isOtherBrokerAuthor(event, history.principal),
             )
-            val current = latest[key]
-            if (current == null || changedAt >= current.first) latest[key] = changedAt to note
+            val bucket = byRowAndScope.getOrPut(key) { linkedMapOf() }
+            val current = bucket[scope]
+            if (current == null || changedAt >= current.updatedAtMs) bucket[scope] = note
         }
-        return latest.mapValues { it.value.second }
+        return byRowAndScope.mapNotNull { (key, bucket) ->
+            val notes = bucket.values.sortedWith(
+                compareByDescending<HomeCallNote> { it.editable }
+                    .thenBy { it.companyId.lowercase() }
+                    .thenByDescending { it.updatedAtMs },
+            )
+            notes.firstOrNull()?.let { primary -> key to primary.copy(relatedNotes = notes.drop(1)) }
+        }.toMap()
     }
 
-    /**
-     * The Clients page has one yellow lane without a company label: the server main
-     * note saved without a firm. It is visually the same position as a local yellow
-     * note, but the text is still marked with a cloud because it came from server.
-     */
     private fun unscopedGeneralNotes(
         contacts: List<PhoneCallRecord>,
         history: CallReportHistoryLookupResult,
@@ -104,11 +108,6 @@ internal object HomeCrmClientServerNotes {
         return latest.mapValues { it.value.second }
     }
 
-    /**
-     * On the Clients page, ordinary server NOTE rows are conversation/blue notes.
-     * Yellow notes come from the explicit company/main-note channel, not from these
-     * contact history events. This keeps the Clients card able to show both lanes.
-     */
     private fun isBlueServerNote(event: CallReportHistoryEvent): Boolean {
         return event.communicationType.equals("note", ignoreCase = true) &&
             event.note.trim().isNotBlank() &&
