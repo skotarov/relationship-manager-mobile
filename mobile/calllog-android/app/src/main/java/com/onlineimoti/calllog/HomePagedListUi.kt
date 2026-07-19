@@ -23,13 +23,9 @@ internal object HomePagedListUi {
         pageIndex: Int,
     ): LinearLayout {
         if (!automatic) return container
-        val tagValue = "$PAGE_TAG_PREFIX$pageIndex"
-        (0 until container.childCount).forEach { index ->
-            val child = container.getChildAt(index)
-            if (child.tag == tagValue && child is LinearLayout) return child
-        }
+        pageFor(container, pageIndex)?.let { return it }
         return LinearLayout(container.context).apply {
-            tag = tagValue
+            tag = pageTag(pageIndex)
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -40,6 +36,10 @@ internal object HomePagedListUi {
                 ?: container.childCount
             container.addView(this, footerIndex)
         }
+    }
+
+    fun hasRenderedPage(container: LinearLayout, pageIndex: Int): Boolean {
+        return pageFor(container, pageIndex)?.childCount?.let { it > 0 } == true
     }
 
     fun clear(container: LinearLayout) {
@@ -56,4 +56,13 @@ internal object HomePagedListUi {
     fun isPage(view: View?): Boolean {
         return view?.tag?.toString()?.startsWith(PAGE_TAG_PREFIX) == true
     }
+
+    private fun pageFor(container: LinearLayout, pageIndex: Int): LinearLayout? {
+        val tagValue = pageTag(pageIndex)
+        return (0 until container.childCount).firstNotNullOfOrNull { index ->
+            (container.getChildAt(index) as? LinearLayout)?.takeIf { it.tag == tagValue }
+        }
+    }
+
+    private fun pageTag(pageIndex: Int) = "$PAGE_TAG_PREFIX$pageIndex"
 }
