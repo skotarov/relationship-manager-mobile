@@ -24,31 +24,27 @@ internal class CallReportHistoryNoteRowUi(
         val serverConfirmed = shared.isServerConfirmed(phone, row)
         val localNote = row.localNote
         val pendingGenericSync =
-            !foreignRecord &&
-                remoteEnabled &&
-                row.kind == CallReportHistoryRowKind.NOTE &&
+            !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE &&
                 localNote?.let { CallReportNoteOutbox.isCallPending(activity, phone, it) } == true
-        val pendingCompanySync =
-            !foreignRecord &&
-                remoteEnabled &&
-                row.kind == CallReportHistoryRowKind.NOTE &&
+        val pendingNewCompanySync =
+            !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE &&
+                CompanyCallNoteOutbox.isCallPending(
+                    activity,
+                    phone,
+                    localNote?.direction ?: row.direction,
+                    localNote?.callAt ?: row.timeMs,
+                )
+        val pendingLegacyCompanySync =
+            !foreignRecord && remoteEnabled && row.kind == CallReportHistoryRowKind.NOTE &&
                 localNote?.let {
-                    CallReportTopicNoteOutbox.isCallPending(
-                        activity,
-                        phone,
-                        it.direction,
-                        it.callAt,
-                    )
+                    CallReportTopicNoteOutbox.isCallPending(activity, phone, it.direction, it.callAt)
                 } == true
+        val pendingCompanySync = pendingNewCompanySync || pendingLegacyCompanySync
         val pendingCompanyChoice =
-            !foreignRecord &&
-                row.kind == CallReportHistoryRowKind.NOTE &&
+            !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE &&
                 localNote?.let {
                     CallReportDeferredCompanyAssignmentStore.isCallPending(
-                        activity,
-                        phone,
-                        it.direction,
-                        it.callAt,
+                        activity, phone, it.direction, it.callAt,
                     )
                 } == true
         val colors = when {
@@ -86,10 +82,7 @@ internal class CallReportHistoryNoteRowUi(
                 setOnClickListener {
                     val source = row.localNote?.let { existingLocalNote ->
                         val serverClientEventId = row.serverEvent?.clientEventId.orEmpty()
-                        if (
-                            serverClientEventId.isBlank() ||
-                            existingLocalNote.serverClientEventId == serverClientEventId
-                        ) {
+                        if (serverClientEventId.isBlank() || existingLocalNote.serverClientEventId == serverClientEventId) {
                             existingLocalNote
                         } else {
                             existingLocalNote.copy(serverClientEventId = serverClientEventId)
@@ -100,33 +93,22 @@ internal class CallReportHistoryNoteRowUi(
                         savedAt = row.serverEvent?.updatedAtMs ?: row.timeMs,
                         direction = row.direction,
                         durationSeconds = row.durationSeconds,
-                        clientNoteId = LocalNotesFileStore.clientNoteIdForCall(
-                            phone,
-                            row.timeMs,
-                            row.direction,
-                        ),
+                        clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, row.timeMs, row.direction),
                         companyId = row.companyId,
                         serverClientEventId = row.serverEvent?.clientEventId.orEmpty(),
                     )
                     val editableNote = if (remoteEnabled && row.serverNewer) {
                         source.copy(
                             note = row.text,
-                            savedAt = maxOf(
-                                source.savedAt,
-                                row.serverEvent?.updatedAtMs ?: 0L,
-                            ),
+                            savedAt = maxOf(source.savedAt, row.serverEvent?.updatedAtMs ?: 0L),
                             companyId = row.companyId.ifBlank { source.companyId },
-                            serverClientEventId = row.serverEvent
-                                ?.clientEventId
-                                .orEmpty()
+                            serverClientEventId = row.serverEvent?.clientEventId.orEmpty()
                                 .ifBlank { source.serverClientEventId },
                         )
                     } else {
                         source.copy(
                             companyId = row.companyId.ifBlank { source.companyId },
-                            serverClientEventId = row.serverEvent
-                                ?.clientEventId
-                                .orEmpty()
+                            serverClientEventId = row.serverEvent?.clientEventId.orEmpty()
                                 .ifBlank { source.serverClientEventId },
                         )
                     }
@@ -134,27 +116,19 @@ internal class CallReportHistoryNoteRowUi(
                 }
             }
             addView(shared.metaView(row, muted = readOnlyNote))
-            shared.companyLabel(
-                row.companyId,
-                companyNames,
-                muted = readOnlyNote,
-            )?.let(::addView)
+            shared.companyLabel(row.companyId, companyNames, muted = readOnlyNote)?.let(::addView)
             if (row.text.isNotBlank()) addView(shared.noteText(row.text, colors.third))
             when {
                 pendingCompanyChoice -> addView(shared.pendingCompanyChoiceText())
-                pendingCompanySync -> addView(
-                    shared.pendingSyncText(CallReportTopicNoteOutbox.lastFailure(activity)),
-                )
+                pendingCompanySync -> addView(shared.pendingSyncText(
+                    if (pendingNewCompanySync) "" else CallReportTopicNoteOutbox.lastFailure(activity),
+                ))
                 pendingGenericSync && !serverConfirmed -> addView(
                     shared.pendingSyncText(CallReportNoteOutbox.lastFailure(activity)),
                 )
             }
-            if (readOnlyNote) {
-                addView(shared.authorText(row.authorName.ifBlank { "друг потребител" }))
-            }
-            if (!foreignRecord && remoteEnabled && row.serverNewer) {
-                addView(shared.serverNewerText())
-            }
+            if (readOnlyNote) addView(shared.authorText(row.authorName.ifBlank { "друг потребител" }))
+            if (!foreignRecord && remoteEnabled && row.serverNewer) addView(shared.serverNewerText())
         }
     }
 }
