@@ -36,6 +36,7 @@ internal class ContactNoteEditUi(
     private val onNoteInputReady: (EditText) -> Unit,
     private val onTopicSpinnerReady: (Spinner) -> Unit,
     private val saveAndClose: (String) -> Unit,
+    private val deleteAndClose: () -> Unit,
     private val saveAndOpenCalendar: (String) -> Unit,
     private val close: (String) -> Unit,
 ) {
@@ -188,11 +189,19 @@ internal class ContactNoteEditUi(
     private fun actionRow(input: EditText): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(12), 0, 0)
-            addView(secondaryTextButton(activity.getString(R.string.dynamic_note_cancel)) { close(input.text?.toString().orEmpty()) })
+            addView(deleteTextButton(activity.getString(R.string.dynamic_note_delete), deleteAndClose))
+            addView(TextView(activity).apply {
+                layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+            })
+            addView(secondaryTextButton(activity.getString(R.string.dynamic_note_cancel)) {
+                close(input.text?.toString().orEmpty())
+            })
             addView(TextView(activity).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
-            addView(primaryTextButton(activity.getString(R.string.dynamic_note_save)) { saveAndClose(input.text?.toString().orEmpty()) })
+            addView(primaryTextButton(activity.getString(R.string.dynamic_note_save)) {
+                saveAndClose(input.text?.toString().orEmpty())
+            })
         }
     }
 
@@ -229,6 +238,19 @@ internal class ContactNoteEditUi(
             setTextColor(Color.rgb(55, 65, 81))
             background = roundedRect(Color.rgb(243, 244, 246), dp(12), Color.TRANSPARENT, 0)
             setPadding(dp(12), dp(10), dp(12), dp(10))
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun deleteTextButton(textValue: String, action: () -> Unit): TextView {
+        return TextView(activity).apply {
+            text = textValue
+            textSize = 12.5f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(185, 28, 28))
+            background = roundedRect(Color.rgb(254, 242, 242), dp(10), Color.rgb(254, 202, 202), dp(1))
+            setPadding(dp(9), dp(8), dp(9), dp(8))
             setOnClickListener { action() }
         }
     }
