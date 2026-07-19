@@ -147,17 +147,6 @@ internal class CallReportHistoryRowsUi(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
             addView(TextView(activity).apply {
-                text = "+ Добави"
-                textSize = 14.5f
-                setTextColor(NoteUiStyle.General.mutedText)
-            })
-            addView(TextView(activity).apply {
-                text = "—"
-                textSize = 13f
-                setTextColor(Color.rgb(148, 163, 184))
-                setPadding(dp(8), 0, dp(8), 0)
-            })
-            addView(TextView(activity).apply {
                 text = listOf(
                     PhoneCallReader.formatStartedAt(call.startedAt),
                     sharedUi.directionLabel(call.direction),
@@ -172,6 +161,14 @@ internal class CallReportHistoryRowsUi(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f,
                 )
+            })
+            addView(TextView(activity).apply {
+                text = activity.getString(R.string.dynamic_notes_add_general)
+                textSize = 14.5f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                setTextColor(NoteUiStyle.General.mutedText)
+                setPadding(dp(12), 0, 0, 0)
             })
         }
     }
