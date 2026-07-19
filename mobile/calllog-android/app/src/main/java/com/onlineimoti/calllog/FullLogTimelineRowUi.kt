@@ -28,9 +28,9 @@ internal class FullLogTimelineRowUi(
         displayName: String,
         callNote: HomeCallNote?,
     ): MaterialCardView {
-        val note = callNote?.takeIf { it.text.isNotBlank() }
-        val foreign = note?.editable == false
-        val palette = palette(note != null, foreign)
+        val notes = callNote?.expandedNotes().orEmpty().filter { it.text.isNotBlank() }
+        val allForeign = notes.isNotEmpty() && notes.all { !it.editable }
+        val palette = palette(notes.isNotEmpty(), allForeign)
         val card = MaterialCardView(activity).apply {
             radius = dp(12).toFloat()
             strokeWidth = dp(1)
@@ -59,17 +59,18 @@ internal class FullLogTimelineRowUi(
             )
         }
         column.addView(metaText(call, palette.meta))
-        if (note != null) {
-            companyBadge(note.companyId, foreign)?.let(column::addView)
-            column.addView(noteText(note, palette.text))
-            syncStatus(call)?.let { column.addView(statusText(it)) }
-            if (foreign) {
+        notes.forEach { note ->
+            companyBadge(note.companyId, !note.editable)?.let(column::addView)
+            column.addView(noteText(note, if (note.editable) palette.text else FOREIGN_TEXT))
+            if (!note.editable) {
                 column.addView(authorText(note.authorName.ifBlank { "друг потребител" }))
             }
         }
+        if (notes.isNotEmpty()) syncStatus(call)?.let { column.addView(statusText(it)) }
         row.addView(column)
-        val editable = note?.editable != false
-        row.addView(noteButton(call, displayName, callNote, editable))
+        val editableNote = notes.firstOrNull { it.editable }
+        val editorEnabled = notes.isEmpty() || editableNote != null
+        row.addView(noteButton(call, displayName, editableNote, editorEnabled))
         card.addView(row)
         return card
     }
@@ -92,7 +93,7 @@ internal class FullLogTimelineRowUi(
         setTextColor(color)
         setTypeface(typeface, Typeface.BOLD)
         setPadding(0, dp(5), 0, 0)
-        if (note.fromServer) {
+        if (note.fromServer || note.companyId.isNotBlank()) {
             setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_cloud_note_filled, 0, 0, 0)
             compoundDrawablePadding = dp(5)
             compoundDrawableTintList = ColorStateList.valueOf(
