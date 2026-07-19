@@ -28,6 +28,11 @@ internal class HomeEdgePagingController(
         protectRetainedPrefix = true,
         pageToken = { binding.pageText.text.toString() },
         prefetchNext = true,
+        onLoadingChanged = { loading ->
+            binding.fullLogProgress.visibility = View.GONE
+            if (loading) HomeLoadingFooterUi.show(binding.homeCallsContainer)
+            else HomeLoadingFooterUi.hide(binding.homeCallsContainer)
+        },
     )
 
     init {
