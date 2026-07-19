@@ -5,7 +5,7 @@ import android.os.Handler
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Adds matching server notes to one rendered Home page. */
+/** Adds matching server and pending company notes to one rendered Home page. */
 internal class HomeServerCallNotesController(
     context: Context,
     private val handler: Handler,
@@ -46,6 +46,9 @@ internal class HomeServerCallNotesController(
             val history = runCatching {
                 CallReportHistoryLookupClient.lookupMany(config, phones, appContext)
             }.getOrDefault(CallReportHistoryLookupResult())
+            // Pending operations come last. Their newer timestamp wins immediately;
+            // an empty pending note acts as a tombstone until the server confirms it.
+            val combinedEvents = history.events + CompanyCallNoteOutbox.pendingEvents(appContext, phones)
             val updated = renderData.copy(
                 contactNotesByNumber = mergeServerGeneralNotes(
                     calls = renderData.calls,
@@ -55,7 +58,7 @@ internal class HomeServerCallNotesController(
                 callNotesByCall = HomeCallNotesResolver.mergeWithServer(
                     calls = renderData.calls,
                     localNotes = renderData.callNotesByCall,
-                    serverEvents = history.events,
+                    serverEvents = combinedEvents,
                     principal = history.principal,
                 ),
             )
