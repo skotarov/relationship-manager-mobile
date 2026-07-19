@@ -22,6 +22,7 @@ internal class EdgePageScrollController(
     private val protectRetainedPrefix: Boolean = false,
     private val pageToken: () -> Any? = { null },
     private val prefetchNext: Boolean = true,
+    private val onLoadingChanged: (Boolean) -> Unit = {},
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private var scrollView: ScrollView? = null
@@ -40,12 +41,12 @@ internal class EdgePageScrollController(
 
     private val hierarchyListener = object : ViewGroup.OnHierarchyChangeListener {
         override fun onChildViewAdded(parent: View?, child: View?) {
-            if (suppressCallbacks || pendingNext || !protectRetainedPrefix) return
+            if (suppressCallbacks || !protectRetainedPrefix) return
             if (retainedPages?.parent !== content) schedulePrefixRestore()
         }
 
         override fun onChildViewRemoved(parent: View?, child: View?) {
-            if (suppressCallbacks || pendingNext || child !== retainedPages) return
+            if (suppressCallbacks || child !== retainedPages) return
             if (!protectRetainedPrefix) {
                 retainedPages = null
                 initialPrefetchDone = false
@@ -78,8 +79,9 @@ internal class EdgePageScrollController(
             if (!pendingNext) return
             val scroll = scrollView
             val list = content
+            val pageIsReady = pageReady()
             val freshPageVisible = scroll != null && list != null && scroll.isAttachedToWindow &&
-                pageReady() && hasFreshPage(list)
+                pageIsReady && (hasFreshPage(list) || !canNext())
             if (!freshPageVisible) {
                 if (++readyChecks < MAX_READY_CHECKS) handler.postDelayed(this, READY_CHECK_DELAY_MS)
                 else abortPending()
@@ -100,9 +102,9 @@ internal class EdgePageScrollController(
         val scroll = scrollView ?: return@Runnable
         val list = content ?: return@Runnable
         val prefix = retainedPages ?: return@Runnable
-        if (pendingNext || !protectRetainedPrefix || list.childCount == 0 || prefix.parent === list) return@Runnable
+        if (!protectRetainedPrefix || prefix.parent === list) return@Runnable
         val token = pageToken()
-        if (lastPageToken != null && token != lastPageToken) {
+        if (!pendingNext && lastPageToken != null && token != lastPageToken) {
             retainedPages = null
             initialPrefetchDone = false
             scheduleInitialPrefetch()
@@ -111,8 +113,11 @@ internal class EdgePageScrollController(
         suppressCallbacks = true
         (prefix.parent as? ViewGroup)?.removeView(prefix)
         list.addView(prefix, 0)
+        HomeLoadingFooterUi.keepLast(list)
         suppressCallbacks = false
-        scroll.post { scroll.scrollTo(0, hierarchyScrollY.coerceAtLeast(0)) }
+        if (!pendingNext) {
+            scroll.post { scroll.scrollTo(0, hierarchyScrollY.coerceAtLeast(0)) }
+        }
     }
 
     fun bind(
@@ -128,8 +133,10 @@ internal class EdgePageScrollController(
             this.content = list
             list.setOnHierarchyChangeListener(hierarchyListener)
             scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
-                if (suppressCallbacks || pendingNext || scrollY <= oldScrollY) return@setOnScrollChangeListener
+                if (suppressCallbacks || scrollY <= oldScrollY) return@setOnScrollChangeListener
                 preservedScrollY = scrollY
+                hierarchyScrollY = scrollY
+                if (pendingNext) return@setOnScrollChangeListener
                 val child = scrollView.getChildAt(0) ?: return@setOnScrollChangeListener
                 val remaining = child.height - scrollY - scrollView.height
                 val threshold = maxOf(scrollView.height, MIN_PREFETCH_DISTANCE_PX)
@@ -150,6 +157,7 @@ internal class EdgePageScrollController(
     /** Cancels the current paging context, including all retained page views. */
     fun cancelPending() {
         handler.removeCallbacksAndMessages(null)
+        val wasPending = pendingNext
         pendingNext = false
         initialPrefetchDone = false
         initialChecks = 0
@@ -159,6 +167,7 @@ internal class EdgePageScrollController(
         retainedPages = null
         lastPageToken = null
         suppressCallbacks = false
+        if (wasPending) onLoadingChanged(false)
     }
 
     fun release() {
@@ -175,12 +184,14 @@ internal class EdgePageScrollController(
         val list = content ?: return
         if (retainPreviousPages) retainCurrentPage(list)
         pendingNext = true
+        onLoadingChanged(true)
         preservedScrollY = scroll.scrollY
+        hierarchyScrollY = scroll.scrollY
         readyChecks = 0
         stableChecks = 0
         lastChildCount = -1
-        nextPage()
-        scheduleReadyCheck()
+        runCatching(nextPage).onFailure { abortPending() }
+        if (pendingNext) scheduleReadyCheck()
     }
 
     private fun retainCurrentPage(list: LinearLayout) {
@@ -193,7 +204,7 @@ internal class EdgePageScrollController(
         }.also { retainedPages = it }
         val currentChildren = (0 until list.childCount)
             .map { list.getChildAt(it) }
-            .filter { it !== prefix }
+            .filter { it !== prefix && !HomeLoadingFooterUi.isFooter(it) }
         if (currentChildren.isEmpty()) return
         val page = LinearLayout(list.context).apply {
             orientation = LinearLayout.VERTICAL
@@ -209,36 +220,46 @@ internal class EdgePageScrollController(
         }
         (prefix.parent as? ViewGroup)?.removeView(prefix)
         prefix.addView(page)
-        if (prefix.parent == null) list.addView(prefix)
+        if (prefix.parent == null) list.addView(prefix, 0)
+        HomeLoadingFooterUi.keepLast(list)
         suppressCallbacks = false
     }
 
     private fun hasFreshPage(list: LinearLayout): Boolean {
-        val prefix = retainedPages ?: return list.childCount > 0
-        return list.childCount > 1 || list.getChildAt(0) !== prefix
+        val prefix = retainedPages
+        return (0 until list.childCount).any { index ->
+            val child = list.getChildAt(index)
+            child !== prefix && !HomeLoadingFooterUi.isFooter(child)
+        }
     }
 
     private fun finishNextPage(scroll: ScrollView, list: LinearLayout) {
-        retainedPages?.let { prefix ->
-            if (prefix.parent !== list) {
-                suppressCallbacks = true
-                (prefix.parent as? ViewGroup)?.removeView(prefix)
-                list.addView(prefix, 0)
-                suppressCallbacks = false
-            }
+        val prefix = retainedPages
+        val needsPrefixRestore = prefix != null && prefix.parent !== list
+        if (needsPrefixRestore) {
+            suppressCallbacks = true
+            (prefix!!.parent as? ViewGroup)?.removeView(prefix)
+            list.addView(prefix, 0)
+            HomeLoadingFooterUi.keepLast(list)
+            suppressCallbacks = false
+        }
+        if (!needsPrefixRestore) {
+            completePending()
+            return
         }
         scroll.post {
-            suppressCallbacks = true
             scroll.scrollTo(0, preservedScrollY.coerceAtLeast(0))
-            scroll.post {
-                suppressCallbacks = false
-                pendingNext = false
-                initialPrefetchDone = true
-                readyChecks = 0
-                stableChecks = 0
-                lastPageToken = pageToken()
-            }
+            scroll.post { completePending() }
         }
+    }
+
+    private fun completePending() {
+        pendingNext = false
+        initialPrefetchDone = true
+        readyChecks = 0
+        stableChecks = 0
+        lastPageToken = pageToken()
+        onLoadingChanged(false)
     }
 
     private fun scheduleInitialPrefetch() {
@@ -254,15 +275,17 @@ internal class EdgePageScrollController(
 
     private fun schedulePrefixRestore() {
         handler.removeCallbacks(restorePrefix)
-        handler.postDelayed(restorePrefix, PREFIX_RESTORE_DELAY_MS)
+        handler.postDelayed(restorePrefix, if (pendingNext) 0L else PREFIX_RESTORE_DELAY_MS)
     }
 
     private fun abortPending() {
         handler.removeCallbacks(readyCheck)
+        val wasPending = pendingNext
         pendingNext = false
         readyChecks = 0
         stableChecks = 0
         lastChildCount = -1
+        if (wasPending) onLoadingChanged(false)
     }
 
     private companion object {
