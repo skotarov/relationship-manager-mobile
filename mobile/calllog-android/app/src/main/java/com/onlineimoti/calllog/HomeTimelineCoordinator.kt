@@ -183,6 +183,7 @@ internal class HomeTimelineCoordinator(
         if (!isFilteredFullLogMode()) return false
         val returnState = fullLogReturnState
         fullLogReturnState = null
+        contentRenderer.clearCalls()
         setActivePhoneFilter("")
         setPageIndex(returnState?.pageIndex ?: 0)
         returnState?.let { setCrmContactsMode(it.crmContactsMode) }
