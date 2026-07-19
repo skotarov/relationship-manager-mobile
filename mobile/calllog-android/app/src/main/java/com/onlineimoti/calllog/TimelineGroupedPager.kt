@@ -65,6 +65,15 @@ internal object TimelinePageMode {
         return items.drop(offset).take(pageSize.coerceAtLeast(1))
     }
 
+    fun phoneDayPage(
+        context: Context,
+        items: List<PhoneCallRecord>,
+        pageIndex: Int,
+        pageSize: Int,
+    ): List<PhoneCallRecord> = page(context, items, pageIndex, pageSize) { row ->
+        TimelineGroupKeys.day(row.startedAt)
+    }
+
     fun <T> pages(
         context: Context,
         items: List<T>,
