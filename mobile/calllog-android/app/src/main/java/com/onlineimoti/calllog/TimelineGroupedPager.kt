@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.content.Context
 import java.util.Calendar
 
 /** Splits a sorted timeline without cutting a visible day or week between pages. */
@@ -43,6 +44,36 @@ internal object TimelineGroupedPager {
         var end = groupStart + 1
         while (end < items.size && groupKey(items[end]) == key) end++
         return end
+    }
+}
+
+/** Preserves exact sizes for buttons and uses whole groups for automatic scrolling. */
+internal object TimelinePageMode {
+    fun <T> page(
+        context: Context,
+        items: List<T>,
+        pageIndex: Int,
+        pageSize: Int,
+        groupKey: (T) -> Long?,
+    ): List<T> {
+        if (PageLoadingModeStore.usesPrefetch(context)) {
+            return TimelineGroupedPager.page(items, pageIndex, pageSize, groupKey)
+        }
+        val offset = (pageIndex.coerceAtLeast(0).toLong() * pageSize.coerceAtLeast(1).toLong())
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
+        return items.drop(offset).take(pageSize.coerceAtLeast(1))
+    }
+
+    fun <T> pages(
+        context: Context,
+        items: List<T>,
+        pageSize: Int,
+        groupKey: (T) -> Long?,
+    ): List<List<T>> = if (PageLoadingModeStore.usesPrefetch(context)) {
+        TimelineGroupedPager.pages(items, pageSize, groupKey)
+    } else {
+        items.chunked(pageSize.coerceAtLeast(1))
     }
 }
 
