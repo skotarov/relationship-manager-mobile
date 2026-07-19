@@ -21,6 +21,9 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private var activePhoneFilter = ""
     private var activeSearchQuery = ""
     private var crmContactsMode = false
+    private var initialResumePending = true
+    private var homeIsResumed = false
+    private var refreshWhenResumed = false
 
     private val readSmsPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -32,7 +35,12 @@ class HomeActivity : FontScaledAppCompatActivity() {
             filteredFullLogController.invalidate()
             companyGeneralNotesController.invalidate()
             crmContactsContentView.invalidate()
-            renderCalls()
+            HomeCrmPhaseLookup.invalidate()
+            if (homeIsResumed) {
+                renderCalls()
+            } else {
+                refreshWhenResumed = true
+            }
         }
     }
     private val noteRefreshController: HomeNoteRefreshController by lazy {
@@ -206,6 +214,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         edgePaging.bind()
+        noteSavedReceiver.register()
         crmContactsMode = DistributionCapabilities.isPlayBusinessBuild
         binding.crmContactsBackButton.setOnClickListener {
             edgePaging.cancel()
@@ -255,18 +264,27 @@ class HomeActivity : FontScaledAppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (!::binding.isInitialized) return
-        HomeCallPageLoader.clearSearchCache()
-        noteSavedReceiver.register()
+        homeIsResumed = true
         contactsSyncPreparer.prepareOnce()
-        companyGeneralNotesController.invalidate()
-        crmContactsContentView.invalidate()
-        HomeCrmPhaseLookup.invalidate()
         crmFiltersController.refreshCompaniesIfNeeded()
-        renderCalls()
+        edgePaging.bind()
+        if (initialResumePending) {
+            initialResumePending = false
+            HomeCallPageLoader.clearSearchCache()
+            companyGeneralNotesController.invalidate()
+            crmContactsContentView.invalidate()
+            HomeCrmPhaseLookup.invalidate()
+            renderCalls()
+        } else if (refreshWhenResumed) {
+            refreshWhenResumed = false
+            renderCalls()
+        } else {
+            runtimeController.updateHeader()
+        }
     }
 
     override fun onPause() {
-        noteSavedReceiver.unregister()
+        homeIsResumed = false
         pullRefreshController.cancel()
         noteRefreshController.cancel()
         searchInputController.cancelPending()
@@ -275,6 +293,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
 
     override fun onDestroy() {
+        noteSavedReceiver.unregister()
         searchGeneration.incrementAndGet(); edgePaging.release(); pullRefreshController.cancel()
         searchController.cancelActiveTask(); searchExecutor.shutdownNow(); refreshExecutor.shutdownNow()
         callsLoader.release(); crmContactsLoader.release(); serverCallNotesController.release()
