@@ -70,9 +70,6 @@ internal class HomeSearchController(
             )
             if (Thread.currentThread().isInterrupted) return@submit
             val filteredResults = when {
-                // The Clients page search is already filtered by the server using
-                // the current owner/profile, phase and company filters. Do not run
-                // a second local filter over a partial client list.
                 crmContactsMode -> rawResults
                 filterState != null -> dataSource.filterCrmSearchResults(rawResults, filterState)
                 else -> rawResults
@@ -116,9 +113,11 @@ internal class HomeSearchController(
                 ) {
                     return@post
                 }
-                setCurrentCalls(renderData.calls)
                 if (renderData.calls.isEmpty()) {
-                    binding.homeCallsContainer.removeAllViews()
+                    setCurrentCalls(emptyList())
+                    if (!(PageLoadingModeStore.usesPrefetch(context) && page > 0)) {
+                        HomePagedListUi.clear(binding.homeCallsContainer)
+                    }
                     renderEmptyState()
                     hideInlineStatusForSearch()
                 } else {
@@ -150,8 +149,6 @@ internal class HomeSearchController(
     fun cancelActiveTask() {
         activeTask?.cancel(true)
         activeTask = null
-        // Invalidate a callback that may have been posted immediately before
-        // cancellation, such as when Home goes to the background.
         searchGeneration.incrementAndGet()
         if (activeSearchQuery().isBlank()) hideSearchStatus()
     }
