@@ -1,6 +1,8 @@
 package com.onlineimoti.calllog
 
 import android.Manifest
+import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
@@ -11,6 +13,14 @@ internal data class IncomingCallContactInfo(
     val shouldNotify: Boolean,
     val displayName: String? = null,
 )
+
+/** Prefers the current Contacts row over the occasionally stale PhoneLookup index. */
+internal object ContactDisplayNameChoice {
+    fun choose(indexedName: String, currentContactName: String?): String {
+        return currentContactName?.trim()?.takeIf { it.isNotBlank() }
+            ?: indexedName.trim()
+    }
+}
 
 object ContactGroupFilter {
     fun shouldNotify(context: Context, phoneNumber: String, config: AppConfig): Boolean {
@@ -79,10 +89,15 @@ object ContactGroupFilter {
                 null,
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
+                    val contactId = cursor.getLong(0)
+                    val indexedName = cursor.getString(1).orEmpty()
                     ContactRecord(
-                        displayName = cursor.getString(1).orEmpty(),
+                        displayName = ContactDisplayNameChoice.choose(
+                            indexedName = indexedName,
+                            currentContactName = currentDisplayName(resolver, contactId),
+                        ),
                         groups = emptyList(),
-                        contactId = cursor.getLong(0),
+                        contactId = contactId,
                     )
                 } else {
                     null
@@ -123,6 +138,18 @@ object ContactGroupFilter {
         }
 
         return contact.copy(groups = groups)
+    }
+
+    private fun currentDisplayName(resolver: ContentResolver, contactId: Long): String? {
+        return resolver.query(
+            ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId),
+            arrayOf(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            cursor.getString(0).takeIf { cursor.moveToFirst() }
+        }
     }
 
     private fun parseAllowedGroups(rawGroups: String): Set<String> {
