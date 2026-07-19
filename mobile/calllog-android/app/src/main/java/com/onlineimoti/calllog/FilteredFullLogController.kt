@@ -72,9 +72,10 @@ internal class FilteredFullLogController(
         }
         if (loadedPhone != phone && !loading) startLoad(phone, remoteEnabled)
         val size = safePageSize()
-        val pageCount = pageCount(size)
+        val pages = timelinePages(size)
+        val pageCount = maxOf(1, pages.size)
         pageIndex = pageIndex.coerceIn(0, pageCount - 1)
-        val pageEntries = if (loading) emptyList() else entries.drop(pageIndex * size).take(size)
+        val pageEntries = if (loading) emptyList() else pages.getOrNull(pageIndex).orEmpty()
         binding.homeCallsContainer.removeAllViews()
         binding.fullLogProgress.visibility = if (loading) View.VISIBLE else View.GONE
         binding.paginationContainer.visibility = View.VISIBLE
@@ -83,7 +84,7 @@ internal class FilteredFullLogController(
         PaginationButtonAppearance.apply(binding.previousCallsButton, !loading && pageIndex > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, !loading && pageIndex < pageCount - 1)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, pageIndex + 1)
-        binding.homeStatusText.text = statusText(remoteEnabled, pageEntries)
+        binding.homeStatusText.text = statusText(remoteEnabled, pageEntries, pages)
         renderPageEntries(phone, pageEntries, remoteEnabled)
     }
 
@@ -113,12 +114,16 @@ internal class FilteredFullLogController(
         }
     }
 
-    private fun statusText(remoteEnabled: Boolean, pageEntries: List<FilteredFullLogEntry>): String = when {
+    private fun statusText(
+        remoteEnabled: Boolean,
+        pageEntries: List<FilteredFullLogEntry>,
+        pages: List<List<FilteredFullLogEntry>>,
+    ): String = when {
         loading -> "Зареждам пълния лог…"
         errorText.isNotBlank() -> errorText
         entries.isEmpty() -> if (remoteEnabled) "Няма локални или сървърни записи за този номер" else "Няма локални записи за този номер"
         else -> {
-            val first = pageIndex * safePageSize() + 1
+            val first = pages.take(pageIndex).sumOf { it.size } + 1
             val last = first + pageEntries.size - 1
             "Пълен лог: $first–$last от ${entries.size}"
         }
@@ -174,9 +179,15 @@ internal class FilteredFullLogController(
         }
     }
 
+    private fun timelinePages(size: Int): List<List<FilteredFullLogEntry>> = TimelinePageMode.pages(
+        context = activity,
+        items = entries,
+        pageSize = size,
+        groupKey = { entry -> TimelineGroupKeys.week(entry.row.timeMs) },
+    )
+
     private fun safePageSize() = pageSize().coerceIn(5, 100)
-    private fun pageCount(size: Int) = if (entries.isEmpty()) 1 else ((entries.size - 1) / size) + 1
-    private fun lastPageIndex() = pageCount(safePageSize()) - 1
+    private fun lastPageIndex() = maxOf(0, timelinePages(safePageSize()).size - 1)
 
     private fun groupedEntries(timeline: List<CallReportHistoryRow>): List<FilteredFullLogEntry> {
         val callIndexes = timeline.mapIndexedNotNull { index, row -> index.takeIf { row.kind == CallReportHistoryRowKind.PHONE } }
