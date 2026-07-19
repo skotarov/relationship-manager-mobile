@@ -24,9 +24,13 @@ internal class HomeTimelineCoordinator(
     private val onCrmModeChanged: () -> Unit,
     private val requestSmsPermission: () -> Unit,
 ) {
+    private val fullLogReturnUi by lazy { HomeFullLogReturnUi(activity) }
     private var fullLogReturnState: FullLogReturnState? = null
+    private var preserveRowsForNextRender = false
 
     fun renderCalls() {
+        val preserveRows = preserveRowsForNextRender
+        preserveRowsForNextRender = false
         val callsGeneration = callsLoader.invalidate()
         val contactsGeneration = contactsLoader.invalidate()
         serverCallNotes.invalidate()
@@ -41,7 +45,7 @@ internal class HomeTimelineCoordinator(
         // reapplies these visible filters over the cached search result set.
         val showCrmFilters = (crmEnabled || contactsMode) && activePhoneFilter().isBlank()
         crmFilters.updateVisibility(showCrmFilters)
-        contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
+        contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters || preserveRows)
         // CRM Clients is server-backed and remains usable during a search even
         // on the public Play build, which intentionally has no Call Log permission.
         val contactsOnly = contactsMode && activePhoneFilter().isBlank()
@@ -166,6 +170,7 @@ internal class HomeTimelineCoordinator(
             fullLogReturnState = FullLogReturnState(
                 pageIndex = pageIndex(),
                 crmContactsMode = isCrmContactsMode(),
+                uiSnapshot = fullLogReturnUi.capture(),
             )
         }
         setActivePhoneFilter(number)
@@ -183,12 +188,17 @@ internal class HomeTimelineCoordinator(
         if (!isFilteredFullLogMode()) return false
         val returnState = fullLogReturnState
         fullLogReturnState = null
-        contentRenderer.clearCalls()
         setActivePhoneFilter("")
         setPageIndex(returnState?.pageIndex ?: 0)
         returnState?.let { setCrmContactsMode(it.crmContactsMode) }
         filteredFullLog.invalidate()
         onCrmModeChanged()
+        if (returnState != null) {
+            fullLogReturnUi.restore(returnState.uiSnapshot)
+            preserveRowsForNextRender = true
+        } else {
+            contentRenderer.clearCalls()
+        }
         renderCalls()
         return true
     }
@@ -208,5 +218,6 @@ internal class HomeTimelineCoordinator(
     private data class FullLogReturnState(
         val pageIndex: Int,
         val crmContactsMode: Boolean,
+        val uiSnapshot: HomeFullLogReturnUi.Snapshot,
     )
 }
