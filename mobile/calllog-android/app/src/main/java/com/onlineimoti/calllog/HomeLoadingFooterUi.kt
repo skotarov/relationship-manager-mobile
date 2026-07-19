@@ -21,7 +21,7 @@ internal object HomeLoadingFooterUi {
 
     fun hide(container: LinearLayout) {
         footer(container).apply {
-            visibility = View.GONE
+            visibility = View.INVISIBLE
             moveToEnd(container, this)
         }
     }
@@ -43,7 +43,7 @@ internal object HomeLoadingFooterUi {
             tag = FOOTER_TAG
             gravity = Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
-            visibility = View.GONE
+            visibility = View.INVISIBLE
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(52),
