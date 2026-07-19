@@ -32,6 +32,7 @@ internal class HomeContentRenderer(
     private var currentContactNotesByNumber: Map<String, String> = emptyMap()
     private var currentContactNamesByNumber: Map<String, String> = emptyMap()
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
+    private val rememberedContactNamesByNumber = linkedMapOf<String, String>()
     private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
     private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
 
@@ -65,7 +66,15 @@ internal class HomeContentRenderer(
         showResultsStatus(activity.getString(R.string.runtime_crm_calls_loading))
         binding.paginationContainer.visibility = View.GONE
     }
-    fun applyRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(renderData, pageSize, true)
+    fun applyRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(
+        renderData, pageSize, true, HomeRenderMergeMode.AUTHORITATIVE,
+    )
+    fun applyProvisionalRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(
+        renderData, pageSize, true, HomeRenderMergeMode.PROVISIONAL,
+    )
+    fun applySupplementalRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(
+        renderData, pageSize, true, HomeRenderMergeMode.SUPPLEMENTAL,
+    )
     fun renderCurrentRowsAfterCompanyLabels(pageSize: Int) {
         if (activePhoneFilter().isNotBlank()) { renderFilteredContactSummary(); return }
         if (currentCalls.isEmpty()) return
@@ -73,6 +82,8 @@ internal class HomeContentRenderer(
             HomeRenderData(currentCalls, currentContactNotesByNumber, currentContactNamesByNumber, currentCallNotesByCall),
             pageSize,
             false,
+            HomeRenderMergeMode.AUTHORITATIVE,
+            forceRender = true,
         )
     }
     fun renderEmptyState() {
@@ -91,17 +102,38 @@ internal class HomeContentRenderer(
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1)
         binding.paginationContainer.visibility = View.VISIBLE
     }
-    private fun applyRenderData(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean) {
+    private fun applyRenderData(
+        data: HomeRenderData,
+        pageSize: Int,
+        refreshCompanyLabels: Boolean,
+        mergeMode: HomeRenderMergeMode,
+        forceRender: Boolean = false,
+    ) {
         val calls = data.calls.sortedByDescending { it.startedAt }
         val filtered = activePhoneFilter().isNotBlank()
         val fullLog = isFilteredFullLogMode()
-        val namesByNumber = normalizedContactNames(data.contactNamesByNumber, calls)
-        val contactNotesByNumber = data.contactNotesByNumber
+        val state = HomeRenderStateMerger.merge(
+            calls = calls,
+            incoming = data,
+            currentContactNotes = currentContactNotesByNumber,
+            currentContactNames = currentContactNamesByNumber,
+            currentCallNotes = currentCallNotesByCall,
+            rememberedNames = rememberedContactNamesByNumber,
+            mode = mergeMode,
+        )
+        val unchanged = calls == currentCalls &&
+            state.contactNotesByNumber == currentContactNotesByNumber &&
+            state.contactNamesByNumber == currentContactNamesByNumber &&
+            state.callNotesByCall == currentCallNotesByCall
         currentCalls = calls
-        currentContactNotesByNumber = contactNotesByNumber
-        currentContactNamesByNumber = namesByNumber
-        currentCallNotesByCall = data.callNotesByCall
-        binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE; renderStatusAndPagination(pageSize)
+        currentContactNotesByNumber = state.contactNotesByNumber
+        currentContactNamesByNumber = state.contactNamesByNumber
+        currentCallNotesByCall = state.callNotesByCall
+        binding.fullLogProgress.visibility = View.GONE
+        renderStatusAndPagination(pageSize)
+        if (unchanged && !forceRender) return
+
+        binding.homeCallsContainer.removeAllViews()
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
         val serverBackedKeys = if (filtered) emptySet() else companyGeneralNotes.serverBackedPhoneKeysFor(calls)
         val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L
@@ -124,41 +156,16 @@ internal class HomeContentRenderer(
                 }
             }
             val key = HomeCallPageLoader.noteKey(call.number)
-            val displayName = namesByNumber[key].orEmpty().ifBlank { call.displayName }
-            val callNote = data.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
+            val displayName = state.contactNamesByNumber[key].orEmpty().ifBlank { call.displayName }
+            val callNote = state.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
             val row = if (fullLog) rowRenderer.fullLogTimelineRow(call, displayName, callNote) else rowRenderer.compactCallRow(
-                call, displayName, if (filtered) null else contactNotesByNumber[key], if (filtered) null else labels[key],
+                call, displayName, if (filtered) null else state.contactNotesByNumber[key], if (filtered) null else labels[key],
                 callNote, activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
             )
             binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, dp))
         }
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
-    }
-
-    private fun normalizedContactNames(
-        resolvedNamesByNumber: Map<String, String>,
-        calls: List<PhoneCallRecord>,
-    ): Map<String, String> {
-        val merged = linkedMapOf<String, String>()
-        resolvedNamesByNumber.forEach { (key, value) ->
-            if (key.isNotBlank() && value.trim().isNotBlank()) merged[key] = value.trim()
-        }
-        calls.groupBy { HomeCallPageLoader.noteKey(it.number) }.forEach { (key, rows) ->
-            if (key.isBlank() || merged[key].orEmpty().isNotBlank()) return@forEach
-            rows.firstNotNullOfOrNull { row -> callLogNameForKey(row, key).takeIf { it.isNotBlank() } }
-                ?.let { merged[key] = it }
-        }
-        return merged
-    }
-
-    private fun callLogNameForKey(call: PhoneCallRecord, key: String): String {
-        return call.name.trim().takeIf { it.isNotBlank() && !looksLikeSamePhone(it, key) }.orEmpty()
-    }
-
-    private fun looksLikeSamePhone(value: String, key: String): Boolean {
-        val valueKey = PhoneNormalizer.key(value)
-        return valueKey.isNotBlank() && valueKey == key
     }
 
     private fun dateSeparator(timestamp: Long, relativeDays: Long): TextView {
