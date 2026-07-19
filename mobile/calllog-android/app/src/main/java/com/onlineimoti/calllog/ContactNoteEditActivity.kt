@@ -1,4 +1,5 @@
 package com.onlineimoti.calllog
+
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
@@ -6,6 +7,7 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
 import java.util.concurrent.Executors
+
 class ContactNoteEditActivity : FontScaledActivity() {
     private var phone = ""
     private var titleText = ""
@@ -16,11 +18,12 @@ class ContactNoteEditActivity : FontScaledActivity() {
     private var isGeneralNote = false
     private var preferredCompanyId = ""
     private var initialNoteText = ""
+    private var initialServerClientEventId = ""
     private var serverClientEventId = ""
     private var topicState = ContactNoteTopicState(visible = false)
     private var topicSpinner: Spinner? = null
     private var noteInput: EditText? = null
-    /** Value last read from storage or deliberately saved by this editor. */
+    /** Value last loaded for the currently selected Local/company scope. */
     private var persistedEditorText = ""
     private val topicExecutor = Executors.newSingleThreadExecutor()
     private val scopeTextController by lazy {
@@ -31,9 +34,22 @@ class ContactNoteEditActivity : FontScaledActivity() {
             selectedCompanyId = { topicState.selectedCompanyId },
             noteInput = { noteInput },
             isActive = { !isFinishing && !isDestroyed },
-            onTextApplied = { _, value -> persistedEditorText = value },
+            initialScopeId = {
+                preferredCompanyId.ifBlank { ContactNoteTopicState.LOCAL_COMPANY_ID }
+            },
+            initialValue = {
+                ContactNoteScopeValue(
+                    text = initialNoteText,
+                    serverClientEventId = initialServerClientEventId,
+                )
+            },
+            onValueApplied = { _, value ->
+                persistedEditorText = value.text
+                serverClientEventId = value.serverClientEventId
+            },
         )
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         AppLanguageManager.applyFromConfig(this)
         super.onCreate(savedInstanceState)
@@ -73,21 +89,23 @@ class ContactNoteEditActivity : FontScaledActivity() {
                 state = ::uiState,
                 onTopicSelected = { selectedCompanyId, input ->
                     topicState = topicState.copy(selectedCompanyId = selectedCompanyId)
-                    if (isGeneralNote) scopeTextController.refresh(selectedCompanyId, input)
+                    scopeTextController.refresh(selectedCompanyId, input)
                 },
                 onNoteInputReady = { input ->
                     noteInput = input
                     persistedEditorText = input.text?.toString().orEmpty()
-                    if (isGeneralNote) scopeTextController.refresh(topicState.selectedCompanyId, input)
+                    if (topicState.visible) scopeTextController.refresh(topicState.selectedCompanyId, input)
                 },
                 onTopicSpinnerReady = { spinner -> topicSpinner = spinner },
                 saveAndClose = ::saveAndClose,
+                deleteAndClose = ::deleteSelectedNote,
                 saveAndOpenCalendar = ::saveAndOpenCalendar,
                 close = ::saveAndCloseIfChanged,
             ).buildContent(),
         )
         if (topicState.visible) loadTopicCompanies()
     }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (intent.getBooleanExtra(EXTRA_SHOW_NUMBER_KEYPAD, false)) {
@@ -96,10 +114,12 @@ class ContactNoteEditActivity : FontScaledActivity() {
         }
         saveAndCloseIfChanged(noteInput?.text?.toString().orEmpty())
     }
+
     override fun onDestroy() {
         topicExecutor.shutdownNow()
         super.onDestroy()
     }
+
     private fun readDraftFromIntent() {
         phone = intent.getStringExtra(PostCallOverlayService.EXTRA_PHONE).orEmpty()
         titleText = intent.getStringExtra(PostCallOverlayService.EXTRA_TITLE).orEmpty().ifBlank {
@@ -112,8 +132,10 @@ class ContactNoteEditActivity : FontScaledActivity() {
         isGeneralNote = intent.getStringExtra(PostCallOverlayService.EXTRA_MODE) == PostCallOverlayService.MODE_GENERAL_NOTE
         preferredCompanyId = intent.getStringExtra(CompanyMainNoteEditorLauncher.EXTRA_COMPANY_ID).orEmpty().trim()
         initialNoteText = if (isGeneralNote) "" else intent.getStringExtra(CallNoteEditorLauncher.EXTRA_INITIAL_NOTE_TEXT).orEmpty()
-        serverClientEventId = intent.getStringExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID).orEmpty().trim()
+        initialServerClientEventId = intent.getStringExtra(CallNoteEditorLauncher.EXTRA_SERVER_CLIENT_EVENT_ID).orEmpty().trim()
+        serverClientEventId = initialServerClientEventId
     }
+
     private fun draft() = ContactNoteFormDraft(
         phone = phone,
         title = titleText,
@@ -124,6 +146,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         isGeneralNote = isGeneralNote,
         serverClientEventId = serverClientEventId,
     )
+
     private fun uiState() = ContactNoteEditUiState(
         phone = phone,
         titleText = titleText,
@@ -135,6 +158,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         willEnableServerSync = ContactNoteFormWorkflow.willEnableServerSync(this, draft(), topicState),
         initialNoteText = initialNoteText,
     )
+
     private fun loadTopicCompanies() {
         val initialState = topicState
         topicExecutor.execute {
@@ -154,16 +178,18 @@ class ContactNoteEditActivity : FontScaledActivity() {
                     else -> loadedState
                 }
                 topicSpinner?.let(::bindTopicSpinner)
-                if (isGeneralNote) noteInput?.let { scopeTextController.refresh(topicState.selectedCompanyId, it) }
+                noteInput?.let { scopeTextController.refresh(topicState.selectedCompanyId, it) }
             }
         }
     }
+
     private fun bindTopicSpinner(spinner: Spinner) {
         ContactNoteTopicSelector.bind(this, spinner, topicState) { selected ->
             topicState = topicState.copy(selectedCompanyId = selected)
-            if (isGeneralNote) noteInput?.let { scopeTextController.refresh(selected, it) }
+            noteInput?.let { scopeTextController.refresh(selected, it) }
         }
     }
+
     private fun saveAndClose(noteText: String) {
         val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
         val outcome = saveCurrentNote(noteText, topicCompanyId)
@@ -173,6 +199,11 @@ class ContactNoteEditActivity : FontScaledActivity() {
             finish()
         }
     }
+
+    private fun deleteSelectedNote() {
+        saveAndClose("")
+    }
+
     /** Saves only changed content before an X, Cancel or system-Back exit. */
     private fun saveAndCloseIfChanged(noteText: String) {
         if (noteText == persistedEditorText) {
@@ -200,6 +231,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         persistedEditorText = noteText
         finish()
     }
+
     private fun saveAndOpenCalendar(noteText: String) {
         val topicCompanyId = selectedTopicCompanyIdOrNull() ?: return
         val outcome = saveCurrentNote(noteText, topicCompanyId)
@@ -209,6 +241,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
             openCalendarEvent(noteText)
         }
     }
+
     private fun selectedTopicCompanyIdOrNull(): String? {
         if (serverClientEventId.isNotBlank()) {
             return topicState.selectedCompanyId
@@ -220,6 +253,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
             null
         }
     }
+
     private fun saveCurrentNote(
         noteText: String,
         topicCompanyId: String,
@@ -248,10 +282,12 @@ class ContactNoteEditActivity : FontScaledActivity() {
             companyName = companyNameFor(topicCompanyId),
         )
     }
+
     private fun companyNameFor(companyId: String): String {
         if (companyId == ContactNoteTopicState.LOCAL_COMPANY_ID) return ""
         return topicState.companies.firstOrNull { it.id == companyId }?.name.orEmpty().ifBlank { companyId }
     }
+
     private fun showSaveOutcome(outcome: NoteSaveOutcome) {
         val message = when {
             !outcome.saved -> getString(R.string.dynamic_note_save_failed)
@@ -263,6 +299,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         }
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
+
     private fun openCalendarEvent(noteText: String) = ContactNoteCalendarActions.open(
         activity = this,
         titleText = titleText,
@@ -273,6 +310,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         durationSeconds = durationSeconds,
         noteText = noteText,
     )
+
     private data class NoteSaveOutcome(
         val saved: Boolean,
         val serverSyncActivationAttempted: Boolean = false,
@@ -281,6 +319,7 @@ class ContactNoteEditActivity : FontScaledActivity() {
         val pendingCompanyChoice: Boolean = false,
         val companyName: String = "",
     )
+
     private companion object {
         const val EXTRA_SHOW_NUMBER_KEYPAD = "show_number_keypad"
         const val EXTRA_NUMBER = "number"
