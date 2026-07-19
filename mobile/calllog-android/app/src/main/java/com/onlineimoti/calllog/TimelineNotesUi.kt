@@ -60,6 +60,7 @@ internal class TimelineNotesUi(
             }
     }
 
+    /** Shows Local plus every independent company call note, one blue card per scope. */
     fun addCallNote(
         column: LinearLayout,
         call: PhoneCallRecord,
@@ -68,20 +69,24 @@ internal class TimelineNotesUi(
         statusForCall: (PhoneCallRecord) -> String?,
         companyLabels: List<HomeCompanyScopeLabel>? = null,
     ) {
-        val note = callNote?.takeIf { it.text.isNotBlank() } ?: return
+        val notes = callNote?.expandedNotes().orEmpty().filter { it.text.isNotBlank() }
+        if (notes.isEmpty()) return
         val colors = NoteUiStyle.Call
-        val companyName = companyNameFor(note.companyId, companyLabels)
-        val textValue = note.text.trim()
-        column.addView(noteCard(
-            text = if (companyName.isBlank()) {
-                SearchTextHighlighter.highlightedText(textValue, highlightQuery, colors.text)
-            } else {
-                companyScopedText(companyName, textValue, highlightQuery, colors.text)
-            },
-            colors = colors,
-            maxLines = 3,
-            serverBacked = note.fromServer,
-        ))
+        notes.forEach { note ->
+            val companyName = companyNameFor(note.companyId, companyLabels)
+            val textValue = note.text.trim()
+            column.addView(noteCard(
+                text = if (companyName.isBlank()) {
+                    SearchTextHighlighter.highlightedText(textValue, highlightQuery, colors.text)
+                } else {
+                    companyScopedText(companyName, textValue, highlightQuery, colors.text)
+                },
+                colors = colors,
+                maxLines = 3,
+                // A selected company is a cloud scope even while its write is queued.
+                serverBacked = note.fromServer || note.companyId.isNotBlank(),
+            ))
+        }
         statusForCall(call)?.let { status ->
             column.addView(TextView(activity).apply {
                 text = status
