@@ -54,10 +54,10 @@ internal class HomeCallsLoader(
                     HomePageReadyState.markReady()
                     onRenderComplete()
                 } else {
-                    contentRenderer.applyRenderData(fastData, pageSize)
+                    contentRenderer.applyProvisionalRenderData(fastData, pageSize)
                     serverCallNotes.enrichAsync(fastData) { enriched ->
                         if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@enrichAsync
-                        if (!localNotesApplied.get()) contentRenderer.applyRenderData(enriched, pageSize)
+                        if (!localNotesApplied.get()) contentRenderer.applySupplementalRenderData(enriched, pageSize)
                     }
                     onRenderComplete()
                 }
@@ -85,7 +85,7 @@ internal class HomeCallsLoader(
                     handler.post {
                         if (!isCurrentLocalRender(expectedGeneration, requestedPage, phoneFilter, searchQuery)) return@post
                         localNotesApplied.set(true)
-                        contentRenderer.applyRenderData(data, pageSize)
+                        contentRenderer.applySupplementalRenderData(data, pageSize)
                         serverCallNotes.enrichAsync(
                             data,
                             onFinished = {
@@ -215,10 +215,10 @@ internal class HomeCallsLoader(
                     HomePageReadyState.markReady()
                     onCrmCallsEmpty()
                 } else {
-                    contentRenderer.applyRenderData(fastData, pageSize)
+                    contentRenderer.applyProvisionalRenderData(fastData, pageSize)
                     serverCallNotes.enrichAsync(fastData) { enriched ->
                         if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@enrichAsync
-                        if (!localNotesApplied.get()) contentRenderer.applyRenderData(enriched, pageSize)
+                        if (!localNotesApplied.get()) contentRenderer.applySupplementalRenderData(enriched, pageSize)
                     }
                     onCrmCallsRendered(calls.size)
                 }
@@ -247,7 +247,7 @@ internal class HomeCallsLoader(
                     handler.post {
                         if (!isCurrentCrmRender(expectedGeneration, requestedPage, filterState)) return@post
                         localNotesApplied.set(true)
-                        contentRenderer.applyRenderData(data, pageSize)
+                        contentRenderer.applySupplementalRenderData(data, pageSize)
                         serverCallNotes.enrichAsync(
                             data,
                             onFinished = {
