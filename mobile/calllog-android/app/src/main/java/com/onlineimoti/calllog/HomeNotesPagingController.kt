@@ -26,7 +26,6 @@ internal class HomeEdgePagingController(
         },
         retainPreviousPages = true,
         protectRetainedPrefix = true,
-        pageToken = { binding.pageText.text.toString() },
         prefetchNext = true,
         onLoadingChanged = { loading ->
             binding.fullLogProgress.visibility = View.GONE
