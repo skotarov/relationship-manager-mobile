@@ -28,7 +28,6 @@ internal object CallReportTopicSyncClient {
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("X-Relationship-Manager-Token", config.accessToken)
-            // Retain the legacy header during the transition; the same token is sent.
             connection.setRequestProperty("X-Callreport-Token", config.accessToken)
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
 
@@ -43,7 +42,10 @@ internal object CallReportTopicSyncClient {
                 buildSet {
                     for (index in 0 until results.length()) {
                         val item = results.optJSONObject(index) ?: continue
-                        if (!item.optBoolean("stored", false)) continue
+                        val confirmed = item.optBoolean("stored", false) ||
+                            item.optBoolean("deleted", false) ||
+                            item.optBoolean("removed", false)
+                        if (!confirmed) continue
                         item.optString("client_event_id").trim()
                             .takeIf { it.isNotBlank() }?.let(::add)
                     }
@@ -72,8 +74,6 @@ internal object CallReportTopicSyncClient {
             durationSeconds <= 0L &&
             clientEventId.contains(":topic:general:")
         if (isCompanyMainNote) put("note_scope", "company_main")
-        // Empty company notes are explicit deletions, both for main notes and
-        // for concrete call notes. Sending only note="" was treated as an edit.
         if (isCompanyNote && note.isBlank()) put("deleted", true)
         if (clearCompanyAssignment) put("clear_company_assignment", true)
         put("source", JSONObject().apply {
