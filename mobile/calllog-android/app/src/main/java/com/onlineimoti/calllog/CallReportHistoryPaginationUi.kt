@@ -19,11 +19,17 @@ internal class CallReportHistoryPaginationUi(
 
     fun currentPage(rows: List<CallReportHistoryRow>): HistoryPage {
         val pageSize = ConfigStore.load(activity).homeCallPageSize
-        totalPages = maxOf(1, (rows.size + pageSize - 1) / pageSize)
+        val pages = TimelinePageMode.pages(
+            context = activity,
+            items = rows,
+            pageSize = pageSize,
+            groupKey = { row -> TimelineGroupKeys.week(row.timeMs) },
+        )
+        totalPages = maxOf(1, pages.size)
         pageIndex = pageIndex.coerceIn(0, totalPages - 1)
-        val lastExclusive = minOf(rows.size, (pageIndex + 1) * pageSize)
+        val lastExclusive = pages.take(pageIndex + 1).sumOf { it.size }
         return HistoryPage(
-            rows = rows.subList(0, lastExclusive),
+            rows = rows.take(lastExclusive),
             pageIndex = pageIndex,
             pageSize = pageSize,
             totalPages = totalPages,
