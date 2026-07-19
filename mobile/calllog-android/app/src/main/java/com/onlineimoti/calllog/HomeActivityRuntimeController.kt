@@ -29,6 +29,7 @@ internal class HomeActivityRuntimeController(
     fun onSmsPermissionResult() {
         smsPermissionRequestInFlight = false
         clearSearchCache()
+        HomeTimelineLoader.invalidateCache()
         invalidateFilteredLog()
         if (!activity.isFinishing && !activity.isDestroyed) renderCalls()
     }
@@ -65,6 +66,7 @@ internal class HomeActivityRuntimeController(
     fun refreshFromPull() {
         val appContext = activity.applicationContext
         clearSearchCache()
+        HomeTimelineLoader.invalidateCache()
         invalidateFilteredLog()
         invalidateCompanyNotes()
         invalidateCrmContacts()
