@@ -4,17 +4,31 @@ import android.content.Context
 
 /**
  * Builds the unfiltered Home timeline from the two device providers. Each source
- * is read only up to the end of the requested page; the resulting rows are then
- * merged newest-first, so pagination counts calls and SMS together.
+ * is read only up to the end of the requested page in button mode. Automatic
+ * scrolling uses a short-lived larger snapshot so pages never split a day.
  */
 internal object HomeTimelineLoader {
     private const val CALL_BATCH_SIZE = 500
     private const val SMS_BATCH_SIZE = 100
     private const val CRM_TIMELINE_SCAN_LIMIT = 1_000
+    private const val GROUPED_TIMELINE_SCAN_LIMIT = 2_000
+    private const val GROUPED_TIMELINE_CACHE_MS = 30_000L
+
+    private val groupedCacheLock = Any()
+    private var groupedCache = TimedTimeline(0L, emptyList())
 
     fun page(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val safePageIndex = pageIndex.coerceAtLeast(0)
         val safePageSize = pageSize.coerceIn(5, 100)
+        if (PageLoadingModeStore.usesPrefetch(context)) {
+            return TimelineGroupedPager.page(
+                items = groupedTimeline(context.applicationContext),
+                pageIndex = safePageIndex,
+                minimumPageSize = safePageSize,
+                groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
+            )
+        }
+
         val endExclusive = ((safePageIndex + 1).toLong() * safePageSize.toLong())
             .coerceAtMost(Int.MAX_VALUE.toLong())
             .toInt()
@@ -27,6 +41,24 @@ internal object HomeTimelineLoader {
         val timeline = mergedRows(context, CRM_TIMELINE_SCAN_LIMIT)
         val eligibleKeys = HomeCallPageLoader.crmEligiblePhoneKeys(context, timeline.map { it.number })
         return timeline.filter { call -> HomeCallPageLoader.noteKey(call.number) in eligibleKeys }
+    }
+
+    fun invalidateCache() {
+        synchronized(groupedCacheLock) {
+            groupedCache = TimedTimeline(0L, emptyList())
+        }
+    }
+
+    private fun groupedTimeline(context: Context): List<PhoneCallRecord> {
+        val now = System.currentTimeMillis()
+        synchronized(groupedCacheLock) {
+            if (now - groupedCache.loadedAtMs < GROUPED_TIMELINE_CACHE_MS) return groupedCache.rows
+        }
+        val loaded = mergedRows(context, GROUPED_TIMELINE_SCAN_LIMIT)
+        synchronized(groupedCacheLock) {
+            groupedCache = TimedTimeline(now, loaded)
+        }
+        return loaded
     }
 
     private fun mergedRows(context: Context, wanted: Int): List<PhoneCallRecord> {
@@ -75,4 +107,9 @@ internal object HomeTimelineLoader {
         }
         return rows
     }
+
+    private data class TimedTimeline(
+        val loadedAtMs: Long,
+        val rows: List<PhoneCallRecord>,
+    )
 }
