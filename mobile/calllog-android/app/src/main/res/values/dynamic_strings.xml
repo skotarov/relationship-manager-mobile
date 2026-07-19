@@ -24,6 +24,7 @@
     <string name="dynamic_note_general_hint">General note for this contact or number</string>
     <string name="dynamic_note_call_hint">Note for this call</string>
     <string name="dynamic_note_cancel">Cancel</string>
+    <string name="dynamic_note_delete">Delete</string>
     <string name="dynamic_note_save">Save</string>
     <string name="dynamic_note_crm_enabled">CRM: this note will be sent to the server</string>
     <string name="dynamic_note_local_only">Local only: this note stays on the phone</string>
