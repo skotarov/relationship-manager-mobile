@@ -116,6 +116,10 @@ internal object CompanyCallNoteOutbox {
         }
     }
 
+    fun pendingClientEventIds(context: Context): Set<String> = synchronized(lock) {
+        readLocked(context.applicationContext).mapTo(linkedSetOf()) { it.clientEventId }
+    }
+
     fun isCallPending(context: Context, phone: String, direction: String, callAtMs: Long): Boolean {
         val key = PhoneNormalizer.key(phone)
         if (key.isBlank() || callAtMs <= 0L) return false
