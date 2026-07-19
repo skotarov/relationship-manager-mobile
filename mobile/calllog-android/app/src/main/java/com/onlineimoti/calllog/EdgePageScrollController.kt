@@ -10,7 +10,8 @@ import android.widget.ScrollView
 /**
  * Keeps already rendered pages in memory and loads the next page before the
  * user reaches the end. Previous pages remain above the current one, so
- * scrolling back never starts another data read.
+ * scrolling back never starts another data read. Retained pages are cleared
+ * only by an explicit paging-context reset, never by a late render callback.
  */
 internal class EdgePageScrollController(
     @Suppress("UNUSED_PARAMETER") canPrevious: () -> Boolean,
@@ -20,7 +21,6 @@ internal class EdgePageScrollController(
     private val pageReady: () -> Boolean,
     private val retainPreviousPages: Boolean = true,
     private val protectRetainedPrefix: Boolean = false,
-    private val pageToken: () -> Any? = { null },
     private val prefetchNext: Boolean = true,
     private val onLoadingChanged: (Boolean) -> Unit = {},
 ) {
@@ -37,7 +37,6 @@ internal class EdgePageScrollController(
     private var lastChildCount = -1
     private var preservedScrollY = 0
     private var hierarchyScrollY = 0
-    private var lastPageToken: Any? = null
 
     private val hierarchyListener = object : ViewGroup.OnHierarchyChangeListener {
         override fun onChildViewAdded(parent: View?, child: View?) {
@@ -103,13 +102,6 @@ internal class EdgePageScrollController(
         val list = content ?: return@Runnable
         val prefix = retainedPages ?: return@Runnable
         if (!protectRetainedPrefix || prefix.parent === list) return@Runnable
-        val token = pageToken()
-        if (!pendingNext && lastPageToken != null && token != lastPageToken) {
-            retainedPages = null
-            initialPrefetchDone = false
-            scheduleInitialPrefetch()
-            return@Runnable
-        }
         suppressCallbacks = true
         (prefix.parent as? ViewGroup)?.removeView(prefix)
         list.addView(prefix, 0)
@@ -148,7 +140,6 @@ internal class EdgePageScrollController(
             list.setOnHierarchyChangeListener(hierarchyListener)
         }
         if (!pendingNext) preservedScrollY = scrollView.scrollY
-        if (lastPageToken == null) lastPageToken = pageToken()
         if (pendingNext) scheduleReadyCheck() else scheduleInitialPrefetch()
     }
 
@@ -165,7 +156,6 @@ internal class EdgePageScrollController(
         stableChecks = 0
         lastChildCount = -1
         retainedPages = null
-        lastPageToken = null
         suppressCallbacks = false
         if (wasPending) onLoadingChanged(false)
     }
@@ -258,7 +248,6 @@ internal class EdgePageScrollController(
         initialPrefetchDone = true
         readyChecks = 0
         stableChecks = 0
-        lastPageToken = pageToken()
         onLoadingChanged(false)
     }
 
