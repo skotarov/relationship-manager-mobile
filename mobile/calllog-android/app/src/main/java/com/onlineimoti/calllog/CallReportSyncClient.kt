@@ -93,7 +93,10 @@ internal object CallReportSyncClient {
         put("duration_seconds", durationSeconds)
         note?.let { value -> put("note", value) }
         if (updatedAtMs > 0L) put("updated_at_ms", updatedAtMs)
-        if (editExistingNote) put("edit_existing_note", true)
+        if (editExistingNote) {
+            put("edit_existing_note", true)
+            if (note.isNullOrBlank()) put("deleted", true)
+        }
         put("source", JSONObject().apply {
             put("device_id", deviceId)
             put("provider_row_id", providerRowId)
