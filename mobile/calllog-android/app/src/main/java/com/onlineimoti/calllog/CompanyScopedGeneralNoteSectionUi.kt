@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -34,21 +35,28 @@ internal class CompanyScopedGeneralNoteSectionUi(
         if (!showCompanyNotes || !ContactServerCompanyScope.isAvailable(activity, phone)) return
 
         companyNotes.forEach { companyNote ->
-            section.addView(companyLabel(companyNote.companyName, showCloud = true))
-            val noteText = companyNote.note.trim().let { note ->
-                if (note.isBlank()) activity.getString(R.string.dynamic_notes_add_general) else ServerNoteVisuals.prefixed(note)
-            }
-            val card = cards.generalNoteCard(
-                textValue = noteText,
-                muted = companyNote.note.isBlank(),
-                serverConfirmed = companyNote.confirmedByServer,
-                syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
-                onClick = { onEditCompany(companyNote.companyId) },
+            val note = companyNote.note.trim()
+            section.addView(
+                companyHeader(
+                    name = companyNote.companyName,
+                    showCloud = true,
+                    showAdd = note.isBlank(),
+                    onAdd = { onEditCompany(companyNote.companyId) },
+                ),
             )
-            if (phaseBarForCompany != null) {
-                (card.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(2)
+            if (note.isNotBlank() || companyNote.pending) {
+                val card = cards.generalNoteCard(
+                    textValue = note.takeIf { it.isNotBlank() }?.let(ServerNoteVisuals::prefixed).orEmpty(),
+                    muted = note.isBlank(),
+                    serverConfirmed = companyNote.confirmedByServer,
+                    syncStatusText = if (companyNote.pending) activity.getString(R.string.history_pending_server_sync) else "",
+                    onClick = { onEditCompany(companyNote.companyId) },
+                )
+                if (phaseBarForCompany != null) {
+                    (card.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(2)
+                }
+                section.addView(card)
             }
-            section.addView(card)
             phaseBarForCompany?.invoke(companyNote.companyId)?.let(section::addView)
         }
     }
@@ -56,16 +64,25 @@ internal class CompanyScopedGeneralNoteSectionUi(
     private fun addLocalNote(section: LinearLayout, phone: String, onEditCompany: (String) -> Unit) {
         val note = ContactNoteReader.generalNoteForPhone(activity, phone)
         val pending = CallReportDeferredCompanyAssignmentStore.isGeneralPending(activity, phone)
-        section.addView(companyLabel(activity.getString(R.string.note_local_company)))
         section.addView(
-            cards.generalNoteCard(
-                textValue = note.ifBlank { activity.getString(R.string.dynamic_notes_add_general) },
-                muted = note.isBlank(),
-                serverConfirmed = false,
-                syncStatusText = if (pending) activity.getString(R.string.dynamic_note_pending_company_choice) else "",
-                onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
-            )
+            companyHeader(
+                name = activity.getString(R.string.note_local_company),
+                showCloud = false,
+                showAdd = note.isBlank(),
+                onAdd = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
+            ),
         )
+        if (note.isNotBlank() || pending) {
+            section.addView(
+                cards.generalNoteCard(
+                    textValue = note,
+                    muted = note.isBlank(),
+                    serverConfirmed = false,
+                    syncStatusText = if (pending) activity.getString(R.string.dynamic_note_pending_company_choice) else "",
+                    onClick = { onEditCompany(ContactNoteTopicState.LOCAL_COMPANY_ID) },
+                ),
+            )
+        }
     }
 
     private fun addUnscopedServerMainNote(
@@ -74,7 +91,7 @@ internal class CompanyScopedGeneralNoteSectionUi(
         onEdit: (CallReportHistoryEvent) -> Unit,
     ) {
         val serverNote = note?.takeIf { it.note.trim().isNotBlank() } ?: return
-        section.addView(companyLabel("Без фирма", showCloud = true))
+        section.addView(companyHeader("Без фирма", showCloud = true))
         section.addView(
             cards.generalNoteCard(
                 textValue = ServerNoteVisuals.prefixed(serverNote.note.trim()),
@@ -82,17 +99,51 @@ internal class CompanyScopedGeneralNoteSectionUi(
                 serverConfirmed = true,
                 syncStatusText = "",
                 onClick = { onEdit(serverNote) },
-            )
+            ),
         )
     }
 
-    private fun companyLabel(name: String, showCloud: Boolean = false): TextView = TextView(activity).apply {
+    private fun companyHeader(
+        name: String,
+        showCloud: Boolean = false,
+        showAdd: Boolean = false,
+        onAdd: (() -> Unit)? = null,
+    ): LinearLayout = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(2), dp(8), dp(2), dp(3))
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
+        addView(companyLabel(name, showCloud).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f,
+            )
+        })
+        if (showAdd && onAdd != null) {
+            addView(TextView(activity).apply {
+                text = activity.getString(R.string.dynamic_notes_add_general)
+                textSize = 13.5f
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                setTextColor(activity.getColor(R.color.callreport_icon_background))
+                setPadding(dp(12), dp(3), 0, dp(3))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { onAdd() }
+            })
+        }
+    }
+
+    private fun companyLabel(name: String, showCloud: Boolean): TextView = TextView(activity).apply {
         val activeColor = activity.getColor(R.color.callreport_icon_background)
         text = name
         textSize = 12.5f
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(activeColor)
-        setPadding(dp(2), dp(8), dp(2), dp(3))
         if (showCloud) {
             activity.getDrawable(R.drawable.ic_cloud_note_filled)?.mutate()?.apply {
                 setTint(activeColor)
