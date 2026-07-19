@@ -30,6 +30,7 @@ internal object CallNoteTopicWriter {
         durationSeconds: Long,
         actionIssuedAt: Long,
         companyId: String,
+        existingClientEventId: String = "",
     ): CallNoteWriteResult {
         val target = targetFor(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
         if (!target.hasCall) {
@@ -43,34 +44,24 @@ internal object CallNoteTopicWriter {
             )
         }
 
-        val saved = NotePersistence.saveOrDeleteCallNote(
+        // Company call notes are independent server records. They deliberately do
+        // not use the ordinary local-call-note slot, because that slot represents
+        // only the Local note and would overwrite another company's note.
+        val saved = CompanyCallNoteOutbox.enqueue(
             context = context,
-            phoneNumber = phone,
+            phone = phone,
             note = text,
             direction = target.direction,
-            callAt = target.callAt,
+            callAtMs = target.callAt,
             durationSeconds = target.durationSeconds,
             companyId = companyId,
+            existingClientEventId = existingClientEventId,
         )
         val result = CallNoteWriteResult(saved, false, target)
         if (!saved) return result
 
         PendingCallNoteStore.clearResolvedForCall(context, phone, target.direction, target.callAt)
         HomeCrmCompanyMembershipStore.invalidate(context, phone)
-        if (CrmContactSyncStore.isEnabled(context, phone)) {
-            RmLayerContactDataSyncer.sync(context, phone)
-        }
-        val clientNoteId = LocalNotesFileStore.clientNoteIdForCall(phone, target.callAt, target.direction)
-        CallReportTopicNoteOutbox.enqueueCall(
-            context = context,
-            phone = phone,
-            note = text,
-            direction = target.direction,
-            callAt = target.callAt,
-            durationSeconds = target.durationSeconds,
-            companyId = companyId,
-            clientNoteId = clientNoteId,
-        )
         return result
     }
 
