@@ -148,7 +148,7 @@ object ContactGroupFilter {
             null,
             null,
         )?.use { cursor ->
-            cursor.getString(0).takeIf { cursor.moveToFirst() }
+            if (cursor.moveToFirst()) cursor.getString(0) else null
         }
     }
 
