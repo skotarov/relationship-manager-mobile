@@ -42,13 +42,19 @@ internal class HomeContentRenderer(
         currentContactNotesByNumber = emptyMap()
         currentContactNamesByNumber = emptyMap()
         currentCallNotesByCall = emptyMap()
+        HomePagedListUi.clear(binding.homeCallsContainer)
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
     }
     fun prepareForRender(pageSize: Int, keepExistingRows: Boolean) {
         binding.previousCallsButton.text = activity.getString(R.string.dynamic_home_previous_calls, pageSize)
         binding.nextCallsButton.text = activity.getString(R.string.dynamic_home_next_calls, pageSize)
         val retainRows = keepExistingRows || retainRowsDuringEdgePaging()
-        if (!retainRows || currentCalls.isEmpty()) binding.homeCallsContainer.removeAllViews()
+        HomePagedListUi.prepare(
+            binding.homeCallsContainer,
+            PageLoadingModeStore.usesPrefetch(activity),
+            pageIndex(),
+            reset = !retainRows || currentCalls.isEmpty(),
+        )
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (isFilteredFullLogMode() || activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
         updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
@@ -67,8 +73,8 @@ internal class HomeContentRenderer(
         binding.paginationContainer.visibility = View.GONE
     }
     fun showCrmLoading() {
-        showResultsStatus(activity.getString(R.string.runtime_crm_calls_loading))
-        HomeLoadingFooterUi.show(binding.homeCallsContainer)
+        if (retainRowsDuringEdgePaging()) HomeLoadingFooterUi.show(binding.homeCallsContainer)
+        else showResultsStatus(activity.getString(R.string.runtime_crm_calls_loading))
         binding.paginationContainer.visibility = View.GONE
     }
     fun applyRenderData(renderData: HomeRenderData, pageSize: Int) = applyRenderData(
@@ -142,7 +148,12 @@ internal class HomeContentRenderer(
             return
         }
 
-        binding.homeCallsContainer.removeAllViews()
+        val page = HomePagedListUi.page(
+            binding.homeCallsContainer,
+            PageLoadingModeStore.usesPrefetch(activity),
+            pageIndex(),
+        )
+        page.removeAllViews()
         val labels = if (filtered) emptyMap() else companyGeneralNotes.labelsFor(calls)
         val serverBackedKeys = if (filtered) emptySet() else companyGeneralNotes.serverBackedPhoneKeysFor(calls)
         val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L
@@ -154,13 +165,13 @@ internal class HomeContentRenderer(
                 val weekSerial = weekUi.weekStartSerial(call.startedAt)
                 if (weekSerial != null && weekSerial != previousWeekSerial) {
                     val relativeWeeks = currentWeekSerial?.let { (it - weekSerial) / CallReportHistoryWeekUi.DAYS_PER_WEEK } ?: 0L
-                    binding.homeCallsContainer.addView(weekUi.separator(call.startedAt, relativeWeeks))
+                    page.addView(weekUi.separator(call.startedAt, relativeWeeks))
                     previousWeekSerial = weekSerial
                 }
             } else {
                 val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
                 if (day != null && day != previousDay) {
-                    binding.homeCallsContainer.addView(dateSeparator(call.startedAt, today - day))
+                    page.addView(dateSeparator(call.startedAt, today - day, page.childCount > 0))
                     previousDay = day
                 }
             }
@@ -172,20 +183,20 @@ internal class HomeContentRenderer(
                 callNote, activeSearchQuery(), !filtered, !filtered, !filtered,
                 serverBacked = !filtered && key in serverBackedKeys,
             )
-            binding.homeCallsContainer.addView(ListThemeUi.applyRowSpacing(row, dp))
+            page.addView(ListThemeUi.applyRowSpacing(row, dp))
         }
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         if (!filtered && refreshCompanyLabels) companyGeneralNotes.refresh(calls)
     }
 
-    private fun dateSeparator(timestamp: Long, relativeDays: Long): TextView {
+    private fun dateSeparator(timestamp: Long, relativeDays: Long, hasRowsBefore: Boolean): TextView {
         val locale = if (AppLocaleText.isBulgarian()) Locale("bg", "BG") else Locale.US
         val label = "${SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(Date(timestamp))} (${HomeTimelineDateUi.relativeDaysLabel(activity, relativeDays)})"
         return TextView(activity).apply {
             text = label; textSize = 12.5f; typeface = Typeface.DEFAULT_BOLD
             setTextColor(activity.getColor(R.color.callreport_icon_background)); gravity = Gravity.CENTER_VERTICAL; background = null
             setPadding(dp(10), dp(6), dp(10), dp(6)); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                topMargin = if (binding.homeCallsContainer.childCount == 0) 0 else dp(8); bottomMargin = dp(4)
+                topMargin = if (hasRowsBefore) dp(8) else 0; bottomMargin = dp(4)
             }
         }
     }
@@ -261,7 +272,7 @@ internal class HomeContentRenderer(
     private fun showResultsStatus(text: String) {
         currentCalls = emptyList(); currentContactNotesByNumber = emptyMap()
         currentContactNamesByNumber = emptyMap(); currentCallNotesByCall = emptyMap()
-        binding.homeCallsContainer.removeAllViews(); binding.fullLogProgress.visibility = View.GONE
+        HomePagedListUi.clear(binding.homeCallsContainer); binding.fullLogProgress.visibility = View.GONE
         binding.homeStatusText.text = ""; binding.homeStatusText.visibility = View.GONE
         binding.homeCallsContainer.addView(TextView(activity).apply {
             this.text = text; gravity = Gravity.CENTER; textSize = 14f
