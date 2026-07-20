@@ -88,7 +88,8 @@ internal class HomeServerCallNotesController(
 
         val latest = linkedMapOf<String, Pair<Long, String>>()
         serverEvents.forEach { event ->
-            if (!CallReportServerNoteClassifier.isExplicitGeneralNote(event)) return@forEach
+            val explicitGeneral = CallReportServerNoteClassifier.isExplicitGeneralNote(event)
+            if (!CompanyGeneralNoteCachePolicy.belongsInGenericLane(explicitGeneral, event.companyId)) return@forEach
             val key = HomeCallPageLoader.noteKey(event.phone)
             if (key.isBlank() || key !in requestedKeys) return@forEach
             val note = event.note.trim()
