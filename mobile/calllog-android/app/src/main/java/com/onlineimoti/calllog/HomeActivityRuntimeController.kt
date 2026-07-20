@@ -21,6 +21,8 @@ internal class HomeActivityRuntimeController(
     private val invalidateCompanyNotes: () -> Unit,
     private val invalidateCrmContacts: () -> Unit,
     private val refreshCompanies: (Boolean) -> Unit,
+    private val resetTimelineForRefresh: () -> Unit,
+    private val scheduleSettledCallLogRefresh: () -> Unit,
     private val renderCalls: () -> Unit,
 ) {
     private var smsPermissionPromptShownThisSession = false
@@ -65,6 +67,7 @@ internal class HomeActivityRuntimeController(
 
     fun refreshFromPull() {
         val appContext = activity.applicationContext
+        if (!isFilteredFullLogMode()) resetTimelineForRefresh()
         clearSearchCache()
         HomeTimelineLoader.invalidateCache()
         invalidateFilteredLog()
@@ -90,5 +93,8 @@ internal class HomeActivityRuntimeController(
             }
         }
         renderCalls()
+        // Android may publish a just-ended call after the user's first pull query.
+        // Re-read once after the provider has settled instead of caching that gap.
+        scheduleSettledCallLogRefresh()
     }
 }
