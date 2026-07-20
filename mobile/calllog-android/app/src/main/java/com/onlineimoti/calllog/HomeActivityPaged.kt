@@ -43,6 +43,9 @@ class HomeActivity : FontScaledAppCompatActivity() {
             }
         }
     }
+    private val callLogObserver: HomeCallLogObserverController by lazy {
+        HomeCallLogObserverController(this, handler, ::onCallLogChanged)
+    }
     private val noteRefreshController: HomeNoteRefreshController by lazy {
         HomeNoteRefreshController(
             handler,
@@ -196,7 +199,10 @@ class HomeActivity : FontScaledAppCompatActivity() {
             ::isFilteredFullLogMode, HomeCallPageLoader::clearSearchCache,
             filteredFullLogController::invalidate, companyGeneralNotesController::invalidate,
             crmContactsContentView::invalidate,
-            { force -> crmFiltersController.refreshCompaniesIfNeeded(force = force) }, ::renderCalls,
+            { force -> crmFiltersController.refreshCompaniesIfNeeded(force = force) },
+            ::resetTimelineForRefresh,
+            callLogObserver::scheduleSettledRefresh,
+            ::renderCalls,
         )
     }
 
@@ -215,6 +221,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
         setContentView(binding.root)
         edgePaging.bind()
         noteSavedReceiver.register()
+        callLogObserver.register()
         crmContactsMode = DistributionCapabilities.isPlayBusinessBuild
         binding.crmContactsBackButton.setOnClickListener {
             edgePaging.cancel()
@@ -265,6 +272,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
         super.onResume()
         if (!::binding.isInitialized) return
         homeIsResumed = true
+        callLogObserver.register()
         contactsSyncPreparer.prepareOnce()
         crmFiltersController.refreshCompaniesIfNeeded()
         edgePaging.bind()
@@ -294,11 +302,30 @@ class HomeActivity : FontScaledAppCompatActivity() {
 
     override fun onDestroy() {
         noteSavedReceiver.unregister()
+        callLogObserver.unregister()
         searchGeneration.incrementAndGet(); edgePaging.release(); pullRefreshController.cancel()
         searchController.cancelActiveTask(); searchExecutor.shutdownNow(); refreshExecutor.shutdownNow()
         callsLoader.release(); crmContactsLoader.release(); serverCallNotesController.release()
         crmFiltersController.release(); companyGeneralNotesController.release()
         filteredFullLogController.release(); contactsSyncPreparer.release(); super.onDestroy()
+    }
+
+    private fun onCallLogChanged() {
+        edgePaging.cancel()
+        HomeCallPageLoader.clearSearchCache()
+        HomeTimelineLoader.invalidateCache()
+        filteredFullLogController.invalidate()
+        companyGeneralNotesController.invalidate()
+        if (activePhoneFilter.isBlank() && activeSearchQuery.isBlank() && !isCrmContactsMode()) {
+            resetTimelineForRefresh()
+        }
+        if (homeIsResumed) renderCalls() else refreshWhenResumed = true
+    }
+
+    private fun resetTimelineForRefresh() {
+        edgePaging.cancel()
+        pageIndex = 0
+        homeContentRenderer.clearCalls()
     }
 
     private fun renderCalls() { runtimeController.updateHeader(); timelineCoordinator.renderCalls() }

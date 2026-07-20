@@ -16,6 +16,7 @@ internal object HomeTimelineLoader {
 
     private val groupedCacheLock = Any()
     private var groupedCache = TimedTimeline(0L, emptyList())
+    private var groupedCacheGeneration = 0
 
     fun page(context: Context, pageIndex: Int, pageSize: Int): List<PhoneCallRecord> {
         val safePageIndex = pageIndex.coerceAtLeast(0)
@@ -45,18 +46,25 @@ internal object HomeTimelineLoader {
 
     fun invalidateCache() {
         synchronized(groupedCacheLock) {
+            groupedCacheGeneration += 1
             groupedCache = TimedTimeline(0L, emptyList())
         }
     }
 
     private fun groupedTimeline(context: Context): List<PhoneCallRecord> {
         val now = System.currentTimeMillis()
+        val loadGeneration: Int
         synchronized(groupedCacheLock) {
             if (now - groupedCache.loadedAtMs < GROUPED_TIMELINE_CACHE_MS) return groupedCache.rows
+            loadGeneration = groupedCacheGeneration
         }
         val loaded = mergedRows(context, GROUPED_TIMELINE_SCAN_LIMIT)
         synchronized(groupedCacheLock) {
-            groupedCache = TimedTimeline(now, loaded)
+            // A refresh may invalidate the cache while this provider query is in flight.
+            // Never let that older query restore the snapshot that was just cleared.
+            if (loadGeneration == groupedCacheGeneration) {
+                groupedCache = TimedTimeline(now, loaded)
+            }
         }
         return loaded
     }
