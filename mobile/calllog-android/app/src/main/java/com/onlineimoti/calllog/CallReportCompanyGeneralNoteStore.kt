@@ -9,25 +9,37 @@ import android.content.Context
  */
 internal object CallReportCompanyGeneralNoteStore {
     private const val PREFS = "callreport_company_general_notes_v1"
+    private const val SAVED_AT_SUFFIX = "#saved_at_ms"
 
     fun noteFor(context: Context, phone: String, companyId: String): String {
         val key = key(phone, companyId)
         if (key.isBlank()) return ""
-        return context.applicationContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(key, "")
-            .orEmpty()
-            .trim()
+        return preferences(context).getString(key, "").orEmpty().trim()
+    }
+
+    fun savedAtMsFor(context: Context, phone: String, companyId: String): Long {
+        val key = key(phone, companyId)
+        if (key.isBlank()) return 0L
+        return preferences(context).getLong(savedAtKey(key), 0L).coerceAtLeast(0L)
     }
 
     fun saveOrDelete(context: Context, phone: String, companyId: String, note: String): Boolean {
         val key = key(phone, companyId)
         if (key.isBlank()) return false
-        val edit = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val edit = preferences(context).edit()
         val value = note.trim()
-        if (value.isBlank()) edit.remove(key) else edit.putString(key, value)
+        if (value.isBlank()) {
+            edit.remove(key).remove(savedAtKey(key))
+        } else {
+            edit.putString(key, value).putLong(savedAtKey(key), System.currentTimeMillis())
+        }
         return edit.commit()
     }
+
+    private fun preferences(context: Context) = context.applicationContext
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun savedAtKey(key: String) = "$key$SAVED_AT_SUFFIX"
 
     private fun key(phone: String, companyId: String): String {
         val phoneKey = phone.filter { it.isDigit() }.let { if (it.length > 9) it.takeLast(9) else it }
