@@ -59,10 +59,8 @@ internal object HomeCompanyGeneralNoteLabels {
             val phoneKey = HomeCallPageLoader.noteKey(event.phone)
             if (phoneKey.isBlank() || phoneKey !in requestedPhoneKeys) continue
 
-            // Same rule as HomeServerCallNotesController and History/editor:
-            // yellow company main notes only come from explicit general records.
             if (CallReportServerNoteClassifier.isExplicitGeneralNote(event)) {
-                confirmedGeneralScopes += "$phoneKey|${event.companyId}"
+                confirmedGeneralScopes += scopeKey(phoneKey, event.companyId)
                 labelFor(phoneKey, event.companyId).setServerGeneralNote(
                     text = event.note,
                     changedAtMs = maxOf(event.updatedAtMs, event.occurredAtMs, event.createdAtMs),
@@ -70,28 +68,33 @@ internal object HomeCompanyGeneralNoteLabels {
             }
         }
 
-        // A locally saved company note is shown only while its durable outbox item
-        // is pending. Once History returns an authoritative response, a missing
-        // server note means it was deleted and the temporary local cache is cleared.
+        // Upload acknowledgement can arrive before lookup.php exposes the new row.
+        // Keep the timestamped local cache briefly so the note never disappears.
+        val nowMs = System.currentTimeMillis()
         for (phone in requestedPhones) {
             val phoneKey = HomeCallPageLoader.noteKey(phone)
             if (phoneKey.isBlank()) continue
             for (company in result.principal.companies) {
                 val localNote = CallReportCompanyGeneralNoteStore.noteFor(context, phone, company.id)
-                val pending = CallReportCompanyGeneralNotePending.isPending(context, phone, company.id)
-                when {
-                    pending && localNote.isNotBlank() -> {
+                val decision = CompanyGeneralNoteCachePolicy.decide(
+                    localNote = localNote,
+                    pending = CallReportCompanyGeneralNotePending.isPending(context, phone, company.id),
+                    savedAtMs = CallReportCompanyGeneralNoteStore.savedAtMsFor(context, phone, company.id),
+                    nowMs = nowMs,
+                    serverConfirmed = scopeKey(phoneKey, company.id) in confirmedGeneralScopes,
+                )
+                when (decision) {
+                    CompanyGeneralNoteCacheDecision.SHOW_LOCAL -> {
                         labelFor(phoneKey, company.id).setLocalGeneralNote(localNote)
                     }
-                    !pending && "$phoneKey|${company.id}" !in confirmedGeneralScopes && localNote.isNotBlank() -> {
+                    CompanyGeneralNoteCacheDecision.CLEAR_LOCAL -> {
                         CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, company.id, "")
                     }
+                    CompanyGeneralNoteCacheDecision.IGNORE_LOCAL -> Unit
                 }
             }
         }
 
-        // The phase endpoint already scopes each record to one company. Lookups
-        // are parallel and run only in this background Home loader.
         val phaseRequests = requestedPhones.flatMap { phone ->
             result.principal.companies.map { company -> PhaseRequest(phone, company.id) }
         }
@@ -155,6 +158,8 @@ internal object HomeCompanyGeneralNoteLabels {
             serverBackedPhoneKeys = serverBackedPhoneKeys,
         )
     }
+
+    private fun scopeKey(phoneKey: String, companyId: String) = "$phoneKey|${companyId.trim()}"
 
     private data class MutableScopeLabel(
         val companyId: String,
