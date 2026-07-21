@@ -14,10 +14,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-internal data class ContactNotesStickyActions(
-    val overlay: LinearLayout,
-)
-
 class ContactNotesHeaderUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -43,9 +39,34 @@ class ContactNotesHeaderUi(
         openRmCallLogFiltered: () -> Unit,
     ): LinearLayout {
         val displayName = displayNameFromTitle(title, phone)
+        val compactIdentity = displayName.ifBlank { phone }
         val contactDescription = activity.getString(
             if (contactExists) R.string.dynamic_contact_open else R.string.dynamic_contact_create,
         )
+        val identityAnchor = identityBlock(displayName, phone, contactExists)
+        val compactTitle = TextView(activity).apply {
+            text = compactIdentity
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(15, 23, 42))
+            gravity = Gravity.CENTER_VERTICAL
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = View.INVISIBLE
+            setPadding(dp(4), 0, dp(8), 0)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+        }
+        val topBar = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(activity.getColor(R.color.calllog_bg))
+            elevation = dp(8).toFloat()
+            addView(actions.backButton(
+                goBack = goBack,
+                openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
+            ).apply { layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)) })
+            addView(compactTitle)
+        }
         val actionFactory = {
             actionRow(
                 phone = phone,
@@ -69,24 +90,13 @@ class ContactNotesHeaderUi(
             elevation = dp(8).toFloat()
         }
         val actionAnchor = actionFactory().apply {
-            tag = ContactNotesStickyActions(stickyActionBar)
+            tag = ContactNotesStickyActions(stickyActionBar, topBar, compactTitle, identityAnchor)
         }
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, dp(12))
-
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(actions.backButton(
-                    goBack = goBack,
-                    openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
-                ).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
-                })
-            })
-
-            addView(identityBlock(displayName, phone, contactExists))
+            addView(topBar)
+            addView(identityAnchor)
             addView(actionAnchor)
         }
     }
