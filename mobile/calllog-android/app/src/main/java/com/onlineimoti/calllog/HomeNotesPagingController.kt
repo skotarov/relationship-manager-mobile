@@ -12,6 +12,11 @@ internal class HomeEdgePagingController(
 ) {
     private val originalPaginationHeight = binding.paginationContainer.layoutParams.height
     private val pageRangeTooltip = HomePageRangeTooltipUi(binding)
+    private val stickyGroups = StickyGroupHeaderController(
+        binding.homeCallsScrollView,
+        binding.homeCallsContainer,
+        binding.stickyGroupHeader,
+    )
     private val paginationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
         hideAutomaticModeNavigation()
     }
@@ -46,11 +51,13 @@ internal class HomeEdgePagingController(
         binding.paginationContainer.addOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.setOnReady { bind() }
         updateNavigationVisibility()
+        stickyGroups.bind()
     }
 
     fun bind() {
         updateNavigationVisibility()
         delegate.bind(binding.homeCallsScrollView, binding.homeCallsContainer)
+        stickyGroups.bind()
     }
 
     fun cancel() {
@@ -64,6 +71,7 @@ internal class HomeEdgePagingController(
         binding.paginationContainer.removeOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.clearOnReady()
         delegate.release()
+        stickyGroups.release()
         pageRangeTooltip.release()
     }
 
