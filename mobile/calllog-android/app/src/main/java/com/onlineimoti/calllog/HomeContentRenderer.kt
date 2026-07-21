@@ -57,7 +57,7 @@ internal class HomeContentRenderer(
         )
         binding.fullLogProgress.visibility = View.GONE
         binding.clearFilterButton.visibility = if (isFilteredFullLogMode() || activePhoneFilter().isBlank()) View.GONE else View.VISIBLE
-        updateCrmModeControls(); updatePhoneFilterStatusStyle(); renderFilteredContactSummary()
+        updateCrmModeControls(); updatePhoneFilterStatusStyle(hidePlainTimelineRange = true); renderFilteredContactSummary()
     }
     fun showLoading() {
         binding.fullLogProgress.visibility = View.GONE
@@ -67,7 +67,7 @@ internal class HomeContentRenderer(
     }
     fun showMissingCallLogPermission() {
         val text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
-        if (isTopLevelCrmPage()) showResultsStatus(text) else binding.homeStatusText.text = text
+        if (isTopLevelCrmPage()) showResultsStatus(text) else { binding.homeStatusText.text = text; updatePhoneFilterStatusStyle() }
         binding.fullLogProgress.visibility = View.GONE
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         binding.paginationContainer.visibility = View.GONE
@@ -112,7 +112,7 @@ internal class HomeContentRenderer(
         updatePhoneFilterStatusStyle(); PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, false)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1)
-        binding.paginationContainer.visibility = View.VISIBLE
+        binding.paginationContainer.visibility = if (PageLoadingModeStore.usesPrefetch(activity)) View.GONE else View.VISIBLE
     }
     private fun applyRenderData(
         data: HomeRenderData,
@@ -249,7 +249,7 @@ internal class HomeContentRenderer(
             else -> activity.getString(R.string.dynamic_home_status_calls, start, end)
         }
         updatePhoneFilterStatusStyle(hidePlainTimelineRange = true); PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0); PaginationButtonAppearance.apply(binding.nextCallsButton, currentCalls.size >= pageSize)
-        binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1); binding.paginationContainer.visibility = View.VISIBLE
+        binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1); binding.paginationContainer.visibility = if (PageLoadingModeStore.usesPrefetch(activity)) View.GONE else View.VISIBLE
     }
     private fun updatePhoneFilterStatusStyle(hidePlainTimelineRange: Boolean = false) {
         val filtered = activePhoneFilter().isNotBlank()
