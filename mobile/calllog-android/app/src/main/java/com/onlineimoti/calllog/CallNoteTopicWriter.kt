@@ -17,7 +17,7 @@ internal object CallNoteTopicWriter {
         if (!cached) return CallNoteWriteResult(false, true, CallNoteTarget("", 0L, 0L))
 
         val queued = CallReportTopicNoteOutbox.enqueueGeneral(context, phone, text, companyId)
-        if (!queued) {
+        if (!CompanyMainNoteSavePolicy.isSaved(cached, queued)) {
             // Never report success for a server-scoped note that only reached the
             // temporary local cache. Restore the previous cache value instead.
             CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, previous)
@@ -129,4 +129,8 @@ internal object CallNoteTopicWriter {
         }
         return CallNoteTargetResolver.resolve(context, phone, direction, callAt, durationSeconds, actionIssuedAt)
     }
+}
+
+internal object CompanyMainNoteSavePolicy {
+    fun isSaved(cacheSaved: Boolean, queued: Boolean): Boolean = cacheSaved && queued
 }
