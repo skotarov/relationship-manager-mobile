@@ -57,7 +57,7 @@ internal object HistoryBackgroundLoader {
         localNotes: List<ContactCallNote>,
     ): HistoryPreparedSnapshot {
         if (phone.isBlank()) return HistoryPreparedSnapshot()
-        if (remoteEnabled) reconcileServerConfirmation(context, phone, history)
+        if (remoteEnabled && serverLoaded) reconcileServerConfirmation(context, phone, history)
         val scopedServerLoaded = remoteEnabled && serverLoaded
         val principal = if (remoteEnabled) history.principal else CallReportHistoryPrincipal()
         val timelineEvents = if (remoteEnabled) notesAndSms(history.events) else emptyList()
