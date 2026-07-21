@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ProgressBar
 import kotlin.math.max
@@ -88,7 +89,7 @@ internal class PullToRefreshLayout @JvmOverloads constructor(
 
             MotionEvent.ACTION_MOVE -> {
                 val distance = event.y - initialTouchY
-                if (distance > touchSlop && !content.canScrollVertically(-1)) {
+                if (distance > touchSlop && !canScrollUp(content)) {
                     dragging = true
                     parent?.requestDisallowInterceptTouchEvent(true)
                     return true
@@ -114,7 +115,7 @@ internal class PullToRefreshLayout @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 val rawDistance = event.y - initialTouchY
                 if (!dragging) {
-                    if (rawDistance <= touchSlop || content.canScrollVertically(-1)) return false
+                    if (rawDistance <= touchSlop || canScrollUp(content)) return false
                     dragging = true
                     parent?.requestDisallowInterceptTouchEvent(true)
                 }
@@ -201,6 +202,15 @@ internal class PullToRefreshLayout @JvmOverloads constructor(
                 if (!isRefreshing) spinner.visibility = INVISIBLE
             }
             .start()
+    }
+
+    private fun canScrollUp(view: View): Boolean {
+        if (view.canScrollVertically(-1)) return true
+        val group = view as? ViewGroup ?: return false
+        for (index in 0 until group.childCount) {
+            if (canScrollUp(group.getChildAt(index))) return true
+        }
+        return false
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
