@@ -22,7 +22,7 @@ internal class CallReportHistoryWeekUi(
         weekStartCalendar(timestampMs)?.let(::calendarDaySerial)
 
     fun separator(timestampMs: Long, relativeWeeks: Long): TextView {
-        return TextView(activity).apply {
+        return StickyGroupHeaderUi.mark(TextView(activity).apply {
             text = "Седмица: ${weekDateRange(timestampMs)} (${relativeWeeksLabel(relativeWeeks)})"
             textSize = 12.5f
             typeface = Typeface.DEFAULT_BOLD
@@ -37,7 +37,7 @@ internal class CallReportHistoryWeekUi(
                 topMargin = dp(6)
                 bottomMargin = dp(4)
             }
-        }
+        })
     }
 
     private fun weekDateRange(timestampMs: Long): String {
