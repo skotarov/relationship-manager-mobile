@@ -8,10 +8,15 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+
+internal data class ContactNotesStickyActions(
+    val overlay: LinearLayout,
+)
 
 class ContactNotesHeaderUi(
     private val activity: Activity,
@@ -41,7 +46,31 @@ class ContactNotesHeaderUi(
         val contactDescription = activity.getString(
             if (contactExists) R.string.dynamic_contact_open else R.string.dynamic_contact_create,
         )
-
+        val actionFactory = {
+            actionRow(
+                phone = phone,
+                title = title,
+                displayName = displayName,
+                contactExists = contactExists,
+                contactDescription = contactDescription,
+                crmSyncAvailable = showCrmSyncButton,
+                crmSyncEnabled = crmSyncEnabled,
+                crmSyncBusy = crmSyncBusy,
+                crmSyncServerBacked = crmSyncServerBacked,
+                openDialer = openDialer,
+                openCalendarEvent = openCalendarEvent,
+                openDefaultContact = openDefaultContact,
+                openRmContact = openRmContact,
+                toggleCrmSync = toggleCrmSync,
+            )
+        }
+        val stickyActionBar = actionFactory().apply {
+            setBackgroundColor(activity.getColor(R.color.calllog_bg))
+            elevation = dp(8).toFloat()
+        }
+        val actionAnchor = actionFactory().apply {
+            tag = ContactNotesStickyActions(stickyActionBar)
+        }
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, dp(12))
@@ -53,51 +82,12 @@ class ContactNotesHeaderUi(
                     goBack = goBack,
                     openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
                 ).apply {
-                    layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(8) }
+                    layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
                 })
-                if (showCrmSyncButton) {
-                    addView(actions.crmSyncButton(crmSyncEnabled, crmSyncBusy, crmSyncServerBacked, toggleCrmSync))
-                }
-                addView(actions.iconButton(
-                    R.drawable.ic_calendar_event,
-                    activity.getString(R.string.dynamic_action_calendar),
-                    openCalendarEvent,
-                ))
-                addView(View(activity).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
-                })
-                if (phone.isNotBlank()) {
-                    if (contactExists) {
-                        addView(actions.contactMenuButton(contactDescription, openDefaultContact, openRmContact))
-                    }
-                    addView(actions.iconButton(R.drawable.ic_phone_call, activity.getString(R.string.dynamic_action_call), openDialer))
-                    addView(actions.iconButton(R.drawable.ic_sms_message, activity.getString(R.string.dynamic_action_write_sms)) {
-                        SmsComposeAction.open(
-                            activity = activity,
-                            phone = phone,
-                            title = displayName.ifBlank { title },
-                            dp = dp,
-                        )
-                    })
-                }
             })
 
-            addView(LinearLayout(activity).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(8), 0, 0)
-                if (phone.isNotBlank()) {
-                    addView(phoneNumberText(phone))
-                    addView(textDivider())
-                }
-                if (contactExists) {
-                    addView(contactNameText(displayName, contactDescription).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    })
-                } else {
-                    addView(actions.iconButton(R.drawable.ic_contact_person_add, contactDescription, openDefaultContact))
-                }
-            })
+            addView(identityBlock(displayName, phone, contactExists))
+            addView(actionAnchor)
         }
     }
 
@@ -111,11 +101,106 @@ class ContactNotesHeaderUi(
         }
     }
 
-    fun directionArrowLabel(direction: String): String {
-        return when (direction) {
-            "in" -> activity.getString(R.string.dynamic_direction_in)
-            "out" -> activity.getString(R.string.dynamic_direction_out)
-            else -> PhoneCallReader.directionLabel(direction)
+    fun directionArrowLabel(direction: String): String = when (direction) {
+        "in" -> activity.getString(R.string.dynamic_direction_in)
+        "out" -> activity.getString(R.string.dynamic_direction_out)
+        else -> PhoneCallReader.directionLabel(direction)
+    }
+
+    private fun identityBlock(displayName: String, phone: String, contactExists: Boolean): LinearLayout {
+        return LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(10))
+            if (contactExists && displayName.isNotBlank()) {
+                addView(contactNameText(displayName))
+                if (phone.isNotBlank()) addView(phoneNumberText(phone, prominent = false))
+            } else if (phone.isNotBlank()) {
+                addView(phoneNumberText(phone, prominent = true))
+            }
+        }
+    }
+
+    private fun actionRow(
+        phone: String,
+        title: String,
+        displayName: String,
+        contactExists: Boolean,
+        contactDescription: String,
+        crmSyncAvailable: Boolean,
+        crmSyncEnabled: Boolean,
+        crmSyncBusy: Boolean,
+        crmSyncServerBacked: Boolean,
+        openDialer: () -> Unit,
+        openCalendarEvent: () -> Unit,
+        openDefaultContact: () -> Unit,
+        openRmContact: () -> Unit,
+        toggleCrmSync: () -> Unit,
+    ): LinearLayout {
+        val row = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(5), 0, dp(5))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(48),
+            ).apply { topMargin = dp(2) }
+        }
+        ContactNotesHeaderActionPolicy.ordered(contactExists).forEach { kind ->
+            val button = when (kind) {
+                ContactNotesHeaderAction.CRM -> actions.crmSyncButton(
+                    enabled = crmSyncEnabled,
+                    busy = crmSyncBusy,
+                    serverBacked = crmSyncServerBacked,
+                    available = crmSyncAvailable,
+                    action = toggleCrmSync,
+                )
+                ContactNotesHeaderAction.CALENDAR -> actions.iconButton(
+                    R.drawable.ic_calendar_event,
+                    activity.getString(R.string.dynamic_action_calendar),
+                    openCalendarEvent,
+                )
+                ContactNotesHeaderAction.CONTACT -> actions.contactMenuButton(
+                    contactDescription,
+                    openDefaultContact,
+                    openRmContact,
+                )
+                ContactNotesHeaderAction.ADD_CONTACT -> actions.iconButton(
+                    R.drawable.ic_contact_person_add,
+                    contactDescription,
+                    openDefaultContact,
+                )
+                ContactNotesHeaderAction.CALL -> actions.iconButton(
+                    R.drawable.ic_phone_call,
+                    activity.getString(R.string.dynamic_action_call),
+                    openDialer,
+                )
+                ContactNotesHeaderAction.SMS -> actions.iconButton(
+                    R.drawable.ic_sms_message,
+                    activity.getString(R.string.dynamic_action_write_sms),
+                ) {
+                    SmsComposeAction.open(
+                        activity = activity,
+                        phone = phone,
+                        title = displayName.ifBlank { title },
+                        dp = dp,
+                    )
+                }
+            }
+            row.addView(actionSlot(button))
+        }
+        return row
+    }
+
+    private fun actionSlot(button: View): LinearLayout {
+        button.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.MATCH_PARENT,
+        )
+        return LinearLayout(activity).apply {
+            gravity = Gravity.CENTER
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            addView(button)
         }
     }
 
@@ -132,76 +217,53 @@ class ContactNotesHeaderUi(
         return value
     }
 
-    private fun titleRow(textValue: String): LinearLayout {
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(14), 0, dp(8))
-            addView(TextView(activity).apply {
-                text = textValue
-                textSize = 16f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(30, 41, 59))
-            })
-        }
-    }
-
-    private fun phoneNumberText(phone: String): TextView {
-        return TextView(activity).apply {
-            text = phone
-            textSize = 15f
-            typeface = Typeface.DEFAULT
-            setTextColor(Color.rgb(17, 24, 39))
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            isClickable = true
-            isFocusable = true
-            setPadding(0, dp(4), dp(4), dp(4))
-            setOnClickListener {
-                copyToClipboard(
-                    activity.getString(R.string.dynamic_clipboard_phone_label),
-                    phone,
-                    activity.getString(R.string.dynamic_phone_copied),
-                )
-            }
-        }
-    }
-
-    private fun contactNameText(displayName: String, description: String): TextView {
-        val value = displayName.ifBlank { description }
-        return TextView(activity).apply {
-            text = value
-            textSize = 18f
+    private fun titleRow(textValue: String): LinearLayout = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(14), 0, dp(8))
+        addView(TextView(activity).apply {
+            text = textValue
+            textSize = 16f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.rgb(15, 23, 42))
-            maxLines = 2
-            ellipsize = null
-            isClickable = true
-            isFocusable = true
-            setPadding(0, dp(4), 0, dp(4))
-            setOnClickListener {
-                copyToClipboard(
-                    activity.getString(R.string.dynamic_clipboard_name_label),
-                    value,
-                    activity.getString(R.string.dynamic_name_copied),
-                )
-            }
+            setTextColor(Color.rgb(30, 41, 59))
+        })
+    }
+
+    private fun phoneNumberText(phone: String, prominent: Boolean): TextView = TextView(activity).apply {
+        text = phone
+        textSize = if (prominent) 20f else 15f
+        typeface = if (prominent) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        setTextColor(if (prominent) Color.rgb(15, 23, 42) else Color.rgb(71, 85, 105))
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        isClickable = true
+        isFocusable = true
+        setPadding(0, dp(3), 0, dp(3))
+        setOnClickListener {
+            copyToClipboard(
+                activity.getString(R.string.dynamic_clipboard_phone_label),
+                phone,
+                activity.getString(R.string.dynamic_phone_copied),
+            )
         }
     }
 
-    private fun textDivider(): TextView {
-        return TextView(activity).apply {
-            text = "|"
-            textSize = 17f
-            setTextColor(Color.rgb(148, 163, 184))
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                marginStart = dp(6)
-                marginEnd = dp(9)
-            }
+    private fun contactNameText(displayName: String): TextView = TextView(activity).apply {
+        text = displayName
+        textSize = 22f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.rgb(15, 23, 42))
+        maxLines = 2
+        ellipsize = null
+        isClickable = true
+        isFocusable = true
+        setPadding(0, dp(3), 0, dp(3))
+        setOnClickListener {
+            copyToClipboard(
+                activity.getString(R.string.dynamic_clipboard_name_label),
+                displayName,
+                activity.getString(R.string.dynamic_name_copied),
+            )
         }
     }
 

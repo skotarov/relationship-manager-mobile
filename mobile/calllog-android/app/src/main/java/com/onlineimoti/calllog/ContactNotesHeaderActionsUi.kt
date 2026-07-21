@@ -23,6 +23,7 @@ internal class ContactNotesHeaderActionsUi(
         enabled: Boolean,
         busy: Boolean,
         serverBacked: Boolean,
+        available: Boolean,
         action: () -> Unit,
     ): LinearLayout {
         val activeColor = activity.getColor(R.color.callreport_icon_background)
@@ -34,6 +35,7 @@ internal class ContactNotesHeaderActionsUi(
         }
         val labelColor = if (enabled) Color.WHITE else Color.BLACK
         val description = when {
+            !available -> "CRM не е достъпен без настроен сървър"
             busy -> activity.getString(R.string.dynamic_crm_sync_changing)
             enabled -> activity.getString(R.string.dynamic_crm_sync_enabled)
             serverBacked -> "Има сървърна история. Включи CRM"
@@ -43,8 +45,8 @@ internal class ContactNotesHeaderActionsUi(
             setImageResource(if (filledCloud) R.drawable.ic_cloud_note_filled else R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(cloudColor)
             scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(30), dp(36))
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            layoutParams = LinearLayout.LayoutParams(dp(28), dp(36))
         }
         val crmLabel = TextView(activity).apply {
             text = "CRM"
@@ -52,7 +54,7 @@ internal class ContactNotesHeaderActionsUi(
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(labelColor)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, dp(9), 0)
+            setPadding(0, 0, dp(7), 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -61,17 +63,21 @@ internal class ContactNotesHeaderActionsUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), 0, 0, 0)
+            setPadding(dp(3), 0, 0, 0)
             background = if (enabled) roundedIconBackground(activeColor) else null
             contentDescription = description
-            isClickable = !busy
-            isFocusable = !busy
-            isEnabled = !busy
-            alpha = if (busy) 0.78f else 1f
+            isClickable = available && !busy
+            isFocusable = available && !busy
+            isEnabled = available && !busy
+            alpha = when {
+                !available -> 0.48f
+                busy -> 0.78f
+                else -> 1f
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 dp(36),
-            ).apply { marginEnd = dp(8) }
+            )
             addView(cloudIcon)
             addView(crmLabel)
             setOnClickListener { action() }
@@ -115,7 +121,7 @@ internal class ContactNotesHeaderActionsUi(
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
         }
         button.setOnClickListener {
             PopupMenu(activity, button).apply {
@@ -142,7 +148,7 @@ internal class ContactNotesHeaderActionsUi(
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = ImageView.ScaleType.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
-            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(8) }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
             setOnClickListener { action() }
         }
     }
