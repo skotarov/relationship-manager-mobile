@@ -19,7 +19,9 @@ internal class CompanyScopedGeneralNoteSectionUi(
 ) {
     fun add(
         root: LinearLayout,
-        phone: String,
+        localNote: String,
+        localNotePending: Boolean,
+        companyScopeAvailable: Boolean,
         companyNotes: List<CallReportCompanyMainNote>,
         unscopedServerMainNote: CallReportHistoryEvent?,
         showCompanyNotes: Boolean,
@@ -30,9 +32,9 @@ internal class CompanyScopedGeneralNoteSectionUi(
         val section = sectionContainer()
         root.addView(section)
         section.addView(headerUi.sectionTitleWithDrawable(activity.getString(R.string.dynamic_note_general_title), R.drawable.ic_note_lines))
-        addLocalNote(section, phone, onEditCompany)
+        addLocalNote(section, localNote, localNotePending, onEditCompany)
         addUnscopedServerMainNote(section, unscopedServerMainNote, onEditUnscopedServerMainNote)
-        if (!showCompanyNotes || !ContactServerCompanyScope.isAvailable(activity, phone)) return
+        if (!showCompanyNotes || !companyScopeAvailable) return
 
         companyNotes.forEach { companyNote ->
             val note = companyNote.note.trim()
@@ -61,9 +63,13 @@ internal class CompanyScopedGeneralNoteSectionUi(
         }
     }
 
-    private fun addLocalNote(section: LinearLayout, phone: String, onEditCompany: (String) -> Unit) {
-        val note = ContactNoteReader.generalNoteForPhone(activity, phone)
-        val pending = CallReportDeferredCompanyAssignmentStore.isGeneralPending(activity, phone)
+    private fun addLocalNote(
+        section: LinearLayout,
+        noteValue: String,
+        pending: Boolean,
+        onEditCompany: (String) -> Unit,
+    ) {
+        val note = noteValue.trim()
         section.addView(
             companyHeader(
                 name = activity.getString(R.string.note_local_company),
