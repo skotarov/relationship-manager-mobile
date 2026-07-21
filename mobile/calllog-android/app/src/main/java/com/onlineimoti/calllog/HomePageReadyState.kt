@@ -9,7 +9,7 @@ internal object HomePageReadyState {
     private val ready = AtomicBoolean(false)
     private val lock = Any()
     @Volatile private var onReady: (() -> Unit)? = null
-    private var activityRef = WeakReference<Activity>(null)
+    private var activityRef: WeakReference<Activity>? = null
     private var busyToken = 0L
 
     fun attach(activity: Activity) = synchronized(lock) {
@@ -17,16 +17,17 @@ internal object HomePageReadyState {
     }
 
     fun detach(activity: Activity) = synchronized(lock) {
-        if (activityRef.get() !== activity) return@synchronized
+        if (activityRef?.get() !== activity) return@synchronized
         finishBusyLocked()
-        activityRef.clear()
+        activityRef?.clear()
+        activityRef = null
     }
 
     fun markLoading() {
         ready.set(false)
         synchronized(lock) {
             finishBusyLocked()
-            activityRef.get()?.let { activity ->
+            activityRef?.get()?.let { activity ->
                 busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.CALLS)
             }
         }
@@ -45,6 +46,6 @@ internal object HomePageReadyState {
     private fun finishBusyLocked() {
         val token = busyToken
         busyToken = 0L
-        activityRef.get()?.let { activity -> HomeBusyTooltipUi.end(activity, token) }
+        activityRef?.get()?.let { activity -> HomeBusyTooltipUi.end(activity, token) }
     }
 }
