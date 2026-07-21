@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.graphics.Rect
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +9,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+
+internal object ContactNotesStickyActionPolicy {
+    fun shouldStick(scrollY: Int, anchorTop: Int): Boolean =
+        anchorTop >= 0 && scrollY >= anchorTop
+}
 
 /** Builds History with sticky actions and a group title overlay without changing content height. */
 internal class ContactNotesStickyHistoryUi(
@@ -24,6 +30,7 @@ internal class ContactNotesStickyHistoryUi(
     ) {
         release()
         val historyScroll = ScrollView(activity).apply {
+            isFillViewport = true
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
             addView(root)
         }
@@ -40,6 +47,8 @@ internal class ContactNotesStickyHistoryUi(
         val actionAnchor = findActionAnchor(root)
         val stickyActionBar = (actionAnchor?.tag as? ContactNotesStickyActions)?.overlay
         val viewport = FrameLayout(activity).apply {
+            clipChildren = false
+            clipToPadding = false
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -53,12 +62,13 @@ internal class ContactNotesStickyHistoryUi(
                 actionBar.visibility = View.INVISIBLE
                 addView(actionBar, FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    dp(STICKY_ACTION_HEIGHT_DP),
                     Gravity.TOP,
                 ).apply {
                     leftMargin = dp(16)
                     rightMargin = dp(16)
                 })
+                actionBar.bringToFront()
             }
         }
 
@@ -66,14 +76,15 @@ internal class ContactNotesStickyHistoryUi(
             val anchor = actionAnchor ?: return
             val actionBar = stickyActionBar ?: return
             if (!anchor.isAttachedToWindow || !historyScroll.isAttachedToWindow) return
-            val anchorLocation = IntArray(2)
-            val viewportLocation = IntArray(2)
-            anchor.getLocationOnScreen(anchorLocation)
-            historyScroll.getLocationOnScreen(viewportLocation)
-            val shouldStick = anchorLocation[1] <= viewportLocation[1]
+            val anchorTop = anchorTopInRoot(root, anchor)
+            val shouldStick = ContactNotesStickyActionPolicy.shouldStick(
+                scrollY = historyScroll.scrollY,
+                anchorTop = anchorTop,
+            )
             val nextVisibility = if (shouldStick) View.VISIBLE else View.INVISIBLE
             if (actionBar.visibility != nextVisibility) actionBar.visibility = nextVisibility
-            val topMargin = if (shouldStick) actionBar.height else 0
+            if (shouldStick) actionBar.bringToFront()
+            val topMargin = if (shouldStick) dp(STICKY_ACTION_HEIGHT_DP) else 0
             if (groupOverlayParams.topMargin != topMargin) {
                 groupOverlayParams.topMargin = topMargin
                 groupOverlay.layoutParams = groupOverlayParams
@@ -82,6 +93,7 @@ internal class ContactNotesStickyHistoryUi(
 
         historyScroll.setOnScrollChangeListener { _, _, _, _, _ -> updateStickyActions() }
         historyScroll.post { updateStickyActions() }
+        stickyActionBar?.post { updateStickyActions() }
         bindPaging(historyScroll, root)
         activity.setContentView(PullToRefreshLayout(activity).apply {
             addView(viewport)
@@ -98,6 +110,12 @@ internal class ContactNotesStickyHistoryUi(
         stickyController = null
     }
 
+    private fun anchorTopInRoot(root: ViewGroup, anchor: View): Int {
+        val rect = Rect(0, 0, anchor.width.coerceAtLeast(1), anchor.height.coerceAtLeast(1))
+        root.offsetDescendantRectToMyCoords(anchor, rect)
+        return rect.top
+    }
+
     private fun findActionAnchor(view: View): View? {
         if (view.tag is ContactNotesStickyActions) return view
         val group = view as? ViewGroup ?: return null
@@ -109,4 +127,8 @@ internal class ContactNotesStickyHistoryUi(
 
     private fun dp(value: Int): Int =
         (value * activity.resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val STICKY_ACTION_HEIGHT_DP = 50
+    }
 }
