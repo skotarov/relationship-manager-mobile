@@ -29,11 +29,13 @@ internal class FilteredFullLogController(
     private var loading = false
     private var pageIndex = 0
     private var loadGeneration = 0
+    private var busyToken = 0L
     private var entries: List<FilteredFullLogEntry> = emptyList()
     private var errorText = ""
 
     fun invalidate() {
         loadGeneration += 1
+        finishBusy()
         loadedPhone = ""
         loadedRemoteEnabled = null
         loading = false
@@ -89,6 +91,7 @@ internal class FilteredFullLogController(
     }
 
     fun release() {
+        finishBusy()
         executor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
     }
@@ -131,8 +134,11 @@ internal class FilteredFullLogController(
 
     private fun startLoad(phone: String, remoteEnabled: Boolean) {
         loading = true
+        finishBusy()
+        busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.FULL_LOG)
         val requestedPhone = phone
         val generation = ++loadGeneration
+        val requestBusyToken = busyToken
         executor.execute {
             val result = runCatching {
                 val localCalls = PhoneCallReader.callsForPhone(activity, requestedPhone, limit = SOURCE_CALL_LIMIT)
@@ -154,6 +160,7 @@ internal class FilteredFullLogController(
                 groupedEntries(merged)
             }
             handler.post {
+                finishBusy(requestBusyToken)
                 if (activity.isFinishing || activity.isDestroyed || generation != loadGeneration || requestedPhone != selectedPhone) return@post
                 if (remoteEnabled != CallReportRemoteAccess.isEnabled(activity)) {
                     loading = false
@@ -177,6 +184,12 @@ internal class FilteredFullLogController(
                 onStateChanged()
             }
         }
+    }
+
+    private fun finishBusy(token: Long = busyToken) {
+        if (token <= 0L) return
+        if (busyToken == token) busyToken = 0L
+        HomeBusyTooltipUi.end(activity, token)
     }
 
     private fun timelinePages(size: Int): List<List<FilteredFullLogEntry>> = TimelinePageMode.pages(

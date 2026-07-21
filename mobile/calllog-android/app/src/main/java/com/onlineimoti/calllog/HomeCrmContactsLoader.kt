@@ -23,11 +23,16 @@ internal class HomeCrmContactsLoader(
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
+    private val busyTokens = linkedSetOf<Long>()
 
-    fun invalidate(): Int = generation.incrementAndGet()
+    fun invalidate(): Int {
+        finishAllBusy()
+        return generation.incrementAndGet()
+    }
 
     fun release() {
         generation.incrementAndGet()
+        finishAllBusy()
         executor.shutdownNow()
     }
 
@@ -35,6 +40,8 @@ internal class HomeCrmContactsLoader(
         val filterState = crmFilters.state()
         val requestedPage = pageIndex()
         val appContext = activity.applicationContext
+        val busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.CLIENTS)
+        busyTokens += busyToken
         contactsContent.showLoading()
         executor.execute {
             val data = runCatching {
@@ -58,6 +65,7 @@ internal class HomeCrmContactsLoader(
                 )
             }.getOrDefault(HomeRenderData(emptyList(), emptyMap(), emptyMap()))
             handler.post {
+                finishBusy(busyToken)
                 val current = expectedGeneration == generation.get() &&
                     !activity.isFinishing &&
                     !activity.isDestroyed &&
@@ -76,6 +84,15 @@ internal class HomeCrmContactsLoader(
                 onRenderComplete()
             }
         }
+    }
+
+    private fun finishBusy(token: Long) {
+        busyTokens.remove(token)
+        HomeBusyTooltipUi.end(activity, token)
+    }
+
+    private fun finishAllBusy() {
+        busyTokens.toList().forEach(::finishBusy)
     }
 
     private fun enrichWithLocalName(contact: PhoneCallRecord): PhoneCallRecord {

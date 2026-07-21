@@ -1,0 +1,183 @@
+package com.onlineimoti.calllog
+
+import android.app.Activity
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.PopupWindow
+import android.widget.TextView
+import java.lang.ref.WeakReference
+import java.util.WeakHashMap
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.max
+
+/** Describes the background work currently responsible for a visible Home delay. */
+internal enum class HomeBusyWork {
+    CALLS,
+    CRM_CALLS,
+    SEARCH,
+    CLIENTS,
+    FULL_LOG,
+    MORE_CALLS,
+    LOCAL_NOTES,
+    SERVER_NOTES,
+    COMPANY_DATA,
+}
+
+internal object HomeBusyText {
+    fun value(work: HomeBusyWork, bulgarian: Boolean): String = if (bulgarian) {
+        when (work) {
+            HomeBusyWork.CALLS -> "Зареждам разговорите…"
+            HomeBusyWork.CRM_CALLS -> "Обработвам CRM разговорите…"
+            HomeBusyWork.SEARCH -> "Търся в разговори и бележки…"
+            HomeBusyWork.CLIENTS -> "Зареждам клиентите…"
+            HomeBusyWork.FULL_LOG -> "Зареждам пълната история…"
+            HomeBusyWork.MORE_CALLS -> "Зареждам още разговори…"
+            HomeBusyWork.LOCAL_NOTES -> "Допълвам локалните бележки…"
+            HomeBusyWork.SERVER_NOTES -> "Допълвам сървърните бележки…"
+            HomeBusyWork.COMPANY_DATA -> "Обновявам фирмените данни…"
+        }
+    } else {
+        when (work) {
+            HomeBusyWork.CALLS -> "Loading calls…"
+            HomeBusyWork.CRM_CALLS -> "Processing CRM calls…"
+            HomeBusyWork.SEARCH -> "Searching calls and notes…"
+            HomeBusyWork.CLIENTS -> "Loading clients…"
+            HomeBusyWork.FULL_LOG -> "Loading full history…"
+            HomeBusyWork.MORE_CALLS -> "Loading more calls…"
+            HomeBusyWork.LOCAL_NOTES -> "Adding local notes…"
+            HomeBusyWork.SERVER_NOTES -> "Adding server notes…"
+            HomeBusyWork.COMPANY_DATA -> "Updating company data…"
+        }
+    }
+}
+
+/**
+ * Shows one non-blocking black overlay for all concurrent Home background tasks.
+ * Tokens prevent an older completion from hiding a newer operation.
+ */
+internal object HomeBusyTooltipUi {
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val nextToken = AtomicLong(0L)
+    private val sessions = WeakHashMap<Activity, Session>()
+
+    fun begin(activity: Activity, work: HomeBusyWork): Long {
+        val token = nextToken.incrementAndGet()
+        mainHandler.post {
+            if (!activity.isFinishing && !activity.isDestroyed) {
+                sessions.getOrPut(activity) { Session(activity) }.begin(token, work)
+            }
+        }
+        return token
+    }
+
+    fun end(activity: Activity, token: Long) {
+        if (token <= 0L) return
+        mainHandler.post { sessions[activity]?.end(token) }
+    }
+
+    fun clear(activity: Activity) {
+        mainHandler.post { sessions.remove(activity)?.release() }
+    }
+
+    private class Session(activity: Activity) {
+        private val activityRef = WeakReference(activity)
+        private val tasks = linkedMapOf<Long, HomeBusyWork>()
+        private var popup: PopupWindow? = null
+        private var label: TextView? = null
+        private var shownAtMs = 0L
+        private val dismissRunnable = Runnable { dismissNow() }
+
+        fun begin(token: Long, work: HomeBusyWork) {
+            tasks.remove(token)
+            tasks[token] = work
+            mainHandler.removeCallbacks(dismissRunnable)
+            showOrUpdate()
+        }
+
+        fun end(token: Long) {
+            tasks.remove(token)
+            if (tasks.isNotEmpty()) {
+                showOrUpdate()
+                return
+            }
+            val remaining = max(0L, MIN_VISIBLE_MS - (SystemClock.uptimeMillis() - shownAtMs))
+            mainHandler.removeCallbacks(dismissRunnable)
+            mainHandler.postDelayed(dismissRunnable, remaining)
+        }
+
+        fun release() {
+            tasks.clear()
+            mainHandler.removeCallbacks(dismissRunnable)
+            dismissNow()
+        }
+
+        private fun showOrUpdate() {
+            val activity = activityRef.get() ?: return
+            val work = tasks.entries.lastOrNull()?.value ?: return
+            val text = HomeBusyText.value(work, AppLocaleText.isBulgarian())
+            label?.text = text
+            if (popup?.isShowing == true) return
+            val anchor = activity.findViewById<View>(android.R.id.content) ?: return
+            if (!anchor.isAttachedToWindow || anchor.windowToken == null) {
+                anchor.post { if (tasks.isNotEmpty()) showOrUpdate() }
+                return
+            }
+            val content = TextView(activity).apply {
+                this.text = text
+                textSize = 12f
+                includeFontPadding = false
+                maxLines = 1
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(dp(activity, 14), 0, dp(activity, 14), 0)
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(15, 23, 42))
+                    cornerRadius = dp(activity, 15).toFloat()
+                }
+                contentDescription = text
+            }
+            label = content
+            popup = PopupWindow(
+                content,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(activity, 30),
+                false,
+            ).apply {
+                setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                isTouchable = false
+                isOutsideTouchable = false
+                isClippingEnabled = true
+                elevation = dp(activity, 9).toFloat()
+                setOnDismissListener {
+                    popup = null
+                    label = null
+                }
+            }
+            runCatching {
+                popup?.showAtLocation(anchor, Gravity.TOP or Gravity.CENTER_HORIZONTAL, 0, dp(activity, 72))
+                shownAtMs = SystemClock.uptimeMillis()
+            }.onFailure {
+                popup = null
+                label = null
+            }
+        }
+
+        private fun dismissNow() {
+            popup?.dismiss()
+            popup = null
+            label = null
+        }
+    }
+
+    private fun dp(activity: Activity, value: Int): Int =
+        (value * activity.resources.displayMetrics.density).toInt()
+
+    private const val MIN_VISIBLE_MS = 320L
+}

@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import java.util.concurrent.Executors
@@ -10,12 +11,15 @@ internal class HomeServerCallNotesController(
     context: Context,
     private val handler: Handler,
 ) {
+    private val activity = context as? Activity
     private val appContext = context.applicationContext
     private val executor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
+    private val busyTokens = linkedSetOf<Long>()
 
     fun invalidate() {
         generation.incrementAndGet()
+        finishAllBusy()
     }
 
     fun enrichAsync(
@@ -42,6 +46,10 @@ internal class HomeServerCallNotesController(
             return
         }
 
+        val busyToken = activity?.let {
+            HomeBusyTooltipUi.begin(it, HomeBusyWork.SERVER_NOTES)
+        } ?: 0L
+        if (busyToken > 0L) busyTokens += busyToken
         executor.execute {
             val history = runCatching {
                 CallReportHistoryLookupClient.lookupMany(config, phones, appContext)
@@ -63,6 +71,7 @@ internal class HomeServerCallNotesController(
                 ),
             )
             handler.post {
+                finishBusy(busyToken)
                 if (expectedGeneration != generation.get()) return@post
                 if (updated != renderData) onUpdated(updated)
                 onFinished()
@@ -72,7 +81,18 @@ internal class HomeServerCallNotesController(
 
     fun release() {
         generation.incrementAndGet()
+        finishAllBusy()
         executor.shutdownNow()
+    }
+
+    private fun finishBusy(token: Long) {
+        if (token <= 0L) return
+        busyTokens.remove(token)
+        activity?.let { HomeBusyTooltipUi.end(it, token) }
+    }
+
+    private fun finishAllBusy() {
+        busyTokens.toList().forEach(::finishBusy)
     }
 
     private fun mergeServerGeneralNotes(

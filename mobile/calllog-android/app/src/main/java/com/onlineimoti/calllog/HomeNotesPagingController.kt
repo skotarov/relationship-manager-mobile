@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.Activity
 import android.view.View
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 
@@ -10,6 +11,7 @@ internal class HomeEdgePagingController(
     previousPage: () -> Unit,
     nextPage: () -> Unit,
 ) {
+    private val activity = binding.root.context as? Activity
     private val originalPaginationHeight = binding.paginationContainer.layoutParams.height
     private val pageRangeTooltip = HomePageRangeTooltipUi(binding)
     private val stickyGroups = StickyGroupHeaderController(
@@ -17,6 +19,7 @@ internal class HomeEdgePagingController(
         binding.homeCallsContainer,
         binding.stickyGroupHeader,
     )
+    private var pagingBusyToken = 0L
     private val paginationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
         hideAutomaticModeNavigation()
     }
@@ -37,8 +40,10 @@ internal class HomeEdgePagingController(
         onLoadingChanged = { loading ->
             binding.fullLogProgress.visibility = View.GONE
             if (loading) {
+                beginPagingStatus()
                 HomeLoadingFooterUi.show(binding.homeCallsContainer)
             } else {
+                finishPagingStatus()
                 HomeLoadingFooterUi.hide(binding.homeCallsContainer)
                 binding.homeCallsContainer.post {
                     pageRangeTooltip.show(HomePagedListUi.visiblePageCount(binding.homeCallsContainer))
@@ -48,6 +53,7 @@ internal class HomeEdgePagingController(
     )
 
     init {
+        activity?.let(HomePageReadyState::attach)
         binding.paginationContainer.addOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.setOnReady { bind() }
         updateNavigationVisibility()
@@ -62,6 +68,7 @@ internal class HomeEdgePagingController(
 
     fun cancel() {
         delegate.cancelPending()
+        finishPagingStatus()
         pageRangeTooltip.reset()
     }
 
@@ -70,9 +77,24 @@ internal class HomeEdgePagingController(
     fun release() {
         binding.paginationContainer.removeOnLayoutChangeListener(paginationLayoutListener)
         HomePageReadyState.clearOnReady()
+        activity?.let(HomePageReadyState::detach)
         delegate.release()
+        finishPagingStatus()
         stickyGroups.release()
         pageRangeTooltip.release()
+    }
+
+    private fun beginPagingStatus() {
+        finishPagingStatus()
+        pagingBusyToken = activity?.let {
+            HomeBusyTooltipUi.begin(it, HomeBusyWork.MORE_CALLS)
+        } ?: 0L
+    }
+
+    private fun finishPagingStatus() {
+        val token = pagingBusyToken
+        pagingBusyToken = 0L
+        activity?.let { HomeBusyTooltipUi.end(it, token) }
     }
 
     private fun updateNavigationVisibility() {
