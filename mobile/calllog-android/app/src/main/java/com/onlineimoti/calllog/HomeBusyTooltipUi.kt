@@ -17,7 +17,7 @@ import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
-/** Describes the background work currently responsible for a visible Home delay. */
+/** Describes background work currently responsible for a visible screen delay. */
 internal enum class HomeBusyWork {
     CALLS,
     CRM_CALLS,
@@ -28,6 +28,9 @@ internal enum class HomeBusyWork {
     LOCAL_NOTES,
     SERVER_NOTES,
     COMPANY_DATA,
+    HISTORY_LOCAL,
+    HISTORY_SERVER,
+    HISTORY_PREPARE,
 }
 
 internal object HomeBusyText {
@@ -42,6 +45,9 @@ internal object HomeBusyText {
             HomeBusyWork.LOCAL_NOTES -> "Допълвам локалните бележки…"
             HomeBusyWork.SERVER_NOTES -> "Допълвам сървърните бележки…"
             HomeBusyWork.COMPANY_DATA -> "Обновявам фирмените данни…"
+            HomeBusyWork.HISTORY_LOCAL -> "Зареждам локалната история…"
+            HomeBusyWork.HISTORY_SERVER -> "Зареждам историята от сървъра…"
+            HomeBusyWork.HISTORY_PREPARE -> "Подготвям историята…"
         }
     } else {
         when (work) {
@@ -54,12 +60,15 @@ internal object HomeBusyText {
             HomeBusyWork.LOCAL_NOTES -> "Adding local notes…"
             HomeBusyWork.SERVER_NOTES -> "Adding server notes…"
             HomeBusyWork.COMPANY_DATA -> "Updating company data…"
+            HomeBusyWork.HISTORY_LOCAL -> "Loading local history…"
+            HomeBusyWork.HISTORY_SERVER -> "Loading server history…"
+            HomeBusyWork.HISTORY_PREPARE -> "Preparing history…"
         }
     }
 }
 
 /**
- * Shows one non-blocking black overlay for all concurrent Home background tasks.
+ * Shows one non-blocking black overlay for concurrent background tasks.
  * Tokens prevent an older completion from hiding a newer operation.
  */
 internal object HomeBusyTooltipUi {
