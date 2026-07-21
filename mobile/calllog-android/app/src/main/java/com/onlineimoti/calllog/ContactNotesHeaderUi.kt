@@ -110,7 +110,12 @@ class ContactNotesHeaderUi(
     private fun identityBlock(displayName: String, phone: String, contactExists: Boolean): LinearLayout {
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(8), 0, dp(10))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
             if (contactExists && displayName.isNotBlank()) {
                 addView(contactNameText(displayName))
                 if (phone.isNotBlank()) addView(phoneNumberText(phone, prominent = false))
@@ -234,11 +239,17 @@ class ContactNotesHeaderUi(
         textSize = if (prominent) 20f else 15f
         typeface = if (prominent) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
         setTextColor(if (prominent) Color.rgb(15, 23, 42) else Color.rgb(71, 85, 105))
+        gravity = Gravity.CENTER
+        textAlignment = View.TEXT_ALIGNMENT_CENTER
         maxLines = 1
         ellipsize = android.text.TextUtils.TruncateAt.END
         isClickable = true
         isFocusable = true
-        setPadding(0, dp(3), 0, dp(3))
+        setPadding(dp(8), dp(3), dp(8), dp(3))
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
         setOnClickListener {
             copyToClipboard(
                 activity.getString(R.string.dynamic_clipboard_phone_label),
@@ -253,11 +264,17 @@ class ContactNotesHeaderUi(
         textSize = 22f
         typeface = Typeface.DEFAULT_BOLD
         setTextColor(Color.rgb(15, 23, 42))
+        gravity = Gravity.CENTER
+        textAlignment = View.TEXT_ALIGNMENT_CENTER
         maxLines = 2
         ellipsize = null
         isClickable = true
         isFocusable = true
-        setPadding(0, dp(3), 0, dp(3))
+        setPadding(dp(8), dp(3), dp(8), dp(3))
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        )
         setOnClickListener {
             copyToClipboard(
                 activity.getString(R.string.dynamic_clipboard_name_label),
