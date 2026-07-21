@@ -18,13 +18,17 @@ internal class HomePageRangeTooltipUi(
     private val handler = Handler(Looper.getMainLooper())
     private var popup: PopupWindow? = null
     private var lastShownPageCount = 0
+    private var requestGeneration = 0
     private val dismissRunnable = Runnable { dismissPopup() }
 
     fun show(pageCount: Int) {
         if (pageCount <= 1 || pageCount == lastShownPageCount) return
-        lastShownPageCount = pageCount
+        val expectedGeneration = requestGeneration
         binding.root.post {
+            if (expectedGeneration != requestGeneration) return@post
             if (!binding.root.isAttachedToWindow || binding.root.windowToken == null) return@post
+            if (pageCount == lastShownPageCount) return@post
+            lastShownPageCount = pageCount
             dismissPopup()
             val context = binding.root.context
             val content = TextView(context).apply {
@@ -58,6 +62,7 @@ internal class HomePageRangeTooltipUi(
     }
 
     fun reset() {
+        requestGeneration += 1
         lastShownPageCount = 0
         dismissPopup()
     }
