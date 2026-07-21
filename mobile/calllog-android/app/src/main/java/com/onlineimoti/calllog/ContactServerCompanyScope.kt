@@ -13,8 +13,9 @@ import androidx.core.content.ContextCompat
 internal object ContactServerCompanyScope {
     fun isAvailable(context: Context, phone: String): Boolean {
         if (phone.isBlank()) return false
-        if (CrmContactSyncStore.isEnabled(context, phone)) return true
-        return isUnknownNumber(context, phone)
+        val crmEnabled = CrmContactSyncStore.isEnabled(context, phone)
+        val unknownNumber = !crmEnabled && isUnknownNumber(context, phone)
+        return ContactServerCompanyScopePolicy.isAvailable(crmEnabled, unknownNumber)
     }
 
     fun isUnknownNumber(context: Context, phone: String): Boolean {
@@ -26,4 +27,9 @@ internal object ContactServerCompanyScope {
         }
         return RmRealContactLookup.findContactId(context, phone) <= 0L
     }
+}
+
+internal object ContactServerCompanyScopePolicy {
+    fun isAvailable(crmEnabled: Boolean, unknownNumber: Boolean): Boolean =
+        crmEnabled || unknownNumber
 }
