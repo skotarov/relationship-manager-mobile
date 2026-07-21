@@ -23,7 +23,7 @@ internal object CallReportTopicNoteOutbox {
         val appContext = context.applicationContext
         val key = phoneKey(phone)
         val target = companyId.trim()
-        if (!isCrmMarked(appContext, phone) || key.isBlank() || target.isBlank()) return false
+        if (!hasServerCompanyScope(appContext, phone) || key.isBlank() || target.isBlank()) return false
         val now = System.currentTimeMillis()
         return enqueue(appContext, CallReportQueuedTopicNote(
             clientEventId = "${CallReportInstallationId.get(appContext)}:topic:general:$key:$target",
@@ -50,7 +50,7 @@ internal object CallReportTopicNoteOutbox {
     ): Boolean {
         val appContext = context.applicationContext
         val target = companyId.trim()
-        if (!isCrmMarked(appContext, phone) || target.isBlank() || phoneKey(phone).isBlank() || callAt <= 0L) return false
+        if (!hasServerCompanyScope(appContext, phone) || target.isBlank() || phoneKey(phone).isBlank() || callAt <= 0L) return false
         val stableId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
         if (stableId.isBlank()) return false
         return enqueue(appContext, CallReportQueuedTopicNote(
@@ -78,7 +78,7 @@ internal object CallReportTopicNoteOutbox {
         clientNoteId: String = "",
     ): Boolean {
         val appContext = context.applicationContext
-        if (!isCrmMarked(appContext, phone) || phoneKey(phone).isBlank() || callAt <= 0L) return false
+        if (!hasServerCompanyScope(appContext, phone) || phoneKey(phone).isBlank() || callAt <= 0L) return false
         val stableId = clientNoteId.ifBlank { LocalNotesFileStore.clientNoteIdForCall(phone, callAt, direction) }
         if (stableId.isBlank()) return false
         return enqueue(appContext, CallReportQueuedTopicNote(
@@ -104,7 +104,7 @@ internal object CallReportTopicNoteOutbox {
         val appContext = context.applicationContext
         val target = companyId.trim()
         val providerId = sms.providerId.trim()
-        if (!isCrmMarked(appContext, phone) || target.isBlank() || providerId.isBlank() || phoneKey(phone).isBlank() || sms.timestampMs <= 0L) return false
+        if (!hasServerCompanyScope(appContext, phone) || target.isBlank() || providerId.isBlank() || phoneKey(phone).isBlank() || sms.timestampMs <= 0L) return false
         return enqueue(appContext, CallReportQueuedTopicNote(
             clientEventId = ServerRecordIndex.communicationEventId(appContext, "sms", providerId),
             companyId = target,
@@ -179,9 +179,9 @@ internal object CallReportTopicNoteOutbox {
     internal fun takeBatch(context: Context, limit: Int): List<CallReportQueuedTopicNote> = synchronized(lock) {
         val appContext = context.applicationContext
         val operations = readLocked(appContext)
-        // When CRM is turned off for a contact, discard its pending topic moves.
-        // They must not be uploaded later simply because the phone reconnects.
-        val eligibleOperations = operations.filter { isCrmMarked(appContext, it.phone) }
+        // Company notes are valid for CRM contacts and for genuinely unknown
+        // numbers. Discard only operations whose phone no longer has either scope.
+        val eligibleOperations = operations.filter { hasServerCompanyScope(appContext, it.phone) }
         if (eligibleOperations.size != operations.size) writeLocked(appContext, eligibleOperations)
         eligibleOperations.sortedBy { it.updatedAtMs }.take(limit.coerceIn(1, 50))
     }
@@ -267,8 +267,8 @@ internal object CallReportTopicNoteOutbox {
         )
     }
 
-    private fun isCrmMarked(context: Context, phone: String): Boolean {
-        return CrmContactSyncStore.isEnabled(context.applicationContext, phone)
+    private fun hasServerCompanyScope(context: Context, phone: String): Boolean {
+        return ContactServerCompanyScope.isAvailable(context.applicationContext, phone)
     }
 
     private fun contactName(context: Context, phone: String): String =
