@@ -5,7 +5,6 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
@@ -38,6 +37,7 @@ internal class ContactNotesRestoredController(
         )
     }
     private val edgePaging by lazy { HistoryEdgePagingController(historyController) }
+    private val stickyHistoryUi by lazy { ContactNotesStickyHistoryUi(activity) }
     private val generalNoteSectionUi by lazy {
         CompanyScopedGeneralNoteSectionUi(
             activity = activity,
@@ -70,7 +70,7 @@ internal class ContactNotesRestoredController(
 
     fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        edgePaging.release()
+        stickyHistoryUi.release(); edgePaging.release()
         crmSyncExecutor.shutdownNow()
         historyController.release()
     }
@@ -145,16 +145,7 @@ internal class ContactNotesRestoredController(
             onEditSms = ::openSmsCompanyEditor,
         )
         CrmHistoryTextLocalizer.apply(activity, root)
-        val scrollView = ScrollView(activity).apply {
-            setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
-            addView(root)
-        }
-        edgePaging.bind(scrollView, root)
-        activity.setContentView(PullToRefreshLayout(activity).apply {
-            addView(scrollView)
-            setOnRefreshListener(::refreshFromPull)
-            if (showPullRefresh) setRefreshing(true)
-        })
+        stickyHistoryUi.show(root, showPullRefresh, ::refreshFromPull, edgePaging::bind)
     }
 
     private fun hasConfirmedLocalServerNote(): Boolean {
