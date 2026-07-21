@@ -20,4 +20,11 @@ class ContactNotesStickyActionPolicyTest {
     fun ignoresUnknownAnchorPosition() {
         assertFalse(ContactNotesStickyActionPolicy.shouldStick(scrollY = 100, anchorTop = -1))
     }
+
+    @Test
+    fun compactIdentityAppearsOnlyAfterTheLargeIdentityIsHidden() {
+        assertFalse(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 119, identityBottom = 120))
+        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 120, identityBottom = 120))
+        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 500, identityBottom = 120))
+    }
 }
