@@ -231,17 +231,31 @@
         android:layout_marginTop="12dp"
         android:layout_weight="1">
 
-        <ScrollView
-            android:id="@+id/homeCallsScrollView"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <LinearLayout
-                android:id="@+id/homeCallsContainer"
+            <ScrollView
+                android:id="@+id/homeCallsScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:id="@+id/homeCallsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/stickyGroupHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
+                android:layout_gravity="top"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:visibility="gone" />
+        </FrameLayout>
     </com.onlineimoti.calllog.PullToRefreshLayout>
 
     <LinearLayout
