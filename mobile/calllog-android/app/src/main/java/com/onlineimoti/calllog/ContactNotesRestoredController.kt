@@ -17,8 +17,6 @@ internal class ContactNotesRestoredController(
     private var titleText = ""
     private var crmSyncBusy = false
     private var pullRefreshRequested = false
-    private var confirmedNoteVersion = Long.MIN_VALUE
-    private var confirmedLocalServerNote = false
     private val handler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
@@ -54,8 +52,6 @@ internal class ContactNotesRestoredController(
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
         }
-        confirmedNoteVersion = Long.MIN_VALUE
-        confirmedLocalServerNote = false
         render()
         historyController.loadOnce(phone)
     }
@@ -93,7 +89,7 @@ internal class ContactNotesRestoredController(
         val config = ConfigStore.load(activity)
         val crmSyncEnabled = CrmContactSyncStore.isEnabled(activity, phone)
         val crmSyncServerBacked = !crmSyncEnabled && (
-            historyController.hasServerRecordsFor(phone) || hasConfirmedLocalServerNote()
+            historyController.hasServerRecordsFor(phone) || historyController.hasConfirmedLocalServerNote()
         )
         val phaseControlsVisible = config.remoteEnabled && RmContactSyncLayerStore.isEnabled(activity, phone)
         val root = LinearLayout(activity).apply {
@@ -104,7 +100,7 @@ internal class ContactNotesRestoredController(
         root.addView(headerUi.headerRow(
             title = titleText,
             phone = phone,
-            contactExists = externalActions.hasDefaultContact(phone),
+            contactExists = historyController.contactExists(),
             showRmCallLogButton = true,
             showCrmSyncButton = config.remoteEnabled,
             crmSyncEnabled = crmSyncEnabled,
@@ -126,7 +122,9 @@ internal class ContactNotesRestoredController(
         ))
         generalNoteSectionUi.add(
             root = root,
-            phone = phone,
+            localNote = historyController.localGeneralNote(),
+            localNotePending = historyController.localGeneralNotePending(),
+            companyScopeAvailable = historyController.companyScopeAvailable(),
             companyNotes = historyController.companyMainNotes(phone),
             unscopedServerMainNote = historyController.unscopedServerMainNote(phone),
             showCompanyNotes = historyController.hasCompanyMainNoteScope(),
@@ -136,7 +134,6 @@ internal class ContactNotesRestoredController(
                 { companyId -> phaseUi.phaseBar(phone, companyId, true, ::render) }
             } else null,
         )
-        PendingCallNoteStore.reconcilePendingForPhone(activity, phone)
         historyController.addSection(
             root = root,
             phone = phone,
@@ -148,21 +145,10 @@ internal class ContactNotesRestoredController(
         stickyHistoryUi.show(root, showPullRefresh, ::refreshFromPull, edgePaging::bind)
     }
 
-    private fun hasConfirmedLocalServerNote(): Boolean {
-        val currentVersion = ServerRecordIndex.confirmationVersion(activity)
-        if (currentVersion == confirmedNoteVersion) return confirmedLocalServerNote
-        confirmedNoteVersion = currentVersion
-        confirmedLocalServerNote = ServerRecordIndex.hasConfirmedNoteForPhone(
-            context = activity,
-            phone = phone,
-            callNotes = ContactNoteReader.callNotesForPhone(activity, phone),
-        )
-        return confirmedLocalServerNote
-    }
-
     private fun setCrmSyncEnabled(enabled: Boolean) {
         if (crmSyncBusy || phone.isBlank() || !ConfigStore.load(activity).remoteEnabled) return
         val requestedPhone = phone
+        val busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.COMPANY_DATA)
         crmSyncBusy = true
         render()
         crmSyncExecutor.execute {
@@ -174,6 +160,7 @@ internal class ContactNotesRestoredController(
                 )
             }.getOrDefault(false)
             handler.post {
+                HomeBusyTooltipUi.end(activity, busyToken)
                 if (activity.isFinishing || activity.isDestroyed) return@post
                 crmSyncBusy = false
                 val message = when {
