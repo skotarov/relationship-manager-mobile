@@ -10,7 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Renders Notes and SMS directly on the History background. */
+/** Renders already prepared Notes and SMS directly on the History background. */
 internal class CallReportHistoryRowsUi(
     private val activity: Activity,
     private val dp: (Int) -> Int,
@@ -33,9 +33,8 @@ internal class CallReportHistoryRowsUi(
         phone: String,
         remoteEnabled: Boolean,
         principal: CallReportHistoryPrincipal,
-        serverEvents: List<CallReportHistoryEvent>,
+        rows: List<CallReportHistoryRow>,
         latestLocalCall: PhoneCallRecord?,
-        localSms: List<SmsMessageRecord>,
         localNotes: List<ContactCallNote>,
         localLoading: Boolean,
         serverLoading: Boolean,
@@ -44,15 +43,6 @@ internal class CallReportHistoryRowsUi(
         onEditSms: (SmsMessageRecord, String) -> Unit,
         onPageChanged: () -> Unit,
     ) {
-        val rows = CallReportHistoryMerge.merge(
-            context = activity,
-            phone = phone,
-            principal = if (remoteEnabled) principal else CallReportHistoryPrincipal(),
-            localCalls = emptyList(),
-            localSms = localSms,
-            localNotes = localNotes,
-            serverEvents = if (remoteEnabled) serverEvents else emptyList(),
-        )
         val companyNames = principal.companies.associate { it.id to it.name }
         val page = paginationUi.currentPage(rows)
 
