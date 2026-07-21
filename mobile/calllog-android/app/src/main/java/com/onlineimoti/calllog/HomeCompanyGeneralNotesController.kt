@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import java.util.concurrent.Executors
@@ -13,6 +14,7 @@ internal class HomeCompanyGeneralNotesController(
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     private val generation = AtomicInteger(0)
+    private val busyTokens = linkedSetOf<Long>()
     private var requestSignature = ""
     private var labelsByPhoneKey: Map<String, List<HomeCompanyScopeLabel>> = emptyMap()
     private var serverBackedPhoneKeys: Set<String> = emptySet()
@@ -57,12 +59,17 @@ internal class HomeCompanyGeneralNotesController(
             return
         }
 
+        val busyToken = (context as? Activity)?.let {
+            HomeBusyTooltipUi.begin(it, HomeBusyWork.COMPANY_DATA)
+        } ?: 0L
+        if (busyToken > 0L) busyTokens += busyToken
         val currentGeneration = generation.incrementAndGet()
         executor.execute {
             val snapshot = runCatching {
                 HomeCompanyGeneralNoteLabels.fetch(context.applicationContext, config, phones)
             }.getOrDefault(HomeCompanyScopeSnapshot())
             handler.post {
+                finishBusy(busyToken)
                 if (currentGeneration != generation.get()) return@post
                 if (labelsByPhoneKey == snapshot.labelsByPhoneKey && serverBackedPhoneKeys == snapshot.serverBackedPhoneKeys) return@post
                 labelsByPhoneKey = snapshot.labelsByPhoneKey
@@ -75,10 +82,22 @@ internal class HomeCompanyGeneralNotesController(
     fun invalidate() {
         requestSignature = ""
         generation.incrementAndGet()
+        finishAllBusy()
     }
 
     fun release() {
         generation.incrementAndGet()
+        finishAllBusy()
         executor.shutdownNow()
+    }
+
+    private fun finishBusy(token: Long) {
+        if (token <= 0L) return
+        busyTokens.remove(token)
+        (context as? Activity)?.let { HomeBusyTooltipUi.end(it, token) }
+    }
+
+    private fun finishAllBusy() {
+        busyTokens.toList().forEach(::finishBusy)
     }
 }
