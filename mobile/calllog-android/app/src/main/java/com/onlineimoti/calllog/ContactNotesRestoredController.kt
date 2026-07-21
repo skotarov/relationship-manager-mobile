@@ -52,8 +52,8 @@ internal class ContactNotesRestoredController(
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
         }
-        render()
         historyController.loadOnce(phone)
+        render()
     }
 
     fun onResume() {
@@ -162,6 +162,10 @@ internal class ContactNotesRestoredController(
             handler.post {
                 HomeBusyTooltipUi.end(activity, busyToken)
                 if (activity.isFinishing || activity.isDestroyed) return@post
+                if (requestedPhone != phone) {
+                    crmSyncBusy = false
+                    return@post
+                }
                 crmSyncBusy = false
                 val message = when {
                     updated && enabled -> activity.getString(R.string.dynamic_crm_sync_turned_on)
@@ -170,7 +174,8 @@ internal class ContactNotesRestoredController(
                     else -> activity.getString(R.string.dynamic_crm_sync_clear_failed)
                 }
                 Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-                historyController.refreshServer(phone)
+                historyController.refreshLocal(requestedPhone)
+                historyController.refreshServer(requestedPhone)
                 render()
             }
         }
