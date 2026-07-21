@@ -8,6 +8,7 @@ import android.view.ViewTreeObserver
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import kotlin.math.abs
 
 /** Marks group titles and keeps the active title fixed over a scrolling list. */
 internal object StickyGroupHeaderUi {
@@ -27,7 +28,14 @@ internal object StickyGroupHeaderUi {
         elevation = 4 * density
     }
 
-    fun isMarked(view: View): Boolean = view.tag === marker
+    fun isMarked(view: View): Boolean {
+        if (view.tag === marker) return true
+        val text = view as? TextView ?: return false
+        val sizeSp = text.textSize / text.resources.displayMetrics.scaledDensity
+        return text.text.isNotBlank() && text.background == null && text.typeface?.isBold == true &&
+            abs(sizeSp - 12.5f) < 0.2f &&
+            text.currentTextColor == ContextCompat.getColor(text.context, R.color.callreport_icon_background)
+    }
 }
 
 internal data class StickyGroupHeaderState(
