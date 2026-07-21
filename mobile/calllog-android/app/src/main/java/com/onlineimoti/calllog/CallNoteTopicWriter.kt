@@ -12,13 +12,20 @@ internal object CallNoteTopicWriter {
     ): CallNoteWriteResult {
         // A company/topic note is server-scoped metadata. It must not imply that
         // this device/user has marked the phone as a local CRM client.
-        val saved = CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, text)
-        val result = CallNoteWriteResult(saved, true, CallNoteTarget("", 0L, 0L))
-        if (!saved) return result
+        val previous = CallReportCompanyGeneralNoteStore.noteFor(context, phone, companyId)
+        val cached = CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, text)
+        if (!cached) return CallNoteWriteResult(false, true, CallNoteTarget("", 0L, 0L))
+
+        val queued = CallReportTopicNoteOutbox.enqueueGeneral(context, phone, text, companyId)
+        if (!queued) {
+            // Never report success for a server-scoped note that only reached the
+            // temporary local cache. Restore the previous cache value instead.
+            CallReportCompanyGeneralNoteStore.saveOrDelete(context, phone, companyId, previous)
+            return CallNoteWriteResult(false, true, CallNoteTarget("", 0L, 0L))
+        }
 
         HomeCrmCompanyMembershipStore.invalidate(context, phone)
-        CallReportTopicNoteOutbox.enqueueGeneral(context, phone, text, companyId)
-        return result
+        return CallNoteWriteResult(true, true, CallNoteTarget("", 0L, 0L))
     }
 
     fun writeCallOrGeneral(
