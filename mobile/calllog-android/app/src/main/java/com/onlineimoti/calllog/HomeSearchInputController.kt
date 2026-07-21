@@ -65,6 +65,9 @@ internal class HomeSearchInputController(
     private fun clear() {
         cancelPending()
         binding.searchInput.setText("")
+        // setText triggers TextWatcher synchronously and schedules a new empty-query
+        // debounce. Cancel it so closing Search produces only one Home render.
+        cancelPending()
         onSearchCleared()
         updateButtonIcon()
     }
