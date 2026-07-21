@@ -40,7 +40,8 @@ internal class HomeCrmContactsLoader(
         val filterState = crmFilters.state()
         val requestedPage = pageIndex()
         val appContext = activity.applicationContext
-        val busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.CLIENTS).also(busyTokens::add)
+        val busyToken = HomeBusyTooltipUi.begin(activity, HomeBusyWork.CLIENTS)
+        busyTokens += busyToken
         contactsContent.showLoading()
         executor.execute {
             val data = runCatching {
