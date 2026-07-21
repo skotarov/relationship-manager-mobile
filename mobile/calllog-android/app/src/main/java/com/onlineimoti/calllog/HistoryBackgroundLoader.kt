@@ -57,6 +57,8 @@ internal object HistoryBackgroundLoader {
         localNotes: List<ContactCallNote>,
     ): HistoryPreparedSnapshot {
         if (phone.isBlank()) return HistoryPreparedSnapshot()
+        if (remoteEnabled) reconcileServerConfirmation(context, phone, history)
+        val scopedServerLoaded = remoteEnabled && serverLoaded
         val principal = if (remoteEnabled) history.principal else CallReportHistoryPrincipal()
         val timelineEvents = if (remoteEnabled) notesAndSms(history.events) else emptyList()
         return HistoryPreparedSnapshot(
@@ -69,11 +71,30 @@ internal object HistoryBackgroundLoader {
                 localNotes = localNotes,
                 serverEvents = timelineEvents,
             ),
-            companyMainNotes = companyMainNotes(context, phone, serverLoaded, history),
-            unscopedServerMainNote = unscopedServerMainNote(phone, serverLoaded, history),
-            hasCompanyMainNoteScope = serverLoaded && history.principal.companies.isNotEmpty(),
+            companyMainNotes = companyMainNotes(context, phone, scopedServerLoaded, history),
+            unscopedServerMainNote = unscopedServerMainNote(phone, scopedServerLoaded, history),
+            hasCompanyMainNoteScope = scopedServerLoaded && history.principal.companies.isNotEmpty(),
             confirmedLocalServerNote = ServerRecordIndex.hasConfirmedNoteForPhone(context, phone, localNotes),
         )
+    }
+
+    private fun reconcileServerConfirmation(
+        context: Context,
+        phone: String,
+        history: CallReportHistoryLookupResult,
+    ) {
+        val phoneKey = HomeCallPageLoader.noteKey(phone)
+        val confirmedNoteIds = history.events.asSequence()
+            .filter { event ->
+                event.communicationType.equals("note", ignoreCase = true) &&
+                    event.note.trim().isNotBlank() &&
+                    HomeCallPageLoader.noteKey(event.phone) == phoneKey
+            }
+            .map { event -> event.clientEventId.trim() }
+            .filter { id -> id.isNotBlank() }
+            .toList()
+        ServerRecordIndex.markConfirmed(context, history.events.map { it.clientEventId })
+        ServerRecordIndex.reconcileConfirmedNotesForPhone(context, phone, confirmedNoteIds)
     }
 
     private fun companyMainNotes(
