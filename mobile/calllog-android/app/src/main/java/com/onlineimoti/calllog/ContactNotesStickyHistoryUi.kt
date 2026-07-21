@@ -26,7 +26,11 @@ internal class ContactNotesStickyHistoryUi(
             addView(root)
         }
         val overlay = TextView(activity)
-        val viewport = FrameLayout(activity).apply {
+        val viewport = StickyScrollViewport(activity).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
             addView(scrollView, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
