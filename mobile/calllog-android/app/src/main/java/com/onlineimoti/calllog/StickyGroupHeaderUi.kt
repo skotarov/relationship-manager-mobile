@@ -101,12 +101,19 @@ internal class StickyGroupHeaderController(
     }
 
     private fun update() {
-        if (!bound || headers.isEmpty() || !scrollView.isAttachedToWindow) {
+        if (!bound || !scrollView.isAttachedToWindow) {
+            hide()
+            return
+        }
+        if (headers.isEmpty() || headers.any { !it.isAttachedToWindow }) refreshHeaders()
+        if (headers.isEmpty()) {
             hide()
             return
         }
         scrollView.getLocationOnScreen(scrollLocation)
-        val visibleHeaders = headers.filter { it.visibility == View.VISIBLE && it.height > 0 }
+        val visibleHeaders = headers.filter {
+            it.isAttachedToWindow && it.visibility == View.VISIBLE && it.height > 0
+        }
         if (visibleHeaders.isEmpty()) {
             hide()
             return
