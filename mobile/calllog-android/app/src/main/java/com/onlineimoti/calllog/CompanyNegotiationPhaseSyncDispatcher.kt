@@ -1,5 +1,6 @@
 package com.onlineimoti.calllog
 
+import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -17,11 +18,16 @@ internal object CompanyNegotiationPhaseSyncDispatcher {
             companyId.isBlank() ||
             !CallReportRemoteAccess.isReady(ConfigStore.load(appContext))
         ) return
+        val activity = context as? Activity
+        val busyToken = activity?.let { HomeBusyTooltipUi.begin(it, HomeBusyWork.COMPANY_DATA) } ?: 0L
         executor.execute {
             val changed = runCatching {
                 CompanyNegotiationPhaseSync.synchronize(appContext, phone, companyId)
             }.getOrDefault(false)
-            mainHandler.post { onResolved(changed) }
+            mainHandler.post {
+                if (activity != null) HomeBusyTooltipUi.end(activity, busyToken)
+                onResolved(changed)
+            }
         }
     }
 }
