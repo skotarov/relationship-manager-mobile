@@ -26,6 +26,7 @@ internal class HomeSearchController(
     private val onRenderComplete: () -> Unit,
 ) {
     private var activeTask: Future<*>? = null
+    private var busyToken = 0L
     private val dataSource = HomeSearchDataSource(context)
 
     fun renderSearchCallsAsync() {
@@ -45,6 +46,9 @@ internal class HomeSearchController(
         }
 
         cancelActiveTask()
+        val activity = binding.root.context as? HomeActivity
+        busyToken = activity?.let { HomeBusyTooltipUi.begin(it, HomeBusyWork.SEARCH) } ?: 0L
+        val requestBusyToken = busyToken
         val generation = searchGeneration.incrementAndGet()
         val phoneFilter = activePhoneFilter()
         val crmMode = isCrmModeEnabled()
@@ -102,6 +106,7 @@ internal class HomeSearchController(
             )
             if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
+                finishBusy(requestBusyToken)
                 if (generation != searchGeneration.get()) return@post
                 if (
                     query != activeSearchQuery() ||
@@ -150,7 +155,14 @@ internal class HomeSearchController(
         activeTask?.cancel(true)
         activeTask = null
         searchGeneration.incrementAndGet()
+        finishBusy(busyToken)
         if (activeSearchQuery().isBlank()) hideSearchStatus()
+    }
+
+    private fun finishBusy(token: Long) {
+        if (token <= 0L) return
+        if (busyToken == token) busyToken = 0L
+        (binding.root.context as? HomeActivity)?.let { HomeBusyTooltipUi.end(it, token) }
     }
 
     private fun isFilterStateCurrent(
