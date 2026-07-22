@@ -44,9 +44,9 @@ internal class ContactNotesHeaderActionsUi(
         val cloudIcon = ImageView(activity).apply {
             setImageResource(if (filledCloud) R.drawable.ic_cloud_note_filled else R.drawable.ic_cloud_note)
             imageTintList = ColorStateList.valueOf(cloudColor)
-            scaleType = ImageView.ScaleType.CENTER
-            setPadding(dp(4), dp(5), dp(4), dp(5))
-            layoutParams = LinearLayout.LayoutParams(dp(26), dp(36))
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(3), dp(5), dp(3), dp(5))
+            layoutParams = LinearLayout.LayoutParams(dp(30), dp(36))
         }
         val crmLabel = TextView(activity).apply {
             text = "CRM"
@@ -54,7 +54,7 @@ internal class ContactNotesHeaderActionsUi(
             setTypeface(typeface, Typeface.BOLD)
             setTextColor(labelColor)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 0, dp(5), 0)
+            setPadding(0, 0, dp(6), 0)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -63,7 +63,7 @@ internal class ContactNotesHeaderActionsUi(
         return LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(2), 0, 0, 0)
+            setPadding(dp(4), 0, dp(1), 0)
             background = if (enabled) roundedIconBackground(activeColor) else null
             contentDescription = description
             isClickable = available && !busy
