@@ -22,8 +22,7 @@ internal object StickyGroupHeaderUi {
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER_VERTICAL
         setTextColor(ContextCompat.getColor(context, R.color.callreport_icon_background))
-        // The fixed group title is part of the page surface, not a separate raised bar.
-        background = null
+        setBackgroundColor(ContextCompat.getColor(context, R.color.calllog_bg))
         elevation = 0f
         stateListAnimator = null
         val density = resources.displayMetrics.density
