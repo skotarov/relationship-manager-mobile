@@ -32,41 +32,27 @@ class ContactNotesStickyActionPolicyTest {
     }
 
     @Test
-    fun compactIdentityWaitsUntilTheLargeIdentityIsCompletelyHidden() {
-        assertFalse(
-            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
-                identityBottomOnScreen = 101,
-                viewportTopOnScreen = 100,
-            ),
-        )
-        assertTrue(
-            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
-                identityBottomOnScreen = 100,
-                viewportTopOnScreen = 100,
-            ),
-        )
-        assertTrue(
-            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
-                identityBottomOnScreen = 20,
-                viewportTopOnScreen = 100,
-            ),
-        )
+    fun compactIdentityUsesTheSameStateAsThePinnedActionRow() {
+        assertFalse(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(actionsPinned = false))
+        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(actionsPinned = true))
     }
 
     @Test
-    fun compactIdentityAndPinnedActionsHaveIndependentTransitionPoints() {
+    fun compactIdentityAndActionsChangeAtTheSameScrollThreshold() {
         val viewportTop = 100
-        assertTrue(
-            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
-                identityBottomOnScreen = viewportTop,
-                viewportTopOnScreen = viewportTop,
-            ),
+
+        val beforeThreshold = ContactNotesStickyActionPolicy.shouldStick(
+            actionTopOnScreen = viewportTop + 1,
+            viewportTopOnScreen = viewportTop,
         )
-        assertFalse(
-            ContactNotesStickyActionPolicy.shouldStick(
-                actionTopOnScreen = viewportTop + 2,
-                viewportTopOnScreen = viewportTop,
-            ),
+        assertFalse(beforeThreshold)
+        assertFalse(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(beforeThreshold))
+
+        val atThreshold = ContactNotesStickyActionPolicy.shouldStick(
+            actionTopOnScreen = viewportTop,
+            viewportTopOnScreen = viewportTop,
         )
+        assertTrue(atThreshold)
+        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(atThreshold))
     }
 }
