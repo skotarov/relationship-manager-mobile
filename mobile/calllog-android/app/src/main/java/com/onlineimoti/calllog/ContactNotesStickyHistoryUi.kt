@@ -280,6 +280,6 @@ internal class ContactNotesStickyHistoryUi(
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
-        const val MODE_BAR_HEIGHT_DP = 52
+        const val MODE_BAR_HEIGHT_DP = 48
     }
 }
