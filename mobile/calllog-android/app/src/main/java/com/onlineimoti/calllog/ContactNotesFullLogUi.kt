@@ -26,25 +26,18 @@ internal class ContactNotesFullLogUi(
         loading: Boolean,
         errorText: String,
         openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
-        onPageChanged: () -> Unit,
     ) {
         entries = incomingEntries
-        val pages = pages()
-        val totalPages = maxOf(1, pages.size)
-        pageIndex = pageIndex.coerceIn(0, totalPages - 1)
-        val visibleEntries = pages.take(pageIndex + 1).flatten()
-        when {
-            loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
-            errorText.isNotBlank() && entries.isEmpty() -> root.addView(status(errorText, error = true))
-            entries.isEmpty() -> root.addView(status(
-                if (remoteEnabled) "Няма локални или сървърни записи за този номер"
-                else "Няма локални записи за този номер",
-            ))
-            else -> {
-                renderEntries(root, phone, visibleEntries, remoteEnabled, openCallNoteEditor)
-                addNavigation(root, totalPages, onPageChanged)
-            }
-        }
+        val sectionStartIndex = root.childCount
+        renderSection(
+            root = root,
+            sectionStartIndex = sectionStartIndex,
+            phone = phone,
+            remoteEnabled = remoteEnabled,
+            loading = loading,
+            errorText = errorText,
+            openCallNoteEditor = openCallNoteEditor,
+        )
     }
 
     fun canPreviousPage(): Boolean = pageIndex > 0
@@ -67,6 +60,65 @@ internal class ContactNotesFullLogUi(
 
     fun resetPage() {
         pageIndex = 0
+    }
+
+    private fun renderSection(
+        root: LinearLayout,
+        sectionStartIndex: Int,
+        phone: String,
+        remoteEnabled: Boolean,
+        loading: Boolean,
+        errorText: String,
+        openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
+    ) {
+        while (root.childCount > sectionStartIndex) root.removeViewAt(root.childCount - 1)
+        val pages = pages()
+        val totalPages = maxOf(1, pages.size)
+        pageIndex = pageIndex.coerceIn(0, totalPages - 1)
+        val visibleEntries = pages.take(pageIndex + 1).flatten()
+        when {
+            loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
+            errorText.isNotBlank() && entries.isEmpty() -> root.addView(status(errorText, error = true))
+            entries.isEmpty() -> root.addView(status(
+                if (remoteEnabled) "Няма локални или сървърни записи за този номер"
+                else "Няма локални записи за този номер",
+            ))
+            else -> {
+                renderEntries(root, phone, visibleEntries, remoteEnabled, openCallNoteEditor)
+                addNavigation(
+                    root = root,
+                    totalPages = totalPages,
+                    onPrevious = {
+                        if (canPreviousPage()) {
+                            pageIndex -= 1
+                            renderSection(
+                                root,
+                                sectionStartIndex,
+                                phone,
+                                remoteEnabled,
+                                loading,
+                                errorText,
+                                openCallNoteEditor,
+                            )
+                        }
+                    },
+                    onNext = {
+                        if (canNextPage()) {
+                            pageIndex += 1
+                            renderSection(
+                                root,
+                                sectionStartIndex,
+                                phone,
+                                remoteEnabled,
+                                loading,
+                                errorText,
+                                openCallNoteEditor,
+                            )
+                        }
+                    },
+                )
+            }
+        }
     }
 
     private fun renderEntries(
@@ -104,7 +156,8 @@ internal class ContactNotesFullLogUi(
     private fun addNavigation(
         root: LinearLayout,
         totalPages: Int,
-        onPageChanged: () -> Unit,
+        onPrevious: () -> Unit,
+        onNext: () -> Unit,
     ) {
         if (totalPages <= 1 || PageLoadingModeStore.usesPrefetch(activity)) return
         val pageSize = ConfigStore.load(activity).homeCallPageSize.coerceIn(5, 100)
@@ -115,7 +168,8 @@ internal class ContactNotesFullLogUi(
             addView(pageButton(
                 label = activity.getString(R.string.history_page_previous, pageSize),
                 enabled = canPreviousPage(),
-            ) { previousPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
+                action = onPrevious,
+            ), LinearLayout.LayoutParams(0, dp(38), 1f))
             addView(TextView(activity).apply {
                 text = activity.getString(R.string.history_page_status, pageIndex + 1, totalPages)
                 textSize = 12.5f
@@ -125,7 +179,8 @@ internal class ContactNotesFullLogUi(
             addView(pageButton(
                 label = activity.getString(R.string.history_page_next, pageSize),
                 enabled = canNextPage(),
-            ) { nextPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
+                action = onNext,
+            ), LinearLayout.LayoutParams(0, dp(38), 1f))
         }, LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
