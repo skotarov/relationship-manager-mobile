@@ -75,7 +75,7 @@ internal class ContactNotesFullLogUi(
             activity = activity,
             dp = dp,
             roundedRect = roundedRect,
-            openContactNotes = { _, _ -> Unit },
+            openContactNotes = null,
             openCallNoteEditor = openCallNoteEditor,
         )
         val currentWeekSerial = weekUi.currentWeekSerial()
