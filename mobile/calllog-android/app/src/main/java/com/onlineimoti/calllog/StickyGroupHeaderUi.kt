@@ -22,10 +22,12 @@ internal object StickyGroupHeaderUi {
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER_VERTICAL
         setTextColor(ContextCompat.getColor(context, R.color.callreport_icon_background))
-        setBackgroundColor(ContextCompat.getColor(context, R.color.calllog_bg))
+        // The fixed group title is part of the page surface, not a separate raised bar.
+        background = null
+        elevation = 0f
+        stateListAnimator = null
         val density = resources.displayMetrics.density
         setPadding((10 * density).toInt(), (6 * density).toInt(), (10 * density).toInt(), (6 * density).toInt())
-        elevation = 4 * density
     }
 
     fun isMarked(view: View): Boolean {
