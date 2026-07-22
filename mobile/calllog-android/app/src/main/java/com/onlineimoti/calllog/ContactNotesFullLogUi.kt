@@ -26,11 +26,13 @@ internal class ContactNotesFullLogUi(
         loading: Boolean,
         errorText: String,
         openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
+        onPageChanged: () -> Unit,
     ) {
         entries = incomingEntries
         val pages = pages()
-        pageIndex = pageIndex.coerceIn(0, maxOf(0, pages.size - 1))
-        val pageEntries = pages.getOrNull(pageIndex).orEmpty()
+        val totalPages = maxOf(1, pages.size)
+        pageIndex = pageIndex.coerceIn(0, totalPages - 1)
+        val visibleEntries = pages.take(pageIndex + 1).flatten()
         when {
             loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
             errorText.isNotBlank() && entries.isEmpty() -> root.addView(status(errorText, error = true))
@@ -38,7 +40,10 @@ internal class ContactNotesFullLogUi(
                 if (remoteEnabled) "Няма локални или сървърни записи за този номер"
                 else "Няма локални записи за този номер",
             ))
-            else -> renderEntries(root, phone, pageEntries, remoteEnabled, openCallNoteEditor)
+            else -> {
+                renderEntries(root, phone, visibleEntries, remoteEnabled, openCallNoteEditor)
+                addNavigation(root, totalPages, onPageChanged)
+            }
         }
     }
 
@@ -93,6 +98,55 @@ internal class ContactNotesFullLogUi(
                 rowRenderer.rowView(phone, entry, remoteEnabled),
                 dp,
             ))
+        }
+    }
+
+    private fun addNavigation(
+        root: LinearLayout,
+        totalPages: Int,
+        onPageChanged: () -> Unit,
+    ) {
+        if (totalPages <= 1 || PageLoadingModeStore.usesPrefetch(activity)) return
+        val pageSize = ConfigStore.load(activity).homeCallPageSize.coerceIn(5, 100)
+        root.addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(6), 0, 0)
+            addView(pageButton(
+                label = activity.getString(R.string.history_page_previous, pageSize),
+                enabled = canPreviousPage(),
+            ) { previousPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
+            addView(TextView(activity).apply {
+                text = activity.getString(R.string.history_page_status, pageIndex + 1, totalPages)
+                textSize = 12.5f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(100, 116, 139))
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.9f))
+            addView(pageButton(
+                label = activity.getString(R.string.history_page_next, pageSize),
+                enabled = canNextPage(),
+            ) { nextPage(onPageChanged) }, LinearLayout.LayoutParams(0, dp(38), 1f))
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(4) })
+    }
+
+    private fun pageButton(label: String, enabled: Boolean, action: () -> Unit): TextView {
+        val textColor = if (enabled) Color.rgb(55, 65, 81) else Color.rgb(156, 163, 175)
+        val backgroundColor = if (enabled) Color.rgb(248, 250, 252) else Color.rgb(249, 250, 251)
+        return TextView(activity).apply {
+            text = label
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(textColor)
+            isEnabled = enabled
+            isClickable = enabled
+            isFocusable = enabled
+            setPadding(dp(6), 0, dp(6), 0)
+            background = roundedRect(backgroundColor, dp(10), Color.rgb(226, 232, 240), dp(1))
+            if (enabled) setOnClickListener { action() }
         }
     }
 
