@@ -60,6 +60,7 @@ class ContactNotesHeaderUi(
         val topBar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            // The fixed back/name row is part of the page surface, not a raised toolbar.
             setBackgroundColor(Color.TRANSPARENT)
             elevation = 0f
             stateListAnimator = null
@@ -92,6 +93,7 @@ class ContactNotesHeaderUi(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(ACTION_ANCHOR_HEIGHT_DP),
             ).apply {
+                // Counter the page padding so the normal action row spans the full screen width.
                 marginStart = -dp(PAGE_HORIZONTAL_PADDING_DP)
                 marginEnd = -dp(PAGE_HORIZONTAL_PADDING_DP)
             }
