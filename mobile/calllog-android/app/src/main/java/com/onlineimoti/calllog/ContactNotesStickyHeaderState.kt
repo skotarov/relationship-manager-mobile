@@ -1,13 +1,11 @@
 package com.onlineimoti.calllog
 
-import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Views shared between the scrollable History header and its fixed overlays. */
+/** Views shared between the scrollable History header and its fixed hosts. */
 internal data class ContactNotesStickyActions(
-    val overlay: LinearLayout,
+    val actionRow: LinearLayout,
     val topBar: LinearLayout,
     val compactTitle: TextView,
-    val identityAnchor: View,
 )
