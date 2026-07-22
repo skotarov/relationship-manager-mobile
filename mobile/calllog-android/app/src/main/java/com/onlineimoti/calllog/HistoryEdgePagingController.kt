@@ -19,8 +19,8 @@ internal class HistoryEdgePagingController(
         canNext = {
             appContext?.let(PageLoadingModeStore::usesPrefetch) == true && canNext()
         },
-        previousPage = previousPage,
-        nextPage = nextPage,
+        previousPage = { previousPage(); Unit },
+        nextPage = { nextPage(); Unit },
         pageReady = pageReady,
         retainPreviousPages = false,
         protectRetainedPrefix = false,
