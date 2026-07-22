@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 
 /** Data read from Android providers and local stores away from the UI thread. */
 internal data class HistoryLocalSnapshot(
+    val calls: List<PhoneCallRecord> = emptyList(),
     val latestCall: PhoneCallRecord? = null,
     val sms: List<SmsMessageRecord> = emptyList(),
     val callNotes: List<ContactCallNote> = emptyList(),
@@ -19,6 +20,7 @@ internal data class HistoryLocalSnapshot(
 /** Fully prepared History content; the main thread only turns this state into Views. */
 internal data class HistoryPreparedSnapshot(
     val rows: List<CallReportHistoryRow> = emptyList(),
+    val fullLogEntries: List<FilteredFullLogEntry> = emptyList(),
     val companyMainNotes: List<CallReportCompanyMainNote> = emptyList(),
     val unscopedServerMainNote: CallReportHistoryEvent? = null,
     val hasCompanyMainNoteScope: Boolean = false,
@@ -33,13 +35,15 @@ internal object HistoryBackgroundLoader {
         // so it must happen before the snapshot and never from render().
         PendingCallNoteStore.reconcilePendingForPhone(context, phone)
 
+        val localTimeline = FilteredFullLogLoader.loadLocal(context, phone)
         val contactExists = hasRealContact(context, phone)
         val crmEnabled = CrmContactSyncStore.isEnabled(context, phone)
         val unknownNumber = !crmEnabled && !contactExists
         return HistoryLocalSnapshot(
-            latestCall = PhoneCallReader.callsForPhone(context, phone, limit = 1).firstOrNull(),
-            sms = SmsMessageReader.messagesForPhone(context, phone, limit = 150),
-            callNotes = ContactNoteReader.callNotesForPhone(context, phone),
+            calls = localTimeline.calls,
+            latestCall = localTimeline.calls.firstOrNull(),
+            sms = localTimeline.sms,
+            callNotes = localTimeline.notes,
             generalNote = ContactNoteReader.generalNoteForPhone(context, phone),
             generalNotePending = CallReportDeferredCompanyAssignmentStore.isGeneralPending(context, phone),
             contactExists = contactExists,
@@ -53,6 +57,7 @@ internal object HistoryBackgroundLoader {
         remoteEnabled: Boolean,
         serverLoaded: Boolean,
         history: CallReportHistoryLookupResult,
+        localCalls: List<PhoneCallRecord>,
         localSms: List<SmsMessageRecord>,
         localNotes: List<ContactCallNote>,
     ): HistoryPreparedSnapshot {
@@ -60,7 +65,12 @@ internal object HistoryBackgroundLoader {
         if (remoteEnabled && serverLoaded) reconcileServerConfirmation(context, phone, history)
         val scopedServerLoaded = remoteEnabled && serverLoaded
         val principal = if (remoteEnabled) history.principal else CallReportHistoryPrincipal()
-        val timelineEvents = if (remoteEnabled) notesAndSms(history.events) else emptyList()
+        val notesTimelineEvents = if (remoteEnabled) notesAndSms(history.events) else emptyList()
+        val localTimeline = FilteredFullLogLocalData(
+            calls = localCalls,
+            sms = localSms,
+            notes = localNotes,
+        )
         return HistoryPreparedSnapshot(
             rows = CallReportHistoryMerge.merge(
                 context = context,
@@ -69,7 +79,15 @@ internal object HistoryBackgroundLoader {
                 localCalls = emptyList(),
                 localSms = localSms,
                 localNotes = localNotes,
-                serverEvents = timelineEvents,
+                serverEvents = notesTimelineEvents,
+            ),
+            fullLogEntries = FilteredFullLogLoader.prepare(
+                context = context,
+                phone = phone,
+                remoteEnabled = remoteEnabled,
+                principal = principal,
+                local = localTimeline,
+                serverEvents = history.events,
             ),
             companyMainNotes = companyMainNotes(context, phone, scopedServerLoaded, history),
             unscopedServerMainNote = unscopedServerMainNote(phone, scopedServerLoaded, history),
