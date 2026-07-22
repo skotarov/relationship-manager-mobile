@@ -9,7 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.concurrent.Executors
 
-/** Loads and prepares local and remote history away from the main thread. */
+/** Loads and prepares local and remote History data away from the main thread. */
 internal class CallReportMergedHistoryController(
     private val activity: Activity,
     @Suppress("unused") private val headerUi: ContactNotesHeaderUi,
@@ -21,6 +21,7 @@ internal class CallReportMergedHistoryController(
     private val loadExecutor = Executors.newFixedThreadPool(2)
     private val prepareExecutor = Executors.newSingleThreadExecutor()
     private val rowsUi by lazy { CallReportHistoryRowsUi(activity, dp, roundedRect) }
+    private val fullLogUi by lazy { ContactNotesFullLogUi(activity, dp, roundedRect) }
 
     private var activePhone = ""
     private var started = false
@@ -37,6 +38,7 @@ internal class CallReportMergedHistoryController(
     private var lastRenderedState: HistoryRenderedState? = null
     private var forceRenderAfterPrepare = false
 
+    private var localCalls: List<PhoneCallRecord> = emptyList()
     private var latestLocalCall: PhoneCallRecord? = null
     private var localSms: List<SmsMessageRecord> = emptyList()
     private var localNotes: List<ContactCallNote> = emptyList()
@@ -123,6 +125,7 @@ internal class CallReportMergedHistoryController(
                     activity.isFinishing || activity.isDestroyed ||
                     generation != localGeneration || requestedPhone != activePhone
                 ) return@post
+                localCalls = snapshot.calls
                 latestLocalCall = snapshot.latestCall
                 localSms = snapshot.sms
                 localNotes = snapshot.callNotes
@@ -137,11 +140,18 @@ internal class CallReportMergedHistoryController(
     }
 
     fun isLoading(): Boolean = localLoading || serverLoading || prepareLoading
-    fun canPreviousPage(): Boolean = rowsUi.canPreviousPage()
-    fun canNextPage(): Boolean = rowsUi.canNextPage()
-    fun previousPage(): Boolean = rowsUi.previousPage(rerender)
-    fun nextPage(): Boolean = rowsUi.nextPage(rerender)
-    fun resetPage() = rowsUi.resetPage()
+
+    fun canPreviousNotesPage(): Boolean = rowsUi.canPreviousPage()
+    fun canNextNotesPage(): Boolean = rowsUi.canNextPage()
+    fun previousNotesPage(): Boolean = rowsUi.previousPage(rerender)
+    fun nextNotesPage(): Boolean = rowsUi.nextPage(rerender)
+    fun resetNotesPage() = rowsUi.resetPage()
+
+    fun canPreviousFullLogPage(): Boolean = fullLogUi.canPreviousPage()
+    fun canNextFullLogPage(): Boolean = fullLogUi.canNextPage()
+    fun previousFullLogPage(): Boolean = fullLogUi.previousPage(rerender)
+    fun nextFullLogPage(): Boolean = fullLogUi.nextPage(rerender)
+    fun resetFullLogPage() = fullLogUi.resetPage()
 
     fun contactExists(): Boolean = contactExists
     fun localGeneralNote(): String = localGeneralNote
@@ -170,10 +180,9 @@ internal class CallReportMergedHistoryController(
     fun unscopedServerMainNote(phone: String): CallReportHistoryEvent? =
         prepared.unscopedServerMainNote.takeIf { phone == activePhone }
 
-    fun addSection(
+    fun addNotesSection(
         root: LinearLayout,
         phone: String,
-        openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
         onEditSms: (SmsMessageRecord, String) -> Unit,
     ) {
@@ -189,10 +198,27 @@ internal class CallReportMergedHistoryController(
             localNotes = localNotes,
             localLoading = localLoading || prepareLoading,
             serverLoading = serverLoading,
-            openFilteredLog = openFilteredLog,
             onEditCallNote = onEditCallNote,
             onEditSms = onEditSms,
             onPageChanged = rerender,
+        )
+    }
+
+    fun addFullLogSection(
+        root: LinearLayout,
+        phone: String,
+        openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
+    ) {
+        val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
+        addServerErrorBelowContactName(root, remoteEnabled)
+        fullLogUi.addSection(
+            root = root,
+            phone = phone,
+            incomingEntries = prepared.fullLogEntries,
+            remoteEnabled = remoteEnabled,
+            loading = isLoading(),
+            errorText = loadError,
+            openCallNoteEditor = openCallNoteEditor,
         )
     }
 
@@ -217,10 +243,7 @@ internal class CallReportMergedHistoryController(
         HomeBusyTooltipUi.clear(activity)
     }
 
-    /**
-     * Wait for every active source load, then prepare and publish one coherent snapshot.
-     * This keeps the currently visible History page interactive while refresh runs.
-     */
+    /** Wait for all source loads, then publish one coherent snapshot. */
     private fun prepareWhenDataReady(phone: String) {
         if (phone.isBlank() || phone != activePhone || localLoading || serverLoading) return
         schedulePrepare(phone)
@@ -237,6 +260,7 @@ internal class CallReportMergedHistoryController(
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
         val loaded = serverLoaded
         val history = serverHistory
+        val calls = localCalls.toList()
         val sms = localSms.toList()
         val notes = localNotes.toList()
         prepareExecutor.execute {
@@ -247,6 +271,7 @@ internal class CallReportMergedHistoryController(
                     remoteEnabled = remoteEnabled,
                     serverLoaded = loaded,
                     history = history,
+                    localCalls = calls,
                     localSms = sms,
                     localNotes = notes,
                 )
@@ -264,7 +289,7 @@ internal class CallReportMergedHistoryController(
         }
     }
 
-    /** Rebuild only when the prepared presentation is different from what is already visible. */
+    /** Rebuild only when the prepared presentation differs from what is visible. */
     private fun publishIfNeeded() {
         val nextState = currentRenderedState()
         if (!forceRenderAfterPrepare && nextState == lastRenderedState) return
@@ -278,6 +303,7 @@ internal class CallReportMergedHistoryController(
         serverLoading = serverLoading,
         prepareLoading = prepareLoading,
         serverLoaded = serverLoaded,
+        localCalls = localCalls,
         latestLocalCall = latestLocalCall,
         localSms = localSms,
         localNotes = localNotes,
@@ -311,6 +337,7 @@ internal class CallReportMergedHistoryController(
         serverLoading = false
         prepareLoading = false
         serverLoaded = false
+        localCalls = emptyList()
         latestLocalCall = null
         localSms = emptyList()
         localNotes = emptyList()
@@ -324,6 +351,7 @@ internal class CallReportMergedHistoryController(
         lastRenderedState = null
         forceRenderAfterPrepare = false
         rowsUi.resetPage()
+        fullLogUi.resetPage()
     }
 
     private fun addServerErrorBelowContactName(root: LinearLayout, remoteEnabled: Boolean) {
@@ -415,6 +443,7 @@ internal class CallReportMergedHistoryController(
         val serverLoading: Boolean,
         val prepareLoading: Boolean,
         val serverLoaded: Boolean,
+        val localCalls: List<PhoneCallRecord>,
         val latestLocalCall: PhoneCallRecord?,
         val localSms: List<SmsMessageRecord>,
         val localNotes: List<ContactCallNote>,
