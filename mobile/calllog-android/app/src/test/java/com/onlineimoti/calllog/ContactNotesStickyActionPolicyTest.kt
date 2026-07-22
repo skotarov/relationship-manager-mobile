@@ -52,4 +52,21 @@ class ContactNotesStickyActionPolicyTest {
             ),
         )
     }
+
+    @Test
+    fun compactIdentityAndPinnedActionsHaveIndependentTransitionPoints() {
+        val viewportTop = 100
+        assertTrue(
+            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
+                identityBottomOnScreen = viewportTop,
+                viewportTopOnScreen = viewportTop,
+            ),
+        )
+        assertFalse(
+            ContactNotesStickyActionPolicy.shouldStick(
+                actionTopOnScreen = viewportTop + 2,
+                viewportTopOnScreen = viewportTop,
+            ),
+        )
+    }
 }
