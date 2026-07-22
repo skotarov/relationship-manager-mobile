@@ -7,8 +7,8 @@ import android.os.Looper
 import android.view.View
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.Executors
-import kotlin.math.abs
 
+/** Temporary Home adapter around the shared filtered full-log loader and renderer. */
 internal class FilteredFullLogController(
     private val activity: Activity,
     private val binding: ActivityHomeBinding,
@@ -21,7 +21,9 @@ internal class FilteredFullLogController(
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
-    private val rowRenderer by lazy { FilteredFullLogRowRenderer(activity, dp, roundedRect, openContactNotes, openCallNoteEditor) }
+    private val rowRenderer by lazy {
+        FilteredFullLogRowRenderer(activity, dp, roundedRect, openContactNotes, openCallNoteEditor)
+    }
     private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
     private var selectedPhone = ""
     private var loadedPhone = ""
@@ -124,7 +126,11 @@ internal class FilteredFullLogController(
     ): String = when {
         loading -> "Зареждам пълния лог…"
         errorText.isNotBlank() -> errorText
-        entries.isEmpty() -> if (remoteEnabled) "Няма локални или сървърни записи за този номер" else "Няма локални записи за този номер"
+        entries.isEmpty() -> if (remoteEnabled) {
+            "Няма локални или сървърни записи за този номер"
+        } else {
+            "Няма локални записи за този номер"
+        }
         else -> {
             val first = pages.take(pageIndex).sumOf { it.size } + 1
             val last = first + pageEntries.size - 1
@@ -141,27 +147,14 @@ internal class FilteredFullLogController(
         val requestBusyToken = busyToken
         executor.execute {
             val result = runCatching {
-                val localCalls = PhoneCallReader.callsForPhone(activity, requestedPhone, limit = SOURCE_CALL_LIMIT)
-                val localSms = SmsMessageReader.messagesForPhone(activity, requestedPhone, limit = SOURCE_SMS_LIMIT)
-                val localNotes = ContactNoteReader.callNotesForPhone(activity, requestedPhone)
-                val serverHistory = if (remoteEnabled) {
-                    runCatching { CallReportHistoryLookupClient.lookup(ConfigStore.load(activity), requestedPhone, context = activity) }
-                        .getOrDefault(CallReportHistoryLookupResult())
-                } else CallReportHistoryLookupResult()
-                val merged = CallReportHistoryMerge.merge(
-                    context = activity,
-                    phone = requestedPhone,
-                    principal = serverHistory.principal,
-                    localCalls = localCalls,
-                    localSms = localSms,
-                    localNotes = localNotes,
-                    serverEvents = serverHistory.events,
-                )
-                groupedEntries(merged)
+                FilteredFullLogLoader.load(activity.applicationContext, requestedPhone, remoteEnabled)
             }
             handler.post {
                 finishBusy(requestBusyToken)
-                if (activity.isFinishing || activity.isDestroyed || generation != loadGeneration || requestedPhone != selectedPhone) return@post
+                if (
+                    activity.isFinishing || activity.isDestroyed ||
+                    generation != loadGeneration || requestedPhone != selectedPhone
+                ) return@post
                 if (remoteEnabled != CallReportRemoteAccess.isEnabled(activity)) {
                     loading = false
                     loadedPhone = ""
@@ -201,44 +194,4 @@ internal class FilteredFullLogController(
 
     private fun safePageSize() = pageSize().coerceIn(5, 100)
     private fun lastPageIndex() = maxOf(0, timelinePages(safePageSize()).size - 1)
-
-    private fun groupedEntries(timeline: List<CallReportHistoryRow>): List<FilteredFullLogEntry> {
-        val callIndexes = timeline.mapIndexedNotNull { index, row -> index.takeIf { row.kind == CallReportHistoryRowKind.PHONE } }
-        val notesByCall = mutableMapOf<Int, MutableList<CallReportHistoryRow>>()
-        val attachedIndexes = mutableSetOf<Int>()
-        timeline.forEachIndexed { noteIndex, note ->
-            if (note.kind != CallReportHistoryRowKind.NOTE) return@forEachIndexed
-            if (note.serverEvent?.let(CallReportServerNoteClassifier::isGeneralNote) == true) return@forEachIndexed
-            val callIndex = matchingCallIndex(note, callIndexes, timeline) ?: return@forEachIndexed
-            notesByCall.getOrPut(callIndex) { mutableListOf() }.add(note)
-            attachedIndexes += noteIndex
-        }
-        return timeline.mapIndexedNotNull { index, row ->
-            if (row.kind == CallReportHistoryRowKind.NOTE && index in attachedIndexes) null
-            else FilteredFullLogEntry(row, notesByCall[index].orEmpty().sortedBy { it.timeMs })
-        }
-    }
-
-    private fun matchingCallIndex(note: CallReportHistoryRow, callIndexes: List<Int>, timeline: List<CallReportHistoryRow>): Int? {
-        val notePhone = HomeCallPageLoader.noteKey(note.phone)
-        var closestIndex: Int? = null
-        var closestDelta = Long.MAX_VALUE
-        callIndexes.forEach { callIndex ->
-            val call = timeline[callIndex]
-            if (HomeCallPageLoader.noteKey(call.phone) != notePhone) return@forEach
-            if (note.direction.isNotBlank() && call.direction.isNotBlank() && note.direction != call.direction) return@forEach
-            val delta = abs(note.timeMs - call.timeMs)
-            if (delta <= NOTE_CALL_MATCH_WINDOW_MS && delta < closestDelta) {
-                closestIndex = callIndex
-                closestDelta = delta
-            }
-        }
-        return closestIndex
-    }
-
-    private companion object {
-        const val SOURCE_CALL_LIMIT = 200
-        const val SOURCE_SMS_LIMIT = 100
-        const val NOTE_CALL_MATCH_WINDOW_MS = 90_000L
-    }
 }
