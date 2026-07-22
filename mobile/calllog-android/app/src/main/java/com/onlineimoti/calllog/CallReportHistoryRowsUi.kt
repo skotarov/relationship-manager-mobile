@@ -38,7 +38,6 @@ internal class CallReportHistoryRowsUi(
         localNotes: List<ContactCallNote>,
         localLoading: Boolean,
         serverLoading: Boolean,
-        openFilteredLog: () -> Unit,
         onEditCallNote: (ContactCallNote) -> Unit,
         onEditSms: (SmsMessageRecord, String) -> Unit,
         onPageChanged: () -> Unit,
@@ -46,7 +45,7 @@ internal class CallReportHistoryRowsUi(
         val companyNames = principal.companies.associate { it.id to it.name }
         val page = paginationUi.currentPage(rows)
 
-        root.addView(titleRow(openFilteredLog))
+        root.addView(titleRow())
         latestCallWithoutNote(latestLocalCall, localNotes)?.let { call ->
             val latestRow = addLatestCallNoteCard(call) { onEditCallNote(call.toContactCallNote()) }
             root.addView(ListThemeUi.applyRowSpacing(latestRow, dp))
@@ -96,32 +95,21 @@ internal class CallReportHistoryRowsUi(
         return call.takeUnless { alreadyHasNote }
     }
 
-    private fun titleRow(openFilteredLog: () -> Unit): LinearLayout {
-        return LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(4), 0, dp(8))
-            addView(ImageView(activity).apply {
-                setImageResource(R.drawable.ic_system_call_log)
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
-            })
-            addView(TextView(activity).apply {
-                text = "Бележки и SMS"
-                textSize = 16f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(Color.rgb(30, 41, 59))
-            })
-            addView(TextView(activity).apply {
-                text = "пълен лог"
-                textSize = 13f
-                setTextColor(Color.rgb(30, 64, 175))
-                setPadding(dp(10), 0, 0, 0)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { openFilteredLog() }
-            })
-        }
+    private fun titleRow(): LinearLayout = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(4), 0, dp(8))
+        addView(ImageView(activity).apply {
+            setImageResource(R.drawable.ic_system_call_log)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) }
+        })
+        addView(TextView(activity).apply {
+            text = "Бележки и SMS"
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(30, 41, 59))
+        })
     }
 
     private fun addLatestCallNoteCard(call: PhoneCallRecord, action: () -> Unit): LinearLayout {
