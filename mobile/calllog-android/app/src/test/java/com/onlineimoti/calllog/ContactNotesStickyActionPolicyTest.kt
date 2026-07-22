@@ -6,25 +6,50 @@ import org.junit.Test
 
 class ContactNotesStickyActionPolicyTest {
     @Test
-    fun staysNormalBeforeReachingTop() {
-        assertFalse(ContactNotesStickyActionPolicy.shouldStick(scrollY = 99, anchorTop = 100))
+    fun actionRowStaysNormalWhileItsTopIsStillVisible() {
+        assertFalse(
+            ContactNotesStickyActionPolicy.shouldStick(
+                actionTopOnScreen = 101,
+                viewportTopOnScreen = 100,
+            ),
+        )
     }
 
     @Test
-    fun sticksAtTheTopAndRemainsPinnedAfterwards() {
-        assertTrue(ContactNotesStickyActionPolicy.shouldStick(scrollY = 100, anchorTop = 100))
-        assertTrue(ContactNotesStickyActionPolicy.shouldStick(scrollY = 1_000, anchorTop = 100))
+    fun actionRowPinsExactlyWhenItStartsLeavingTheViewport() {
+        assertTrue(
+            ContactNotesStickyActionPolicy.shouldStick(
+                actionTopOnScreen = 100,
+                viewportTopOnScreen = 100,
+            ),
+        )
+        assertTrue(
+            ContactNotesStickyActionPolicy.shouldStick(
+                actionTopOnScreen = 40,
+                viewportTopOnScreen = 100,
+            ),
+        )
     }
 
     @Test
-    fun ignoresUnknownAnchorPosition() {
-        assertFalse(ContactNotesStickyActionPolicy.shouldStick(scrollY = 100, anchorTop = -1))
-    }
-
-    @Test
-    fun compactIdentityAppearsOnlyAfterTheLargeIdentityIsHidden() {
-        assertFalse(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 119, identityBottom = 120))
-        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 120, identityBottom = 120))
-        assertTrue(ContactNotesStickyActionPolicy.shouldShowCompactIdentity(scrollY = 500, identityBottom = 120))
+    fun compactIdentityWaitsUntilTheLargeIdentityIsCompletelyHidden() {
+        assertFalse(
+            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
+                identityBottomOnScreen = 101,
+                viewportTopOnScreen = 100,
+            ),
+        )
+        assertTrue(
+            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
+                identityBottomOnScreen = 100,
+                viewportTopOnScreen = 100,
+            ),
+        )
+        assertTrue(
+            ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
+                identityBottomOnScreen = 20,
+                viewportTopOnScreen = 100,
+            ),
+        )
     }
 }
