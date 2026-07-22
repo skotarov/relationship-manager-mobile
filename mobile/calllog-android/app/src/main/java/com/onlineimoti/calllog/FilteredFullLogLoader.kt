@@ -111,6 +111,6 @@ internal object FilteredFullLogLoader {
     }
 
     private const val SOURCE_CALL_LIMIT = 200
-    private const val SOURCE_SMS_LIMIT = 100
+    private const val SOURCE_SMS_LIMIT = 150
     private const val NOTE_CALL_MATCH_WINDOW_MS = 90_000L
 }
