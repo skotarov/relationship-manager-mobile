@@ -18,6 +18,7 @@ internal class ContactNotesRestoredController(
     private var crmSyncBusy = false
     private var pullRefreshRequested = false
     private var skipNextResumeRefresh = true
+    private var listMode = ContactHistoryListMode.NOTES_AND_SMS
     private val handler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
@@ -35,7 +36,39 @@ internal class ContactNotesRestoredController(
             rerender = ::render,
         )
     }
-    private val edgePaging by lazy { HistoryEdgePagingController(historyController) }
+    private val edgePaging by lazy {
+        HistoryEdgePagingController(
+            canPrevious = {
+                when (listMode) {
+                    ContactHistoryListMode.NOTES_AND_SMS -> historyController.canPreviousNotesPage()
+                    ContactHistoryListMode.FULL_LOG -> historyController.canPreviousFullLogPage()
+                }
+            },
+            canNext = {
+                when (listMode) {
+                    ContactHistoryListMode.NOTES_AND_SMS -> historyController.canNextNotesPage()
+                    ContactHistoryListMode.FULL_LOG -> historyController.canNextFullLogPage()
+                }
+            },
+            previousPage = {
+                when (listMode) {
+                    ContactHistoryListMode.NOTES_AND_SMS -> historyController.previousNotesPage()
+                    ContactHistoryListMode.FULL_LOG -> historyController.previousFullLogPage()
+                }
+            },
+            nextPage = {
+                when (listMode) {
+                    ContactHistoryListMode.NOTES_AND_SMS -> historyController.nextNotesPage()
+                    ContactHistoryListMode.FULL_LOG -> historyController.nextFullLogPage()
+                }
+            },
+            resetPage = {
+                historyController.resetNotesPage()
+                historyController.resetFullLogPage()
+            },
+            pageReady = { !historyController.isLoading() },
+        )
+    }
     private val stickyHistoryUi by lazy { ContactNotesStickyHistoryUi(activity) }
     private val generalNoteSectionUi by lazy {
         CompanyScopedGeneralNoteSectionUi(
@@ -48,6 +81,7 @@ internal class ContactNotesRestoredController(
     }
 
     fun onCreate(intent: Intent?) {
+        listMode = ContactHistoryListMode.NOTES_AND_SMS
         edgePaging.reset()
         stickyHistoryUi.resetScrollPosition()
         skipNextResumeRefresh = true
@@ -73,7 +107,8 @@ internal class ContactNotesRestoredController(
 
     fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        stickyHistoryUi.release(); edgePaging.release()
+        stickyHistoryUi.release()
+        edgePaging.release()
         crmSyncExecutor.shutdownNow()
         historyController.release()
     }
@@ -96,6 +131,14 @@ internal class ContactNotesRestoredController(
         }
         pullRefreshRequested = true
         refreshHistoryInBackground(scheduleConfirmationRefresh = false)
+        render()
+    }
+
+    private fun selectListMode(mode: ContactHistoryListMode) {
+        if (mode == listMode) return
+        edgePaging.release()
+        listMode = mode
+        stickyHistoryUi.resetScrollPosition()
         render()
     }
 
@@ -128,37 +171,52 @@ internal class ContactNotesRestoredController(
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
             openRmContact = ::openRmContactForm,
             toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone)) },
-            openRmCallLog = { openRmCallLog(false) },
-            openRmCallLogFiltered = { openRmCallLog(true) },
+            openRmCallLog = { openRmCallLog() },
+            openRmCallLogFiltered = { selectListMode(ContactHistoryListMode.FULL_LOG) },
         ))
         root.addView(ContactNotesServerStatusUi.create(
             activity = activity,
             dp = ::dp,
             textValue = historyController.serverLoadingStatusText(),
         ))
-        generalNoteSectionUi.add(
-            root = root,
-            localNote = historyController.localGeneralNote(),
-            localNotePending = historyController.localGeneralNotePending(),
-            companyScopeAvailable = historyController.companyScopeAvailable(),
-            companyNotes = historyController.companyMainNotes(phone),
-            unscopedServerMainNote = historyController.unscopedServerMainNote(phone),
-            showCompanyNotes = historyController.hasCompanyMainNoteScope(),
-            onEditCompany = ::openGeneralNoteEditor,
-            onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
-            phaseBarForCompany = if (phaseControlsVisible) {
-                { companyId -> phaseUi.phaseBar(phone, companyId, true, ::render) }
-            } else null,
-        )
-        historyController.addSection(
-            root = root,
-            phone = phone,
-            openFilteredLog = { openRmCallLog(true) },
-            onEditCallNote = ::openCallNoteEditor,
-            onEditSms = ::openSmsCompanyEditor,
-        )
+        when (listMode) {
+            ContactHistoryListMode.NOTES_AND_SMS -> {
+                generalNoteSectionUi.add(
+                    root = root,
+                    localNote = historyController.localGeneralNote(),
+                    localNotePending = historyController.localGeneralNotePending(),
+                    companyScopeAvailable = historyController.companyScopeAvailable(),
+                    companyNotes = historyController.companyMainNotes(phone),
+                    unscopedServerMainNote = historyController.unscopedServerMainNote(phone),
+                    showCompanyNotes = historyController.hasCompanyMainNoteScope(),
+                    onEditCompany = ::openGeneralNoteEditor,
+                    onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
+                    phaseBarForCompany = if (phaseControlsVisible) {
+                        { companyId -> phaseUi.phaseBar(phone, companyId, true, ::render) }
+                    } else null,
+                )
+                historyController.addNotesSection(
+                    root = root,
+                    phone = phone,
+                    onEditCallNote = ::openCallNoteEditor,
+                    onEditSms = ::openSmsCompanyEditor,
+                )
+            }
+            ContactHistoryListMode.FULL_LOG -> historyController.addFullLogSection(
+                root = root,
+                phone = phone,
+                openCallNoteEditor = ::openFullLogCallNoteEditor,
+            )
+        }
         CrmHistoryTextLocalizer.apply(activity, root)
-        stickyHistoryUi.show(root, showPullRefresh, ::refreshFromPull, edgePaging::bind)
+        stickyHistoryUi.show(
+            root = root,
+            refreshing = showPullRefresh,
+            onRefresh = ::refreshFromPull,
+            bindPaging = edgePaging::bind,
+            mode = listMode,
+            onModeSelected = ::selectListMode,
+        )
         historyController.markRendered()
     }
 
@@ -236,6 +294,25 @@ internal class ContactNotesRestoredController(
         )
     }
 
+    private fun openFullLogCallNoteEditor(
+        call: PhoneCallRecord,
+        displayName: String,
+        note: HomeCallNote?,
+    ) {
+        CallNoteEditorLauncher.startEditor(
+            context = activity,
+            mode = PostCallOverlayService.MODE_NOTE,
+            phone = call.number.ifBlank { phone },
+            title = displayName.ifBlank { titleText },
+            direction = call.direction,
+            callAt = call.startedAt,
+            durationSeconds = call.durationSeconds,
+            companyId = note?.companyId.orEmpty(),
+            initialNoteText = note?.text.orEmpty(),
+            serverClientEventId = note?.serverClientEventId.orEmpty(),
+        )
+    }
+
     private fun openSmsCompanyEditor(sms: SmsMessageRecord, companyId: String) {
         if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) {
             Toast.makeText(activity, "За SMS фирма включи и настрой Server", Toast.LENGTH_SHORT).show()
@@ -262,10 +339,8 @@ internal class ContactNotesRestoredController(
         )
     }
 
-    private fun openRmCallLog(filtered: Boolean) {
-        activity.startActivity(Intent(activity, HomeActivity::class.java).apply {
-            if (filtered && phone.isNotBlank()) putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
-        })
+    private fun openRmCallLog() {
+        activity.startActivity(Intent(activity, HomeActivity::class.java))
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) =
@@ -275,6 +350,7 @@ internal class ContactNotesRestoredController(
             setColor(color)
             if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
         }
+
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
 
     private companion object {
