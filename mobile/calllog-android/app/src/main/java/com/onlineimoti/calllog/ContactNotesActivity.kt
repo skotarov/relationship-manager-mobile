@@ -12,7 +12,7 @@ class ContactNotesActivity : FontScaledActivity() {
     private var notesChangedReceiverRegistered = false
     private val notesChangedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (!isFinishing && !isDestroyed) controller.onResume()
+            if (!isFinishing && !isDestroyed) controller.onDataChanged()
         }
     }
 
