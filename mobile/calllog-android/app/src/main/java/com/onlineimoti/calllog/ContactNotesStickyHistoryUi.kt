@@ -27,7 +27,13 @@ internal class ContactNotesStickyHistoryUi(
     private var scrollView: ScrollView? = null
     private var scrollChangedListener: ViewTreeObserver.OnScrollChangedListener? = null
     private var layoutChangeListener: View.OnLayoutChangeListener? = null
+    private var savedScrollY = 0
     private val screenLocation = IntArray(2)
+
+    fun resetScrollPosition() {
+        savedScrollY = 0
+        scrollView?.scrollTo(0, 0)
+    }
 
     fun show(
         root: LinearLayout,
@@ -35,6 +41,7 @@ internal class ContactNotesStickyHistoryUi(
         onRefresh: () -> Unit,
         bindPaging: (ScrollView, LinearLayout) -> Unit,
     ) {
+        scrollView?.let { savedScrollY = it.scrollY }
         release()
         val actionAnchor = findActionAnchor(root) as? ViewGroup
         val stickyHeader = actionAnchor?.tag as? ContactNotesStickyActions
@@ -103,6 +110,7 @@ internal class ContactNotesStickyHistoryUi(
 
         fun updateStickyUi() {
             if (!historyScroll.isAttachedToWindow || historyScroll.height <= 0) return
+            savedScrollY = historyScroll.scrollY
             val anchor = actionAnchor
             val row = actionRow
             val actionsPinned = if (
@@ -151,7 +159,11 @@ internal class ContactNotesStickyHistoryUi(
         layoutChangeListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateStickyUi()
         }.also(historyScroll::addOnLayoutChangeListener)
-        historyScroll.post { updateStickyUi() }
+        historyScroll.post {
+            val maxScrollY = maxOf(0, root.height - historyScroll.height)
+            historyScroll.scrollTo(0, savedScrollY.coerceIn(0, maxScrollY))
+            updateStickyUi()
+        }
         bindPaging(historyScroll, root)
         activity.setContentView(PullToRefreshLayout(activity).apply {
             addView(screen)
@@ -163,6 +175,7 @@ internal class ContactNotesStickyHistoryUi(
 
     fun release() {
         val currentScroll = scrollView
+        currentScroll?.let { savedScrollY = it.scrollY }
         scrollChangedListener?.let { listener ->
             val observer = currentScroll?.viewTreeObserver
             if (observer?.isAlive == true) observer.removeOnScrollChangedListener(listener)
