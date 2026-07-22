@@ -17,6 +17,7 @@ internal class ContactNotesRestoredController(
     private var titleText = ""
     private var crmSyncBusy = false
     private var pullRefreshRequested = false
+    private var skipNextResumeRefresh = true
     private val handler = Handler(Looper.getMainLooper())
     private val crmSyncExecutor = Executors.newSingleThreadExecutor()
     private val delayedServerRefresh = Runnable {
@@ -48,6 +49,8 @@ internal class ContactNotesRestoredController(
 
     fun onCreate(intent: Intent?) {
         edgePaging.reset()
+        stickyHistoryUi.resetScrollPosition()
+        skipNextResumeRefresh = true
         phone = intent?.getStringExtra(ContactNotesActivity.EXTRA_PHONE).orEmpty()
         titleText = intent?.getStringExtra(ContactNotesActivity.EXTRA_TITLE).orEmpty().ifBlank {
             phone.ifBlank { activity.getString(R.string.dynamic_notes_default_title) }
@@ -57,11 +60,15 @@ internal class ContactNotesRestoredController(
     }
 
     fun onResume() {
-        historyController.refreshLocal(phone)
-        historyController.refreshServer(phone)
-        handler.removeCallbacks(delayedServerRefresh)
-        handler.postDelayed(delayedServerRefresh, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
-        render()
+        if (skipNextResumeRefresh) {
+            skipNextResumeRefresh = false
+            return
+        }
+        refreshHistoryInBackground(scheduleConfirmationRefresh = true)
+    }
+
+    fun onDataChanged() {
+        refreshHistoryInBackground(scheduleConfirmationRefresh = true)
     }
 
     fun onDestroy() {
@@ -71,6 +78,16 @@ internal class ContactNotesRestoredController(
         historyController.release()
     }
 
+    private fun refreshHistoryInBackground(scheduleConfirmationRefresh: Boolean) {
+        if (phone.isBlank()) return
+        historyController.refreshLocal(phone)
+        historyController.refreshServer(phone)
+        if (scheduleConfirmationRefresh) {
+            handler.removeCallbacks(delayedServerRefresh)
+            handler.postDelayed(delayedServerRefresh, SERVER_CONFIRMATION_REFRESH_DELAY_MS)
+        }
+    }
+
     private fun refreshFromPull() {
         if (phone.isBlank()) {
             pullRefreshRequested = false
@@ -78,8 +95,7 @@ internal class ContactNotesRestoredController(
             return
         }
         pullRefreshRequested = true
-        historyController.refreshLocal(phone)
-        historyController.refreshServer(phone)
+        refreshHistoryInBackground(scheduleConfirmationRefresh = false)
         render()
     }
 
@@ -143,6 +159,7 @@ internal class ContactNotesRestoredController(
         )
         CrmHistoryTextLocalizer.apply(activity, root)
         stickyHistoryUi.show(root, showPullRefresh, ::refreshFromPull, edgePaging::bind)
+        historyController.markRendered()
     }
 
     private fun setCrmSyncEnabled(enabled: Boolean) {
@@ -174,9 +191,8 @@ internal class ContactNotesRestoredController(
                     else -> activity.getString(R.string.dynamic_crm_sync_clear_failed)
                 }
                 Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-                historyController.refreshLocal(requestedPhone)
-                historyController.refreshServer(requestedPhone)
-                render()
+                historyController.forceNextRenderAfterDataReady()
+                refreshHistoryInBackground(scheduleConfirmationRefresh = false)
             }
         }
     }
@@ -231,9 +247,7 @@ internal class ContactNotesRestoredController(
             sms = sms,
             initialCompanyId = companyId,
             onSaved = {
-                historyController.refreshLocal(phone)
-                historyController.refreshServer(phone)
-                render()
+                refreshHistoryInBackground(scheduleConfirmationRefresh = true)
             },
         )
     }
@@ -243,9 +257,7 @@ internal class ContactNotesRestoredController(
             phone = phone,
             fallbackTitle = titleText,
             onSaved = {
-                historyController.refreshLocal(phone)
-                historyController.refreshServer(phone)
-                render()
+                refreshHistoryInBackground(scheduleConfirmationRefresh = true)
             },
         )
     }
