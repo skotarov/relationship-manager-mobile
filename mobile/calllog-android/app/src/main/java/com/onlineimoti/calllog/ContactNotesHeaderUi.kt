@@ -60,8 +60,9 @@ class ContactNotesHeaderUi(
         val topBar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(activity.getColor(R.color.calllog_bg))
-            elevation = dp(8).toFloat()
+            setBackgroundColor(Color.TRANSPARENT)
+            elevation = 0f
+            stateListAnimator = null
             addView(actions.backButton(
                 goBack = goBack,
                 openCleanCallList = if (showRmCallLogButton) openRmCallLog else null,
@@ -90,7 +91,10 @@ class ContactNotesHeaderUi(
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(ACTION_ANCHOR_HEIGHT_DP),
-            )
+            ).apply {
+                marginStart = -dp(PAGE_HORIZONTAL_PADDING_DP)
+                marginEnd = -dp(PAGE_HORIZONTAL_PADDING_DP)
+            }
             addView(actionRow, actionRowHostLayoutParams())
             tag = ContactNotesStickyActions(actionRow, topBar, compactTitle)
         }
@@ -309,6 +313,7 @@ class ContactNotesHeaderUi(
     }
 
     private companion object {
+        const val PAGE_HORIZONTAL_PADDING_DP = 16
         const val ACTION_ANCHOR_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
     }
