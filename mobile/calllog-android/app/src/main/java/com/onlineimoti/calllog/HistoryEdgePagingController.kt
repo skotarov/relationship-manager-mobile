@@ -4,19 +4,24 @@ import android.content.Context
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
-/** Connects cumulative History rendering to shared buffered paging. */
+/** Connects whichever History list is active to shared buffered edge paging. */
 internal class HistoryEdgePagingController(
-    private val history: CallReportMergedHistoryController,
+    private val canPrevious: () -> Boolean,
+    private val canNext: () -> Boolean,
+    private val previousPage: () -> Boolean,
+    private val nextPage: () -> Boolean,
+    private val resetPage: () -> Unit,
+    private val pageReady: () -> Boolean = { true },
 ) {
     private var appContext: Context? = null
     private val delegate = EdgePageScrollController(
-        canPrevious = history::canPreviousPage,
+        canPrevious = canPrevious,
         canNext = {
-            appContext?.let(PageLoadingModeStore::usesPrefetch) == true && history.canNextPage()
+            appContext?.let(PageLoadingModeStore::usesPrefetch) == true && canNext()
         },
-        previousPage = { history.previousPage() },
-        nextPage = { history.nextPage() },
-        pageReady = { true },
+        previousPage = previousPage,
+        nextPage = nextPage,
+        pageReady = pageReady,
         retainPreviousPages = false,
         protectRetainedPrefix = false,
         prefetchNext = true,
@@ -24,7 +29,7 @@ internal class HistoryEdgePagingController(
 
     fun reset() {
         delegate.cancelPending()
-        history.resetPage()
+        resetPage()
     }
 
     fun bind(scrollView: ScrollView, root: LinearLayout) {
