@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -67,30 +68,31 @@ class ContactNotesHeaderUi(
             ).apply { layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)) })
             addView(compactTitle)
         }
-        val actionFactory = {
-            actionRow(
-                phone = phone,
-                title = title,
-                displayName = displayName,
-                contactExists = contactExists,
-                contactDescription = contactDescription,
-                crmSyncAvailable = showCrmSyncButton,
-                crmSyncEnabled = crmSyncEnabled,
-                crmSyncBusy = crmSyncBusy,
-                crmSyncServerBacked = crmSyncServerBacked,
-                openDialer = openDialer,
-                openCalendarEvent = openCalendarEvent,
-                openDefaultContact = openDefaultContact,
-                openRmContact = openRmContact,
-                toggleCrmSync = toggleCrmSync,
-            )
-        }
-        val stickyActionBar = actionFactory().apply {
+        val actionRow = actionRow(
+            phone = phone,
+            title = title,
+            displayName = displayName,
+            contactExists = contactExists,
+            contactDescription = contactDescription,
+            crmSyncAvailable = showCrmSyncButton,
+            crmSyncEnabled = crmSyncEnabled,
+            crmSyncBusy = crmSyncBusy,
+            crmSyncServerBacked = crmSyncServerBacked,
+            openDialer = openDialer,
+            openCalendarEvent = openCalendarEvent,
+            openDefaultContact = openDefaultContact,
+            openRmContact = openRmContact,
+            toggleCrmSync = toggleCrmSync,
+        ).apply {
             setBackgroundColor(activity.getColor(R.color.calllog_bg))
-            elevation = dp(8).toFloat()
         }
-        val actionAnchor = actionFactory().apply {
-            tag = ContactNotesStickyActions(stickyActionBar, topBar, compactTitle, identityAnchor)
+        val actionAnchor = FrameLayout(activity).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(ACTION_ANCHOR_HEIGHT_DP),
+            )
+            addView(actionRow, actionRowHostLayoutParams())
+            tag = ContactNotesStickyActions(actionRow, topBar, compactTitle)
         }
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -157,8 +159,8 @@ class ContactNotesHeaderUi(
             setPadding(0, dp(5), 0, dp(5))
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(48),
-            ).apply { topMargin = dp(2) }
+                dp(ACTION_ROW_HEIGHT_DP),
+            )
         }
         ContactNotesHeaderActionPolicy.ordered(contactExists).forEach { kind ->
             val button = when (kind) {
@@ -205,6 +207,12 @@ class ContactNotesHeaderUi(
         }
         return row
     }
+
+    private fun actionRowHostLayoutParams(): FrameLayout.LayoutParams = FrameLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp(ACTION_ROW_HEIGHT_DP),
+        Gravity.BOTTOM,
+    )
 
     private fun actionSlot(button: View): LinearLayout {
         button.layoutParams = LinearLayout.LayoutParams(
@@ -298,5 +306,10 @@ class ContactNotesHeaderUi(
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         clipboard.setPrimaryClip(ClipData.newPlainText(label, value))
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private companion object {
+        const val ACTION_ANCHOR_HEIGHT_DP = 50
+        const val ACTION_ROW_HEIGHT_DP = 48
     }
 }
