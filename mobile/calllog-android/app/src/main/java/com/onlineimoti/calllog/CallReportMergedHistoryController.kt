@@ -217,6 +217,10 @@ internal class CallReportMergedHistoryController(
         HomeBusyTooltipUi.clear(activity)
     }
 
+    /**
+     * Wait for every active source load, then prepare and publish one coherent snapshot.
+     * This keeps the currently visible History page interactive while refresh runs.
+     */
     private fun prepareWhenDataReady(phone: String) {
         if (phone.isBlank() || phone != activePhone || localLoading || serverLoading) return
         schedulePrepare(phone)
@@ -260,6 +264,7 @@ internal class CallReportMergedHistoryController(
         }
     }
 
+    /** Rebuild only when the prepared presentation is different from what is already visible. */
     private fun publishIfNeeded() {
         val nextState = currentRenderedState()
         if (!forceRenderAfterPrepare && nextState == lastRenderedState) return
