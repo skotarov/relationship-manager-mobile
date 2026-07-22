@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
@@ -28,6 +29,19 @@ internal class EdgePageScrollController(
     private var stableChecks = 0
     private var lastVisiblePageCount = -1
     private var baselineVisiblePageCount = 0
+    private var lastScrollY = 0
+
+    private val scrollListener = ViewTreeObserver.OnScrollChangedListener {
+        val scroll = scrollView ?: return@OnScrollChangedListener
+        val scrollY = scroll.scrollY
+        val oldScrollY = lastScrollY
+        lastScrollY = scrollY
+        if (scrollY <= oldScrollY || pendingNext) return@OnScrollChangedListener
+        val child = scroll.getChildAt(0) ?: return@OnScrollChangedListener
+        val remaining = child.height - scrollY - scroll.height
+        val threshold = maxOf(scroll.height, MIN_PREFETCH_DISTANCE_PX)
+        if (remaining <= threshold) requestNext()
+    }
 
     private val initialPrefetch = object : Runnable {
         override fun run() {
@@ -80,15 +94,10 @@ internal class EdgePageScrollController(
     ) {
         val list = contentView as? LinearLayout ?: return
         if (this.scrollView !== scrollView) {
-            this.scrollView?.setOnScrollChangeListener(null as View.OnScrollChangeListener?)
+            detachScrollListener()
             this.scrollView = scrollView
-            scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
-                if (scrollY <= oldScrollY || pendingNext) return@setOnScrollChangeListener
-                val child = scrollView.getChildAt(0) ?: return@setOnScrollChangeListener
-                val remaining = child.height - scrollY - scrollView.height
-                val threshold = maxOf(scrollView.height, MIN_PREFETCH_DISTANCE_PX)
-                if (remaining <= threshold) requestNext()
-            }
+            lastScrollY = scrollView.scrollY
+            scrollView.viewTreeObserver.addOnScrollChangedListener(scrollListener)
         }
         content = list
         if (pendingNext) scheduleReadyCheck() else scheduleInitialPrefetch()
@@ -111,9 +120,14 @@ internal class EdgePageScrollController(
 
     fun release() {
         cancelPending()
-        scrollView?.setOnScrollChangeListener(null as View.OnScrollChangeListener?)
+        detachScrollListener()
         scrollView = null
         content = null
+    }
+
+    private fun detachScrollListener() {
+        val observer = scrollView?.viewTreeObserver ?: return
+        if (observer.isAlive) observer.removeOnScrollChangedListener(scrollListener)
     }
 
     private fun requestNext() {
