@@ -45,9 +45,9 @@ internal object HomeBusyText {
             HomeBusyWork.LOCAL_NOTES -> "Допълвам локалните бележки…"
             HomeBusyWork.SERVER_NOTES -> "Допълвам сървърните бележки…"
             HomeBusyWork.COMPANY_DATA -> "Обновявам фирмените данни…"
-            HomeBusyWork.HISTORY_LOCAL -> "Зареждам локалната история…"
-            HomeBusyWork.HISTORY_SERVER -> "Зареждам историята от сървъра…"
-            HomeBusyWork.HISTORY_PREPARE -> "Подготвям историята…"
+            HomeBusyWork.HISTORY_LOCAL -> "Проверявам локално — възможна промяна…"
+            HomeBusyWork.HISTORY_SERVER -> "Проверявам сървъра — възможна промяна…"
+            HomeBusyWork.HISTORY_PREPARE -> "Прилагам обновената история…"
         }
     } else {
         when (work) {
@@ -60,9 +60,9 @@ internal object HomeBusyText {
             HomeBusyWork.LOCAL_NOTES -> "Adding local notes…"
             HomeBusyWork.SERVER_NOTES -> "Adding server notes…"
             HomeBusyWork.COMPANY_DATA -> "Updating company data…"
-            HomeBusyWork.HISTORY_LOCAL -> "Loading local history…"
-            HomeBusyWork.HISTORY_SERVER -> "Loading server history…"
-            HomeBusyWork.HISTORY_PREPARE -> "Preparing history…"
+            HomeBusyWork.HISTORY_LOCAL -> "Checking local data — changes may follow…"
+            HomeBusyWork.HISTORY_SERVER -> "Checking server data — changes may follow…"
+            HomeBusyWork.HISTORY_PREPARE -> "Applying the updated history…"
         }
     }
 }
