@@ -66,10 +66,7 @@ internal class ContactNotesStickyHistoryUi(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.TOP,
-        ).apply {
-            leftMargin = dp(16)
-            rightMargin = dp(16)
-        }
+        )
         val stickyActionHost = FrameLayout(activity).apply {
             visibility = View.INVISIBLE
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
