@@ -3,6 +3,7 @@ package com.onlineimoti.calllog
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -24,6 +25,7 @@ internal class ContactNotesStickyHistoryUi(
 ) {
     private var stickyController: StickyGroupHeaderController? = null
     private var scrollView: ScrollView? = null
+    private var scrollChangedListener: ViewTreeObserver.OnScrollChangedListener? = null
     private var layoutChangeListener: View.OnLayoutChangeListener? = null
     private val screenLocation = IntArray(2)
 
@@ -141,7 +143,11 @@ internal class ContactNotesStickyHistoryUi(
             }
         }
 
-        historyScroll.setOnScrollChangeListener { _, _, _, _, _ -> updateStickyUi() }
+        scrollChangedListener = ViewTreeObserver.OnScrollChangedListener {
+            updateStickyUi()
+        }.also { listener ->
+            historyScroll.viewTreeObserver.addOnScrollChangedListener(listener)
+        }
         layoutChangeListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateStickyUi()
         }.also(historyScroll::addOnLayoutChangeListener)
@@ -157,9 +163,13 @@ internal class ContactNotesStickyHistoryUi(
 
     fun release() {
         val currentScroll = scrollView
+        scrollChangedListener?.let { listener ->
+            val observer = currentScroll?.viewTreeObserver
+            if (observer?.isAlive == true) observer.removeOnScrollChangedListener(listener)
+        }
+        scrollChangedListener = null
         layoutChangeListener?.let { listener -> currentScroll?.removeOnLayoutChangeListener(listener) }
         layoutChangeListener = null
-        currentScroll?.setOnScrollChangeListener(null)
         scrollView = null
         stickyController?.release()
         stickyController = null
