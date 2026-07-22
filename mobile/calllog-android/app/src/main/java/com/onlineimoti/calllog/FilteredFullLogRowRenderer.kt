@@ -22,7 +22,7 @@ internal class FilteredFullLogRowRenderer(
     private val activity: Activity,
     private val dp: (Int) -> Int,
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
-    private val openContactNotes: (PhoneCallRecord, String) -> Unit,
+    private val openContactNotes: ((PhoneCallRecord, String) -> Unit)?,
     private val openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
 ) {
     private val metadataUi by lazy { FilteredFullLogMetadataUi(activity, dp) }
@@ -109,12 +109,14 @@ internal class FilteredFullLogRowRenderer(
             !foreignRecord && row.kind == CallReportHistoryRowKind.NOTE && localNote != null && row.editable -> {
                 card.isClickable = true
                 card.isFocusable = true
-                card.setOnClickListener { openNoteEditor(phone, localNote.withServerClientEventId(row.serverEvent?.clientEventId.orEmpty())) }
+                card.setOnClickListener {
+                    openNoteEditor(phone, localNote.withServerClientEventId(row.serverEvent?.clientEventId.orEmpty()))
+                }
             }
-            !foreignRecord && row.kind == CallReportHistoryRowKind.PHONE && localCall != null -> {
+            !foreignRecord && row.kind == CallReportHistoryRowKind.PHONE && localCall != null && openContactNotes != null -> {
                 card.isClickable = true
                 card.isFocusable = true
-                card.setOnClickListener { openContactNotes(localCall, localCall.displayName) }
+                card.setOnClickListener { openContactNotes.invoke(localCall, localCall.displayName) }
             }
         }
     }
@@ -171,7 +173,9 @@ internal class FilteredFullLogRowRenderer(
             if (!foreignRecord && localNote != null && note.editable) {
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { openNoteEditor(phone, localNote.withServerClientEventId(note.serverEvent?.clientEventId.orEmpty())) }
+                setOnClickListener {
+                    openNoteEditor(phone, localNote.withServerClientEventId(note.serverEvent?.clientEventId.orEmpty()))
+                }
             }
             if (note.text.isNotBlank()) {
                 addView(TextView(activity).apply {
