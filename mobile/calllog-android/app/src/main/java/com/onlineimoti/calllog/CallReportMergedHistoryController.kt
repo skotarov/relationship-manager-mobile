@@ -34,6 +34,8 @@ internal class CallReportMergedHistoryController(
     private var localBusyToken = 0L
     private var serverBusyToken = 0L
     private val prepareBusyTokens = linkedSetOf<Long>()
+    private var lastRenderedState: HistoryRenderedState? = null
+    private var forceRenderAfterPrepare = false
 
     private var latestLocalCall: PhoneCallRecord? = null
     private var localSms: List<SmsMessageRecord> = emptyList()
@@ -61,11 +63,12 @@ internal class CallReportMergedHistoryController(
         if (serverLoading) return
         val config = ConfigStore.load(activity)
         if (!CallReportRemoteAccess.isEnabled(config)) {
-            clearServerStateAndRerenderIfNeeded()
+            clearServerStateAndPrepareIfNeeded()
             return
         }
         if (!CallReportRemoteAccess.isReady(config)) return
 
+        invalidatePrepareForNewData()
         serverLoading = true
         val generation = ++serverGeneration
         val token = HomeBusyTooltipUi.begin(activity, HomeBusyWork.HISTORY_SERVER)
@@ -81,7 +84,7 @@ internal class CallReportMergedHistoryController(
                     generation != serverGeneration || requestedPhone != activePhone
                 ) return@post
                 if (!CallReportRemoteAccess.isEnabled(activity)) {
-                    clearServerStateAndRerenderIfNeeded()
+                    clearServerStateAndPrepareIfNeeded()
                     return@post
                 }
                 serverLoading = false
@@ -93,8 +96,7 @@ internal class CallReportMergedHistoryController(
                     serverLoaded = false
                     loadError = serverErrorText(it)
                 }
-                schedulePrepare(requestedPhone)
-                rerender()
+                prepareWhenDataReady(requestedPhone)
             }
         }
     }
@@ -103,6 +105,7 @@ internal class CallReportMergedHistoryController(
         if (phone.isBlank()) return
         selectPhone(phone)
         if (localLoading) return
+        invalidatePrepareForNewData()
         localLoading = true
         val generation = ++localGeneration
         val token = HomeBusyTooltipUi.begin(activity, HomeBusyWork.HISTORY_LOCAL)
@@ -128,8 +131,7 @@ internal class CallReportMergedHistoryController(
                 contactExists = snapshot.contactExists
                 companyScopeAvailable = snapshot.companyScopeAvailable
                 localLoading = false
-                schedulePrepare(requestedPhone)
-                rerender()
+                prepareWhenDataReady(requestedPhone)
             }
         }
     }
@@ -159,12 +161,8 @@ internal class CallReportMergedHistoryController(
         }
     }
 
-    /** Temporary loading text rendered in the fixed slot below the contact header. */
-    fun serverLoadingStatusText(): String = when {
-        CallReportRemoteAccess.isEnabled(activity) && serverLoading -> "Добавям сървърни бележки и SMS…"
-        prepareLoading -> "Подготвям историята…"
-        else -> ""
-    }
+    /** Loading progress is shown only through the non-blocking black tooltip. */
+    fun serverLoadingStatusText(): String = ""
 
     fun companyMainNotes(phone: String): List<CallReportCompanyMainNote> =
         prepared.companyMainNotes.takeIf { phone == activePhone }.orEmpty()
@@ -198,6 +196,14 @@ internal class CallReportMergedHistoryController(
         )
     }
 
+    fun markRendered() {
+        lastRenderedState = currentRenderedState()
+    }
+
+    fun forceNextRenderAfterDataReady() {
+        forceRenderAfterPrepare = true
+    }
+
     fun release() {
         localGeneration += 1
         serverGeneration += 1
@@ -209,6 +215,11 @@ internal class CallReportMergedHistoryController(
         prepareExecutor.shutdownNow()
         handler.removeCallbacksAndMessages(null)
         HomeBusyTooltipUi.clear(activity)
+    }
+
+    private fun prepareWhenDataReady(phone: String) {
+        if (phone.isBlank() || phone != activePhone || localLoading || serverLoading) return
+        schedulePrepare(phone)
     }
 
     private fun schedulePrepare(phone: String) {
@@ -244,9 +255,41 @@ internal class CallReportMergedHistoryController(
                 ) return@post
                 prepareLoading = false
                 result.onSuccess { prepared = it }
-                rerender()
+                publishIfNeeded()
             }
         }
+    }
+
+    private fun publishIfNeeded() {
+        val nextState = currentRenderedState()
+        if (!forceRenderAfterPrepare && nextState == lastRenderedState) return
+        forceRenderAfterPrepare = false
+        lastRenderedState = nextState
+        rerender()
+    }
+
+    private fun currentRenderedState(): HistoryRenderedState = HistoryRenderedState(
+        localLoading = localLoading,
+        serverLoading = serverLoading,
+        prepareLoading = prepareLoading,
+        serverLoaded = serverLoaded,
+        latestLocalCall = latestLocalCall,
+        localSms = localSms,
+        localNotes = localNotes,
+        localGeneralNote = localGeneralNote,
+        localGeneralNotePending = localGeneralNotePending,
+        contactExists = contactExists,
+        companyScopeAvailable = companyScopeAvailable,
+        serverHistory = serverHistory,
+        prepared = prepared,
+        loadError = loadError,
+    )
+
+    private fun invalidatePrepareForNewData() {
+        if (!prepareLoading && prepareBusyTokens.isEmpty()) return
+        prepareGeneration += 1
+        prepareLoading = false
+        finishAllPrepareBusy()
     }
 
     private fun selectPhone(phone: String) {
@@ -273,6 +316,8 @@ internal class CallReportMergedHistoryController(
         serverHistory = CallReportHistoryLookupResult()
         prepared = HistoryPreparedSnapshot()
         loadError = ""
+        lastRenderedState = null
+        forceRenderAfterPrepare = false
         rowsUi.resetPage()
     }
 
@@ -290,17 +335,14 @@ internal class CallReportMergedHistoryController(
         }, minOf(1, root.childCount))
     }
 
-    private fun clearServerStateAndRerenderIfNeeded() {
+    private fun clearServerStateAndPrepareIfNeeded() {
         val hadServerState = serverLoading || serverLoaded || serverHistory.events.isNotEmpty() ||
             serverHistory.principal != CallReportHistoryPrincipal() || loadError.isNotBlank()
         serverLoading = false
         serverLoaded = false
         serverHistory = CallReportHistoryLookupResult()
         loadError = ""
-        if (hadServerState && activePhone.isNotBlank()) {
-            schedulePrepare(activePhone)
-            rerender()
-        }
+        if (hadServerState && activePhone.isNotBlank()) prepareWhenDataReady(activePhone)
     }
 
     private fun finishLocalBusy(token: Long = localBusyToken) {
@@ -362,4 +404,21 @@ internal class CallReportMergedHistoryController(
         while (current.cause != null && current.cause !== current) current = current.cause!!
         return current
     }
+
+    private data class HistoryRenderedState(
+        val localLoading: Boolean,
+        val serverLoading: Boolean,
+        val prepareLoading: Boolean,
+        val serverLoaded: Boolean,
+        val latestLocalCall: PhoneCallRecord?,
+        val localSms: List<SmsMessageRecord>,
+        val localNotes: List<ContactCallNote>,
+        val localGeneralNote: String,
+        val localGeneralNotePending: Boolean,
+        val contactExists: Boolean,
+        val companyScopeAvailable: Boolean,
+        val serverHistory: CallReportHistoryLookupResult,
+        val prepared: HistoryPreparedSnapshot,
+        val loadError: String,
+    )
 }
