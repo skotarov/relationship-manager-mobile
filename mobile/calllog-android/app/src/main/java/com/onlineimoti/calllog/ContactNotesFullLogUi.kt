@@ -28,6 +28,8 @@ internal class ContactNotesFullLogUi(
         openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
     ) {
         entries = incomingEntries
+        // Everything before this index is the fixed contact/header part of History.
+        // Manual paging removes and recreates only the list rows after this boundary.
         val sectionStartIndex = root.childCount
         renderSection(
             root = root,
@@ -75,6 +77,7 @@ internal class ContactNotesFullLogUi(
         val pages = pages()
         val totalPages = maxOf(1, pages.size)
         pageIndex = pageIndex.coerceIn(0, totalPages - 1)
+        // Prefetch mode is cumulative so earlier rows remain visible and the viewport is stable.
         val visibleEntries = pages.take(pageIndex + 1).flatten()
         when {
             loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
