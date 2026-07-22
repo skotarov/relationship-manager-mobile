@@ -1,5 +1,8 @@
 package com.onlineimoti.calllog
 
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -19,7 +22,7 @@ internal object ContactNotesStickyActionPolicy {
     fun shouldShowCompactIdentity(actionsPinned: Boolean): Boolean = actionsPinned
 }
 
-/** Builds History with one real action row that moves into and out of a fixed host. */
+/** Builds History with fixed top identity/actions and a fixed bottom list-mode switch. */
 internal class ContactNotesStickyHistoryUi(
     private val activity: ContactNotesActivity,
 ) {
@@ -40,6 +43,8 @@ internal class ContactNotesStickyHistoryUi(
         refreshing: Boolean,
         onRefresh: () -> Unit,
         bindPaging: (ScrollView, LinearLayout) -> Unit,
+        mode: ContactHistoryListMode,
+        onModeSelected: (ContactHistoryListMode) -> Unit,
     ) {
         scrollView?.let { savedScrollY = it.scrollY }
         release()
@@ -102,6 +107,10 @@ internal class ContactNotesStickyHistoryUi(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f,
+            ))
+            addView(historyModeBar(mode, onModeSelected), LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(MODE_BAR_HEIGHT_DP),
             ))
         }
 
@@ -185,6 +194,58 @@ internal class ContactNotesStickyHistoryUi(
         stickyController = null
     }
 
+    private fun historyModeBar(
+        selectedMode: ContactHistoryListMode,
+        onModeSelected: (ContactHistoryListMode) -> Unit,
+    ): LinearLayout = LinearLayout(activity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
+        elevation = dp(8).toFloat()
+        addView(modeButton(
+            textValue = "Бележки и SMS",
+            mode = ContactHistoryListMode.NOTES_AND_SMS,
+            selectedMode = selectedMode,
+            onModeSelected = onModeSelected,
+        ))
+        addView(modeButton(
+            textValue = "Пълен лог",
+            mode = ContactHistoryListMode.FULL_LOG,
+            selectedMode = selectedMode,
+            onModeSelected = onModeSelected,
+        ))
+    }
+
+    private fun modeButton(
+        textValue: String,
+        mode: ContactHistoryListMode,
+        selectedMode: ContactHistoryListMode,
+        onModeSelected: (ContactHistoryListMode) -> Unit,
+    ): TextView {
+        val selected = mode == selectedMode
+        return TextView(activity).apply {
+            text = textValue
+            textSize = 14f
+            setTypeface(typeface, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setTextColor(if (selected) Color.WHITE else Color.rgb(51, 65, 85))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(if (selected) activity.getColor(R.color.callreport_icon_background) else Color.TRANSPARENT)
+                setStroke(dp(1), activity.getColor(R.color.calllog_border))
+            }
+            isClickable = !selected
+            isFocusable = !selected
+            contentDescription = textValue
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                1f,
+            )
+            setOnClickListener { if (!selected) onModeSelected(mode) }
+        }
+    }
+
     private fun moveActionRow(row: LinearLayout, target: ViewGroup) {
         if (row.parent === target) return
         (row.parent as? ViewGroup)?.removeView(row)
@@ -219,5 +280,6 @@ internal class ContactNotesStickyHistoryUi(
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
+        const val MODE_BAR_HEIGHT_DP = 52
     }
 }
