@@ -74,10 +74,7 @@ internal class ContactNotesStickyHistoryUi(
             ViewGroup.LayoutParams.MATCH_PARENT,
             dp(STICKY_ACTION_HEIGHT_DP),
             Gravity.TOP,
-        ).apply {
-            leftMargin = dp(16)
-            rightMargin = dp(16)
-        }
+        )
 
         val viewport = FrameLayout(activity).apply {
             clipChildren = false
