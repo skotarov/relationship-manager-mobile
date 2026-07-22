@@ -10,7 +10,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 internal object ContactNotesStickyActionPolicy {
-    /** Pin the duplicate action row exactly when the original row reaches the viewport top. */
+    /** Pin the action row exactly when its reserved place reaches the viewport top. */
     fun shouldStick(actionTopOnScreen: Int, viewportTopOnScreen: Int): Boolean =
         actionTopOnScreen <= viewportTopOnScreen
 
@@ -18,7 +18,7 @@ internal object ContactNotesStickyActionPolicy {
     fun shouldShowCompactIdentity(actionsPinned: Boolean): Boolean = actionsPinned
 }
 
-/** Builds History with a fixed back bar, sticky actions and a group title overlay. */
+/** Builds History with one real action row that moves into and out of a fixed host. */
 internal class ContactNotesStickyHistoryUi(
     private val activity: ContactNotesActivity,
 ) {
@@ -34,9 +34,10 @@ internal class ContactNotesStickyHistoryUi(
         bindPaging: (ScrollView, LinearLayout) -> Unit,
     ) {
         release()
-        val actionAnchor = findActionAnchor(root)
+        val actionAnchor = findActionAnchor(root) as? ViewGroup
         val stickyHeader = actionAnchor?.tag as? ContactNotesStickyActions
         val topBar = stickyHeader?.topBar
+        val actionRow = stickyHeader?.actionRow
         (topBar?.parent as? ViewGroup)?.removeView(topBar)
 
         val historyScroll = ScrollView(activity).apply {
@@ -45,6 +46,7 @@ internal class ContactNotesStickyHistoryUi(
             addView(root)
         }
         scrollView = historyScroll
+
         val groupOverlay = TextView(activity)
         val groupOverlayParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -54,7 +56,20 @@ internal class ContactNotesStickyHistoryUi(
             leftMargin = dp(16)
             rightMargin = dp(16)
         }
-        val stickyActionBar = stickyHeader?.overlay
+        val stickyActionHost = FrameLayout(activity).apply {
+            visibility = View.INVISIBLE
+            setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
+            elevation = dp(8).toFloat()
+        }
+        val stickyActionHostParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dp(STICKY_ACTION_HEIGHT_DP),
+            Gravity.TOP,
+        ).apply {
+            leftMargin = dp(16)
+            rightMargin = dp(16)
+        }
+
         val viewport = FrameLayout(activity).apply {
             clipChildren = false
             clipToPadding = false
@@ -63,18 +78,7 @@ internal class ContactNotesStickyHistoryUi(
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ))
             addView(groupOverlay, groupOverlayParams)
-            stickyActionBar?.let { actionBar ->
-                actionBar.visibility = View.INVISIBLE
-                addView(actionBar, FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    dp(STICKY_ACTION_HEIGHT_DP),
-                    Gravity.TOP,
-                ).apply {
-                    leftMargin = dp(16)
-                    rightMargin = dp(16)
-                })
-                actionBar.bringToFront()
-            }
+            addView(stickyActionHost, stickyActionHostParams)
         }
         val screen = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -97,18 +101,30 @@ internal class ContactNotesStickyHistoryUi(
 
         fun updateStickyUi() {
             if (!historyScroll.isAttachedToWindow || historyScroll.height <= 0) return
-            val viewportTopOnScreen = topOnScreen(historyScroll)
             val anchor = actionAnchor
-            val actionBar = stickyActionBar
-            var actionsPinned = false
-            if (anchor != null && actionBar != null && anchor.isAttachedToWindow && anchor.height > 0) {
-                actionsPinned = ContactNotesStickyActionPolicy.shouldStick(
+            val row = actionRow
+            val actionsPinned = if (
+                anchor != null && row != null && anchor.isAttachedToWindow && anchor.height > 0
+            ) {
+                ContactNotesStickyActionPolicy.shouldStick(
                     actionTopOnScreen = topOnScreen(anchor),
-                    viewportTopOnScreen = viewportTopOnScreen,
+                    viewportTopOnScreen = topOnScreen(historyScroll),
                 )
-                val actionVisibility = if (actionsPinned) View.VISIBLE else View.INVISIBLE
-                if (actionBar.visibility != actionVisibility) actionBar.visibility = actionVisibility
-                if (actionsPinned) actionBar.bringToFront()
+            } else {
+                false
+            }
+
+            if (anchor != null && row != null) {
+                if (actionsPinned) {
+                    moveActionRow(row, stickyActionHost)
+                    stickyActionHost.visibility = View.VISIBLE
+                    row.elevation = dp(8).toFloat()
+                    stickyActionHost.bringToFront()
+                } else {
+                    moveActionRow(row, anchor)
+                    row.elevation = 0f
+                    stickyActionHost.visibility = View.INVISIBLE
+                }
             }
 
             stickyHeader?.compactTitle?.let { compactTitle ->
@@ -130,7 +146,6 @@ internal class ContactNotesStickyHistoryUi(
             updateStickyUi()
         }.also(historyScroll::addOnLayoutChangeListener)
         historyScroll.post { updateStickyUi() }
-        stickyActionBar?.post { updateStickyUi() }
         bindPaging(historyScroll, root)
         activity.setContentView(PullToRefreshLayout(activity).apply {
             addView(screen)
@@ -149,6 +164,19 @@ internal class ContactNotesStickyHistoryUi(
         stickyController?.release()
         stickyController = null
     }
+
+    private fun moveActionRow(row: LinearLayout, target: ViewGroup) {
+        if (row.parent === target) return
+        (row.parent as? ViewGroup)?.removeView(row)
+        target.removeAllViews()
+        target.addView(row, actionRowLayoutParams())
+    }
+
+    private fun actionRowLayoutParams(): FrameLayout.LayoutParams = FrameLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp(ACTION_ROW_HEIGHT_DP),
+        Gravity.BOTTOM,
+    )
 
     private fun topOnScreen(view: View): Int {
         view.getLocationOnScreen(screenLocation)
@@ -170,5 +198,6 @@ internal class ContactNotesStickyHistoryUi(
     private companion object {
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
+        const val ACTION_ROW_HEIGHT_DP = 48
     }
 }
