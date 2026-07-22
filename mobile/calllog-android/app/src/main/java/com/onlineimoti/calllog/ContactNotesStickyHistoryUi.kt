@@ -70,7 +70,8 @@ internal class ContactNotesStickyHistoryUi(
         val stickyActionHost = FrameLayout(activity).apply {
             visibility = View.INVISIBLE
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
-            elevation = dp(8).toFloat()
+            elevation = 0f
+            stateListAnimator = null
         }
         val stickyActionHostParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -131,7 +132,7 @@ internal class ContactNotesStickyHistoryUi(
                 if (actionsPinned) {
                     moveActionRow(row, stickyActionHost)
                     stickyActionHost.visibility = View.VISIBLE
-                    row.elevation = dp(8).toFloat()
+                    row.elevation = 0f
                     stickyActionHost.bringToFront()
                 } else {
                     moveActionRow(row, anchor)
