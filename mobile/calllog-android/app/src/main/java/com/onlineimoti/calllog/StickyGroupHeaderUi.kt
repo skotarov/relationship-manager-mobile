@@ -26,7 +26,8 @@ internal object StickyGroupHeaderUi {
         elevation = 0f
         stateListAnimator = null
         val density = resources.displayMetrics.density
-        setPadding((10 * density).toInt(), (6 * density).toInt(), (10 * density).toInt(), (6 * density).toInt())
+        val horizontalPadding = (26 * density).toInt()
+        setPadding(horizontalPadding, (6 * density).toInt(), horizontalPadding, (6 * density).toInt())
     }
 
     fun isMarked(view: View): Boolean {
