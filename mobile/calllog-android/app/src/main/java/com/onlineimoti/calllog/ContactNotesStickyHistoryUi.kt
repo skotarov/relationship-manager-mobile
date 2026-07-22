@@ -14,9 +14,8 @@ internal object ContactNotesStickyActionPolicy {
     fun shouldStick(actionTopOnScreen: Int, viewportTopOnScreen: Int): Boolean =
         actionTopOnScreen <= viewportTopOnScreen
 
-    /** Show the compact identity only after the large identity has fully left the viewport. */
-    fun shouldShowCompactIdentity(identityBottomOnScreen: Int, viewportTopOnScreen: Int): Boolean =
-        identityBottomOnScreen <= viewportTopOnScreen
+    /** The compact identity appears at the same moment as the action row becomes pinned. */
+    fun shouldShowCompactIdentity(actionsPinned: Boolean): Boolean = actionsPinned
 }
 
 /** Builds History with a fixed back bar, sticky actions and a group title overlay. */
@@ -99,21 +98,6 @@ internal class ContactNotesStickyHistoryUi(
         fun updateStickyUi() {
             if (!historyScroll.isAttachedToWindow || historyScroll.height <= 0) return
             val viewportTopOnScreen = topOnScreen(historyScroll)
-            val identityAnchor = stickyHeader?.identityAnchor
-            val compactTitle = stickyHeader?.compactTitle
-            if (
-                identityAnchor != null && compactTitle != null &&
-                identityAnchor.isAttachedToWindow && identityAnchor.height > 0
-            ) {
-                val showCompact = compactTitle.text.isNotBlank() &&
-                    ContactNotesStickyActionPolicy.shouldShowCompactIdentity(
-                        identityBottomOnScreen = bottomOnScreen(identityAnchor),
-                        viewportTopOnScreen = viewportTopOnScreen,
-                    )
-                val titleVisibility = if (showCompact) View.VISIBLE else View.INVISIBLE
-                if (compactTitle.visibility != titleVisibility) compactTitle.visibility = titleVisibility
-            }
-
             val anchor = actionAnchor
             val actionBar = stickyActionBar
             var actionsPinned = false
@@ -126,6 +110,14 @@ internal class ContactNotesStickyHistoryUi(
                 if (actionBar.visibility != actionVisibility) actionBar.visibility = actionVisibility
                 if (actionsPinned) actionBar.bringToFront()
             }
+
+            stickyHeader?.compactTitle?.let { compactTitle ->
+                val showCompact = compactTitle.text.isNotBlank() &&
+                    ContactNotesStickyActionPolicy.shouldShowCompactIdentity(actionsPinned)
+                val titleVisibility = if (showCompact) View.VISIBLE else View.INVISIBLE
+                if (compactTitle.visibility != titleVisibility) compactTitle.visibility = titleVisibility
+            }
+
             val groupTop = if (actionsPinned) dp(STICKY_ACTION_HEIGHT_DP) else 0
             if (groupOverlayParams.topMargin != groupTop) {
                 groupOverlayParams.topMargin = groupTop
@@ -162,8 +154,6 @@ internal class ContactNotesStickyHistoryUi(
         view.getLocationOnScreen(screenLocation)
         return screenLocation[1]
     }
-
-    private fun bottomOnScreen(view: View): Int = topOnScreen(view) + view.height
 
     private fun findActionAnchor(view: View): View? {
         if (view.tag is ContactNotesStickyActions) return view
