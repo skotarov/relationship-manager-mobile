@@ -13,7 +13,6 @@ internal class HomeEdgePagingController(
 ) {
     private val activity = binding.root.context as? Activity
     private val originalPaginationHeight = binding.paginationContainer.layoutParams.height
-    private val pageRangeTooltip = HomePageRangeTooltipUi(binding)
     private val stickyGroups = StickyGroupHeaderController(
         binding.homeCallsScrollView,
         binding.homeCallsContainer,
@@ -36,7 +35,9 @@ internal class HomeEdgePagingController(
         },
         retainPreviousPages = true,
         protectRetainedPrefix = true,
-        prefetchNext = true,
+        // Do not parse page 2 automatically after page 1 has just finished loading.
+        // Older pages still load normally when the user scrolls near the bottom.
+        prefetchNext = false,
         onLoadingChanged = { loading ->
             binding.fullLogProgress.visibility = View.GONE
             if (loading) {
@@ -45,9 +46,6 @@ internal class HomeEdgePagingController(
             } else {
                 finishPagingStatus()
                 HomeLoadingFooterUi.hide(binding.homeCallsContainer)
-                binding.homeCallsContainer.post {
-                    pageRangeTooltip.show(HomePagedListUi.visiblePageCount(binding.homeCallsContainer))
-                }
             }
         },
     )
@@ -69,7 +67,6 @@ internal class HomeEdgePagingController(
     fun cancel() {
         delegate.cancelPending()
         finishPagingStatus()
-        pageRangeTooltip.reset()
     }
 
     fun isTransitioning(): Boolean = delegate.isTransitioning()
@@ -81,7 +78,6 @@ internal class HomeEdgePagingController(
         delegate.release()
         finishPagingStatus()
         stickyGroups.release()
-        pageRangeTooltip.release()
     }
 
     private fun beginPagingStatus() {
