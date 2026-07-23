@@ -70,6 +70,7 @@ internal class ContactNotesStickyHistoryUi(
         val stickyActionHost = FrameLayout(activity).apply {
             visibility = View.INVISIBLE
             setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
+            setPadding(dp(PAGE_HORIZONTAL_PADDING_DP), 0, dp(PAGE_HORIZONTAL_PADDING_DP), 0)
             elevation = 0f
             stateListAnimator = null
         }
