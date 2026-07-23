@@ -16,7 +16,7 @@ internal object StickyGroupHeaderUi {
 
     fun mark(view: TextView): TextView = view.apply { tag = marker }
 
-    fun prepareOverlay(view: TextView): TextView = view.apply {
+    fun prepareOverlay(view: TextView, horizontalPaddingPx: Int? = null): TextView = view.apply {
         visibility = View.GONE
         textSize = 12.5f
         typeface = Typeface.DEFAULT_BOLD
@@ -26,8 +26,13 @@ internal object StickyGroupHeaderUi {
         elevation = 0f
         stateListAnimator = null
         val density = resources.displayMetrics.density
-        val horizontalPadding = (26 * density).toInt()
-        setPadding(horizontalPadding, (6 * density).toInt(), horizontalPadding, (6 * density).toInt())
+        val resolvedHorizontalPadding = horizontalPaddingPx ?: (10 * density).toInt()
+        setPadding(
+            resolvedHorizontalPadding,
+            (6 * density).toInt(),
+            resolvedHorizontalPadding,
+            (6 * density).toInt(),
+        )
     }
 
     fun isMarked(view: View): Boolean {
@@ -46,11 +51,17 @@ internal data class StickyGroupHeaderState(
 )
 
 internal object StickyGroupHeaderPolicy {
-    fun resolve(headerTops: List<Int>, overlayHeight: Int): StickyGroupHeaderState? {
-        val activeIndex = headerTops.indexOfLast { it < 0 }
+    fun resolve(
+        headerTops: List<Int>,
+        overlayHeight: Int,
+        stickyTop: Int = 0,
+    ): StickyGroupHeaderState? {
+        val activeIndex = headerTops.indexOfLast { it <= stickyTop }
         if (activeIndex < 0) return null
         val nextTop = headerTops.getOrNull(activeIndex + 1)
-        val translation = nextTop?.let { minOf(0, it - overlayHeight.coerceAtLeast(0)) } ?: 0
+        val translation = nextTop?.let {
+            minOf(0, it - stickyTop - overlayHeight.coerceAtLeast(0))
+        } ?: 0
         return StickyGroupHeaderState(activeIndex, translation)
     }
 }
@@ -59,8 +70,9 @@ internal class StickyGroupHeaderController(
     private val scrollView: ScrollView,
     private val contentRoot: ViewGroup,
     overlay: TextView,
+    overlayHorizontalPaddingPx: Int? = null,
 ) {
-    private val overlay = StickyGroupHeaderUi.prepareOverlay(overlay)
+    private val overlay = StickyGroupHeaderUi.prepareOverlay(overlay, overlayHorizontalPaddingPx)
     private val headers = mutableListOf<TextView>()
     private var bound = false
     private val scrollLocation = IntArray(2)
@@ -124,7 +136,12 @@ internal class StickyGroupHeaderController(
             header.getLocationOnScreen(headerLocation)
             headerLocation[1] - scrollLocation[1]
         }
-        val state = StickyGroupHeaderPolicy.resolve(tops, overlay.height) ?: run {
+        val stickyTop = (overlay.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
+        val state = StickyGroupHeaderPolicy.resolve(
+            headerTops = tops,
+            overlayHeight = overlay.height,
+            stickyTop = stickyTop,
+        ) ?: run {
             hide()
             return
         }
