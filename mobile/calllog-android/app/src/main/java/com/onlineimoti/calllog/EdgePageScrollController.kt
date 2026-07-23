@@ -17,6 +17,8 @@ internal class EdgePageScrollController(
     @Suppress("UNUSED_PARAMETER") retainPreviousPages: Boolean = true,
     @Suppress("UNUSED_PARAMETER") protectRetainedPrefix: Boolean = false,
     private val prefetchNext: Boolean = true,
+    private val loadAtBottomOnly: Boolean = false,
+    private val loadingIndicatorLeadMs: Long = 0L,
     private val onLoadingChanged: (Boolean) -> Unit = {},
 ) {
     private val handler = Handler(Looper.getMainLooper())
@@ -39,7 +41,7 @@ internal class EdgePageScrollController(
         if (scrollY <= oldScrollY || pendingNext) return@OnScrollChangedListener
         val child = scroll.getChildAt(0) ?: return@OnScrollChangedListener
         val remaining = child.height - scrollY - scroll.height
-        val threshold = maxOf(scroll.height, MIN_PREFETCH_DISTANCE_PX)
+        val threshold = if (loadAtBottomOnly) 0 else maxOf(scroll.height, MIN_PREFETCH_DISTANCE_PX)
         if (remaining <= threshold) requestNext()
     }
 
@@ -139,6 +141,15 @@ internal class EdgePageScrollController(
         readyChecks = 0
         stableChecks = 0
         lastVisiblePageCount = -1
+        if (loadingIndicatorLeadMs > 0L) {
+            handler.postDelayed(::startNextPage, loadingIndicatorLeadMs)
+        } else {
+            startNextPage()
+        }
+    }
+
+    private fun startNextPage() {
+        if (!pendingNext) return
         runCatching(nextPage).onFailure { abortPending() }
         if (pendingNext) scheduleReadyCheck()
     }
