@@ -17,6 +17,7 @@ internal object HomeScreenActionBinder {
         isOnLaterPage: () -> Boolean,
         goToFirstPage: () -> Unit,
     ) {
+        HomeResumeRefreshController.install(activity, binding)
         binding.settingsButton.setOnClickListener { openOverflow() }
         binding.crmModeButton.setOnClickListener { openCrmContacts() }
         binding.smsHistoryButton.setOnClickListener {
