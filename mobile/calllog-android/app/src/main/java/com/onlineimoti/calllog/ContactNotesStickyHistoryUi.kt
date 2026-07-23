@@ -114,6 +114,8 @@ internal class ContactNotesStickyHistoryUi(
             ))
         }
 
+        var actionsPinnedState = false
+
         fun updateStickyUi() {
             if (!historyScroll.isAttachedToWindow || historyScroll.height <= 0) return
             savedScrollY = historyScroll.scrollY
@@ -122,15 +124,27 @@ internal class ContactNotesStickyHistoryUi(
             val actionsPinned = if (
                 anchor != null && row != null && anchor.isAttachedToWindow && anchor.height > 0
             ) {
-                ContactNotesStickyActionPolicy.shouldStick(
-                    actionTopOnScreen = topOnScreen(anchor),
-                    viewportTopOnScreen = topOnScreen(historyScroll),
-                )
+                val anchorTop = topOnScreen(anchor)
+                val viewportTop = topOnScreen(historyScroll)
+                if (actionsPinnedState) {
+                    // Keep the row pinned for a tiny extra distance while scrolling back.
+                    // This prevents one-pixel layout rounding from moving it between
+                    // parents repeatedly at the exact sticky boundary.
+                    anchorTop <= viewportTop + dp(STICKY_RELEASE_HYSTERESIS_DP)
+                } else {
+                    ContactNotesStickyActionPolicy.shouldStick(
+                        actionTopOnScreen = anchorTop,
+                        viewportTopOnScreen = viewportTop,
+                    )
+                }
             } else {
                 false
             }
 
-            if (anchor != null && row != null) {
+            if (anchor != null && row != null && actionsPinned != actionsPinnedState) {
+                row.animate().cancel()
+                row.translationX = 0f
+                row.translationY = 0f
                 if (actionsPinned) {
                     moveActionRow(row, stickyActionHost)
                     stickyActionHost.visibility = View.VISIBLE
@@ -141,6 +155,7 @@ internal class ContactNotesStickyHistoryUi(
                     row.elevation = 0f
                     stickyActionHost.visibility = View.INVISIBLE
                 }
+                actionsPinnedState = actionsPinned
             }
 
             stickyHeader?.compactTitle?.let { compactTitle ->
@@ -301,9 +316,17 @@ internal class ContactNotesStickyHistoryUi(
 
     private fun moveActionRow(row: LinearLayout, target: ViewGroup) {
         if (row.parent === target) return
-        (row.parent as? ViewGroup)?.removeView(row)
-        target.removeAllViews()
-        target.addView(row, actionRowLayoutParams())
+        val source = row.parent as? ViewGroup
+        source?.suppressLayout(true)
+        target.suppressLayout(true)
+        try {
+            source?.removeView(row)
+            target.removeAllViews()
+            target.addView(row, actionRowLayoutParams())
+        } finally {
+            source?.suppressLayout(false)
+            target.suppressLayout(false)
+        }
     }
 
     private fun actionRowLayoutParams(): FrameLayout.LayoutParams = FrameLayout.LayoutParams(
@@ -335,6 +358,7 @@ internal class ContactNotesStickyHistoryUi(
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
+        const val STICKY_RELEASE_HYSTERESIS_DP = 2
         const val MODE_BAR_HEIGHT_DP = 64
         const val MODE_BAR_VERTICAL_PADDING_DP = 3
         const val MODE_ICON_SIZE_DP = 22
