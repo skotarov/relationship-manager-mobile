@@ -295,7 +295,5 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private fun isCrmContactsMode(): Boolean = DistributionCapabilities.isPlayBusinessBuild || crmContactsMode
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
-    companion object {
-        const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
-    }
+    companion object { const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED" }
 }
