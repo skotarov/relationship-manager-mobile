@@ -201,23 +201,32 @@ internal class ContactNotesStickyHistoryUi(
         selectedMode: ContactHistoryListMode,
         onModeSelected: (ContactHistoryListMode) -> Unit,
     ): LinearLayout = LinearLayout(activity).apply {
-        orientation = LinearLayout.HORIZONTAL
+        orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
         setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
-        setPadding(dp(PAGE_HORIZONTAL_PADDING_DP), 0, dp(PAGE_HORIZONTAL_PADDING_DP), 0)
         elevation = dp(8).toFloat()
-        addView(modeButton(
-            textValue = "Бележки и SMS",
-            mode = ContactHistoryListMode.NOTES_AND_SMS,
-            selectedMode = selectedMode,
-            onModeSelected = onModeSelected,
-        ))
-        addView(modeButton(
-            textValue = "Пълен лог",
-            mode = ContactHistoryListMode.FULL_LOG,
-            selectedMode = selectedMode,
-            onModeSelected = onModeSelected,
-        ))
+        addView(LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            addView(modeButton(
+                textValue = "Бележки и SMS",
+                mode = ContactHistoryListMode.NOTES_AND_SMS,
+                selectedMode = selectedMode,
+                onModeSelected = onModeSelected,
+            ))
+            addView(modeButton(
+                textValue = "Пълен лог",
+                mode = ContactHistoryListMode.FULL_LOG,
+                selectedMode = selectedMode,
+                onModeSelected = onModeSelected,
+            ))
+        }, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        ).apply {
+            marginStart = dp(PAGE_HORIZONTAL_PADDING_DP)
+            marginEnd = dp(PAGE_HORIZONTAL_PADDING_DP)
+        })
     }
 
     private fun modeButton(
