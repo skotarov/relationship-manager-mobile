@@ -182,14 +182,20 @@ internal class HomeContentRenderer(
         currentCallNotesByCall = state.callNotesByCall
         binding.fullLogProgress.visibility = View.GONE
         chromeUi.renderStatusAndPagination(pageIndex(), pageSize, currentCalls.size)
-        if (unchanged && !forceRender) {
+        val automaticPaging = PageLoadingModeStore.usesPrefetch(activity)
+        val hasRenderedRows = HomePagedListUi.hasRenderedRows(
+            binding.homeCallsContainer,
+            automaticPaging,
+            pageIndex(),
+        )
+        if (HomeRenderReusePolicy.canReuseExistingRows(unchanged, forceRender, hasRenderedRows)) {
             HomeLoadingFooterUi.hide(binding.homeCallsContainer)
             return
         }
 
         val page = HomePagedListUi.page(
             binding.homeCallsContainer,
-            PageLoadingModeStore.usesPrefetch(activity),
+            automaticPaging,
             pageIndex(),
         )
         page.removeAllViews()
