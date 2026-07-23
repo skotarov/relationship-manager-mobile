@@ -38,13 +38,16 @@ internal class HomeEdgePagingController(
         // Never fetch a new page automatically. The user must reach the actual bottom.
         prefetchNext = false,
         loadAtBottomOnly = true,
-        // Give the bottom spinner one visible frame before the next page starts loading.
-        loadingIndicatorLeadMs = 50L,
+        // Keep the spinner visible briefly before starting the next page request.
+        loadingIndicatorLeadMs = 180L,
         onLoadingChanged = { loading ->
             binding.fullLogProgress.visibility = View.GONE
             if (loading) {
                 beginPagingStatus()
                 HomeLoadingFooterUi.show(binding.homeCallsContainer)
+                binding.homeCallsScrollView.post {
+                    binding.homeCallsScrollView.fullScroll(View.FOCUS_DOWN)
+                }
             } else {
                 finishPagingStatus()
                 HomeLoadingFooterUi.hide(binding.homeCallsContainer)
