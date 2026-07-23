@@ -81,6 +81,7 @@ internal class ContactNotesRestoredController(
     }
 
     fun onCreate(intent: Intent?) {
+        handler.removeCallbacks(delayedServerRefresh)
         listMode = ContactHistoryListMode.NOTES_AND_SMS
         edgePaging.reset()
         stickyHistoryUi.resetScrollPosition()
@@ -98,10 +99,12 @@ internal class ContactNotesRestoredController(
             skipNextResumeRefresh = false
             return
         }
-        refreshHistoryInBackground(scheduleConfirmationRefresh = true)
+        // Ordinary navigation back to History needs one refresh, not a second confirmation request.
+        refreshHistoryInBackground(scheduleConfirmationRefresh = false)
     }
 
     fun onDataChanged() {
+        // A real write may reach the provider/server just after the first callback, so confirm once later.
         refreshHistoryInBackground(scheduleConfirmationRefresh = true)
     }
 
@@ -130,6 +133,8 @@ internal class ContactNotesRestoredController(
             return
         }
         pullRefreshRequested = true
+        // Even unchanged data must produce one final render to stop the pull-refresh indicator.
+        historyController.forceNextRenderAfterDataReady()
         refreshHistoryInBackground(scheduleConfirmationRefresh = false)
         render()
     }
