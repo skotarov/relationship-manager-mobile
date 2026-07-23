@@ -15,6 +15,7 @@ internal class HomeNoteSavedReceiverController(
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             HomeCallPageLoader.clearSearchCache()
+            HomeTimelineLoader.invalidateCache()
             onNoteSaved()
         }
     }
