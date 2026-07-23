@@ -265,7 +265,7 @@
     <LinearLayout
         android:id="@+id/homeBottomActionBar"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="60dp"
         android:layout_marginTop="4dp"
         android:background="@color/calllog_bg"
         android:elevation="0dp"
@@ -277,19 +277,22 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@android:color/transparent"
             android:gravity="center"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:visibility="gone">
 
             <com.onlineimoti.calllog.HomeCrmModeButton
                 android:id="@+id/crmModeButton"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_width="56dp"
+                android:layout_height="34dp"
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/runtime_crm_clients"
                 android:elevation="0dp"
                 android:gravity="center"
-                android:padding="14dp"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:padding="0dp"
                 android:stateListAnimator="@null"
                 android:text=""
                 app:icon="@drawable/ic_menu_contacts"
@@ -297,34 +300,79 @@
                 app:iconPadding="0dp"
                 app:iconSize="24dp"
                 app:iconTint="@color/calllog_text" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/runtime_crm_clients"
+                android:textColor="@color/calllog_muted_text"
+                android:textSize="12sp" />
         </LinearLayout>
 
-        <com.onlineimoti.calllog.HomeDialPadButton
-            android:id="@+id/dialPadButton"
+        <LinearLayout
+            android:id="@+id/dialPadActionSlot"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:contentDescription="Клавиатура за набиране"
-            android:elevation="0dp"
-            android:padding="14dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_dial_pad"
-            android:stateListAnimator="@null"
-            app:tint="@color/calllog_text" />
+            android:gravity="center"
+            android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/smsHistoryButton"
+            <com.onlineimoti.calllog.HomeDialPadButton
+                android:id="@+id/dialPadButton"
+                android:layout_width="56dp"
+                android:layout_height="34dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/home_bottom_dialpad"
+                android:elevation="0dp"
+                android:padding="5dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_dial_pad"
+                android:stateListAnimator="@null"
+                app:tint="@color/calllog_text" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/home_bottom_dialpad"
+                android:textColor="@color/calllog_muted_text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/smsHistoryActionSlot"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:contentDescription="@string/runtime_menu_sms"
-            android:elevation="0dp"
-            android:padding="14dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_menu_sms"
-            android:stateListAnimator="@null"
-            app:tint="@color/calllog_text" />
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/smsHistoryButton"
+                android:layout_width="56dp"
+                android:layout_height="34dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/runtime_menu_sms"
+                android:elevation="0dp"
+                android:padding="5dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_menu_sms"
+                android:stateListAnimator="@null"
+                app:tint="@color/calllog_text" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:text="@string/runtime_menu_sms"
+                android:textColor="@color/calllog_muted_text"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>
