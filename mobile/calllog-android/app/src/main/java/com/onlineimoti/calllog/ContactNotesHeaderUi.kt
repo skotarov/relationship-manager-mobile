@@ -60,7 +60,6 @@ class ContactNotesHeaderUi(
         val topBar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            // The fixed back/name row is part of the page surface, not a raised toolbar.
             setBackgroundColor(Color.TRANSPARENT)
             elevation = 0f
             stateListAnimator = null
@@ -164,7 +163,7 @@ class ContactNotesHeaderUi(
                 dp(ACTION_ROW_HEIGHT_DP),
             )
         }
-        ContactNotesHeaderActionPolicy.ordered(contactExists).forEach { kind ->
+        ContactNotesHeaderActionPolicy.ordered(contactExists).forEachIndexed { index, kind ->
             val button = when (kind) {
                 ContactNotesHeaderAction.CRM -> actions.crmSyncButton(
                     enabled = crmSyncEnabled,
@@ -205,7 +204,7 @@ class ContactNotesHeaderUi(
                     )
                 }
             }
-            row.addView(actionSlot(button))
+            row.addView(actionSlot(button, insetStart = index == 0))
         }
         return row
     }
@@ -216,7 +215,7 @@ class ContactNotesHeaderUi(
         Gravity.BOTTOM,
     )
 
-    private fun actionSlot(button: View): LinearLayout {
+    private fun actionSlot(button: View, insetStart: Boolean): LinearLayout {
         button.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -224,6 +223,7 @@ class ContactNotesHeaderUi(
         return LinearLayout(activity).apply {
             gravity = Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
+            if (insetStart) setPadding(dp(CRM_SLOT_START_PADDING_DP), 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
             addView(button)
         }
@@ -311,6 +311,7 @@ class ContactNotesHeaderUi(
     }
 
     private companion object {
+        const val CRM_SLOT_START_PADDING_DP = 6
         const val ACTION_ANCHOR_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
     }
