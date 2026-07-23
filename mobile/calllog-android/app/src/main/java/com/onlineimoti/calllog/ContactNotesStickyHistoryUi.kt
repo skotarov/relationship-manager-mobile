@@ -174,7 +174,12 @@ internal class ContactNotesStickyHistoryUi(
             setOnRefreshListener(onRefresh)
             if (refreshing) setRefreshing(true)
         })
-        stickyController = StickyGroupHeaderController(historyScroll, root, groupOverlay).also { it.bind() }
+        stickyController = StickyGroupHeaderController(
+            scrollView = historyScroll,
+            contentRoot = root,
+            overlay = groupOverlay,
+            overlayHorizontalPaddingPx = dp(HISTORY_GROUP_HORIZONTAL_PADDING_DP),
+        ).also { it.bind() }
     }
 
     fun release() {
@@ -277,6 +282,7 @@ internal class ContactNotesStickyHistoryUi(
 
     private companion object {
         const val PAGE_HORIZONTAL_PADDING_DP = 16
+        const val HISTORY_GROUP_HORIZONTAL_PADDING_DP = 26
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
