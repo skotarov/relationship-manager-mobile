@@ -16,8 +16,6 @@ internal object HomeScreenActionBinder {
         binding: ActivityHomeBinding,
         openOverflow: () -> Unit,
         openCrmContacts: () -> Unit,
-        clearPhoneFilter: () -> Unit,
-        dialFilteredPhone: () -> Unit,
         previousPage: () -> Unit,
         nextPage: () -> Unit,
         isOnLaterPage: () -> Boolean,
@@ -32,8 +30,8 @@ internal object HomeScreenActionBinder {
             isFocusable = true
             setOnClickListener { openCrmContacts() }
         }
-        binding.clearFilterButton.setOnClickListener { clearPhoneFilter() }
-        binding.filteredDialButton.setOnClickListener { dialFilteredPhone() }
+        binding.clearFilterButton.visibility = View.GONE
+        binding.filteredDialButton.visibility = View.GONE
         binding.previousCallsButton.setOnClickListener { previousPage() }
         binding.nextCallsButton.setOnClickListener { nextPage() }
         binding.pageText.setOnClickListener {
