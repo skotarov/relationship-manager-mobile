@@ -24,6 +24,7 @@ internal class HomeResumeRefreshController private constructor(
 ) : Application.ActivityLifecycleCallbacks {
     private val handler = Handler(Looper.getMainLooper())
     private var firstResume = true
+    private var settingsWasOpened = false
     private var receiverRegistered = false
 
     private val refreshRunnable = Runnable {
@@ -61,10 +62,22 @@ internal class HomeResumeRefreshController private constructor(
     }
 
     override fun onActivityResumed(resumedActivity: Activity) {
+        if (resumedActivity is MainActivity) {
+            settingsWasOpened = true
+            return
+        }
         if (resumedActivity !== activity) return
         cancelPending()
         if (firstResume) {
             firstResume = false
+            return
+        }
+        // Settings does not change the Android call records themselves. Reusing the
+        // already rendered page avoids an unnecessary refresh cycle and prevents the
+        // visible Call Log from being replaced by an empty loading container.
+        if (settingsWasOpened) {
+            settingsWasOpened = false
+            HomeRefreshRenderPolicy.clear()
             return
         }
         if (canRefreshLoadedPage()) handler.postDelayed(refreshRunnable, RESUME_REFRESH_DELAY_MS)
