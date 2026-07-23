@@ -311,7 +311,7 @@
             android:scaleType="centerInside"
             android:src="@drawable/ic_dial_pad"
             android:stateListAnimator="@null"
-            android:tint="@color/calllog_text" />
+            app:tint="@color/calllog_text" />
 
         <ImageButton
             android:id="@+id/smsHistoryButton"
@@ -325,6 +325,6 @@
             android:scaleType="centerInside"
             android:src="@drawable/ic_menu_sms"
             android:stateListAnimator="@null"
-            android:tint="@color/calllog_text" />
+            app:tint="@color/calllog_text" />
     </LinearLayout>
 </LinearLayout>
