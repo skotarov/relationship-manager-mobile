@@ -56,6 +56,21 @@ internal object HistoryBackgroundLoader {
         return snapshot
     }
 
+    /** Fast local-only presentation used before Android providers and the server are refreshed. */
+    fun prepareCachedLocal(phone: String, snapshot: HistoryLocalSnapshot): HistoryPreparedSnapshot {
+        if (phone.isBlank()) return HistoryPreparedSnapshot()
+        val local = FilteredFullLogLocalData(
+            calls = snapshot.calls,
+            sms = snapshot.sms,
+            notes = snapshot.callNotes,
+        )
+        val localRows = FilteredFullLogLoader.cachedLocalRows(phone, local)
+        return HistoryPreparedSnapshot(
+            rows = localRows.filter { row -> row.kind != CallReportHistoryRowKind.PHONE },
+            fullLogEntries = FilteredFullLogLoader.groupedEntries(localRows),
+        )
+    }
+
     fun prepare(
         context: Context,
         phone: String,
