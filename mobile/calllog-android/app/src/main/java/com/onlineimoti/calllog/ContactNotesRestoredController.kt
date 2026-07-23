@@ -82,7 +82,13 @@ internal class ContactNotesRestoredController(
 
     fun onCreate(intent: Intent?) {
         handler.removeCallbacks(delayedServerRefresh)
-        listMode = ContactHistoryListMode.NOTES_AND_SMS
+        listMode = if (
+            intent?.getStringExtra(ContactNotesActivity.EXTRA_INITIAL_LIST_MODE) == ContactNotesActivity.LIST_MODE_FULL_LOG
+        ) {
+            ContactHistoryListMode.FULL_LOG
+        } else {
+            ContactHistoryListMode.NOTES_AND_SMS
+        }
         edgePaging.reset()
         stickyHistoryUi.resetScrollPosition()
         skipNextResumeRefresh = true
