@@ -79,6 +79,16 @@ internal class ContactNotesRestoredController(
             roundedRect = ::roundedRect,
         )
     }
+    private val editorActions by lazy {
+        ContactNotesEditorActions(
+            activity = activity,
+            phone = { phone },
+            title = { titleText },
+            refreshHistory = ::refreshHistoryInBackground,
+            dp = ::dp,
+            roundedRect = ::roundedRect,
+        )
+    }
 
     fun onCreate(intent: Intent?) {
         handler.removeCallbacks(delayedServerRefresh)
@@ -180,9 +190,9 @@ internal class ContactNotesRestoredController(
             openDialer = { externalActions.openDialer(phone) },
             openCalendarEvent = { externalActions.openCalendarEvent(phone, titleText) },
             openDefaultContact = { externalActions.openDefaultContact(phone, titleText) },
-            openRmContact = ::openRmContactForm,
+            openRmContact = editorActions::openRmContactForm,
             toggleCrmSync = { setCrmSyncEnabled(!CrmContactSyncStore.isEnabled(activity, phone)) },
-            openRmCallLog = { openRmCallLog() },
+            openRmCallLog = editorActions::openRmCallLog,
             openRmCallLogFiltered = { selectListMode(ContactHistoryListMode.FULL_LOG) },
         ))
         root.addView(ContactNotesServerStatusUi.create(
@@ -200,8 +210,8 @@ internal class ContactNotesRestoredController(
                     companyNotes = historyController.companyMainNotes(phone),
                     unscopedServerMainNote = historyController.unscopedServerMainNote(phone),
                     showCompanyNotes = historyController.hasCompanyMainNoteScope(),
-                    onEditCompany = ::openGeneralNoteEditor,
-                    onEditUnscopedServerMainNote = ::openUnscopedServerMainNoteEditor,
+                    onEditCompany = editorActions::openGeneralNoteEditor,
+                    onEditUnscopedServerMainNote = editorActions::openUnscopedServerMainNoteEditor,
                     phaseBarForCompany = if (phaseControlsVisible) {
                         { companyId -> phaseUi.phaseBar(phone, companyId, true, ::render) }
                     } else null,
@@ -209,14 +219,14 @@ internal class ContactNotesRestoredController(
                 historyController.addNotesSection(
                     root = root,
                     phone = phone,
-                    onEditCallNote = ::openCallNoteEditor,
-                    onEditSms = ::openSmsCompanyEditor,
+                    onEditCallNote = editorActions::openCallNoteEditor,
+                    onEditSms = editorActions::openSmsCompanyEditor,
                 )
             }
             ContactHistoryListMode.FULL_LOG -> historyController.addFullLogSection(
                 root = root,
                 phone = phone,
-                openCallNoteEditor = ::openFullLogCallNoteEditor,
+                openCallNoteEditor = editorActions::openFullLogCallNoteEditor,
             )
         }
         CrmHistoryTextLocalizer.apply(activity, root)
@@ -264,94 +274,6 @@ internal class ContactNotesRestoredController(
                 refreshHistoryInBackground(scheduleConfirmationRefresh = false)
             }
         }
-    }
-
-    private fun openGeneralNoteEditor(companyId: String = "") {
-        CompanyMainNoteEditorLauncher.start(activity, phone, titleText, companyId)
-    }
-
-    private fun openUnscopedServerMainNoteEditor(event: CallReportHistoryEvent) {
-        val clientEventId = event.clientEventId.trim()
-        if (clientEventId.isBlank()) {
-            Toast.makeText(activity, "Сървърната бележка няма ID за редакция.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        CallNoteEditorLauncher.startEditor(
-            context = activity,
-            mode = PostCallOverlayService.MODE_NOTE,
-            phone = phone,
-            title = titleText,
-            direction = event.direction,
-            callAt = event.occurredAtMs.takeIf { it > 0L } ?: event.updatedAtMs,
-            durationSeconds = event.durationSeconds,
-            companyId = event.companyId,
-            initialNoteText = event.note,
-            serverClientEventId = clientEventId,
-        )
-    }
-
-    private fun openCallNoteEditor(note: ContactCallNote) {
-        CallNoteEditorLauncher.startEditor(
-            context = activity,
-            mode = PostCallOverlayService.MODE_NOTE,
-            phone = phone,
-            title = titleText,
-            direction = note.direction,
-            callAt = note.callAt,
-            durationSeconds = note.durationSeconds,
-            companyId = note.companyId,
-            initialNoteText = note.note,
-            serverClientEventId = note.serverClientEventId,
-        )
-    }
-
-    private fun openFullLogCallNoteEditor(
-        call: PhoneCallRecord,
-        displayName: String,
-        note: HomeCallNote?,
-    ) {
-        CallNoteEditorLauncher.startEditor(
-            context = activity,
-            mode = PostCallOverlayService.MODE_NOTE,
-            phone = call.number.ifBlank { phone },
-            title = displayName.ifBlank { titleText },
-            direction = call.direction,
-            callAt = call.startedAt,
-            durationSeconds = call.durationSeconds,
-            companyId = note?.companyId.orEmpty(),
-            initialNoteText = note?.text.orEmpty(),
-            serverClientEventId = note?.serverClientEventId.orEmpty(),
-        )
-    }
-
-    private fun openSmsCompanyEditor(sms: SmsMessageRecord, companyId: String) {
-        if (!CallReportRemoteAccess.isReady(ConfigStore.load(activity))) {
-            Toast.makeText(activity, "За SMS фирма включи и настрой Server", Toast.LENGTH_SHORT).show()
-            return
-        }
-        SmsCompanyAssignmentDialog(activity, ::dp, ::roundedRect).show(
-            phone = phone,
-            title = titleText,
-            sms = sms,
-            initialCompanyId = companyId,
-            onSaved = {
-                refreshHistoryInBackground(scheduleConfirmationRefresh = true)
-            },
-        )
-    }
-
-    private fun openRmContactForm() {
-        RmContactFormDialog(activity).show(
-            phone = phone,
-            fallbackTitle = titleText,
-            onSaved = {
-                refreshHistoryInBackground(scheduleConfirmationRefresh = true)
-            },
-        )
-    }
-
-    private fun openRmCallLog() {
-        activity.startActivity(Intent(activity, HomeActivity::class.java))
     }
 
     private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) =

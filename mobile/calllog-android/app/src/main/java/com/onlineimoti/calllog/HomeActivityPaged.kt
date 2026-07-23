@@ -26,10 +26,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private val contactsSyncPreparer: HomeContactsSyncPreparer by lazy { HomeContactsSyncPreparer(this) }
     private val noteSavedReceiver: HomeNoteSavedReceiverController by lazy {
         HomeNoteSavedReceiverController(this) {
-            HomeCallPageLoader.clearSearchCache()
-            companyGeneralNotesController.invalidate()
-            crmContactsContentView.invalidate()
-            HomeCrmPhaseLookup.invalidate()
+            invalidateHomeData(includePhase = true)
             if (homeIsResumed) renderCalls() else refreshWhenResumed = true
         }
     }
@@ -37,15 +34,7 @@ class HomeActivity : FontScaledAppCompatActivity() {
         HomeCallLogObserverController(this, handler, ::onCallLogChanged)
     }
     private val noteRefreshController: HomeNoteRefreshController by lazy {
-        HomeNoteRefreshController(
-            handler,
-            {
-                HomeCallPageLoader.clearSearchCache()
-                companyGeneralNotesController.invalidate()
-                crmContactsContentView.invalidate()
-            },
-            ::renderCalls,
-        )
+        HomeNoteRefreshController(handler, { invalidateHomeData(includePhase = false) }, ::renderCalls)
     }
     private val homeActions: HomeActions by lazy {
         HomeActions(this, binding, noteRefreshController::start) { activeSearchQuery.isBlank() }
@@ -81,23 +70,15 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
     private val homeCallRowRenderer: HomeCallRowRenderer by lazy {
         HomeCallRowRenderer(
-            this,
-            uiGeometry::dp,
-            HomeCallPageLoader::noteKey,
-            uiGeometry::roundedRect,
-            homeActions::openContactNotesScreen,
-            homeActions::openContactNotePopupForCall,
+            this, uiGeometry::dp, HomeCallPageLoader::noteKey, uiGeometry::roundedRect,
+            homeActions::openContactNotesScreen, homeActions::openContactNotePopupForCall,
             homeActions::openDialer,
         )
     }
     private val crmContactRowRenderer: HomeCrmContactRowRenderer by lazy {
         HomeCrmContactRowRenderer(
-            this,
-            uiGeometry::dp,
-            uiGeometry::roundedRect,
-            filteredContactSummaryChipsUi,
-            homeActions::openContactNotesScreen,
-            homeActions::openDialer,
+            this, uiGeometry::dp, uiGeometry::roundedRect, filteredContactSummaryChipsUi,
+            homeActions::openContactNotesScreen, homeActions::openDialer,
         )
     }
     private val edgePaging: HomeEdgePagingController by lazy {
@@ -105,35 +86,21 @@ class HomeActivity : FontScaledAppCompatActivity() {
             binding = binding,
             canPrevious = { timelineCoordinator.isOnLaterPage() },
             canNext = { binding.nextCallsButton.isEnabled },
-            previousPage = { timelineCoordinator.previousPage() },
-            nextPage = { timelineCoordinator.nextPage() },
+            previousPage = timelineCoordinator::previousPage,
+            nextPage = timelineCoordinator::nextPage,
         )
     }
     private val homeContentRenderer: HomeContentRenderer by lazy {
         HomeContentRenderer(
-            activity = this,
-            binding = binding,
-            activeSearchQuery = { activeSearchQuery },
-            pageIndex = { pageIndex },
-            isCrmModeEnabled = ::isCrmModeEnabled,
-            isCrmContactsMode = ::isCrmContactsMode,
-            hasActiveCrmFilters = { crmFiltersController.hasActiveFilters() },
-            dp = uiGeometry::dp,
-            rowRenderer = homeCallRowRenderer,
-            companyGeneralNotes = companyGeneralNotesController,
-            retainRowsDuringEdgePaging = edgePaging::isTransitioning,
+            this, binding, { activeSearchQuery }, { pageIndex }, ::isCrmModeEnabled,
+            ::isCrmContactsMode, { crmFiltersController.hasActiveFilters() }, uiGeometry::dp,
+            homeCallRowRenderer, companyGeneralNotesController, edgePaging::isTransitioning,
         )
     }
     private val crmContactsContentView: HomeCrmContactsContentView by lazy {
         HomeCrmContactsContentView(
-            this,
-            binding,
-            { pageIndex },
-            homeContentRenderer,
-            companyGeneralNotesController,
-            crmContactRowRenderer,
-            crmTimelineToggle,
-            { crmFiltersController.hasActiveFilters() },
+            this, binding, { pageIndex }, homeContentRenderer, companyGeneralNotesController,
+            crmContactRowRenderer, crmTimelineToggle, { crmFiltersController.hasActiveFilters() },
             edgePaging::isTransitioning,
         )
     }
@@ -142,15 +109,8 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
     private val callsLoader: HomeCallsLoader by lazy {
         HomeCallsLoader(
-            this,
-            handler,
-            homeContentRenderer,
-            crmFiltersController,
-            serverCallNotesController,
-            { "" },
-            { activeSearchQuery },
-            { pageIndex },
-            ::isCrmModeEnabled,
+            this, handler, homeContentRenderer, crmFiltersController, serverCallNotesController,
+            { "" }, { activeSearchQuery }, { pageIndex }, ::isCrmModeEnabled,
             pullRefreshController::complete,
             onCrmCallsRendered = { count -> crmTimelineToggle.showRange(false, pageIndex, pageSize(), count) },
             onCrmCallsEmpty = { crmTimelineToggle.showEmpty(false) },
@@ -158,95 +118,44 @@ class HomeActivity : FontScaledAppCompatActivity() {
     }
     private val crmContactsLoader: HomeCrmContactsLoader by lazy {
         HomeCrmContactsLoader(
-            this,
-            handler,
-            crmContactsContentView,
-            crmFiltersController,
-            { "" },
-            { activeSearchQuery },
-            { pageIndex },
-            ::isServerReady,
-            ::isCrmContactsMode,
-            pullRefreshController::complete,
+            this, handler, crmContactsContentView, crmFiltersController,
+            { "" }, { activeSearchQuery }, { pageIndex }, ::isServerReady,
+            ::isCrmContactsMode, pullRefreshController::complete,
         )
     }
     private val searchController: HomeSearchController by lazy {
         HomeSearchController(
-            this,
-            binding,
-            handler,
-            searchExecutor,
-            searchGeneration,
-            serverCallNotesController,
-            ::pageSize,
-            { "" },
-            { activeSearchQuery },
-            ::isCrmModeEnabled,
-            { pageIndex },
-            homeContentRenderer::replaceCurrentCalls,
-            homeContentRenderer::renderEmptyState,
-            homeContentRenderer::applyRenderData,
-            pullRefreshController::complete,
+            this, binding, handler, searchExecutor, searchGeneration, serverCallNotesController,
+            ::pageSize, { "" }, { activeSearchQuery }, ::isCrmModeEnabled, { pageIndex },
+            homeContentRenderer::replaceCurrentCalls, homeContentRenderer::renderEmptyState,
+            homeContentRenderer::applyRenderData, pullRefreshController::complete,
         )
     }
     private val searchInputController: HomeSearchInputController by lazy {
         HomeSearchInputController(
-            this,
-            binding,
-            handler,
-            { query ->
-                edgePaging.cancel()
-                activeSearchQuery = query
-                pageIndex = 0
-                renderCalls()
-            },
-            {
-                edgePaging.cancel()
-                activeSearchQuery = ""
-                pageIndex = 0
-                renderCalls()
-            },
+            this, binding, handler,
+            { query -> edgePaging.cancel(); activeSearchQuery = query; pageIndex = 0; renderCalls() },
+            { edgePaging.cancel(); activeSearchQuery = ""; pageIndex = 0; renderCalls() },
         )
     }
     private val timelineCoordinator: HomeTimelineCoordinator by lazy {
         HomeTimelineCoordinator(
-            activity = this,
-            callsLoader = callsLoader,
-            contactsLoader = crmContactsLoader,
-            serverCallNotes = serverCallNotesController,
-            searchController = searchController,
-            contentRenderer = homeContentRenderer,
-            crmFilters = crmFiltersController,
-            pullRefresh = pullRefreshController,
-            timelineToggle = crmTimelineToggle,
-            activeSearchQuery = { activeSearchQuery },
-            pageIndex = { pageIndex },
-            setPageIndex = { pageIndex = it },
-            pageSize = ::pageSize,
-            isCrmModeEnabled = ::isCrmModeEnabled,
-            isCrmContactsMode = ::isCrmContactsMode,
-            setCrmContactsMode = { crmContactsMode = it },
-            onCrmModeChanged = {
-                companyGeneralNotesController.invalidate()
-                crmContactsContentView.invalidate()
-                runtimeController.updateHeader()
-            },
-        )
+            this, callsLoader, crmContactsLoader, serverCallNotesController, searchController,
+            homeContentRenderer, crmFiltersController, pullRefreshController, crmTimelineToggle,
+            { activeSearchQuery }, { pageIndex }, { pageIndex = it }, ::pageSize,
+            ::isCrmModeEnabled, ::isCrmContactsMode, { crmContactsMode = it },
+        ) {
+            companyGeneralNotesController.invalidate()
+            crmContactsContentView.invalidate()
+            runtimeController.updateHeader()
+        }
     }
     private val runtimeController: HomeActivityRuntimeController by lazy {
         HomeActivityRuntimeController(
-            activity = this,
-            binding = { binding },
-            refreshExecutor = refreshExecutor,
-            isCrmContactsMode = ::isCrmContactsMode,
-            isServerReady = ::isServerReady,
-            clearSearchCache = HomeCallPageLoader::clearSearchCache,
-            invalidateCompanyNotes = companyGeneralNotesController::invalidate,
-            invalidateCrmContacts = crmContactsContentView::invalidate,
-            refreshCompanies = { force -> crmFiltersController.refreshCompaniesIfNeeded(force = force) },
-            resetTimelineForRefresh = ::resetTimelineForRefresh,
-            scheduleSettledCallLogRefresh = callLogObserver::scheduleSettledRefresh,
-            renderCalls = ::renderCalls,
+            this, { binding }, refreshExecutor, ::isCrmContactsMode, ::isServerReady,
+            HomeCallPageLoader::clearSearchCache, companyGeneralNotesController::invalidate,
+            crmContactsContentView::invalidate, { force -> crmFiltersController.refreshCompaniesIfNeeded(force) },
+            ::resetTimelineForRefresh, callLogObserver::scheduleSettledRefresh, ::renderCalls,
         )
     }
 
@@ -278,14 +187,11 @@ class HomeActivity : FontScaledAppCompatActivity() {
         searchInputController.bind()
         pullRefreshController.bind(runtimeController::refreshFromPull)
         HomeScreenActionBinder.wire(
-            activity = this,
-            binding = binding,
-            openOverflow = { HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() } },
-            openCrmContacts = timelineCoordinator::toggleCrmContactsMode,
-            previousPage = timelineCoordinator::previousPage,
-            nextPage = timelineCoordinator::nextPage,
-            isOnLaterPage = timelineCoordinator::isOnLaterPage,
-            goToFirstPage = timelineCoordinator::goToFirstPage,
+            this, binding,
+            { HomeOverflowMenu.show(this, binding.settingsButton) { homeActions.openSettings() } },
+            timelineCoordinator::toggleCrmContactsMode, timelineCoordinator::previousPage,
+            timelineCoordinator::nextPage, timelineCoordinator::isOnLaterPage,
+            timelineCoordinator::goToFirstPage,
         )
         if (DistributionCapabilities.isPlayBusinessBuild) binding.crmModeButton.visibility = View.GONE
     }
@@ -316,18 +222,17 @@ class HomeActivity : FontScaledAppCompatActivity() {
         contactsSyncPreparer.prepareOnce()
         crmFiltersController.refreshCompaniesIfNeeded()
         edgePaging.bind()
-        if (initialResumePending) {
-            initialResumePending = false
-            HomeCallPageLoader.clearSearchCache()
-            companyGeneralNotesController.invalidate()
-            crmContactsContentView.invalidate()
-            HomeCrmPhaseLookup.invalidate()
-            renderCalls()
-        } else if (refreshWhenResumed) {
-            refreshWhenResumed = false
-            renderCalls()
-        } else {
-            runtimeController.updateHeader()
+        when {
+            initialResumePending -> {
+                initialResumePending = false
+                invalidateHomeData(includePhase = true)
+                renderCalls()
+            }
+            refreshWhenResumed -> {
+                refreshWhenResumed = false
+                renderCalls()
+            }
+            else -> runtimeController.updateHeader()
         }
     }
 
@@ -367,6 +272,13 @@ class HomeActivity : FontScaledAppCompatActivity() {
         if (homeIsResumed) renderCalls() else refreshWhenResumed = true
     }
 
+    private fun invalidateHomeData(includePhase: Boolean) {
+        HomeCallPageLoader.clearSearchCache()
+        companyGeneralNotesController.invalidate()
+        crmContactsContentView.invalidate()
+        if (includePhase) HomeCrmPhaseLookup.invalidate()
+    }
+
     private fun resetTimelineForRefresh() {
         edgePaging.cancel()
         pageIndex = 0
@@ -383,7 +295,5 @@ class HomeActivity : FontScaledAppCompatActivity() {
     private fun isCrmContactsMode(): Boolean = DistributionCapabilities.isPlayBusinessBuild || crmContactsMode
     private fun pageSize(): Int = ConfigStore.load(this).homeCallPageSize.coerceIn(5, 100)
 
-    companion object {
-        const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED"
-    }
+    companion object { const val ACTION_CONTACT_NOTE_SAVED = "com.onlineimoti.calllog.CONTACT_NOTE_SAVED" }
 }
