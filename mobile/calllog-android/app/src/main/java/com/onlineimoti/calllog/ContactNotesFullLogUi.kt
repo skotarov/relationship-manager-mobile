@@ -17,6 +17,7 @@ internal class ContactNotesFullLogUi(
     private val weekUi by lazy { CallReportHistoryWeekUi(activity, dp) }
     private var entries: List<FilteredFullLogEntry> = emptyList()
     private var pageIndex = 0
+    private var boundSection: BoundSection? = null
 
     fun addSection(
         root: LinearLayout,
@@ -28,18 +29,19 @@ internal class ContactNotesFullLogUi(
         openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
     ) {
         entries = incomingEntries
+        root.tag = FULL_LOG_ROOT_TAG
         // Everything before this index is the fixed contact/header part of History.
-        // Manual paging removes and recreates only the list rows after this boundary.
-        val sectionStartIndex = root.childCount
-        renderSection(
+        val section = BoundSection(
             root = root,
-            sectionStartIndex = sectionStartIndex,
+            sectionStartIndex = root.childCount,
             phone = phone,
             remoteEnabled = remoteEnabled,
             loading = loading,
             errorText = errorText,
             openCallNoteEditor = openCallNoteEditor,
         )
+        boundSection = section
+        renderSection(section)
     }
 
     fun canPreviousPage(): Boolean = pageIndex > 0
@@ -55,73 +57,111 @@ internal class ContactNotesFullLogUi(
 
     fun nextPage(rerender: () -> Unit): Boolean {
         if (!canNextPage()) return false
-        pageIndex += 1
+        val nextIndex = pageIndex + 1
+        val section = boundSection
+        if (
+            PageLoadingModeStore.usesPrefetch(activity) &&
+            section != null && section.root.isAttachedToWindow
+        ) {
+            pageIndex = nextIndex
+            if (appendAutomaticPage(section, nextIndex)) return true
+            pageIndex -= 1
+            return false
+        }
+        pageIndex = nextIndex
         rerender()
         return true
     }
 
     fun resetPage() {
         pageIndex = 0
+        boundSection = null
     }
 
-    private fun renderSection(
-        root: LinearLayout,
-        sectionStartIndex: Int,
-        phone: String,
-        remoteEnabled: Boolean,
-        loading: Boolean,
-        errorText: String,
-        openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
-    ) {
-        while (root.childCount > sectionStartIndex) root.removeViewAt(root.childCount - 1)
+    private fun renderSection(section: BoundSection) {
+        val root = section.root
+        while (root.childCount > section.sectionStartIndex) root.removeViewAt(root.childCount - 1)
         val pages = pages()
         val totalPages = maxOf(1, pages.size)
         pageIndex = pageIndex.coerceIn(0, totalPages - 1)
-        // Prefetch mode is cumulative so earlier rows remain visible and the viewport is stable.
-        val visibleEntries = pages.take(pageIndex + 1).flatten()
         when {
-            loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
-            errorText.isNotBlank() && entries.isEmpty() -> root.addView(status(errorText, error = true))
+            section.loading && entries.isEmpty() -> root.addView(status("Зареждам пълния лог…"))
+            section.errorText.isNotBlank() && entries.isEmpty() -> root.addView(status(section.errorText, error = true))
             entries.isEmpty() -> root.addView(status(
-                if (remoteEnabled) "Няма локални или сървърни записи за този номер"
+                if (section.remoteEnabled) "Няма локални или сървърни записи за този номер"
                 else "Няма локални записи за този номер",
             ))
+            PageLoadingModeStore.usesPrefetch(activity) -> renderAutomaticPages(section, pages)
             else -> {
-                renderEntries(root, phone, visibleEntries, remoteEnabled, openCallNoteEditor)
+                val visibleEntries = pages.take(pageIndex + 1).flatten()
+                renderEntries(
+                    root = root,
+                    phone = section.phone,
+                    pageEntries = visibleEntries,
+                    remoteEnabled = section.remoteEnabled,
+                    openCallNoteEditor = section.openCallNoteEditor,
+                )
                 addNavigation(
                     root = root,
                     totalPages = totalPages,
                     onPrevious = {
                         if (canPreviousPage()) {
                             pageIndex -= 1
-                            renderSection(
-                                root,
-                                sectionStartIndex,
-                                phone,
-                                remoteEnabled,
-                                loading,
-                                errorText,
-                                openCallNoteEditor,
-                            )
+                            renderSection(section)
                         }
                     },
                     onNext = {
                         if (canNextPage()) {
                             pageIndex += 1
-                            renderSection(
-                                root,
-                                sectionStartIndex,
-                                phone,
-                                remoteEnabled,
-                                loading,
-                                errorText,
-                                openCallNoteEditor,
-                            )
+                            renderSection(section)
                         }
                     },
                 )
             }
         }
+    }
+
+    private fun renderAutomaticPages(
+        section: BoundSection,
+        pages: List<List<FilteredFullLogEntry>>,
+    ) {
+        var previousWeekSerial: Long? = null
+        for (index in 0..pageIndex) {
+            val pageEntries = pages.getOrNull(index).orEmpty()
+            val pageRoot = HomePagedListUi.page(section.root, automatic = true, pageIndex = index)
+            previousWeekSerial = renderEntries(
+                root = pageRoot,
+                phone = section.phone,
+                pageEntries = pageEntries,
+                remoteEnabled = section.remoteEnabled,
+                openCallNoteEditor = section.openCallNoteEditor,
+                initialPreviousWeekSerial = previousWeekSerial,
+            )
+        }
+    }
+
+    private fun appendAutomaticPage(section: BoundSection, index: Int): Boolean {
+        val allPages = pages()
+        val pageEntries = allPages.getOrNull(index) ?: return false
+        if (HomePagedListUi.hasRenderedPage(section.root, index)) {
+            HomeLoadingFooterUi.keepLast(section.root)
+            return true
+        }
+        val previousEntry = allPages.take(index).asReversed().firstNotNullOfOrNull { it.lastOrNull() }
+        val previousWeekSerial = previousEntry?.let { weekUi.weekStartSerial(it.row.timeMs) }
+        val pageRoot = HomePagedListUi.page(section.root, automatic = true, pageIndex = index)
+        renderEntries(
+            root = pageRoot,
+            phone = section.phone,
+            pageEntries = pageEntries,
+            remoteEnabled = section.remoteEnabled,
+            openCallNoteEditor = section.openCallNoteEditor,
+            initialPreviousWeekSerial = previousWeekSerial,
+        )
+        CrmHistoryTextLocalizer.apply(activity, pageRoot)
+        HomeLoadingFooterUi.keepLast(section.root)
+        section.root.requestLayout()
+        return true
     }
 
     private fun renderEntries(
@@ -130,7 +170,8 @@ internal class ContactNotesFullLogUi(
         pageEntries: List<FilteredFullLogEntry>,
         remoteEnabled: Boolean,
         openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
-    ) {
+        initialPreviousWeekSerial: Long? = null,
+    ): Long? {
         val rowRenderer = FilteredFullLogRowRenderer(
             activity = activity,
             dp = dp,
@@ -139,7 +180,7 @@ internal class ContactNotesFullLogUi(
             openCallNoteEditor = openCallNoteEditor,
         )
         val currentWeekSerial = weekUi.currentWeekSerial()
-        var previousWeekSerial: Long? = null
+        var previousWeekSerial = initialPreviousWeekSerial
         pageEntries.forEach { entry ->
             val weekSerial = weekUi.weekStartSerial(entry.row.timeMs)
             if (weekSerial != null && weekSerial != previousWeekSerial) {
@@ -154,6 +195,7 @@ internal class ContactNotesFullLogUi(
                 dp,
             ))
         }
+        return previousWeekSerial
     }
 
     private fun addNavigation(
@@ -226,5 +268,19 @@ internal class ContactNotesFullLogUi(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT,
         )
+    }
+
+    private data class BoundSection(
+        val root: LinearLayout,
+        val sectionStartIndex: Int,
+        val phone: String,
+        val remoteEnabled: Boolean,
+        val loading: Boolean,
+        val errorText: String,
+        val openCallNoteEditor: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
+    )
+
+    companion object {
+        const val FULL_LOG_ROOT_TAG = "relationship_manager_history_full_log_root"
     }
 }
