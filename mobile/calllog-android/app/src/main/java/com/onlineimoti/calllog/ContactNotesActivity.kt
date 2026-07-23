@@ -66,5 +66,7 @@ class ContactNotesActivity : FontScaledActivity() {
         const val EXTRA_PHONE = "phone"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BACK_TARGETS_UNFILTERED_HOME = "back_targets_unfiltered_home"
+        const val EXTRA_INITIAL_LIST_MODE = "initial_list_mode"
+        const val LIST_MODE_FULL_LOG = "full_log"
     }
 }
