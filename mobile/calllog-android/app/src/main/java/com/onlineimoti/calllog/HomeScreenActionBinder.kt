@@ -2,6 +2,7 @@ package com.onlineimoti.calllog
 
 import android.content.Intent
 import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
@@ -18,6 +19,7 @@ internal object HomeScreenActionBinder {
         goToFirstPage: () -> Unit,
     ) {
         HomeResumeRefreshController.install(activity, binding)
+        applyCompactBottomBarSpacing(binding)
         binding.settingsButton.setOnClickListener { openOverflow() }
         binding.crmModeButton.apply {
             setIconResource(R.drawable.ic_client_money)
@@ -49,5 +51,20 @@ internal object HomeScreenActionBinder {
 
     fun updateBrandShortcutVisibility(binding: ActivityHomeBinding, visible: Boolean) {
         binding.relationshipManagerWordmark.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
+    private fun applyCompactBottomBarSpacing(binding: ActivityHomeBinding) {
+        val spacing = (3f * binding.root.resources.displayMetrics.density).toInt()
+        binding.root.setPaddingRelative(
+            binding.root.paddingStart,
+            binding.root.paddingTop,
+            binding.root.paddingEnd,
+            spacing,
+        )
+        val params = binding.homeBottomActionBar.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if (params.topMargin != spacing) {
+            params.topMargin = spacing
+            binding.homeBottomActionBar.layoutParams = params
+        }
     }
 }
