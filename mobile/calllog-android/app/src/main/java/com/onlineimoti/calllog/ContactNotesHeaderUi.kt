@@ -92,11 +92,7 @@ class ContactNotesHeaderUi(
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(ACTION_ANCHOR_HEIGHT_DP),
-            ).apply {
-                // Counter the page padding so the normal action row spans the full screen width.
-                marginStart = -dp(PAGE_HORIZONTAL_PADDING_DP)
-                marginEnd = -dp(PAGE_HORIZONTAL_PADDING_DP)
-            }
+            )
             addView(actionRow, actionRowHostLayoutParams())
             tag = ContactNotesStickyActions(actionRow, topBar, compactTitle)
         }
@@ -315,7 +311,6 @@ class ContactNotesHeaderUi(
     }
 
     private companion object {
-        const val PAGE_HORIZONTAL_PADDING_DP = 16
         const val ACTION_ANCHOR_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
     }
