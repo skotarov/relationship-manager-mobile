@@ -5,8 +5,8 @@ import android.content.Intent
 import android.os.Bundle
 
 /**
- * Receives the tap from a new-SMS notification while Call Report is the default SMS app.
- * Opens Home with the sender filter, where calls and SMS are displayed in one chronological list.
+ * Receives the tap from a new-SMS notification while Relationship Manager is the default SMS app.
+ * Opens the sender's embedded Full Log inside History.
  */
 class SmsIncomingChoiceActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,9 +23,10 @@ class SmsIncomingChoiceActivity : Activity() {
             return
         }
         startActivity(
-            Intent(this, HomeActivity::class.java)
-                .putExtra(HomeActivity.EXTRA_PHONE_FILTER, phone)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            Intent(this, ContactNotesActivity::class.java)
+                .putExtra(ContactNotesActivity.EXTRA_PHONE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_TITLE, phone)
+                .putExtra(ContactNotesActivity.EXTRA_INITIAL_LIST_MODE, ContactNotesActivity.LIST_MODE_FULL_LOG),
         )
         finish()
     }
