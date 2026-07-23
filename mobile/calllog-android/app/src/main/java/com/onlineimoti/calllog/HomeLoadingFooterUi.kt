@@ -13,6 +13,12 @@ internal object HomeLoadingFooterUi {
     private val footers = WeakHashMap<LinearLayout, LinearLayout>()
 
     fun show(container: LinearLayout) {
+        // PullToRefreshLayout already presents the active refresh animation. Showing
+        // the list footer at the same time creates two competing loading indicators.
+        if (isPullRefreshing(container)) {
+            footers[container]?.visibility = View.INVISIBLE
+            return
+        }
         footer(container).apply {
             visibility = View.VISIBLE
             moveToEnd(container, this)
@@ -58,6 +64,15 @@ internal object HomeLoadingFooterUi {
             footers[container] = created
             container.addView(created)
         }
+    }
+
+    private fun isPullRefreshing(container: LinearLayout): Boolean {
+        var current: View? = container
+        while (current != null) {
+            if (current is PullToRefreshLayout) return current.isRefreshing
+            current = current.parent as? View
+        }
+        return false
     }
 
     private fun moveToEnd(container: LinearLayout, footer: LinearLayout) {
