@@ -23,26 +23,13 @@ internal class HomeCallRowRenderer(
     private val openContactNotesScreen: (PhoneCallRecord, String) -> Unit,
     private val openContactNotePopupForCall: (PhoneCallRecord, String, HomeCallNote?) -> Unit,
     private val openDialer: (String) -> Unit = {},
-    private val togglePhoneFilter: (String) -> Unit = {},
 ) {
     private val companyScopeChipsUi by lazy { HomeCompanyScopeChipsUi(activity, dp, roundedRect) }
-    private val notesUi by lazy {
-        TimelineNotesUi(activity, dp, roundedRect)
-    }
+    private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
     private val smsRowRenderer by lazy {
         HomeSmsRowRenderer(
             activity, dp, noteKey, roundedRect, companyScopeChipsUi,
-            openContactNotesScreen, togglePhoneFilter, ::noteSyncStatus,
-        )
-    }
-    private val fullLogTimelineRowUi by lazy {
-        FullLogTimelineRowUi(
-            activity = activity,
-            dp = dp,
-            roundedRect = roundedRect,
-            openHistory = openContactNotesScreen,
-            openNoteEditor = openContactNotePopupForCall,
-            syncStatus = ::noteSyncStatus,
+            openContactNotesScreen, ::noteSyncStatus,
         )
     }
 
@@ -55,12 +42,11 @@ internal class HomeCallRowRenderer(
         highlightQuery: String = "",
         showContactIdentity: Boolean = true,
         showGeneralContactNote: Boolean = true,
-        showQuickActions: Boolean = true,
         serverBacked: Boolean = false,
     ): MaterialCardView {
         if (call.isSms) return smsRowRenderer.compactRow(
             call, displayName, contactNote, companyGeneralNoteLabels, callNote,
-            highlightQuery, showContactIdentity, showGeneralContactNote, showQuickActions, serverBacked,
+            highlightQuery, showContactIdentity, showGeneralContactNote, serverBacked,
         )
         val crmClient = isCrmClient(call, showGeneralContactNote)
         val card = MaterialCardView(activity).apply {
@@ -107,30 +93,9 @@ internal class HomeCallRowRenderer(
             companyLabels = companyGeneralNoteLabels,
         )
         row.addView(column)
-        row.addView(actions(call, displayName, callNote, showQuickActions))
+        row.addView(actions(call, displayName, callNote))
         card.addView(row)
         return card
-    }
-
-    /** Full Log uses the flatter History timeline style while Home keeps its original rows. */
-    fun fullLogTimelineRow(
-        call: PhoneCallRecord,
-        displayName: String,
-        callNote: HomeCallNote?,
-    ): MaterialCardView {
-        if (call.isSms) return smsRowRenderer.compactRow(
-            call = call,
-            displayName = displayName,
-            contactNote = null,
-            companyGeneralNoteLabels = null,
-            callNote = callNote,
-            highlightQuery = "",
-            showContactIdentity = false,
-            showGeneralContactNote = false,
-            showQuickActions = false,
-            serverBacked = false,
-        )
-        return fullLogTimelineRowUi.create(call, displayName, callNote)
     }
 
     private fun isCrmClient(call: PhoneCallRecord, visible: Boolean): Boolean {
@@ -184,18 +149,13 @@ internal class HomeCallRowRenderer(
         })
     }
 
-    private fun actions(call: PhoneCallRecord, name: String, note: HomeCallNote?, quick: Boolean) = LinearLayout(activity).apply {
+    private fun actions(call: PhoneCallRecord, name: String, note: HomeCallNote?) = LinearLayout(activity).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         ).apply { leftMargin = dp(3) }
-        if (quick) addView(iconButton(
-            R.drawable.ic_filter_calls,
-            activity.getString(R.string.dynamic_action_filter),
-            { togglePhoneFilter(call.number) },
-        ))
         val editableNote = note?.expandedNotes()?.firstOrNull { it.editable }
         val editable = note == null || editableNote != null
         addView(iconButton(
