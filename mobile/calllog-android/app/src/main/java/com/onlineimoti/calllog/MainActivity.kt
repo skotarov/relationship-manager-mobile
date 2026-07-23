@@ -16,28 +16,29 @@ class MainActivity : FontScaledAppCompatActivity() {
     private var currentLanguage = ConfigStore.DEFAULT_APP_LANGUAGE
     private var currentFontScale = AppFontScaleStore.NORMAL
 
-    private val contactsCleanupController: MainContactsCleanupController by lazy {
+    private val contactsCleanupController by lazy {
         MainContactsCleanupController(this, binding, executor, ::setStatus, ::dp)
     }
-    private val settingsNavigationController: MainSettingsNavigationController by lazy {
+    private val settingsNavigationController by lazy {
         MainSettingsNavigationController(this, binding, translationSettingsController::onSectionVisible)
     }
-    private val settingsAutoSaveController: MainSettingsAutoSaveController by lazy {
+    private val settingsAutoSaveController by lazy {
         MainSettingsAutoSaveController(binding, ::autoSaveSettings, ::applyLanguageIfChanged, ::applyFontScaleIfChanged)
     }
-    private val translationSettingsController: TranslationSettingsController by lazy {
-        TranslationSettingsController(this, binding)
-    }
-    private val serverSyncQueueStatusController: ServerSyncQueueStatusController by lazy {
+    private val translationSettingsController by lazy { TranslationSettingsController(this, binding) }
+    private val serverSyncQueueStatusController by lazy {
         ServerSyncQueueStatusController(this, binding, ::saveConfig, ::setStatus)
     }
-    private val defaultSmsSettingsController: DefaultSmsSettingsController by lazy {
+    private val serverConnectionController by lazy {
+        MainServerConnectionController(this, binding, executor, ::saveConfig, ::setStatus)
+    }
+    private val defaultSmsSettingsController by lazy {
         DefaultSmsSettingsController(this, binding, ::requestDefaultSmsRole, ::requestSmsPermissions, ::setStatus)
     }
-    private val callScreeningIntegrationSettingsController: CallScreeningIntegrationSettingsController by lazy {
+    private val callScreeningIntegrationSettingsController by lazy {
         CallScreeningIntegrationSettingsController(this, binding, ::requestCallScreeningPermissionFromSummary)
     }
-    private val permissionFlowController: MainPermissionFlowController by lazy {
+    private val permissionFlowController by lazy {
         MainPermissionFlowController(
             activity = this,
             requestPermissionLauncher = singlePermissionLauncher,
@@ -161,7 +162,7 @@ class MainActivity : FontScaledAppCompatActivity() {
             openHome = ::openCallLogHome,
             syncContacts = contactsCleanupController::syncAllRmContacts,
             saveServerSettings = ::saveServerSettings,
-            testServerConnection = ::testServerConnection,
+            testServerConnection = serverConnectionController::test,
             createArchive = { createArchiveLauncher.launch(MainArchiveActions.archiveFileName()) },
             restoreArchive = { restoreArchiveLauncher.launch(arrayOf("application/json", "text/*", "*/*")) },
             testStart = if (BuildConfig.DEBUG) ({ saveConfig(); testStartPopup() }) else null,
@@ -174,33 +175,6 @@ class MainActivity : FontScaledAppCompatActivity() {
         setStatus(getString(R.string.settings_server_saved))
         refreshPermissionSummary()
         serverSyncQueueStatusController.refresh()
-    }
-
-    private fun testServerConnection() {
-        val config = saveConfig()
-        val remote = binding.remoteSettingsSection
-        remote.serverConnectionTestStatusText.visibility = android.view.View.VISIBLE
-        remote.serverConnectionTestStatusText.text = getString(R.string.test_server_connection_running)
-        remote.testServerConnectionButton.isEnabled = false
-        executor.execute {
-            val result = runCatching { ServerConnectionTester.test(config) }
-            runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                remote.testServerConnectionButton.isEnabled = true
-                result.onSuccess { status ->
-                    remote.serverConnectionTestStatusText.text = buildString {
-                        append(if (status.ok) "✅ " else "⚠️ ")
-                        append(status.title)
-                        if (status.detail.isNotBlank()) append("\n").append(status.detail)
-                    }
-                    setStatus(status.title)
-                }.onFailure { error ->
-                    val message = error.message.orEmpty().ifBlank { getString(R.string.test_server_connection_failed) }
-                    remote.serverConnectionTestStatusText.text = "❌ $message"
-                    setStatus(message)
-                }
-            }
-        }
     }
 
     internal fun requestAppPermissionFromSummary(permission: String, label: String) {
@@ -226,7 +200,8 @@ class MainActivity : FontScaledAppCompatActivity() {
         permissionFlowController.requestCallScreeningRoleIfNeeded()
     }
 
-    private fun requestDefaultSmsRole() = DefaultSmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
+    private fun requestDefaultSmsRole() =
+        DefaultSmsRoleController.requestDefaultSmsRole(this, smsRoleLauncher, ::setStatus)
 
     private fun requestSmsPermissions() {
         val missing = arrayOf(
@@ -288,9 +263,8 @@ class MainActivity : FontScaledAppCompatActivity() {
         finish()
     }
 
-    private fun hasPermission(permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun syncPrivateNotesToSharedStorageWhenAvailable() {
         if (LocalNotesFileStore.canUsePublicFolder()) LocalNotesFileStore.migratePrivateToPublic(this)
