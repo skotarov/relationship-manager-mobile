@@ -88,7 +88,8 @@ internal class HistoryEdgePagingController(
         val root = boundRoot ?: return
         if (loading) {
             HomeLoadingFooterUi.show(root)
-            boundScrollView?.post { scroll -> scroll.fullScroll(View.FOCUS_DOWN) }
+            val scroll = boundScrollView
+            scroll?.post { scroll.fullScroll(View.FOCUS_DOWN) }
         } else {
             HomeLoadingFooterUi.hide(root)
         }
