@@ -29,6 +29,9 @@ internal class CallReportMergedHistoryController(
     private var serverLoading = false
     private var prepareLoading = false
     private var serverLoaded = false
+    private var localDataDirty = false
+    private var serverDataDirty = false
+    private var remoteSignature = ""
     private var localGeneration = 0
     private var serverGeneration = 0
     private var prepareGeneration = 0
@@ -64,11 +67,23 @@ internal class CallReportMergedHistoryController(
         selectPhone(phone)
         if (serverLoading) return
         val config = ConfigStore.load(activity)
+        val requestedSignature = HistorySnapshotCache.remoteSignature(config)
+        if (requestedSignature != remoteSignature) {
+            remoteSignature = requestedSignature
+            if (serverLoaded || serverHistory != CallReportHistoryLookupResult()) {
+                serverLoaded = false
+                serverHistory = CallReportHistoryLookupResult()
+                serverDataDirty = true
+            }
+        }
         if (!CallReportRemoteAccess.isEnabled(config)) {
             clearServerStateAndPrepareIfNeeded()
             return
         }
-        if (!CallReportRemoteAccess.isReady(config)) return
+        if (!CallReportRemoteAccess.isReady(config)) {
+            publishIfNeeded()
+            return
+        }
 
         invalidatePrepareForNewData()
         serverLoading = true
@@ -91,12 +106,13 @@ internal class CallReportMergedHistoryController(
                 }
                 serverLoading = false
                 result.onSuccess { history ->
+                    if (!serverLoaded || history != serverHistory) serverDataDirty = true
                     serverHistory = history
                     serverLoaded = true
                     loadError = ""
-                }.onFailure {
-                    serverLoaded = false
-                    loadError = serverErrorText(it)
+                }.onFailure { error ->
+                    // Keep the last good server snapshot visible during a temporary connection error.
+                    loadError = serverErrorText(error)
                 }
                 prepareWhenDataReady(requestedPhone)
             }
@@ -116,24 +132,21 @@ internal class CallReportMergedHistoryController(
         val requestedPhone = phone
         val appContext = activity.applicationContext
         loadExecutor.execute {
-            val snapshot = runCatching {
-                HistoryBackgroundLoader.loadLocal(appContext, requestedPhone)
-            }.getOrDefault(HistoryLocalSnapshot())
+            val result = runCatching { HistoryBackgroundLoader.loadLocal(appContext, requestedPhone) }
             handler.post {
                 finishLocalBusy(token)
                 if (
                     activity.isFinishing || activity.isDestroyed ||
                     generation != localGeneration || requestedPhone != activePhone
                 ) return@post
-                localCalls = snapshot.calls
-                latestLocalCall = snapshot.latestCall
-                localSms = snapshot.sms
-                localNotes = snapshot.callNotes
-                localGeneralNote = snapshot.generalNote
-                localGeneralNotePending = snapshot.generalNotePending
-                contactExists = snapshot.contactExists
-                companyScopeAvailable = snapshot.companyScopeAvailable
                 localLoading = false
+                result.onSuccess { snapshot ->
+                    if (snapshot != currentLocalSnapshot()) {
+                        applyLocalSnapshot(snapshot)
+                        localDataDirty = true
+                    }
+                }
+                // On a provider error keep the last cached local snapshot instead of collapsing the list.
                 prepareWhenDataReady(requestedPhone)
             }
         }
@@ -246,6 +259,10 @@ internal class CallReportMergedHistoryController(
     /** Wait for all source loads, then publish one coherent snapshot. */
     private fun prepareWhenDataReady(phone: String) {
         if (phone.isBlank() || phone != activePhone || localLoading || serverLoading) return
+        if (!localDataDirty && !serverDataDirty) {
+            publishIfNeeded()
+            return
+        }
         schedulePrepare(phone)
     }
 
@@ -257,6 +274,7 @@ internal class CallReportMergedHistoryController(
         prepareBusyTokens += token
         val appContext = activity.applicationContext
         val requestedPhone = phone
+        val requestedSignature = remoteSignature
         val remoteEnabled = CallReportRemoteAccess.isEnabled(activity)
         val loaded = serverLoaded
         val history = serverHistory
@@ -283,13 +301,27 @@ internal class CallReportMergedHistoryController(
                     generation != prepareGeneration || requestedPhone != activePhone
                 ) return@post
                 prepareLoading = false
-                result.onSuccess { prepared = it }
+                result.onSuccess {
+                    prepared = it
+                    localDataDirty = false
+                    serverDataDirty = false
+                    HistorySnapshotCache.putMemory(
+                        requestedPhone,
+                        HistoryCachedState(
+                            local = currentLocalSnapshot(),
+                            serverHistory = serverHistory,
+                            serverLoaded = serverLoaded,
+                            prepared = prepared,
+                            remoteSignature = requestedSignature,
+                        ),
+                    )
+                }
                 publishIfNeeded()
             }
         }
     }
 
-    /** Rebuild only when the prepared presentation differs from what is visible. */
+    /** Rebuild only when visible data differs; loading flags alone do not recreate the page. */
     private fun publishIfNeeded() {
         val nextState = currentRenderedState()
         if (!forceRenderAfterPrepare && nextState == lastRenderedState) return
@@ -299,9 +331,7 @@ internal class CallReportMergedHistoryController(
     }
 
     private fun currentRenderedState(): HistoryRenderedState = HistoryRenderedState(
-        localLoading = localLoading,
-        serverLoading = serverLoading,
-        prepareLoading = prepareLoading,
+        showLoadingPlaceholder = isLoading() && !hasVisibleHistoryContent(),
         serverLoaded = serverLoaded,
         localCalls = localCalls,
         latestLocalCall = latestLocalCall,
@@ -315,6 +345,10 @@ internal class CallReportMergedHistoryController(
         prepared = prepared,
         loadError = loadError,
     )
+
+    private fun hasVisibleHistoryContent(): Boolean =
+        localGeneralNote.isNotBlank() || prepared.rows.isNotEmpty() || prepared.fullLogEntries.isNotEmpty() ||
+            prepared.companyMainNotes.any { note -> note.note.isNotBlank() } || prepared.unscopedServerMainNote != null
 
     private fun invalidatePrepareForNewData() {
         if (!prepareLoading && prepareBusyTokens.isEmpty()) return
@@ -337,14 +371,10 @@ internal class CallReportMergedHistoryController(
         serverLoading = false
         prepareLoading = false
         serverLoaded = false
-        localCalls = emptyList()
-        latestLocalCall = null
-        localSms = emptyList()
-        localNotes = emptyList()
-        localGeneralNote = ""
-        localGeneralNotePending = false
-        contactExists = false
-        companyScopeAvailable = false
+        localDataDirty = false
+        serverDataDirty = false
+        remoteSignature = HistorySnapshotCache.remoteSignature(ConfigStore.load(activity))
+        applyLocalSnapshot(HistoryLocalSnapshot())
         serverHistory = CallReportHistoryLookupResult()
         prepared = HistoryPreparedSnapshot()
         loadError = ""
@@ -352,6 +382,51 @@ internal class CallReportMergedHistoryController(
         forceRenderAfterPrepare = false
         rowsUi.resetPage()
         fullLogUi.resetPage()
+
+        val memoryState = HistorySnapshotCache.memoryState(phone)
+        val cachedLocal = memoryState?.local ?: HistoryBackgroundLoader.cachedLocal(activity.applicationContext, phone)
+        if (cachedLocal != null) applyLocalSnapshot(cachedLocal)
+        if (memoryState != null && memoryState.remoteSignature == remoteSignature) {
+            serverHistory = memoryState.serverHistory
+            serverLoaded = memoryState.serverLoaded && remoteSignature.isNotBlank()
+            prepared = memoryState.prepared
+        } else if (cachedLocal != null) {
+            prepared = HistoryBackgroundLoader.prepareCachedLocal(phone, cachedLocal)
+        }
+        if (cachedLocal != null) {
+            HistorySnapshotCache.putMemory(
+                phone,
+                HistoryCachedState(
+                    local = currentLocalSnapshot(),
+                    serverHistory = serverHistory,
+                    serverLoaded = serverLoaded,
+                    prepared = prepared,
+                    remoteSignature = remoteSignature,
+                ),
+            )
+        }
+    }
+
+    private fun currentLocalSnapshot(): HistoryLocalSnapshot = HistoryLocalSnapshot(
+        calls = localCalls,
+        latestCall = latestLocalCall,
+        sms = localSms,
+        callNotes = localNotes,
+        generalNote = localGeneralNote,
+        generalNotePending = localGeneralNotePending,
+        contactExists = contactExists,
+        companyScopeAvailable = companyScopeAvailable,
+    )
+
+    private fun applyLocalSnapshot(snapshot: HistoryLocalSnapshot) {
+        localCalls = snapshot.calls
+        latestLocalCall = snapshot.latestCall ?: snapshot.calls.firstOrNull()
+        localSms = snapshot.sms
+        localNotes = snapshot.callNotes
+        localGeneralNote = snapshot.generalNote
+        localGeneralNotePending = snapshot.generalNotePending
+        contactExists = snapshot.contactExists
+        companyScopeAvailable = snapshot.companyScopeAvailable
     }
 
     private fun addServerErrorBelowContactName(root: LinearLayout, remoteEnabled: Boolean) {
@@ -369,13 +444,17 @@ internal class CallReportMergedHistoryController(
     }
 
     private fun clearServerStateAndPrepareIfNeeded() {
-        val hadServerState = serverLoading || serverLoaded || serverHistory.events.isNotEmpty() ||
-            serverHistory.principal != CallReportHistoryPrincipal() || loadError.isNotBlank()
+        val hadServerData = serverLoaded || serverHistory != CallReportHistoryLookupResult()
+        val errorChanged = loadError.isNotBlank()
         serverLoading = false
         serverLoaded = false
         serverHistory = CallReportHistoryLookupResult()
         loadError = ""
-        if (hadServerState && activePhone.isNotBlank()) prepareWhenDataReady(activePhone)
+        remoteSignature = ""
+        if (hadServerData) serverDataDirty = true
+        if (activePhone.isBlank()) return
+        if (serverDataDirty || localDataDirty) prepareWhenDataReady(activePhone)
+        else if (errorChanged) publishIfNeeded()
     }
 
     private fun finishLocalBusy(token: Long = localBusyToken) {
@@ -439,9 +518,7 @@ internal class CallReportMergedHistoryController(
     }
 
     private data class HistoryRenderedState(
-        val localLoading: Boolean,
-        val serverLoading: Boolean,
-        val prepareLoading: Boolean,
+        val showLoadingPlaceholder: Boolean,
         val serverLoaded: Boolean,
         val localCalls: List<PhoneCallRecord>,
         val latestLocalCall: PhoneCallRecord?,
