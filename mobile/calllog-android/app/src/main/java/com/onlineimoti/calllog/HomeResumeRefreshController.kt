@@ -28,6 +28,9 @@ internal class HomeResumeRefreshController private constructor(
 
     private val refreshRunnable = Runnable {
         if (!canRefreshLoadedPage() || !activity.hasWindowFocus()) return@Runnable
+        // This is a recheck of an already visible page, not a first load. Keep the
+        // existing rows on screen while the fresh snapshot is prepared.
+        HomeRefreshRenderPolicy.requestKeepExistingRows()
         activity.sendBroadcast(
             Intent(HomeActivity.ACTION_CONTACT_NOTE_SAVED)
                 .setPackage(activity.packageName),
@@ -98,6 +101,7 @@ internal class HomeResumeRefreshController private constructor(
 
     private fun release() {
         cancelPending()
+        HomeRefreshRenderPolicy.clear()
         activity.application.unregisterActivityLifecycleCallbacks(this)
         if (receiverRegistered) {
             runCatching { activity.unregisterReceiver(dataChangedReceiver) }
