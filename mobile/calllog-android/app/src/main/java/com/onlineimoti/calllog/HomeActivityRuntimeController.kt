@@ -1,8 +1,6 @@
 package com.onlineimoti.calllog
 
-import android.Manifest
 import android.view.View
-import androidx.activity.result.ActivityResultLauncher
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
 import java.util.concurrent.ExecutorService
 
@@ -10,14 +8,9 @@ internal class HomeActivityRuntimeController(
     private val activity: HomeActivity,
     private val binding: () -> ActivityHomeBinding,
     private val refreshExecutor: ExecutorService,
-    private val smsPermissionLauncher: ActivityResultLauncher<String>,
-    private val activePhoneFilter: () -> String,
-    private val activeSearchQuery: () -> String,
     private val isCrmContactsMode: () -> Boolean,
     private val isServerReady: () -> Boolean,
-    private val isFilteredFullLogMode: () -> Boolean,
     private val clearSearchCache: () -> Unit,
-    private val invalidateFilteredLog: () -> Unit,
     private val invalidateCompanyNotes: () -> Unit,
     private val invalidateCrmContacts: () -> Unit,
     private val refreshCompanies: (Boolean) -> Unit,
@@ -25,52 +18,24 @@ internal class HomeActivityRuntimeController(
     private val scheduleSettledCallLogRefresh: () -> Unit,
     private val renderCalls: () -> Unit,
 ) {
-    private var smsPermissionPromptShownThisSession = false
-    private var smsPermissionRequestInFlight = false
-
-    fun onSmsPermissionResult() {
-        smsPermissionRequestInFlight = false
-        clearSearchCache()
-        HomeTimelineLoader.invalidateCache()
-        invalidateFilteredLog()
-        if (!activity.isFinishing && !activity.isDestroyed) renderCalls()
-    }
-
-    /** Reuses the compact back-and-title header for both Contacts and a filtered full log. */
+    /** The compact header is reserved for CRM Contacts; Full Log now lives only in History. */
     fun updateHeader() {
         val views = binding()
         val contactsVisible = isCrmContactsMode() && isServerReady()
-        val fullLogVisible = !contactsVisible && isFilteredFullLogMode()
-        val customHeaderVisible = contactsVisible || fullLogVisible
-        views.relationshipManagerWordmark.visibility = if (customHeaderVisible) View.GONE else View.VISIBLE
-        views.crmContactsHeader.visibility = if (customHeaderVisible) View.VISIBLE else View.GONE
-        views.crmContactsTitleText.text = when {
-            fullLogVisible -> activity.getString(R.string.open_full_log)
-            contactsVisible -> activity.getString(R.string.runtime_crm_clients)
-            else -> ""
+        views.relationshipManagerWordmark.visibility = if (contactsVisible) View.GONE else View.VISIBLE
+        views.crmContactsHeader.visibility = if (contactsVisible) View.VISIBLE else View.GONE
+        views.crmContactsTitleText.text = if (contactsVisible) {
+            activity.getString(R.string.runtime_crm_clients)
+        } else {
+            ""
         }
-    }
-
-    fun requestSmsPermissionForFilteredHistoryIfNeeded() {
-        if (
-            !DistributionCapabilities.supportsLocalDeviceData ||
-            SmsMessageReader.hasReadSmsPermission(activity) ||
-            smsPermissionRequestInFlight ||
-            smsPermissionPromptShownThisSession
-        ) {
-            return
-        }
-        smsPermissionPromptShownThisSession = true
-        smsPermissionRequestInFlight = true
-        smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
     }
 
     fun refreshFromPull() {
         val appContext = activity.applicationContext
-        if (!isFilteredFullLogMode()) resetTimelineForRefresh()
+        resetTimelineForRefresh()
         clearSearchCache()
         HomeTimelineLoader.invalidateCache()
-        invalidateFilteredLog()
         invalidateCompanyNotes()
         invalidateCrmContacts()
         HomeCrmPhaseLookup.invalidate()
@@ -94,7 +59,6 @@ internal class HomeActivityRuntimeController(
         }
         renderCalls()
         // Android may publish a just-ended call after the user's first pull query.
-        // Re-read once after the provider has settled instead of caching that gap.
         scheduleSettledCallLogRefresh()
     }
 }
