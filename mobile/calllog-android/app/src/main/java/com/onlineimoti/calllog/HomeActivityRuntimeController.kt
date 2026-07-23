@@ -33,7 +33,8 @@ internal class HomeActivityRuntimeController(
 
     fun refreshFromPull() {
         val appContext = activity.applicationContext
-        resetTimelineForRefresh()
+        // Keep the already rendered page visible. Pull-to-refresh has its own spinner,
+        // so clearing the timeline here only creates a second hard-loading pass.
         clearSearchCache()
         HomeTimelineLoader.invalidateCache()
         invalidateCompanyNotes()
@@ -58,7 +59,7 @@ internal class HomeActivityRuntimeController(
             }
         }
         renderCalls()
-        // Android may publish a just-ended call after the user's first pull query.
-        scheduleSettledCallLogRefresh()
+        // Do not schedule another unconditional read 1.5 seconds later. Android's
+        // Call Log observer still refreshes when the provider actually changes.
     }
 }
