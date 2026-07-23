@@ -199,6 +199,7 @@ internal class ContactNotesStickyHistoryUi(
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
         setBackgroundColor(ContextCompat.getColor(activity, R.color.calllog_bg))
+        setPadding(dp(PAGE_HORIZONTAL_PADDING_DP), 0, dp(PAGE_HORIZONTAL_PADDING_DP), 0)
         elevation = dp(8).toFloat()
         addView(modeButton(
             textValue = "Бележки и SMS",
@@ -275,6 +276,7 @@ internal class ContactNotesStickyHistoryUi(
         (value * activity.resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val PAGE_HORIZONTAL_PADDING_DP = 16
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
