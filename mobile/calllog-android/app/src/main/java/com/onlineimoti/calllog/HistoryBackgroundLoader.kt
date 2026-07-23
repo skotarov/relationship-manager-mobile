@@ -28,6 +28,9 @@ internal data class HistoryPreparedSnapshot(
 )
 
 internal object HistoryBackgroundLoader {
+    fun cachedLocal(context: Context, phone: String): HistoryLocalSnapshot? =
+        HistorySnapshotCache.readLocal(context.applicationContext, phone)
+
     fun loadLocal(context: Context, phone: String): HistoryLocalSnapshot {
         if (phone.isBlank()) return HistoryLocalSnapshot()
 
@@ -39,7 +42,7 @@ internal object HistoryBackgroundLoader {
         val contactExists = hasRealContact(context, phone)
         val crmEnabled = CrmContactSyncStore.isEnabled(context, phone)
         val unknownNumber = !crmEnabled && !contactExists
-        return HistoryLocalSnapshot(
+        val snapshot = HistoryLocalSnapshot(
             calls = localTimeline.calls,
             latestCall = localTimeline.calls.firstOrNull(),
             sms = localTimeline.sms,
@@ -49,6 +52,8 @@ internal object HistoryBackgroundLoader {
             contactExists = contactExists,
             companyScopeAvailable = ContactServerCompanyScopePolicy.isAvailable(crmEnabled, unknownNumber),
         )
+        HistorySnapshotCache.writeLocal(context.applicationContext, phone, snapshot)
+        return snapshot
     }
 
     fun prepare(
