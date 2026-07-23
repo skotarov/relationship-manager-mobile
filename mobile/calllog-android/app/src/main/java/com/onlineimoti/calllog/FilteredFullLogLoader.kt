@@ -3,18 +3,14 @@ package com.onlineimoti.calllog
 import android.content.Context
 import kotlin.math.abs
 
-/** Local sources needed by both the embedded History tab and the legacy Home full-log adapter. */
+/** Local sources needed by the embedded History full-log tab. */
 internal data class FilteredFullLogLocalData(
     val calls: List<PhoneCallRecord> = emptyList(),
     val sms: List<SmsMessageRecord> = emptyList(),
     val notes: List<ContactCallNote> = emptyList(),
 )
 
-/**
- * Single source of truth for loading, merging and grouping one contact's complete timeline.
- * The Home screen currently adapts this data to ActivityHomeBinding; History renders the
- * same entries in-place. Removing the old Home entry later will not remove this shared logic.
- */
+/** Single source of truth for loading, merging and grouping one contact's complete timeline. */
 internal object FilteredFullLogLoader {
     fun loadLocal(context: Context, phone: String): FilteredFullLogLocalData {
         if (phone.isBlank()) return FilteredFullLogLocalData()
@@ -22,30 +18,6 @@ internal object FilteredFullLogLoader {
             calls = PhoneCallReader.callsForPhone(context, phone, limit = SOURCE_CALL_LIMIT),
             sms = SmsMessageReader.messagesForPhone(context, phone, limit = SOURCE_SMS_LIMIT),
             notes = ContactNoteReader.callNotesForPhone(context, phone),
-        )
-    }
-
-    fun load(context: Context, phone: String, remoteEnabled: Boolean): List<FilteredFullLogEntry> {
-        if (phone.isBlank()) return emptyList()
-        val local = loadLocal(context, phone)
-        val serverHistory = if (remoteEnabled) {
-            runCatching {
-                CallReportHistoryLookupClient.lookup(
-                    config = ConfigStore.load(context),
-                    phone = phone,
-                    context = context,
-                )
-            }.getOrDefault(CallReportHistoryLookupResult())
-        } else {
-            CallReportHistoryLookupResult()
-        }
-        return prepare(
-            context = context,
-            phone = phone,
-            remoteEnabled = remoteEnabled,
-            principal = serverHistory.principal,
-            local = local,
-            serverEvents = serverHistory.events,
         )
     }
 
@@ -70,7 +42,56 @@ internal object FilteredFullLogLoader {
         return groupedEntries(merged)
     }
 
-    private fun groupedEntries(timeline: List<CallReportHistoryRow>): List<FilteredFullLogEntry> {
+    /**
+     * Builds an immediately displayable local-only timeline from a cached provider snapshot.
+     * It deliberately avoids disk/provider lookups and server-confirmation reads on the main thread.
+     */
+    fun prepareCachedLocal(phone: String, local: FilteredFullLogLocalData): List<FilteredFullLogEntry> =
+        groupedEntries(cachedLocalRows(phone, local))
+
+    internal fun cachedLocalRows(
+        phone: String,
+        local: FilteredFullLogLocalData,
+    ): List<CallReportHistoryRow> {
+        if (phone.isBlank()) return emptyList()
+        val rows = ArrayList<CallReportHistoryRow>(local.calls.size + local.sms.size + local.notes.size)
+        local.calls.forEach { call ->
+            rows += CallReportHistoryRow(
+                kind = CallReportHistoryRowKind.PHONE,
+                timeMs = call.startedAt,
+                phone = call.number.ifBlank { phone },
+                direction = call.direction,
+                durationSeconds = call.durationSeconds,
+                localCall = call,
+            )
+        }
+        local.sms.forEach { sms ->
+            rows += CallReportHistoryRow(
+                kind = CallReportHistoryRowKind.SMS,
+                timeMs = sms.timestampMs,
+                phone = phone,
+                direction = if (sms.isOutgoing) "out" else "in",
+                text = sms.body,
+                localSms = sms,
+            )
+        }
+        local.notes.forEach { note ->
+            rows += CallReportHistoryRow(
+                kind = CallReportHistoryRowKind.NOTE,
+                timeMs = note.callAt.takeIf { it > 0L } ?: note.savedAt,
+                phone = phone,
+                direction = note.direction,
+                durationSeconds = note.durationSeconds,
+                text = note.note,
+                localNote = note,
+                companyId = note.companyId,
+                editable = true,
+            )
+        }
+        return rows.sortedByDescending { row -> row.timeMs }
+    }
+
+    internal fun groupedEntries(timeline: List<CallReportHistoryRow>): List<FilteredFullLogEntry> {
         val callIndexes = timeline.mapIndexedNotNull { index, row ->
             index.takeIf { row.kind == CallReportHistoryRowKind.PHONE }
         }
