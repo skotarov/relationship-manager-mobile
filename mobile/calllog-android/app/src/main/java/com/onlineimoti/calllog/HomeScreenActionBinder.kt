@@ -19,7 +19,10 @@ internal object HomeScreenActionBinder {
     ) {
         HomeResumeRefreshController.install(activity, binding)
         binding.settingsButton.setOnClickListener { openOverflow() }
-        binding.crmModeButton.setOnClickListener { openCrmContacts() }
+        binding.crmModeButton.apply {
+            setIconResource(R.drawable.ic_client_money)
+            setOnClickListener { openCrmContacts() }
+        }
         binding.smsHistoryButton.setOnClickListener {
             activity.startActivity(Intent(activity, SmsHistoryActivity::class.java))
         }
