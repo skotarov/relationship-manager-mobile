@@ -12,7 +12,6 @@ internal class HomeSmsRowRenderer(
     private val roundedRect: (color: Int, radius: Int, strokeColor: Int, strokeWidth: Int) -> GradientDrawable,
     private val companyScopeChipsUi: HomeCompanyScopeChipsUi,
     private val openContactNotesScreen: (PhoneCallRecord, String) -> Unit,
-    private val togglePhoneFilter: (String) -> Unit,
     private val noteSyncStatus: (PhoneCallRecord) -> String?,
 ) {
     private val notesUi by lazy { TimelineNotesUi(activity, dp, roundedRect) }
@@ -26,7 +25,6 @@ internal class HomeSmsRowRenderer(
         highlightQuery: String,
         showContactIdentity: Boolean,
         showGeneralContactNote: Boolean,
-        showQuickActions: Boolean,
         serverBacked: Boolean = false,
     ): MaterialCardView {
         val hasContactName = showContactIdentity && displayName.isNotBlank() && noteKey(displayName) != noteKey(call.number)
@@ -62,17 +60,7 @@ internal class HomeSmsRowRenderer(
                 activity.getColor(R.color.calllog_text),
             ),
             showTitle = showContactIdentity,
-            actions = if (showQuickActions) {
-                listOf(
-                    SmsTimelineCard.Action(
-                        drawableRes = R.drawable.ic_filter_calls,
-                        contentDescription = activity.getString(R.string.dynamic_action_filter),
-                        onClick = { togglePhoneFilter(call.number) },
-                    ),
-                )
-            } else {
-                emptyList()
-            },
+            actions = emptyList(),
             afterBody = { textColumn ->
                 notesUi.addGeneralContactNote(
                     column = textColumn,
