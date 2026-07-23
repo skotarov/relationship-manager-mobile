@@ -23,6 +23,8 @@ internal class HomePullRefreshController(
         runCatching { refresh() }.onFailure { complete() }
     }
 
+    fun isInProgress(): Boolean = inProgress
+
     fun complete() {
         if (!inProgress) {
             binding.homeCallsRefreshLayout.setRefreshing(false)
