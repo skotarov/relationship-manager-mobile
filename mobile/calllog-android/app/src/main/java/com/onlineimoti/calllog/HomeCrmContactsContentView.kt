@@ -29,11 +29,19 @@ internal class HomeCrmContactsContentView(
     fun showLoading() {
         prepareCustomersHeader()
         timelineToggle.prepare(visible = true, contactsMode = true)
+        removeServerLoadingStatus()
         val retainingRows = retainRowsDuringEdgePaging()
         if (!retainingRows) {
             currentData = null
             contentRenderer.clearCalls()
-            addStatusRow(if (AppLocaleText.isBulgarian()) "Зареждане на клиенти…" else "Loading customers…")
+            addStatusRow(
+                text = if (AppLocaleText.isBulgarian()) {
+                    "Зареждам клиенти от сървъра…"
+                } else {
+                    "Loading customers from server…"
+                },
+                tagValue = SERVER_LOADING_STATUS_TAG,
+            )
         }
         binding.fullLogProgress.visibility = View.GONE
         HomeLoadingFooterUi.show(binding.homeCallsContainer)
@@ -44,6 +52,7 @@ internal class HomeCrmContactsContentView(
 
     fun render(data: HomeRenderData, pageSize: Int, refreshCompanyLabels: Boolean = true) {
         prepareCustomersHeader()
+        removeServerLoadingStatus()
         currentData = data
         contentRenderer.replaceCurrentCalls(data.calls)
         val page = HomePagedListUi.page(
@@ -78,6 +87,7 @@ internal class HomeCrmContactsContentView(
 
     fun renderEmpty(pageSize: Int) {
         prepareCustomersHeader()
+        removeServerLoadingStatus()
         if (retainRowsDuringEdgePaging() && pageIndex() > 0) {
             currentData = null
             contentRenderer.replaceCurrentCalls(emptyList())
@@ -124,9 +134,10 @@ internal class HomeCrmContactsContentView(
         binding.paginationContainer.visibility = View.VISIBLE
     }
 
-    private fun addStatusRow(text: String) {
+    private fun addStatusRow(text: String, tagValue: String? = null) {
         binding.homeCallsContainer.addView(TextView(activity).apply {
             this.text = text
+            tag = tagValue
             gravity = Gravity.CENTER
             textSize = 14f
             setTextColor(Color.rgb(100, 116, 139))
@@ -138,11 +149,22 @@ internal class HomeCrmContactsContentView(
         })
     }
 
+    private fun removeServerLoadingStatus() {
+        for (index in binding.homeCallsContainer.childCount - 1 downTo 0) {
+            val child = binding.homeCallsContainer.getChildAt(index)
+            if (child.tag == SERVER_LOADING_STATUS_TAG) binding.homeCallsContainer.removeViewAt(index)
+        }
+    }
+
     private fun dp(value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
 
     /** This list is independent from the local CRM-mode switch. */
     private fun prepareCustomersHeader() {
         binding.crmControlsScroll.visibility = View.GONE
         binding.crmContactsTitleText.text = "Клиенти"
+    }
+
+    private companion object {
+        const val SERVER_LOADING_STATUS_TAG = "relationship_manager_clients_server_loading"
     }
 }
