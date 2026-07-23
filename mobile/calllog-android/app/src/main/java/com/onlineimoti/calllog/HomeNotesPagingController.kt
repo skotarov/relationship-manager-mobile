@@ -35,9 +35,11 @@ internal class HomeEdgePagingController(
         },
         retainPreviousPages = true,
         protectRetainedPrefix = true,
-        // Do not parse page 2 automatically after page 1 has just finished loading.
-        // Older pages still load normally when the user scrolls near the bottom.
+        // Never fetch a new page automatically. The user must reach the actual bottom.
         prefetchNext = false,
+        loadAtBottomOnly = true,
+        // Give the bottom spinner one visible frame before the next page starts loading.
+        loadingIndicatorLeadMs = 50L,
         onLoadingChanged = { loading ->
             binding.fullLogProgress.visibility = View.GONE
             if (loading) {
