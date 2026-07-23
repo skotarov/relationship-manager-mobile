@@ -19,6 +19,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Find Kotlin files over 300 lines
+        id: source_size
+        continue-on-error: true
         shell: bash
         run: |
           python3 - <<'PY'
@@ -26,6 +28,7 @@ jobs:
           import sys
 
           limit = 300
+          report = Path("/tmp/kotlin-source-size-report.txt")
           oversized = []
           for path in sorted(Path("app/src").rglob("*.kt")):
               try:
@@ -35,11 +38,29 @@ jobs:
               if lines > limit:
                   oversized.append((lines, path.as_posix()))
 
+          output = []
           if oversized:
-              print(f"Kotlin files over {limit} lines:")
-              for lines, path in sorted(oversized, reverse=True):
-                  print(f"{lines:4d}  {path}")
-              sys.exit(1)
+              output.append(f"Kotlin files over {limit} lines:")
+              output.extend(f"{lines:4d}  {path}" for lines, path in sorted(oversized, reverse=True))
+          else:
+              output.append(f"All Kotlin files are at or below {limit} lines.")
 
-          print(f"All Kotlin files are at or below {limit} lines.")
+          text = "\n".join(output) + "\n"
+          report.write_text(text, encoding="utf-8")
+          print(text, end="")
+          if oversized:
+              sys.exit(1)
           PY
+
+      - name: Upload Kotlin source size report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kotlin-source-size-report
+          path: /tmp/kotlin-source-size-report.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce Kotlin source size result
+        if: steps.source_size.outcome == 'failure'
+        run: exit 1
