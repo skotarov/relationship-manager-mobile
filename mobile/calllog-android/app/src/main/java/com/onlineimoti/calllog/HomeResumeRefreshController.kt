@@ -27,7 +27,7 @@ internal class HomeResumeRefreshController private constructor(
     private var receiverRegistered = false
 
     private val refreshRunnable = Runnable {
-        if (!shouldRefresh()) return@Runnable
+        if (!canRefreshLoadedPage() || !activity.hasWindowFocus()) return@Runnable
         activity.sendBroadcast(
             Intent(HomeActivity.ACTION_CONTACT_NOTE_SAVED)
                 .setPackage(activity.packageName),
@@ -64,7 +64,7 @@ internal class HomeResumeRefreshController private constructor(
             firstResume = false
             return
         }
-        if (shouldRefresh()) handler.postDelayed(refreshRunnable, RESUME_REFRESH_DELAY_MS)
+        if (canRefreshLoadedPage()) handler.postDelayed(refreshRunnable, RESUME_REFRESH_DELAY_MS)
     }
 
     override fun onActivityPaused(pausedActivity: Activity) {
@@ -81,10 +81,9 @@ internal class HomeResumeRefreshController private constructor(
     override fun onActivityStopped(activity: Activity) = Unit
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
-    private fun shouldRefresh(): Boolean {
+    private fun canRefreshLoadedPage(): Boolean {
         return !activity.isFinishing &&
             !activity.isDestroyed &&
-            activity.hasWindowFocus() &&
             HomePageReadyState.isReady() &&
             binding.homeCallsContainer.childCount > 0 &&
             !binding.homeCallsRefreshLayout.isRefreshing &&
