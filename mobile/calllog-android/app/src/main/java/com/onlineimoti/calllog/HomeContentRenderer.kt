@@ -2,16 +2,12 @@ package com.onlineimoti.calllog
 
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.onlineimoti.calllog.databinding.ActivityHomeBinding
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /** Renders the ordinary Call Log, search results and CRM call rows. */
 internal class HomeContentRenderer(
@@ -34,6 +30,16 @@ internal class HomeContentRenderer(
     private var currentContactNamesByNumber: Map<String, String> = emptyMap()
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
     private val rememberedContactNamesByNumber = linkedMapOf<String, String>()
+    private val chromeUi by lazy {
+        HomeContentChromeUi(
+            activity = activity,
+            binding = binding,
+            activeSearchQuery = activeSearchQuery,
+            isCrmModeEnabled = isCrmModeEnabled,
+            isCrmContactsMode = isCrmContactsMode,
+            dp = dp,
+        )
+    }
 
     fun replaceCurrentCalls(calls: List<PhoneCallRecord>) {
         currentCalls = calls
@@ -63,7 +69,7 @@ internal class HomeContentRenderer(
         binding.filteredDialButton.visibility = View.GONE
         binding.filteredContactSummaryContainer.visibility = View.GONE
         updateCrmModeControls()
-        updateStatusStyle(hidePlainTimelineRange = true)
+        chromeUi.updateStatusStyle(hidePlainTimelineRange = true)
     }
 
     fun showLoading() {
@@ -77,10 +83,9 @@ internal class HomeContentRenderer(
 
     fun showMissingCallLogPermission() {
         val text = activity.getString(R.string.dynamic_home_missing_call_log_permission)
-        if (isTopLevelCrmPage()) showResultsStatus(text)
-        else {
+        if (isTopLevelCrmPage()) showResultsStatus(text) else {
             binding.homeStatusText.text = text
-            updateStatusStyle()
+            chromeUi.updateStatusStyle()
         }
         binding.fullLogProgress.visibility = View.GONE
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
@@ -142,11 +147,12 @@ internal class HomeContentRenderer(
             else -> activity.getString(R.string.dynamic_home_no_more_calls)
         }
         if (isTopLevelCrmPage()) showResultsStatus(message) else binding.homeStatusText.text = message
-        updateStatusStyle()
+        chromeUi.updateStatusStyle()
         PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0)
         PaginationButtonAppearance.apply(binding.nextCallsButton, false)
         binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1)
-        binding.paginationContainer.visibility = if (PageLoadingModeStore.usesPrefetch(activity)) View.GONE else View.VISIBLE
+        binding.paginationContainer.visibility =
+            if (PageLoadingModeStore.usesPrefetch(activity)) View.GONE else View.VISIBLE
     }
 
     private fun applyRenderData(
@@ -175,7 +181,7 @@ internal class HomeContentRenderer(
         currentContactNamesByNumber = state.contactNamesByNumber
         currentCallNotesByCall = state.callNotesByCall
         binding.fullLogProgress.visibility = View.GONE
-        renderStatusAndPagination(pageSize)
+        chromeUi.renderStatusAndPagination(pageIndex(), pageSize, currentCalls.size)
         if (unchanged && !forceRender) {
             HomeLoadingFooterUi.hide(binding.homeCallsContainer)
             return
@@ -194,7 +200,7 @@ internal class HomeContentRenderer(
         calls.forEach { call ->
             val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
             if (day != null && day != previousDay) {
-                page.addView(dateSeparator(call.startedAt, today - day, page.childCount > 0))
+                page.addView(chromeUi.dateSeparator(call.startedAt, today - day, page.childCount > 0))
                 previousDay = day
             }
             val key = HomeCallPageLoader.noteKey(call.number)
@@ -215,58 +221,6 @@ internal class HomeContentRenderer(
         }
         HomeLoadingFooterUi.hide(binding.homeCallsContainer)
         if (refreshCompanyLabels) companyGeneralNotes.refresh(calls)
-    }
-
-    private fun dateSeparator(timestamp: Long, relativeDays: Long, hasRowsBefore: Boolean): TextView {
-        val locale = if (AppLocaleText.isBulgarian()) Locale("bg", "BG") else Locale.US
-        val label = "${SimpleDateFormat("EEEE, d MMMM yyyy", locale).format(Date(timestamp))} " +
-            "(${HomeTimelineDateUi.relativeDaysLabel(activity, relativeDays)})"
-        return TextView(activity).apply {
-            text = label
-            textSize = 12.5f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(activity.getColor(R.color.callreport_icon_background))
-            gravity = Gravity.CENTER_VERTICAL
-            background = null
-            setPadding(dp(10), dp(6), dp(10), dp(6))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                topMargin = if (hasRowsBefore) dp(8) else 0
-                bottomMargin = dp(4)
-            }
-        }
-    }
-
-    private fun renderStatusAndPagination(pageSize: Int) {
-        val page = pageIndex()
-        val query = activeSearchQuery()
-        val start = page * pageSize + 1
-        val end = page * pageSize + currentCalls.size
-        binding.homeStatusText.text = if (query.isNotBlank()) {
-            activity.getString(R.string.dynamic_home_status_search, query.trim(), start, end)
-        } else {
-            activity.getString(R.string.dynamic_home_status_calls, start, end)
-        }
-        updateStatusStyle(hidePlainTimelineRange = true)
-        PaginationButtonAppearance.apply(binding.previousCallsButton, page > 0)
-        PaginationButtonAppearance.apply(binding.nextCallsButton, currentCalls.size >= pageSize)
-        binding.pageText.text = activity.getString(R.string.dynamic_home_page, page + 1)
-        binding.paginationContainer.visibility = if (PageLoadingModeStore.usesPrefetch(activity)) View.GONE else View.VISIBLE
-    }
-
-    private fun updateStatusStyle(hidePlainTimelineRange: Boolean = false) {
-        val crmTopLevelStatusInResults = isTopLevelCrmPage()
-        val plainCallLogRange = hidePlainTimelineRange && activeSearchQuery().isBlank() &&
-            !isCrmModeEnabled() && !isCrmContactsMode()
-        binding.homeStatusRow.visibility = if (plainCallLogRange) View.GONE else View.VISIBLE
-        binding.homeStatusText.visibility = if (plainCallLogRange || crmTopLevelStatusInResults) View.GONE else View.VISIBLE
-        binding.filteredStatusContainer.background = null
-        binding.filteredStatusContainer.setPadding(0, 0, 0, 0)
-        binding.homeStatusText.background = null
-        binding.homeStatusText.setTextColor(Color.rgb(71, 85, 105))
-        binding.homeStatusText.setPadding(0, 0, 0, 0)
     }
 
     private fun showResultsStatus(text: String) {
