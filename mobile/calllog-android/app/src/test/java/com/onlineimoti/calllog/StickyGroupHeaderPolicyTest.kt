@@ -6,8 +6,28 @@ import org.junit.Test
 
 class StickyGroupHeaderPolicyTest {
     @Test
-    fun hidesBeforeFirstGroupTitleLeavesViewport() {
-        assertNull(StickyGroupHeaderPolicy.resolve(listOf(0, 240), overlayHeight = 32))
+    fun hidesBeforeFirstGroupTitleTouchesStickyBoundary() {
+        assertNull(StickyGroupHeaderPolicy.resolve(listOf(1, 240), overlayHeight = 32))
+    }
+
+    @Test
+    fun pinsExactlyWhenFirstGroupTitleTouchesViewportTop() {
+        assertEquals(
+            StickyGroupHeaderState(activeIndex = 0, translationY = 0),
+            StickyGroupHeaderPolicy.resolve(listOf(0, 240), overlayHeight = 32),
+        )
+    }
+
+    @Test
+    fun pinsAtHistoryBoundaryBelowFixedActions() {
+        assertEquals(
+            StickyGroupHeaderState(activeIndex = 0, translationY = 0),
+            StickyGroupHeaderPolicy.resolve(
+                headerTops = listOf(50, 240),
+                overlayHeight = 32,
+                stickyTop = 50,
+            ),
+        )
     }
 
     @Test
@@ -27,10 +47,22 @@ class StickyGroupHeaderPolicyTest {
     }
 
     @Test
-    fun nextGroupReplacesPreviousAfterCrossingTop() {
+    fun nextGroupPushesCurrentTitleRelativeToHistoryBoundary() {
+        assertEquals(
+            StickyGroupHeaderState(activeIndex = 0, translationY = -12),
+            StickyGroupHeaderPolicy.resolve(
+                headerTops = listOf(-500, 70),
+                overlayHeight = 32,
+                stickyTop = 50,
+            ),
+        )
+    }
+
+    @Test
+    fun nextGroupReplacesPreviousAtStickyBoundary() {
         assertEquals(
             StickyGroupHeaderState(activeIndex = 1, translationY = 0),
-            StickyGroupHeaderPolicy.resolve(listOf(-500, -1), overlayHeight = 32),
+            StickyGroupHeaderPolicy.resolve(listOf(-500, 0), overlayHeight = 32),
         )
     }
 }
