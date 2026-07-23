@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.provider.CallLog
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
@@ -124,6 +125,15 @@ internal class CallReportHistoryRowsUi(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = dp(8) }
+            addView(ImageView(activity).apply {
+                setImageResource(callStatusIcon(call))
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(3), dp(3), dp(3), dp(3))
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                layoutParams = LinearLayout.LayoutParams(dp(16), dp(18)).apply {
+                    marginEnd = dp(4)
+                }
+            })
             addView(TextView(activity).apply {
                 text = listOf(
                     PhoneCallReader.formatStartedAt(call.startedAt),
@@ -148,6 +158,19 @@ internal class CallReportHistoryRowsUi(
                 setTextColor(NoteUiStyle.General.mutedText)
                 setPadding(dp(12), 0, 0, 0)
             })
+        }
+    }
+
+    private fun callStatusIcon(call: PhoneCallRecord): Int = when (call.callType) {
+        CallLog.Calls.MISSED_TYPE, CallLog.Calls.VOICEMAIL_TYPE -> R.drawable.ic_call_missed
+        CallLog.Calls.REJECTED_TYPE, CallLog.Calls.BLOCKED_TYPE -> R.drawable.ic_call_rejected
+        CallLog.Calls.OUTGOING_TYPE -> R.drawable.ic_call_outgoing
+        CallLog.Calls.INCOMING_TYPE -> R.drawable.ic_call_incoming
+        else -> when {
+            call.direction == "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_rejected
+            call.direction != "out" && call.durationSeconds <= 0L -> R.drawable.ic_call_missed
+            call.direction == "out" -> R.drawable.ic_call_outgoing
+            else -> R.drawable.ic_call_incoming
         }
     }
 
