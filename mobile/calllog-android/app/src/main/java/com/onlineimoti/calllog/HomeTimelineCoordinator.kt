@@ -32,7 +32,10 @@ internal class HomeTimelineCoordinator(
         timelineToggle.prepare(remoteReady, contactsMode)
         val showCrmFilters = crmEnabled || contactsMode
         crmFilters.updateVisibility(showCrmFilters)
-        contentRenderer.prepareForRender(size, keepExistingRows = showCrmFilters)
+        contentRenderer.prepareForRender(
+            size,
+            keepExistingRows = showCrmFilters || pullRefresh.isInProgress(),
+        )
         if (!contactsMode && !PhoneCallReader.hasCallLogPermission(activity)) {
             contentRenderer.showMissingCallLogPermission()
             pullRefresh.complete()
