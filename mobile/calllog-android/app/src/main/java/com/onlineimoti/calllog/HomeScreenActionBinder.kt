@@ -25,9 +25,12 @@ internal object HomeScreenActionBinder {
             setIconResource(R.drawable.ic_client_money)
             setOnClickListener { openCrmContacts() }
         }
+        binding.crmControlsScroll.setOnClickListener { openCrmContacts() }
+        binding.dialPadActionSlot.setOnClickListener { binding.dialPadButton.performClick() }
         binding.smsHistoryButton.setOnClickListener {
             activity.startActivity(Intent(activity, SmsHistoryActivity::class.java))
         }
+        binding.smsHistoryActionSlot.setOnClickListener { binding.smsHistoryButton.performClick() }
         binding.relationshipManagerWordmark.apply {
             contentDescription = activity.getString(R.string.runtime_crm_clients)
             isClickable = true
