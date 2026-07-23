@@ -38,6 +38,13 @@ internal object HomePagedListUi {
         }
     }
 
+    fun hasRenderedRows(container: LinearLayout, automatic: Boolean, pageIndex: Int): Boolean {
+        if (automatic) return hasRenderedPage(container, pageIndex)
+        return (0 until container.childCount).any { index ->
+            !HomeLoadingFooterUi.isFooter(container.getChildAt(index))
+        }
+    }
+
     fun hasRenderedPage(container: LinearLayout, pageIndex: Int): Boolean {
         return pageFor(container, pageIndex)?.childCount?.let { it > 0 } == true
     }
