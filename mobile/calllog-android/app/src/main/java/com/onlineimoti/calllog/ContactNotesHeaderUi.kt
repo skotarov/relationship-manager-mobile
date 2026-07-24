@@ -69,31 +69,35 @@ class ContactNotesHeaderUi(
             ).apply { layoutParams = LinearLayout.LayoutParams(dp(42), dp(42)) })
             addView(compactTitle)
         }
-        val actionRow = actionRow(
-            phone = phone,
-            title = title,
-            displayName = displayName,
-            contactExists = contactExists,
-            contactDescription = contactDescription,
-            crmSyncAvailable = showCrmSyncButton,
-            crmSyncEnabled = crmSyncEnabled,
-            crmSyncBusy = crmSyncBusy,
-            crmSyncServerBacked = crmSyncServerBacked,
-            openDialer = openDialer,
-            openCalendarEvent = openCalendarEvent,
-            openDefaultContact = openDefaultContact,
-            openRmContact = openRmContact,
-            toggleCrmSync = toggleCrmSync,
-        ).apply {
-            setBackgroundColor(activity.getColor(R.color.calllog_bg))
+        val createActionRow = {
+            actionRow(
+                phone = phone,
+                title = title,
+                displayName = displayName,
+                contactExists = contactExists,
+                contactDescription = contactDescription,
+                crmSyncAvailable = showCrmSyncButton,
+                crmSyncEnabled = crmSyncEnabled,
+                crmSyncBusy = crmSyncBusy,
+                crmSyncServerBacked = crmSyncServerBacked,
+                openDialer = openDialer,
+                openCalendarEvent = openCalendarEvent,
+                openDefaultContact = openDefaultContact,
+                openRmContact = openRmContact,
+                toggleCrmSync = toggleCrmSync,
+            ).apply {
+                setBackgroundColor(activity.getColor(R.color.calllog_bg))
+            }
         }
+        val actionRow = createActionRow()
+        val stickyActionRow = createActionRow()
         val actionAnchor = FrameLayout(activity).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(ACTION_ANCHOR_HEIGHT_DP),
             )
             addView(actionRow, actionRowHostLayoutParams())
-            tag = ContactNotesStickyActions(actionRow, topBar, compactTitle)
+            tag = ContactNotesStickyActions(actionRow, stickyActionRow, topBar, compactTitle)
         }
         return LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL

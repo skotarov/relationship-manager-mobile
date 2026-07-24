@@ -53,6 +53,7 @@ internal class ContactNotesStickyHistoryUi(
         val stickyHeader = actionAnchor?.tag as? ContactNotesStickyActions
         val topBar = stickyHeader?.topBar
         val actionRow = stickyHeader?.actionRow
+        val stickyActionRow = stickyHeader?.stickyActionRow
         (topBar?.parent as? ViewGroup)?.removeView(topBar)
 
         val historyScroll = ScrollView(activity).apply {
@@ -74,6 +75,10 @@ internal class ContactNotesStickyHistoryUi(
             setPadding(dp(PAGE_HORIZONTAL_PADDING_DP), 0, dp(PAGE_HORIZONTAL_PADDING_DP), 0)
             elevation = 0f
             stateListAnimator = null
+            stickyActionRow?.let { row ->
+                (row.parent as? ViewGroup)?.removeView(row)
+                addView(row, actionRowLayoutParams())
+            }
         }
         val stickyActionHostParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -124,37 +129,17 @@ internal class ContactNotesStickyHistoryUi(
             val actionsPinned = if (
                 anchor != null && row != null && anchor.isAttachedToWindow && anchor.height > 0
             ) {
-                val anchorTop = topOnScreen(anchor)
-                val viewportTop = topOnScreen(historyScroll)
-                if (actionsPinnedState) {
-                    // Keep the row pinned for a tiny extra distance while scrolling back.
-                    // This prevents one-pixel layout rounding from moving it between
-                    // parents repeatedly at the exact sticky boundary.
-                    anchorTop <= viewportTop + dp(STICKY_RELEASE_HYSTERESIS_DP)
-                } else {
-                    ContactNotesStickyActionPolicy.shouldStick(
-                        actionTopOnScreen = anchorTop,
-                        viewportTopOnScreen = viewportTop,
-                    )
-                }
+                ContactNotesStickyActionPolicy.shouldStick(
+                    actionTopOnScreen = topOnScreen(anchor),
+                    viewportTopOnScreen = topOnScreen(historyScroll),
+                )
             } else {
                 false
             }
 
-            if (anchor != null && row != null && actionsPinned != actionsPinnedState) {
-                row.animate().cancel()
-                row.translationX = 0f
-                row.translationY = 0f
-                if (actionsPinned) {
-                    moveActionRow(row, stickyActionHost)
-                    stickyActionHost.visibility = View.VISIBLE
-                    row.elevation = 0f
-                    stickyActionHost.bringToFront()
-                } else {
-                    moveActionRow(row, anchor)
-                    row.elevation = 0f
-                    stickyActionHost.visibility = View.INVISIBLE
-                }
+            if (actionsPinned != actionsPinnedState) {
+                stickyActionHost.visibility = if (actionsPinned) View.VISIBLE else View.INVISIBLE
+                if (actionsPinned) stickyActionHost.bringToFront()
                 actionsPinnedState = actionsPinned
             }
 
@@ -314,21 +299,6 @@ internal class ContactNotesStickyHistoryUi(
         }
     }
 
-    private fun moveActionRow(row: LinearLayout, target: ViewGroup) {
-        if (row.parent === target) return
-        val source = row.parent as? ViewGroup
-        source?.suppressLayout(true)
-        target.suppressLayout(true)
-        try {
-            source?.removeView(row)
-            target.removeAllViews()
-            target.addView(row, actionRowLayoutParams())
-        } finally {
-            source?.suppressLayout(false)
-            target.suppressLayout(false)
-        }
-    }
-
     private fun actionRowLayoutParams(): FrameLayout.LayoutParams = FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.MATCH_PARENT,
         dp(ACTION_ROW_HEIGHT_DP),
@@ -358,7 +328,6 @@ internal class ContactNotesStickyHistoryUi(
         const val FIXED_TOP_BAR_HEIGHT_DP = 50
         const val STICKY_ACTION_HEIGHT_DP = 50
         const val ACTION_ROW_HEIGHT_DP = 48
-        const val STICKY_RELEASE_HYSTERESIS_DP = 2
         const val MODE_BAR_HEIGHT_DP = 64
         const val MODE_BAR_VERTICAL_PADDING_DP = 3
         const val MODE_ICON_SIZE_DP = 22
