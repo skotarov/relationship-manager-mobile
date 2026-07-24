@@ -2,7 +2,6 @@ package com.onlineimoti.calllog
 
 import android.animation.ObjectAnimator
 import android.content.Intent
-import android.graphics.Color
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -14,8 +13,8 @@ class PostCallOverlayService : FontScaledService() {
     private val handler = Handler(Looper.getMainLooper())
     private val state = PostCallOverlayState()
     private val ui: PostCallOverlayUi by lazy { PostCallOverlayUi(this) }
-    private val noteEditor: PostCallNoteEditor by lazy {
-        PostCallNoteEditor(
+    private val noteEditor: PostCallUnifiedNoteEditor by lazy {
+        PostCallUnifiedNoteEditor(
             service = this,
             ui = ui,
             handler = handler,
@@ -28,37 +27,15 @@ class PostCallOverlayService : FontScaledService() {
             setPreferredCompanyId = { state.companyId = it },
             initialNoteText = { state.initialNoteText },
             serverClientEventId = { state.serverClientEventId },
-            callDirectionColor = ::callDirectionColor,
             setWindowManager = { windowManager = it },
             removeOverlay = ::removeOverlay,
             addDraggableOverlay = ::addDraggableOverlay,
-            showGeneralNoteEditor = ::showGeneralNoteEditor,
             openCalendarEvent = ::openCalendarEvent,
             openContactNotesScreen = ::openContactNotesScreen,
             pendingCallNote = { state.pendingCallNote },
             setPendingCallNote = { state.pendingCallNote = it },
-            savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
-            notifyNotesChanged = ::notifyNotesChanged,
-            stopOverlay = { stopSelf() },
-        )
-    }
-    private val generalNoteEditor: PostCallGeneralNoteEditor by lazy {
-        PostCallGeneralNoteEditor(
-            service = this,
-            ui = ui,
-            handler = handler,
-            phone = { state.phone },
-            preferredCompanyId = { state.companyId },
-            setPreferredCompanyId = { state.companyId = it },
-            setWindowManager = { windowManager = it },
-            removeOverlay = ::removeOverlay,
-            addDraggableOverlay = ::addDraggableOverlay,
-            showNoteEditor = ::showNoteEditor,
-            openCalendarEvent = ::openCalendarEvent,
-            openContactNotesScreen = ::openContactNotesScreen,
             pendingGeneralNote = { state.pendingGeneralNote },
             setPendingGeneralNote = { state.pendingGeneralNote = it },
-            savePendingNoteChangesBeforeHistory = ::savePendingNoteChangesBeforeHistory,
             notifyNotesChanged = ::notifyNotesChanged,
             stopOverlay = { stopSelf() },
         )
@@ -146,8 +123,8 @@ class PostCallOverlayService : FontScaledService() {
         when (intent?.getStringExtra(EXTRA_MODE).orEmpty()) {
             MODE_LOADING -> loadingPopup.show()
             MODE_LOOKUP -> lookupPopup.show()
-            MODE_NOTE -> noteEditor.show()
-            MODE_GENERAL_NOTE -> generalNoteEditor.show()
+            MODE_NOTE -> noteEditor.show(UnifiedNoteKind.CALL)
+            MODE_GENERAL_NOTE -> noteEditor.show(UnifiedNoteKind.GENERAL)
             MODE_CALL_ENDED -> showBubbleWithTimeout()
             else -> showBubbleWithTimeout()
         }
@@ -210,8 +187,8 @@ class PostCallOverlayService : FontScaledService() {
         }
     }
 
-    private fun showNoteEditor() = noteEditor.show()
-    private fun showGeneralNoteEditor() = generalNoteEditor.show()
+    private fun showNoteEditor() = noteEditor.show(UnifiedNoteKind.CALL)
+    private fun showGeneralNoteEditor() = noteEditor.show(UnifiedNoteKind.GENERAL)
     private fun openCalendarEvent(displayName: String) = calendarActions.openCalendarEvent(displayName)
 
     private fun addDraggableOverlay(view: View, focusable: Boolean, defaultY: Int, timeoutMs: Long) {
@@ -228,17 +205,7 @@ class PostCallOverlayService : FontScaledService() {
         windowController.addDraggableOverlay(view, focusable, defaultY, timeoutMs, onTimeout)
     }
 
-    private fun callDirectionColor(directionValue: String): Int = when (directionValue) {
-        "out" -> Color.rgb(34, 197, 94)
-        "in" -> Color.rgb(59, 130, 246)
-        else -> Color.rgb(107, 114, 128)
-    }
-
     private fun openContactNotesScreen() = navigationActions.openContactNotesScreen()
-
-    private fun savePendingNoteChangesBeforeHistory(): Boolean {
-        return PostCallPendingNoteSaver.save(this, state, ::notifyNotesChanged)
-    }
 
     private fun notifyNotesChanged() {
         sendBroadcast(Intent(ACTION_NOTES_CHANGED).setPackage(packageName))
