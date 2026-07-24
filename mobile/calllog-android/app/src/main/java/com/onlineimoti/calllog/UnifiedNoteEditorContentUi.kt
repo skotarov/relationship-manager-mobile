@@ -1,0 +1,268 @@
+package com.onlineimoti.calllog
+
+import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.text.InputType
+import android.view.Gravity
+import android.view.View
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+
+internal enum class UnifiedNoteKind {
+    GENERAL,
+    CALL;
+
+    val isGeneral: Boolean get() = this == GENERAL
+}
+
+internal data class UnifiedNoteEditorState(
+    val kind: UnifiedNoteKind,
+    val titleText: String,
+    val phone: String,
+    val direction: String = "",
+    val callAt: Long = 0L,
+    val durationSeconds: Long = 0L,
+    val noteText: String = "",
+    val crmStatusText: String = "",
+    val crmStatusColor: Int = Color.rgb(107, 114, 128),
+)
+
+internal data class UnifiedNoteEditorCallbacks(
+    val switchMode: (UnifiedNoteKind, String) -> Unit,
+    val save: (String) -> Unit,
+    val close: (String) -> Unit,
+    val openCalendar: (String) -> Unit,
+    val delete: (() -> Unit)? = null,
+    val openHistory: ((String) -> Unit)? = null,
+)
+
+internal data class UnifiedNoteEditorContent(
+    val card: LinearLayout,
+    val input: EditText,
+)
+
+/** Shared editor body. Fullscreen and overlay hosts only provide their outer wrapper. */
+internal class UnifiedNoteEditorContentUi(
+    private val context: Context,
+    private val dp: (Int) -> Int,
+) {
+    fun build(
+        state: UnifiedNoteEditorState,
+        callbacks: UnifiedNoteEditorCallbacks,
+        beforeInput: (LinearLayout, EditText) -> Unit = { _, _ -> },
+    ): UnifiedNoteEditorContent {
+        val input = noteInput(state)
+        val card = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        card.addView(titleRow(state, input, callbacks))
+        card.addView(modeSwitch(state, input, callbacks))
+        if (!state.kind.isGeneral && state.callAt > 0L) card.addView(callInfoRow(state))
+        if (state.crmStatusText.isNotBlank()) card.addView(TextView(context).apply {
+            text = state.crmStatusText
+            textSize = 12.5f
+            setTextColor(state.crmStatusColor)
+            setPadding(0, dp(10), 0, 0)
+        })
+        beforeInput(card, input)
+        card.addView(input)
+        card.addView(actionRow(input, callbacks))
+        return UnifiedNoteEditorContent(card, input)
+    }
+
+    private fun titleRow(
+        state: UnifiedNoteEditorState,
+        input: EditText,
+        callbacks: UnifiedNoteEditorCallbacks,
+    ): LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(ImageView(context).apply {
+            setImageResource(if (state.kind.isGeneral) R.drawable.ic_note_lines else R.drawable.ic_chat_note)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(35), dp(35)).apply { marginEnd = dp(8) }
+        })
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(context).apply {
+                text = context.getString(
+                    if (state.kind.isGeneral) R.string.dynamic_note_general_title else R.string.dynamic_note_call_title,
+                )
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(17, 24, 39))
+            })
+            addView(TextView(context).apply {
+                text = state.titleText
+                textSize = 13f
+                setTextColor(Color.rgb(107, 114, 128))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        })
+        addView(iconButton(R.drawable.ic_calendar_event, context.getString(R.string.dynamic_action_calendar)) {
+            callbacks.openCalendar(input.text?.toString().orEmpty())
+        })
+        addView(iconButton(R.drawable.ic_popup_close, context.getString(R.string.dynamic_sms_close)) {
+            callbacks.close(input.text?.toString().orEmpty())
+        })
+    }
+
+    private fun modeSwitch(
+        state: UnifiedNoteEditorState,
+        input: EditText,
+        callbacks: UnifiedNoteEditorCallbacks,
+    ): LinearLayout = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        setPadding(0, dp(12), 0, 0)
+        addView(modeButton(UnifiedNoteKind.GENERAL, state.kind, input, callbacks))
+        addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+        addView(modeButton(UnifiedNoteKind.CALL, state.kind, input, callbacks))
+    }
+
+    private fun modeButton(
+        kind: UnifiedNoteKind,
+        selectedKind: UnifiedNoteKind,
+        input: EditText,
+        callbacks: UnifiedNoteEditorCallbacks,
+    ): TextView {
+        val selected = kind == selectedKind
+        val colors = if (kind.isGeneral) NoteUiStyle.General else NoteUiStyle.Call
+        val border = if (kind.isGeneral) Color.rgb(245, 158, 11) else colors.border
+        val label = when {
+            AppLocaleText.isBulgarian() && kind.isGeneral -> "Основна"
+            AppLocaleText.isBulgarian() -> "Разговор"
+            kind.isGeneral -> "Main"
+            else -> "Call"
+        }
+        return TextView(context).apply {
+            text = label
+            textSize = 14f
+            typeface = if (selected) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+            gravity = Gravity.CENTER
+            setTextColor(if (selected) colors.text else Color.rgb(71, 85, 105))
+            background = roundedRect(
+                if (selected) colors.background else Color.rgb(243, 244, 246),
+                dp(12),
+                if (selected) border else Color.TRANSPARENT,
+                if (selected) dp(1) else 0,
+            )
+            setPadding(dp(14), dp(9), dp(14), dp(9))
+            isClickable = !selected
+            isFocusable = !selected
+            setOnClickListener {
+                if (!selected) callbacks.switchMode(kind, input.text?.toString().orEmpty())
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+    }
+
+    private fun callInfoRow(state: UnifiedNoteEditorState): TextView = TextView(context).apply {
+        text = listOf(
+            PhoneCallReader.directionLabel(state.direction),
+            PhoneCallReader.formatStartedAt(state.callAt),
+            PhoneCallReader.formatDuration(state.durationSeconds),
+        ).filter { it.isNotBlank() }.joinToString(" • ")
+        textSize = 13f
+        setTextColor(Color.rgb(107, 114, 128))
+        setPadding(0, dp(12), 0, 0)
+    }
+
+    private fun noteInput(state: UnifiedNoteEditorState): EditText {
+        val colors = if (state.kind.isGeneral) NoteUiStyle.General else NoteUiStyle.Call
+        return EditText(context).apply {
+            setText(state.noteText)
+            setSelection(text?.length ?: 0)
+            hint = if (state.kind.isGeneral) "Основна бележка към контакта/номера" else "Бележка към това обаждане"
+            minLines = if (state.kind.isGeneral) 4 else 3
+            maxLines = 8
+            textSize = 16f
+            setTextColor(colors.text)
+            setHintTextColor(colors.mutedText)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine(false)
+            gravity = Gravity.TOP or Gravity.START
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = roundedRect(colors.background, dp(12), colors.border, if (colors.border == Color.TRANSPARENT) 0 else dp(1))
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isLongClickable = true
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(12) }
+        }
+    }
+
+    private fun actionRow(input: EditText, callbacks: UnifiedNoteEditorCallbacks): LinearLayout =
+        LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, 0)
+            callbacks.delete?.let { action -> addView(deleteButton(action)) }
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) })
+            callbacks.openHistory?.let { action ->
+                addView(secondaryButton(if (AppLocaleText.isBulgarian()) "История" else "History") {
+                    action(input.text?.toString().orEmpty())
+                })
+                addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+            }
+            addView(secondaryButton(context.getString(R.string.dynamic_note_cancel)) {
+                callbacks.close(input.text?.toString().orEmpty())
+            })
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(8), 1) })
+            addView(primaryButton(context.getString(R.string.dynamic_note_save)) {
+                callbacks.save(input.text?.toString().orEmpty())
+            })
+        }
+
+    private fun iconButton(drawableRes: Int, description: String, action: () -> Unit): ImageButton =
+        ImageButton(context).apply {
+            setImageResource(drawableRes)
+            contentDescription = description
+            background = roundedRect(Color.rgb(243, 244, 246), dp(18), Color.TRANSPARENT, 0)
+            setPadding(dp(7), dp(7), dp(7), dp(7))
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginStart = dp(8) }
+        }
+
+    private fun primaryButton(textValue: String, action: () -> Unit): TextView = textButton(
+        textValue, Color.WHITE, Color.rgb(55, 65, 81), action,
+    )
+
+    private fun secondaryButton(textValue: String, action: () -> Unit): TextView = textButton(
+        textValue, Color.rgb(55, 65, 81), Color.rgb(243, 244, 246), action,
+    )
+
+    private fun deleteButton(action: () -> Unit): TextView = textButton(
+        context.getString(R.string.dynamic_note_delete), Color.rgb(185, 28, 28), Color.rgb(254, 242, 242), action,
+    )
+
+    private fun textButton(textValue: String, textColor: Int, backgroundColor: Int, action: () -> Unit): TextView =
+        TextView(context).apply {
+            text = textValue
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(textColor)
+            background = roundedRect(backgroundColor, dp(12), Color.TRANSPARENT, 0)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setOnClickListener { action() }
+        }
+
+    private fun roundedRect(color: Int, radius: Int, strokeColor: Int, strokeWidth: Int): GradientDrawable =
+        GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius.toFloat()
+            setColor(color)
+            if (strokeWidth > 0) setStroke(strokeWidth, strokeColor)
+        }
+}
