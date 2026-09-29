@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch Upload Test</title>
+<style>
+body{font-family:Arial,sans-serif;margin:16px;background:#f4f4f4;color:#111}
+.card{max-width:700px;margin:auto;background:#fff;border:1px solid #ccc;border-radius:10px;padding:16px}
+h1{font-size:22px;margin:0 0 12px}
+p{line-height:1.4}
+label.btn{display:block;padding:15px;margin:12px 0;background:#222;color:#fff;text-align:center;border-radius:8px;font-size:18px}
+input[type=file]{position:absolute;left:-9999px}
+#status{padding:12px;background:#eee;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+img{display:none;max-width:100%;margin-top:12px;border:1px solid #aaa}
+.small{font-size:12px;color:#555;word-break:break-word}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Launch CRP919 EV — тест за снимки</h1>
+<p>Страницата не качва нищо в интернет. Тества само дали браузърът може да отвори камерата или избор на файл.</p>
+
+<label class="btn" for="camera">1. Отвори камера</label>
+<input id="camera" type="file" accept="image/*" capture="environment">
+
+<label class="btn" for="gallery">2. Избери снимка / файл</label>
+<input id="gallery" type="file" accept="image/*">
+
+<div id="status">Готово за тест.</div>
+<img id="preview" alt="Преглед">
+
+<p class="small"><b>Browser:</b> <span id="ua"></span></p>
+</div>
+<script>
+(function(){
+  var status=document.getElementById('status');
+  var preview=document.getElementById('preview');
+  document.getElementById('ua').innerHTML=navigator.userAgent || 'няма данни';
+
+  function handle(input,label){
+    input.onchange=function(){
+      var f=input.files && input.files[0];
+      if(!f){
+        status.innerHTML=label+': не е избран файл.';
+        return;
+      }
+      status.innerHTML=label+': УСПЕХ\nИме: '+f.name+'\nТип: '+(f.type||'неизвестен')+'\nРазмер: '+Math.round(f.size/1024)+' KB';
+      if(window.FileReader){
+        try{
+          var r=new FileReader();
+          r.onload=function(e){
+            preview.src=e.target.result;
+            preview.style.display='block';
+          };
+          r.onerror=function(){
+            status.innerHTML += '\nFileReader: грешка при четене.';
+          };
+          r.readAsDataURL(f);
+        }catch(e){
+          status.innerHTML += '\nFileReader: '+e;
+        }
+      }else{
+        status.innerHTML += '\nFileReader не се поддържа.';
+      }
+    };
+  }
+  handle(document.getElementById('camera'),'Камера');
+  handle(document.getElementById('gallery'),'Файл');
+})();
+</script>
+</body>
+</html>
