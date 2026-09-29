@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Launch Camera Test</title>
+<title>Launch Media Test</title>
 <style>
 body{font-family:Arial,sans-serif;margin:16px;background:#f4f4f4;color:#111}
 .card{max-width:700px;margin:auto;background:#fff;border:1px solid #ccc;border-radius:10px;padding:16px}
@@ -18,11 +18,11 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
 </head>
 <body>
 <div class="card">
-<h1>Launch CRP919 EV — камера / файл тест</h1>
-<p>Нищо не се качва в интернет. Тестът проверява три различни начина за достъп до снимка.</p>
+<h1>Launch CRP919 EV — камера / файл / екран тест</h1>
+<p>Нищо не се качва в интернет. Тестът проверява дали заключеният браузър има достъп до камера, файлове или споделяне на екрана.</p>
 
 <button id="directCamera">1. Пусни камера директно</button>
-<button id="snap" style="display:none">Снимай</button>
+<button id="snap" style="display:none">Снимай от камерата</button>
 <video id="video" autoplay playsinline></video>
 <img id="photo" alt="Снимка">
 
@@ -31,6 +31,11 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
 
 <label class="btn" for="gallery">3. Избери снимка / файл</label>
 <input id="gallery" type="file" accept="image/*">
+
+<button id="screenShare">4. Сподели екрана</button>
+<button id="screenSnap" style="display:none">Сними текущия споделен екран</button>
+<video id="screenVideo" autoplay playsinline muted></video>
+<img id="screenPhoto" alt="Кадър от екрана">
 
 <div id="status">Готово за тест.</div>
 <p class="small"><b>Browser:</b> <span id="ua"></span></p>
@@ -42,6 +47,11 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
   var video=document.getElementById('video');
   var photo=document.getElementById('photo');
   var snap=document.getElementById('snap');
+  var screenVideo=document.getElementById('screenVideo');
+  var screenPhoto=document.getElementById('screenPhoto');
+  var screenSnap=document.getElementById('screenSnap');
+  var screenStream=null;
+
   document.getElementById('ua').textContent=navigator.userAgent || 'няма данни';
 
   function fileTest(id,label){
@@ -58,6 +68,7 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
       }
     };
   }
+
   fileTest('cameraFile','Камера през файл');
   fileTest('gallery','Файл');
 
@@ -88,6 +99,46 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
     photo.src=c.toDataURL('image/jpeg',0.85);
     photo.style.display='block';
     status.textContent='УСПЕХ: снимката е заснета в самата страница.';
+  };
+
+  document.getElementById('screenShare').onclick=function(){
+    status.textContent='Опит за споделяне на екрана...';
+    var gdm = navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia;
+    if(!gdm){
+      status.textContent='НЕ СЕ ПОДДЪРЖА: navigator.mediaDevices.getDisplayMedia липсва.';
+      return;
+    }
+    navigator.mediaDevices.getDisplayMedia({video:true,audio:false})
+      .then(function(stream){
+        screenStream=stream;
+        screenVideo.srcObject=stream;
+        screenVideo.style.display='block';
+        screenSnap.style.display='block';
+        status.textContent='УСПЕХ: споделянето на екрана е стартирано. Ако Android ти даде избор, разреши споделяне на целия екран.';
+        var tracks=stream.getVideoTracks();
+        if(tracks[0]){
+          tracks[0].onended=function(){
+            status.textContent='Споделянето на екрана беше спряно.';
+            screenSnap.style.display='none';
+          };
+        }
+      })
+      .catch(function(err){
+        status.textContent='СПОДЕЛЯНЕТО Е БЛОКИРАНО/ОТКАЗАНО:\n'+err.name+': '+err.message;
+      });
+  };
+
+  screenSnap.onclick=function(){
+    if(!screenStream || !screenVideo.videoWidth){
+      status.textContent='Няма активен споделен екран или още няма картина.';
+      return;
+    }
+    var c=document.createElement('canvas');
+    c.width=screenVideo.videoWidth;c.height=screenVideo.videoHeight;
+    c.getContext('2d').drawImage(screenVideo,0,0);
+    screenPhoto.src=c.toDataURL('image/jpeg',0.85);
+    screenPhoto.style.display='block';
+    status.textContent='УСПЕХ: заснет е кадър от споделения екран.';
   };
 })();
 </script>
