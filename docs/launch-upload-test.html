@@ -28,9 +28,11 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
 
 <label class="btn" for="cameraFile">2. Камера през избор на файл</label>
 <input id="cameraFile" type="file" accept="image/*" capture="environment">
+<img id="cameraFilePhoto" alt="Снимка от камерата през избор на файл">
 
 <label class="btn" for="gallery">3. Избери снимка / файл</label>
 <input id="gallery" type="file" accept="image/*">
+<img id="galleryPhoto" alt="Избрана снимка / файл">
 
 <button id="screenShare">4. Сподели екрана</button>
 <button id="screenSnap" style="display:none">Сними текущия споделен екран</button>
@@ -54,23 +56,24 @@ video,img{display:none;width:100%;max-width:100%;margin-top:12px;border:1px soli
 
   document.getElementById('ua').textContent=navigator.userAgent || 'няма данни';
 
-  function fileTest(id,label){
+  function fileTest(id,label,previewId){
     var input=document.getElementById(id);
+    var preview=document.getElementById(previewId);
     input.onchange=function(){
       var f=input.files && input.files[0];
       if(!f){status.textContent=label+': не е избран файл.';return;}
       status.textContent=label+': УСПЕХ\nИме: '+f.name+'\nТип: '+(f.type||'неизвестен')+'\nРазмер: '+Math.round(f.size/1024)+' KB';
       if(window.FileReader){
         var r=new FileReader();
-        r.onload=function(e){photo.src=e.target.result;photo.style.display='block';};
+        r.onload=function(e){preview.src=e.target.result;preview.style.display='block';};
         r.onerror=function(){status.textContent += '\nFileReader: грешка.';};
         r.readAsDataURL(f);
       }
     };
   }
 
-  fileTest('cameraFile','Камера през файл');
-  fileTest('gallery','Файл');
+  fileTest('cameraFile','Камера през файл','cameraFilePhoto');
+  fileTest('gallery','Файл','galleryPhoto');
 
   document.getElementById('directCamera').onclick=function(){
     status.textContent='Опит за директен достъп до камерата...';
