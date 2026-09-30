@@ -7,6 +7,7 @@ internal enum class ContactNotesHeaderAction {
     ADD_CONTACT,
     CALL,
     SMS,
+    GOOGLE_CHAT,
 }
 
 /** Keeps History actions in the same predictable order as the phone Contacts page. */
@@ -17,5 +18,6 @@ internal object ContactNotesHeaderActionPolicy {
         if (contactExists) ContactNotesHeaderAction.CONTACT else ContactNotesHeaderAction.ADD_CONTACT,
         ContactNotesHeaderAction.CALL,
         ContactNotesHeaderAction.SMS,
+        ContactNotesHeaderAction.GOOGLE_CHAT,
     )
 }

@@ -12,6 +12,26 @@ import android.widget.Toast
 internal class ChatAppLauncher(
     private val activity: Activity,
 ) {
+    /** Opens Google Chat for the known contact; Google Chat offers Meet video from that conversation. */
+    fun openGoogleChat(contactName: String) {
+        val query = contactName.trim()
+        val opened = if (query.isNotBlank()) {
+            startForPackages(
+                Intent(Intent.ACTION_SEARCH).putExtra(SearchManager.QUERY, query),
+                GOOGLE_CHAT_PACKAGES,
+            )
+        } else {
+            openInstalledApp(GOOGLE_CHAT_PACKAGES)
+        }
+        if (!opened) {
+            Toast.makeText(
+                activity,
+                activity.getString(R.string.chat_app_not_available, GOOGLE_CHAT_NAME),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
     fun open(app: ChatApp, phone: String, contactName: String = "") {
         val normalized = PhoneNormalizer.normalize(phone)
         if (ChatAppOpenPolicy.usesPhone(app) && normalized.isBlank()) {
@@ -118,5 +138,10 @@ internal class ChatAppLauncher(
         false
     } catch (_: SecurityException) {
         false
+    }
+
+    private companion object {
+        const val GOOGLE_CHAT_NAME = "Google Chat"
+        val GOOGLE_CHAT_PACKAGES = listOf("com.google.android.apps.dynamite")
     }
 }

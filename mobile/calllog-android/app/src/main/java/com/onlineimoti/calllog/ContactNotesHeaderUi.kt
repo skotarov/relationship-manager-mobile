@@ -23,6 +23,7 @@ class ContactNotesHeaderUi(
     private val dp: (Int) -> Int,
 ) {
     private val actions by lazy { ContactNotesHeaderActionsUi(activity, dp) }
+    private val chatLauncher by lazy { ChatAppLauncher(activity) }
     private val chatActions by lazy { ContactNotesChatActionsUi(activity, dp) }
     private val identityAvatar by lazy { ContactHeaderIdentityAvatarUi(activity, dp) }
 
@@ -264,12 +265,19 @@ class ContactNotesHeaderUi(
                         dp = dp,
                     )
                 }
+                ContactNotesHeaderAction.GOOGLE_CHAT -> actions.iconButton(
+                    R.drawable.ic_chat_app,
+                    activity.getString(R.string.dynamic_action_google_chat),
+                ) {
+                    chatLauncher.openGoogleChat(displayName.ifBlank { title })
+                }
             }
             val label = when (kind) {
                 ContactNotesHeaderAction.CRM -> "КЛИЕНТ"
                 ContactNotesHeaderAction.CALENDAR -> "СРЕЩА"
                 ContactNotesHeaderAction.CONTACT, ContactNotesHeaderAction.ADD_CONTACT -> "КОНТАКТ"
                 ContactNotesHeaderAction.SMS -> "СМС"
+                ContactNotesHeaderAction.GOOGLE_CHAT -> "ЧАТ"
                 ContactNotesHeaderAction.CALL -> ""
             }
             if (index > 0) row.addView(actionDivider())

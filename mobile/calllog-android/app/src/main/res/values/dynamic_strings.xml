@@ -40,6 +40,7 @@
     <string name="dynamic_action_filter">Filter</string>
     <string name="dynamic_action_note">Note</string>
     <string name="dynamic_action_write_sms">Write SMS</string>
+    <string name="dynamic_action_google_chat">Open Google Chat</string>
     <string name="dynamic_action_calendar">Calendar</string>
     <string name="dynamic_action_meeting">Meeting</string>
     <string name="dynamic_clipboard_phone_label">Phone</string>

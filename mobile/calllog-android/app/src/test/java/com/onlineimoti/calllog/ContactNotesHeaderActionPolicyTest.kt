@@ -13,6 +13,7 @@ class ContactNotesHeaderActionPolicyTest {
                 ContactNotesHeaderAction.CONTACT,
                 ContactNotesHeaderAction.CALL,
                 ContactNotesHeaderAction.SMS,
+                ContactNotesHeaderAction.GOOGLE_CHAT,
             ),
             ContactNotesHeaderActionPolicy.ordered(contactExists = true),
         )
@@ -27,6 +28,7 @@ class ContactNotesHeaderActionPolicyTest {
                 ContactNotesHeaderAction.ADD_CONTACT,
                 ContactNotesHeaderAction.CALL,
                 ContactNotesHeaderAction.SMS,
+                ContactNotesHeaderAction.GOOGLE_CHAT,
             ),
             ContactNotesHeaderActionPolicy.ordered(contactExists = false),
         )
