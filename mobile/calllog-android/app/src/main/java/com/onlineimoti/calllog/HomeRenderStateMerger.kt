@@ -21,7 +21,7 @@ internal object HomeRenderStateMerger {
         calls: List<PhoneCallRecord>,
         incoming: HomeRenderData,
         currentContactNotes: Map<String, String>,
-        currentContactAddresses: Map<String, List<String>>,
+        currentContactAddresses: Map<String, List<String>> = emptyMap(),
         currentContactNames: Map<String, String>,
         currentCallNotes: Map<String, HomeCallNote>,
         rememberedNames: LinkedHashMap<String, String>,
