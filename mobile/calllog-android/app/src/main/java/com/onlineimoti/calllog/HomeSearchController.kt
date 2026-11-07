@@ -65,7 +65,7 @@ internal class HomeSearchController(
 
         activeTask = searchExecutor.submit {
             if (Thread.currentThread().isInterrupted) return@submit
-            val rawResults = dataSource.searchResultsFor(
+            val localRawResults = dataSource.searchLocalResultsFor(
                 query = query,
                 phoneFilter = phoneFilter,
                 crmMode = crmMode || crmContactsMode,
@@ -73,83 +73,120 @@ internal class HomeSearchController(
                 filterState = filterState,
             )
             if (Thread.currentThread().isInterrupted) return@submit
-            val filteredResults = when {
-                crmContactsMode -> rawResults
-                filterState != null -> dataSource.filterCrmSearchResults(rawResults, filterState)
-                else -> rawResults
-            }
-            val calls = if (crmContactsMode) {
-                filteredResults.drop(page * currentPageSize).take(currentPageSize)
-            } else {
-                TimelinePageMode.page(
-                    context = context,
-                    items = filteredResults,
-                    pageIndex = page,
-                    pageSize = currentPageSize,
-                    groupKey = { row -> TimelineGroupKeys.day(row.startedAt) },
-                )
-            }
-            val localCallNotes = HomeCallNotesResolver.localNotes(context, calls)
-            val clientServerNotes = if (crmContactsMode) {
-                HomeCrmClientServerNotes.snapshot(context.applicationContext, calls)
-            } else {
-                HomeCrmClientServerNotesSnapshot()
-            }
-            val contactNotes = dataSource.contactNotesForRenderedSearch(calls, crmContactsMode)
-                .toMutableMap()
-                .apply { putAll(clientServerNotes.contactNotesByNumber) }
-            val renderData = HomeRenderData(
-                calls = calls,
-                contactNotesByNumber = contactNotes,
-                contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
-                callNotesByCall = localCallNotes + clientServerNotes.callNotesByCall,
-            )
+            val localResults = filteredResultsFor(localRawResults, crmContactsMode, filterState)
+            val localRenderData = renderDataFor(localResults, crmContactsMode, page, currentPageSize)
             if (Thread.currentThread().isInterrupted) return@submit
             handler.post {
                 finishBusy(requestBusyToken)
-                if (generation != searchGeneration.get()) return@post
-                if (
-                    query != activeSearchQuery() ||
-                    phoneFilter != activePhoneFilter() ||
-                    crmMode != isCrmModeEnabled() ||
-                    crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
-                    page != pageIndex() ||
-                    !isFilterStateCurrent(filterState, filterScope)
-                ) {
-                    return@post
-                }
-                if (renderData.calls.isEmpty()) {
-                    setCurrentCalls(emptyList())
-                    if (!(PageLoadingModeStore.usesPrefetch(context) && page > 0)) {
-                        HomePagedListUi.clear(binding.homeCallsContainer)
-                    }
-                    renderEmptyState()
-                    hideInlineStatusForSearch()
-                } else {
-                    applyRenderData(renderData, currentPageSize)
-                    hideInlineStatusForSearch()
-                    serverCallNotes.enrichAsync(renderData) { enriched ->
-                        if (generation != searchGeneration.get()) return@enrichAsync
-                        if (
-                            query != activeSearchQuery() ||
-                            phoneFilter != activePhoneFilter() ||
-                            crmMode != isCrmModeEnabled() ||
-                            crmContactsMode != HomeCrmTimelineModeToggle.isContactsMode() ||
-                            page != pageIndex() ||
-                            !isFilterStateCurrent(filterState, filterScope)
-                        ) {
-                            return@enrichAsync
-                        }
-                        applyRenderData(enriched, currentPageSize)
-                        hideInlineStatusForSearch()
-                        showSearchCount(filteredResults.size)
-                    }
-                }
-                showSearchCount(filteredResults.size)
+                if (!isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) return@post
+                renderLocalResults(localRenderData, localResults.size, currentPageSize, page)
                 onRenderComplete()
+            }
+
+            val mergedRawResults = dataSource.mergeServerResultsFor(
+                localResults = localRawResults,
+                query = query,
+                phoneFilter = phoneFilter,
+                crmMode = crmMode || crmContactsMode,
+                crmContactsMode = crmContactsMode,
+            )
+            if (Thread.currentThread().isInterrupted) return@submit
+            val mergedResults = filteredResultsFor(mergedRawResults, crmContactsMode, filterState)
+            val mergedRenderData = renderDataFor(mergedResults, crmContactsMode, page, currentPageSize)
+            handler.post {
+                if (!isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) return@post
+                renderCompletedResults(mergedRenderData, mergedResults.size, currentPageSize, page, generation, query, phoneFilter, crmMode, crmContactsMode, filterState, filterScope)
             }
         }
     }
+
+    private fun filteredResultsFor(
+        rawResults: List<PhoneCallRecord>,
+        crmContactsMode: Boolean,
+        filterState: HomeCrmFilterState?,
+    ): List<PhoneCallRecord> = when {
+        crmContactsMode -> rawResults
+        filterState != null -> dataSource.filterCrmSearchResults(rawResults, filterState)
+        else -> rawResults
+    }
+
+    private fun renderDataFor(
+        filteredResults: List<PhoneCallRecord>,
+        crmContactsMode: Boolean,
+        page: Int,
+        currentPageSize: Int,
+    ): HomeRenderData {
+        val calls = if (crmContactsMode) {
+            filteredResults.drop(page * currentPageSize).take(currentPageSize)
+        } else {
+            TimelinePageMode.page(context, filteredResults, page, currentPageSize) { row -> TimelineGroupKeys.day(row.startedAt) }
+        }
+        val clientServerNotes = if (crmContactsMode) {
+            HomeCrmClientServerNotes.snapshot(context.applicationContext, calls)
+        } else HomeCrmClientServerNotesSnapshot()
+        return HomeRenderData(
+            calls = calls,
+            contactNotesByNumber = dataSource.contactNotesForRenderedSearch(calls, crmContactsMode)
+                .toMutableMap().apply { putAll(clientServerNotes.contactNotesByNumber) },
+            contactAddressesByNumber = ContactAddressRepository.forCalls(context, calls),
+            contactNamesByNumber = HomeCallPageLoader.contactNames(context, calls),
+            callNotesByCall = HomeCallNotesResolver.localNotes(context, calls) + clientServerNotes.callNotesByCall,
+        )
+    }
+
+    private fun renderLocalResults(data: HomeRenderData, count: Int, pageSize: Int, page: Int) {
+        if (data.calls.isNotEmpty()) applyRenderData(data, pageSize)
+        else setCurrentCalls(emptyList())
+        hideInlineStatusForSearch()
+        showSearchCount(count)
+    }
+
+    private fun renderCompletedResults(
+        data: HomeRenderData,
+        count: Int,
+        pageSize: Int,
+        page: Int,
+        generation: Int,
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+        crmContactsMode: Boolean,
+        filterState: HomeCrmFilterState?,
+        filterScope: HomeCrmFilterStore.Scope?,
+    ) {
+        if (data.calls.isEmpty()) {
+            setCurrentCalls(emptyList())
+            if (!(PageLoadingModeStore.usesPrefetch(context) && page > 0)) HomePagedListUi.clear(binding.homeCallsContainer)
+            renderEmptyState()
+        } else {
+            applyRenderData(data, pageSize)
+            serverCallNotes.enrichAsync(data) { enriched ->
+                if (isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) {
+                    applyRenderData(enriched, pageSize)
+                    showSearchCount(count)
+                }
+            }
+        }
+        hideInlineStatusForSearch()
+        showSearchCount(count)
+    }
+
+    private fun isCurrentSearch(
+        generation: Int,
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+        crmContactsMode: Boolean,
+        page: Int,
+        filterState: HomeCrmFilterState?,
+        filterScope: HomeCrmFilterStore.Scope?,
+    ): Boolean = generation == searchGeneration.get() &&
+        query == activeSearchQuery() &&
+        phoneFilter == activePhoneFilter() &&
+        crmMode == isCrmModeEnabled() &&
+        crmContactsMode == HomeCrmTimelineModeToggle.isContactsMode() &&
+        page == pageIndex() &&
+        isFilterStateCurrent(filterState, filterScope)
 
     fun cancelActiveTask() {
         activeTask?.cancel(true)
@@ -199,4 +236,5 @@ internal data class HomeRenderData(
     val contactNotesByNumber: Map<String, String>,
     val contactNamesByNumber: Map<String, String>,
     val callNotesByCall: Map<String, HomeCallNote> = emptyMap(),
+    val contactAddressesByNumber: Map<String, List<String>> = emptyMap(),
 )

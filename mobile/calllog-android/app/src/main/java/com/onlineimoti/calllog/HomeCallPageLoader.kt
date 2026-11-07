@@ -265,6 +265,18 @@ object HomeCallPageLoader {
         return notes
     }
 
+    fun contactAddresses(context: Context, calls: List<PhoneCallRecord>): Map<String, List<String>> {
+        val addresses = linkedMapOf<String, List<String>>()
+        calls.map { it.number }
+            .distinctBy(::noteKey)
+            .forEach { number ->
+                ContactAddressReader.addressesForPhone(context, number)
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { addresses[noteKey(number)] = it }
+            }
+        return addresses
+    }
+
     fun contactNames(context: Context, calls: List<PhoneCallRecord>): Map<String, String> {
         val names = linkedMapOf<String, String>()
         calls.map { call -> call.number }

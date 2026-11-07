@@ -1,6 +1,7 @@
 package com.onlineimoti.calllog
 
 import android.app.Activity
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -9,6 +10,8 @@ import android.text.Spanned
 import android.text.style.StyleSpan
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.net.Uri
+import android.widget.Toast
 
 /** Shared note cards for phone-call and SMS timeline rows. */
 internal class TimelineNotesUi(
@@ -43,6 +46,36 @@ internal class TimelineNotesUi(
                 pending = pending,
                 syncStatusText = if (pending) activity.getString(R.string.dynamic_note_pending_server_sync) else "",
             )
+        }
+    }
+
+    /** Address rows use the same compact placement as the contact's main note. */
+    fun addContactAddresses(
+        column: LinearLayout,
+        addresses: List<String>,
+        highlightQuery: String,
+    ) {
+        addresses.forEach { address ->
+            val clean = address.trim()
+            if (clean.isBlank()) return@forEach
+            val colors = NoteUiStyle.General
+            val container = sharedContainer(column, colors, ADDRESS_NOTES_CONTAINER_TAG)
+            val rowKey = "address:$clean"
+            if ((0 until container.childCount).any { container.getChildAt(it).tag == rowKey }) return@forEach
+            container.addView(TextView(activity).apply {
+                tag = rowKey
+                text = SearchTextHighlighter.highlightedText(clean, highlightQuery, colors.text)
+                setTextColor(colors.text)
+                textSize = 12.5f
+                maxLines = 3
+                setPadding(0, dp(3), 0, dp(3))
+                setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_location, 0, 0, 0)
+                compoundDrawablePadding = dp(5)
+                compoundDrawableTintList = ColorStateList.valueOf(activity.getColor(R.color.callreport_icon_background))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { openNavigation(clean) }
+            })
         }
     }
 
@@ -257,6 +290,13 @@ internal class TimelineNotesUi(
         }.also { container -> column.addView(container) }
     }
 
+    private fun openNavigation(address: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=${Uri.encode(address)}"))
+        runCatching { activity.startActivity(intent) }.onFailure {
+            Toast.makeText(activity, "Няма приложение за навигация.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun dedupeCallNotes(values: List<HomeCallNote>): List<HomeCallNote> {
         val unique = linkedMapOf<String, HomeCallNote>()
         values.filter { it.text.isNotBlank() }.forEach { note ->
@@ -317,6 +357,7 @@ internal class TimelineNotesUi(
     private companion object {
         const val GENERAL_NOTES_CONTAINER_TAG = "relationship_manager_timeline_general_notes"
         const val GENERAL_PENDING_NOTES_CONTAINER_TAG = "relationship_manager_timeline_general_pending_notes"
+        const val ADDRESS_NOTES_CONTAINER_TAG = "relationship_manager_timeline_addresses"
         const val CALL_NOTES_CONTAINER_TAG = "relationship_manager_timeline_call_notes"
         const val CALL_PENDING_NOTES_CONTAINER_TAG = "relationship_manager_timeline_call_pending_notes"
     }

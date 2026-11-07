@@ -26,6 +26,7 @@ internal class ContactNotesRestoredController(
     }
     private val externalActions by lazy { ContactNotesExternalActions(activity) }
     private val headerUi by lazy { ContactNotesHeaderUi(activity, ::dp) }
+    private val addressSectionUi by lazy { ContactAddressSectionUi(activity, ::dp) }
     private val syncStatusUi by lazy { HistorySyncStatusUi(activity, ::dp) }
     private val phaseUi by lazy { ContactNegotiationPhaseUi(activity, ::dp) }
     private val historyController by lazy {
@@ -204,6 +205,15 @@ internal class ContactNotesRestoredController(
             openRmCallLogFiltered = { selectListMode(ContactHistoryListMode.FULL_LOG) },
             syncStatusIndicator = syncStatusUi.create(),
         ))
+        addressSectionUi.add(
+            root = root,
+            phone = phone,
+            openSystemContact = { externalActions.openDefaultContact(phone, titleText) },
+            onChanged = {
+                HomeCallPageLoader.clearSearchCache()
+                render()
+            },
+        )
         root.addView(ContactNotesServerStatusUi.create(
             activity = activity,
             dp = ::dp,

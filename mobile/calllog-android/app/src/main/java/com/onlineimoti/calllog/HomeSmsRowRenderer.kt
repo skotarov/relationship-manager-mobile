@@ -22,6 +22,7 @@ internal class HomeSmsRowRenderer(
         contactNote: String?,
         companyGeneralNoteLabels: List<HomeCompanyScopeLabel>?,
         callNote: HomeCallNote?,
+        contactAddresses: List<String>,
         highlightQuery: String,
         showContactIdentity: Boolean,
         showGeneralContactNote: Boolean,
@@ -69,6 +70,7 @@ internal class HomeSmsRowRenderer(
                     highlightQuery = highlightQuery,
                     visible = showGeneralContactNote,
                 )
+                notesUi.addContactAddresses(textColumn, contactAddresses, highlightQuery)
                 notesUi.addCompanyGeneralNotes(
                     column = textColumn,
                     phone = call.number,

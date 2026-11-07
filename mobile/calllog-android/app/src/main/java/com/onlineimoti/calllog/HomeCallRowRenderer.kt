@@ -37,6 +37,7 @@ internal class HomeCallRowRenderer(
         call: PhoneCallRecord,
         displayName: String,
         contactNote: String? = null,
+        contactAddresses: List<String> = emptyList(),
         companyGeneralNoteLabels: List<HomeCompanyScopeLabel>? = null,
         callNote: HomeCallNote? = null,
         highlightQuery: String = "",
@@ -46,6 +47,7 @@ internal class HomeCallRowRenderer(
     ): MaterialCardView {
         if (call.isSms) return smsRowRenderer.compactRow(
             call, displayName, contactNote, companyGeneralNoteLabels, callNote,
+            contactAddresses,
             highlightQuery, showContactIdentity, showGeneralContactNote, serverBacked,
         )
         val crmClient = isCrmClient(call, showGeneralContactNote)
@@ -84,6 +86,7 @@ internal class HomeCallRowRenderer(
             highlightQuery = highlightQuery,
             visible = showGeneralContactNote,
         )
+        notesUi.addContactAddresses(column, contactAddresses, highlightQuery)
         notesUi.addCompanyGeneralNotes(
             column = column,
             phone = call.number,

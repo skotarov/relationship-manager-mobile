@@ -71,6 +71,7 @@ internal class HomeCallsLoader(
                         HomeRenderData(
                             calls = calls,
                             contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                            contactAddressesByNumber = ContactAddressRepository.forCalls(appContext, calls),
                             contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
                             callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
                         )
@@ -232,6 +233,7 @@ internal class HomeCallsLoader(
                         HomeRenderData(
                             calls = calls,
                             contactNotesByNumber = HomeCallPageLoader.contactNotes(appContext, calls),
+                            contactAddressesByNumber = ContactAddressRepository.forCalls(appContext, calls),
                             contactNamesByNumber = HomeCallPageLoader.contactNames(appContext, calls),
                             callNotesByCall = HomeCallNotesResolver.localNotes(appContext, calls),
                         )

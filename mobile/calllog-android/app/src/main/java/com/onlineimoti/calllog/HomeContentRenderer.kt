@@ -28,6 +28,7 @@ internal class HomeContentRenderer(
         private set
 
     private var currentContactNotesByNumber: Map<String, String> = emptyMap()
+    private var currentContactAddressesByNumber: Map<String, List<String>> = emptyMap()
     private var currentContactNamesByNumber: Map<String, String> = emptyMap()
     private var currentCallNotesByCall: Map<String, HomeCallNote> = emptyMap()
     private var currentCompanyLabelsByNumber: Map<String, List<HomeCompanyScopeLabel>> = emptyMap()
@@ -41,6 +42,7 @@ internal class HomeContentRenderer(
     fun clearCalls() {
         currentCalls = emptyList()
         currentContactNotesByNumber = emptyMap()
+        currentContactAddressesByNumber = emptyMap()
         currentContactNamesByNumber = emptyMap()
         currentCallNotesByCall = emptyMap()
         currentCompanyLabelsByNumber = emptyMap()
@@ -119,10 +121,11 @@ internal class HomeContentRenderer(
         if (currentCalls.isEmpty()) return
         applyRenderData(
             HomeRenderData(
-                currentCalls,
-                currentContactNotesByNumber,
-                currentContactNamesByNumber,
-                currentCallNotesByCall,
+                calls = currentCalls,
+                contactNotesByNumber = currentContactNotesByNumber,
+                contactAddressesByNumber = currentContactAddressesByNumber,
+                contactNamesByNumber = currentContactNamesByNumber,
+                callNotesByCall = currentCallNotesByCall,
             ),
             pageSize,
             refreshCompanyLabels = false,
@@ -161,6 +164,7 @@ internal class HomeContentRenderer(
             calls = calls,
             incoming = data,
             currentContactNotes = currentContactNotesByNumber,
+            currentContactAddresses = currentContactAddressesByNumber,
             currentContactNames = currentContactNamesByNumber,
             currentCallNotes = currentCallNotesByCall,
             rememberedNames = rememberedContactNamesByNumber,
@@ -171,12 +175,14 @@ internal class HomeContentRenderer(
 
         val previousCalls = currentCalls
         val previousContactNotes = currentContactNotesByNumber
+        val previousContactAddresses = currentContactAddressesByNumber
         val previousContactNames = currentContactNamesByNumber
         val previousCallNotes = currentCallNotesByCall
         val previousCompanyLabels = currentCompanyLabelsByNumber
         val previousServerBackedKeys = currentServerBackedPhoneKeys
         val unchanged = calls == previousCalls &&
             state.contactNotesByNumber == previousContactNotes &&
+            state.contactAddressesByNumber == previousContactAddresses &&
             state.contactNamesByNumber == previousContactNames &&
             state.callNotesByCall == previousCallNotes &&
             labels == previousCompanyLabels &&
@@ -184,6 +190,7 @@ internal class HomeContentRenderer(
 
         currentCalls = calls
         currentContactNotesByNumber = state.contactNotesByNumber
+        currentContactAddressesByNumber = state.contactAddressesByNumber
         currentContactNamesByNumber = state.contactNamesByNumber
         currentCallNotesByCall = state.callNotesByCall
         currentCompanyLabelsByNumber = labels
@@ -211,6 +218,7 @@ internal class HomeContentRenderer(
             page = page,
             calls = calls,
             previousContactNotes = previousContactNotes,
+            previousContactAddresses = previousContactAddresses,
             previousContactNames = previousContactNames,
             previousCallNotes = previousCallNotes,
             previousCompanyLabels = previousCompanyLabels,
@@ -230,6 +238,7 @@ internal class HomeContentRenderer(
         page: LinearLayout,
         calls: List<PhoneCallRecord>,
         previousContactNotes: Map<String, String>,
+        previousContactAddresses: Map<String, List<String>>,
         previousContactNames: Map<String, String>,
         previousCallNotes: Map<String, HomeCallNote>,
         previousCompanyLabels: Map<String, List<HomeCompanyScopeLabel>>,
@@ -242,6 +251,7 @@ internal class HomeContentRenderer(
             val phoneKey = HomeCallPageLoader.noteKey(call.number)
             val callKey = HomeCallNotesResolver.keyFor(call)
             previousContactNotes[phoneKey] != state.contactNotesByNumber[phoneKey] ||
+                previousContactAddresses[phoneKey] != state.contactAddressesByNumber[phoneKey] ||
                 previousContactNames[phoneKey] != state.contactNamesByNumber[phoneKey] ||
                 previousCallNotes[callKey] != state.callNotesByCall[callKey] ||
                 previousCompanyLabels[phoneKey] != labels[phoneKey] ||
@@ -293,6 +303,7 @@ internal class HomeContentRenderer(
             call = call,
             displayName = displayName,
             contactNote = state.contactNotesByNumber[phoneKey],
+            contactAddresses = state.contactAddressesByNumber[phoneKey].orEmpty(),
             companyGeneralNoteLabels = labels[phoneKey],
             callNote = callNote,
             highlightQuery = activeSearchQuery(),

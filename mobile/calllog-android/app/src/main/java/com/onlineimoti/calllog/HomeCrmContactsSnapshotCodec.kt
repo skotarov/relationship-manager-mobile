@@ -13,6 +13,7 @@ internal object HomeCrmContactsSnapshotCodec {
         put("schema", SCHEMA_VERSION)
         put("calls", JSONArray().apply { data.calls.forEach { put(callToJson(it)) } })
         put("contact_notes", stringMapToJson(data.contactNotesByNumber))
+        put("contact_addresses", addressMapToJson(data.contactAddressesByNumber))
         put("contact_names", stringMapToJson(data.contactNamesByNumber))
         put("call_notes", callNotesToJson(data.callNotesByCall))
     }.toString()
@@ -29,6 +30,7 @@ internal object HomeCrmContactsSnapshotCodec {
         HomeRenderData(
             calls = calls,
             contactNotesByNumber = stringMapFromJson(root.optJSONObject("contact_notes")),
+            contactAddressesByNumber = addressMapFromJson(root.optJSONObject("contact_addresses")),
             contactNamesByNumber = stringMapFromJson(root.optJSONObject("contact_names")),
             callNotesByCall = callNotesFromJson(root.optJSONObject("call_notes")),
         )
@@ -76,6 +78,26 @@ internal object HomeCrmContactsSnapshotCodec {
                 val key = keys.next()
                 val text = value.optString(key)
                 if (key.isNotBlank() && text.isNotBlank()) put(key, text)
+            }
+        }
+    }
+
+    private fun addressMapToJson(values: Map<String, List<String>>): JSONObject = JSONObject().apply {
+        values.forEach { (key, addresses) ->
+            if (key.isNotBlank() && addresses.isNotEmpty()) put(key, JSONArray(addresses))
+        }
+    }
+
+    private fun addressMapFromJson(value: JSONObject?): Map<String, List<String>> {
+        if (value == null) return emptyMap()
+        return buildMap {
+            val keys = value.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                val items = value.optJSONArray(key) ?: continue
+                val addresses = buildList { for (index in 0 until items.length()) add(items.optString(index)) }
+                    .filter { it.isNotBlank() }
+                if (key.isNotBlank() && addresses.isNotEmpty()) put(key, addresses)
             }
         }
     }

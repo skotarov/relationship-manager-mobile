@@ -9,10 +9,11 @@ internal class HomeSearchDataSource(
     private var cachedSearch: CachedSearch? = null
 
     /**
-     * Search is the first operation. The cache retains that complete result set
-     * while the user changes CRM buttons; filters are reapplied later to this list.
+     * The phone index is deliberately searched before the network. It includes
+     * contact names plus the locally stored yellow general notes and blue call
+     * notes, so typing stays responsive while the server lookup is in flight.
      */
-    fun searchResultsFor(
+    fun searchLocalResultsFor(
         query: String,
         phoneFilter: String,
         crmMode: Boolean,
@@ -47,6 +48,20 @@ internal class HomeSearchDataSource(
         return loaded
     }
 
+    /** Adds matches from Relationship Manager after [localResults] are already visible. */
+    fun mergeServerResultsFor(
+        localResults: List<PhoneCallRecord>,
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+        crmContactsMode: Boolean,
+    ): List<PhoneCallRecord> {
+        // CRM calls and Clients each have their own authoritative, filtered
+        // server path. Only the ordinary Call Log combines phone and server data.
+        if (crmMode || crmContactsMode) return localResults
+        return mergeServerSearchResults(localResults, searchServerCallLog(query, phoneFilter))
+    }
+
     /** CRM Clients searches the authenticated server list, not Android's call log. */
     private fun searchCrmContacts(
         query: String,
@@ -57,17 +72,13 @@ internal class HomeSearchDataSource(
         searchQuery = query,
     )
 
-    /**
-     * The normal Call Log search must include both local Android/local-note data and
-     * server Relationship Manager data. Server-only notes/clients are returned as
-     * synthetic rows with the matched note as [PhoneCallRecord.searchSnippet].
-     */
+    /** Loads the local Android/contact/note index used for the first search render. */
     private fun searchMainCallLog(
         query: String,
         phoneFilter: String,
         crmMode: Boolean,
     ): List<PhoneCallRecord> {
-        val localResults = HomeCallPageLoader.calls(
+        return HomeCallPageLoader.calls(
             context = context,
             activePhoneFilter = phoneFilter,
             searchQuery = query,
@@ -77,9 +88,6 @@ internal class HomeSearchDataSource(
             pageSize = SEARCH_RESULT_SCAN_LIMIT,
             crmMode = crmMode,
         )
-        if (crmMode) return localResults
-        val serverResults = searchServerCallLog(query, phoneFilter)
-        return mergeServerSearchResults(localResults, serverResults)
     }
 
     private fun searchServerCallLog(query: String, phoneFilter: String): List<PhoneCallRecord> {

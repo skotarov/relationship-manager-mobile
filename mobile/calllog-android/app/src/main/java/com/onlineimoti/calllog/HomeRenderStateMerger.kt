@@ -8,6 +8,7 @@ internal enum class HomeRenderMergeMode {
 
 internal data class HomeRenderState(
     val contactNotesByNumber: Map<String, String>,
+    val contactAddressesByNumber: Map<String, List<String>>,
     val contactNamesByNumber: Map<String, String>,
     val callNotesByCall: Map<String, HomeCallNote>,
 )
@@ -20,6 +21,7 @@ internal object HomeRenderStateMerger {
         calls: List<PhoneCallRecord>,
         incoming: HomeRenderData,
         currentContactNotes: Map<String, String>,
+        currentContactAddresses: Map<String, List<String>>,
         currentContactNames: Map<String, String>,
         currentCallNotes: Map<String, HomeCallNote>,
         rememberedNames: LinkedHashMap<String, String>,
@@ -56,6 +58,13 @@ internal object HomeRenderStateMerger {
                 incoming.contactNotesByNumber.forEach { (key, value) -> put(key, value) }
             }
         }
+        val contactAddresses = when (mode) {
+            HomeRenderMergeMode.AUTHORITATIVE -> incoming.contactAddressesByNumber
+            else -> linkedMapOf<String, List<String>>().apply {
+                currentContactAddresses.forEach { (key, value) -> if (key in phoneKeys) put(key, value) }
+                incoming.contactAddressesByNumber.forEach { (key, value) -> put(key, value) }
+            }
+        }
         val callNotes = when (mode) {
             HomeRenderMergeMode.AUTHORITATIVE -> incoming.callNotesByCall
             else -> linkedMapOf<String, HomeCallNote>().apply {
@@ -63,6 +72,6 @@ internal object HomeRenderStateMerger {
                 incoming.callNotesByCall.forEach { (key, value) -> put(key, value) }
             }
         }
-        return HomeRenderState(contactNotes, names, callNotes)
+        return HomeRenderState(contactNotes, contactAddresses, names, callNotes)
     }
 }
