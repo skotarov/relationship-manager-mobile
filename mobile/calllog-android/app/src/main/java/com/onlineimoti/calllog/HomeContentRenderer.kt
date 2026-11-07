@@ -159,7 +159,14 @@ internal class HomeContentRenderer(
         mergeMode: HomeRenderMergeMode,
         forceRender: Boolean = false,
     ) {
-        val calls = data.calls.sortedByDescending { it.startedAt }
+        val calls = if (activeSearchQuery().isBlank()) {
+            data.calls.sortedByDescending { it.startedAt }
+        } else {
+            data.calls.sortedWith(
+                compareBy<PhoneCallRecord> { it.searchResultSource.ordinal }
+                    .thenByDescending { it.startedAt },
+            )
+        }
         val state = HomeRenderStateMerger.merge(
             calls = calls,
             incoming = data,
@@ -280,7 +287,13 @@ internal class HomeContentRenderer(
         page.removeAllViews()
         val today = HomeTimelineDateUi.localDaySerial(System.currentTimeMillis()) ?: 0L
         var previousDay: Long? = null
+        var previousSearchSource: HomeSearchResultSource? = null
         calls.forEach { call ->
+            if (activeSearchQuery().isNotBlank() && call.searchResultSource != previousSearchSource) {
+                page.addView(searchSourceSeparator(call.searchResultSource, page.childCount > 0))
+                previousSearchSource = call.searchResultSource
+                previousDay = null
+            }
             val day = HomeTimelineDateUi.localDaySerial(call.startedAt)
             if (day != null && day != previousDay) {
                 page.addView(dateSeparator(call.startedAt, today - day, page.childCount > 0))
@@ -317,7 +330,21 @@ internal class HomeContentRenderer(
     }
 
     private fun rowTag(call: PhoneCallRecord): String =
-        "$HOME_ROW_TAG_PREFIX${HomeCallNotesResolver.keyFor(call)}"
+        "$HOME_ROW_TAG_PREFIX${call.searchResultSource}:${HomeCallNotesResolver.keyFor(call)}"
+
+    private fun searchSourceSeparator(source: HomeSearchResultSource, hasRowsBefore: Boolean): TextView {
+        val label = when (source) {
+            HomeSearchResultSource.PHONE -> activity.getString(R.string.runtime_search_results_phone)
+            HomeSearchResultSource.SERVER -> activity.getString(R.string.runtime_search_results_server)
+        }
+        return TextView(activity).apply {
+            text = label
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(activity.getColor(R.color.callreport_icon_background))
+            setPadding(0, if (hasRowsBefore) dp(14) else dp(5), 0, dp(5))
+        }
+    }
 
     private fun dateSeparator(timestamp: Long, relativeDays: Long, hasRowsBefore: Boolean): TextView {
         val label = HomeTimelineDateUi.dayGroupLabel(activity, timestamp, relativeDays)

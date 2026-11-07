@@ -74,6 +74,7 @@ internal object ServerCallLogSearchClient {
                                 durationSeconds = 0L,
                                 providerId = "server-search:${HomeCallPageLoader.noteKey(phone)}:${index}",
                                 searchSnippet = ServerNoteVisuals.prefixed(rawSnippet),
+                                searchResultSource = HomeSearchResultSource.SERVER,
                             ),
                         )
                     }

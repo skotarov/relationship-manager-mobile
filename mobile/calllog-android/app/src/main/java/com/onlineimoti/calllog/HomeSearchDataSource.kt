@@ -140,30 +140,16 @@ internal class HomeSearchDataSource(
         serverResults: List<PhoneCallRecord>,
     ): List<PhoneCallRecord> {
         if (serverResults.isEmpty()) return localResults
-        val merged = localResults.toMutableList()
-        val firstIndexByPhoneKey = linkedMapOf<String, Int>()
-        merged.forEachIndexed { index, row ->
-            HomeCallPageLoader.noteKey(row.number)
-                .takeIf { it.isNotBlank() && it !in firstIndexByPhoneKey }
-                ?.let { key -> firstIndexByPhoneKey[key] = index }
-        }
-
-        serverResults.forEach { serverRow ->
-            val key = HomeCallPageLoader.noteKey(serverRow.number)
-            if (key.isBlank()) return@forEach
-            val existingIndex = firstIndexByPhoneKey[key]
-            if (existingIndex != null) {
-                val current = merged[existingIndex]
-                merged[existingIndex] = current.copy(
-                    name = current.name.ifBlank { serverRow.name },
-                    searchSnippet = current.searchSnippet.ifBlank { serverRow.searchSnippet },
-                )
-                return@forEach
+        // A server match is a separate result, even for a number that also has
+        // a local call. This makes the fast phone results and slower server
+        // results independently visible instead of silently merging one into
+        // the other.
+        val visibleServerRows = serverResults
+            .map { row -> row.copy(searchResultSource = HomeSearchResultSource.SERVER) }
+            .distinctBy { row ->
+                "${HomeCallPageLoader.noteKey(row.number)}|${row.searchSnippet.trim()}"
             }
-            firstIndexByPhoneKey[key] = merged.size
-            merged += serverRow
-        }
-        return merged.sortedByDescending { row -> row.startedAt }
+        return localResults + visibleServerRows
     }
 
     fun contactNotesForRenderedSearch(

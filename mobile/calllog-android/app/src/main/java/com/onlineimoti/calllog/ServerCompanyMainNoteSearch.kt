@@ -35,6 +35,7 @@ internal object ServerCompanyMainNoteSearch {
                 phoneCalls.maxByOrNull { it.startedAt }?.copy(
                     providerId = "server-company-search:$phoneKey",
                     searchSnippet = ServerNoteVisuals.prefixed(matches[phoneKey].orEmpty()),
+                    searchResultSource = HomeSearchResultSource.SERVER,
                 )
             }
     }

@@ -9,6 +9,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+enum class HomeSearchResultSource {
+    PHONE,
+    SERVER,
+}
+
 data class PhoneCallRecord(
     val number: String,
     val name: String,
@@ -27,6 +32,8 @@ data class PhoneCallRecord(
     val callType: Int = 0,
     /** Server-provided search snippet that explains why a synthetic Clients result matched. */
     val searchSnippet: String = "",
+    /** Search results stay visibly separated by their source. */
+    val searchResultSource: HomeSearchResultSource = HomeSearchResultSource.PHONE,
 ) {
     val displayNumber: String
         get() = PhoneNormalizer.display(number)
