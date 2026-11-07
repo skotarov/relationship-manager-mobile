@@ -68,6 +68,7 @@ internal class HomeSearchController(
             val localRawResults = dataSource.searchLocalResultsFor(
                 query = query,
                 phoneFilter = phoneFilter,
+                crmMode = crmMode || crmContactsMode,
                 crmContactsMode = crmContactsMode,
                 filterState = filterState,
             )
@@ -86,7 +87,6 @@ internal class HomeSearchController(
             val serverOutcome = dataSource.searchServerResultsFor(
                 query = query,
                 phoneFilter = phoneFilter,
-                crmMode = crmMode || crmContactsMode,
                 crmContactsMode = crmContactsMode,
             )
             if (Thread.currentThread().isInterrupted) return@submit
