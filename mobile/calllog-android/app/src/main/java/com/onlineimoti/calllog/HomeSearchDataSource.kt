@@ -56,10 +56,20 @@ internal class HomeSearchDataSource(
         crmMode: Boolean,
         crmContactsMode: Boolean,
     ): List<PhoneCallRecord> {
-        // CRM calls and Clients each have their own authoritative, filtered
-        // server path. Only the ordinary Call Log combines phone and server data.
-        if (crmMode || crmContactsMode) return localResults
-        return mergeServerSearchResults(localResults, searchServerCallLog(query, phoneFilter))
+        // Clients keep their dedicated authoritative request. CRM Calls use the
+        // same staged lookup as Call Log, but server matches may only reveal CRM
+        // call rows that are already in the device timeline.
+        if (crmContactsMode) return localResults
+        val serverResults = searchServerCallLog(query, phoneFilter)
+        if (!crmMode) return mergeServerSearchResults(localResults, serverResults)
+
+        val matchingPhoneKeys = (localResults + serverResults)
+            .mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }
+            .filterTo(linkedSetOf()) { it.isNotBlank() }
+        if (matchingPhoneKeys.isEmpty()) return emptyList()
+        val matchingCrmCalls = HomeTimelineLoader.crmCandidates(context.applicationContext)
+            .filter { call -> HomeCallPageLoader.noteKey(call.number) in matchingPhoneKeys }
+        return mergeServerSearchResults(matchingCrmCalls, serverResults)
     }
 
     /** CRM Clients searches the authenticated server list, not Android's call log. */
@@ -167,14 +177,19 @@ internal class HomeSearchDataSource(
     private fun searchCrmCalls(query: String): List<PhoneCallRecord> {
         val terms = SearchQueryTerms.from(query)
         val candidates = HomeTimelineLoader.crmCandidates(context.applicationContext)
-        val callNotes = HomeCallNotesResolver.localNotes(context, candidates)
+        // This is the same durable snapshot used to paint yellow/blue notes on
+        // Home before the server returns. Search it too, so a visible cached
+        // company note is immediately findable in CRM Call Log.
+        val cachedNotes = HomeNotesSnapshotCache.mergeCached(
+            context,
+            HomeRenderData(candidates, emptyMap(), emptyMap()),
+        )
         return candidates.filter { call ->
-            terms.matches(
-                call.displayName,
-                call.number,
-                call.smsBody,
-                ContactNoteReader.generalNoteForPhone(context, call.number),
-                callNotes[HomeCallNotesResolver.keyFor(call)]?.text.orEmpty(),
+            HomeSearchCachedNotesMatcher.matches(
+                terms = terms,
+                call = call,
+                cachedNotes = cachedNotes,
+                localGeneralNote = ContactNoteReader.generalNoteForPhone(context, call.number),
             )
         }
     }
