@@ -14,14 +14,23 @@ class HomeSearchCachedNotesMatcherTest {
     )
 
     @Test
-    fun `finds a cached yellow company note in CRM calls`() {
+    fun `finds the yellow company label cache used by the visible CRM row`() {
         val snapshot = HomeRenderData(
             calls = listOf(call),
-            contactNotesByNumber = mapOf(HomeCallPageLoader.noteKey(call.number) to "[Maxim] Манастирски Изток"),
+            contactNotesByNumber = emptyMap(),
             contactNamesByNumber = emptyMap(),
         )
 
-        assertTrue(HomeSearchCachedNotesMatcher.matches(SearchQueryTerms.from("Манастирски"), call, snapshot))
+        assertTrue(
+            HomeSearchCachedNotesMatcher.matches(
+                terms = SearchQueryTerms.from("Манастирски"),
+                call = call,
+                cachedNotes = snapshot,
+                companyGeneralNotes = listOf(
+                    HomeCompanyScopeLabel("maxim", "Maxim", hasGeneralNote = true, phase = 0, generalNote = "Светльо | автободжия Манастирски Изток"),
+                ),
+            ),
+        )
     }
 
     @Test

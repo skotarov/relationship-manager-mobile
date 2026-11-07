@@ -184,12 +184,16 @@ internal class HomeSearchDataSource(
             context,
             HomeRenderData(candidates, emptyMap(), emptyMap()),
         )
+        val cachedCompanyNotes = HomeCompanyScopeSnapshotCache.read(context)
+            .labelsByPhoneKey
         return candidates.filter { call ->
+            val phoneKey = HomeCallPageLoader.noteKey(call.number)
             HomeSearchCachedNotesMatcher.matches(
                 terms = terms,
                 call = call,
                 cachedNotes = cachedNotes,
                 localGeneralNote = ContactNoteReader.generalNoteForPhone(context, call.number),
+                companyGeneralNotes = cachedCompanyNotes[phoneKey].orEmpty(),
             )
         }
     }

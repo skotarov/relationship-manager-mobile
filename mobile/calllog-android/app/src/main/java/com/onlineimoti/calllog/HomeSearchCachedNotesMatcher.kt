@@ -7,6 +7,7 @@ internal object HomeSearchCachedNotesMatcher {
         call: PhoneCallRecord,
         cachedNotes: HomeRenderData,
         localGeneralNote: String = "",
+        companyGeneralNotes: List<HomeCompanyScopeLabel> = emptyList(),
     ): Boolean {
         val phoneKey = HomeCallPageLoader.noteKey(call.number)
         val blueNotes = cachedNotes.callNotesByCall[HomeCallNotesResolver.keyFor(call)]
@@ -20,6 +21,7 @@ internal object HomeSearchCachedNotesMatcher {
             localGeneralNote,
             cachedNotes.contactNotesByNumber[phoneKey].orEmpty(),
             blueNotes,
+            companyGeneralNotes.joinToString(" ") { it.generalNote },
         )
     }
 }
