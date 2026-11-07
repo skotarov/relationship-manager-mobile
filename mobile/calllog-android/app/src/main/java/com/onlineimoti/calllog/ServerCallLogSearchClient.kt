@@ -89,7 +89,7 @@ internal object ServerCallLogSearchClient {
     }
 
     /** The shared Clients response returns full notes rather than a separate search snippet. */
-    private fun matchingNoteSnippet(item: JSONObject, query: String): String {
+    internal fun matchingNoteSnippet(item: JSONObject, query: String): String {
         val notes = item.optJSONArray("notes") ?: return ""
         val terms = SearchQueryTerms.from(query)
         for (index in 0 until notes.length()) {

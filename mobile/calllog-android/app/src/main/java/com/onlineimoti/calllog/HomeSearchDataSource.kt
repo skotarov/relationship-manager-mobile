@@ -5,13 +5,10 @@ import android.content.Context
 internal class HomeSearchDataSource(
     private val context: Context,
 ) {
-    private val cachedSearchLock = Any()
-    private var cachedSearch: CachedSearch? = null
-
     /**
-     * The phone index is deliberately searched before the network. It includes
-     * contact names plus the locally stored yellow general notes and blue call
-     * notes, so typing stays responsive while the server lookup is in flight.
+     * The first search pass is deliberately device-only. It never uses the
+     * company-label cache: a yellow company note belongs to the server result
+     * section even when its label was already painted on the timeline.
      */
     fun searchLocalResultsFor(
         query: String,
@@ -20,17 +17,7 @@ internal class HomeSearchDataSource(
         crmContactsMode: Boolean,
         filterState: HomeCrmFilterState?,
     ): List<PhoneCallRecord> {
-        val key = SearchKey(
-            query = query.trim(),
-            phoneFilter = phoneFilter,
-            crmMode = crmMode,
-            crmContactsMode = crmContactsMode,
-            serverFilterState = if (crmContactsMode) filterState else null,
-        )
-        synchronized(cachedSearchLock) {
-            cachedSearch?.takeIf { it.key == key }?.let { return it.calls }
-        }
-        val loaded = when {
+        return when {
             crmContactsMode && phoneFilter.isBlank() -> searchCrmContacts(
                 query = query,
                 filterState = filterState ?: HomeCrmFilterState(),
@@ -42,34 +29,25 @@ internal class HomeSearchDataSource(
                 crmMode = crmMode,
             )
         }
-        synchronized(cachedSearchLock) {
-            cachedSearch = CachedSearch(key, loaded)
-        }
-        return loaded
     }
 
-    /** Adds matches from Relationship Manager after [localResults] are already visible. */
-    fun mergeServerResultsFor(
-        localResults: List<PhoneCallRecord>,
+    /**
+     * The second pass is a single global server query. Its rows are kept apart
+     * from the phone rows by the caller; failures are returned explicitly so an
+     * empty response cannot masquerade as a completed zero-result search.
+     */
+    fun searchServerResultsFor(
         query: String,
         phoneFilter: String,
-        crmMode: Boolean,
         crmContactsMode: Boolean,
-    ): List<PhoneCallRecord> {
-        // Clients keep their dedicated authoritative request. CRM Calls use the
-        // same staged lookup as Call Log, but server matches may only reveal CRM
-        // call rows that are already in the device timeline.
-        if (crmContactsMode) return localResults
-        val serverResults = searchServerCallLog(query, phoneFilter, crmMode)
-        if (!crmMode) return mergeServerSearchResults(localResults, serverResults)
-
-        val matchingPhoneKeys = (localResults + serverResults)
-            .mapTo(linkedSetOf()) { HomeCallPageLoader.noteKey(it.number) }
-            .filterTo(linkedSetOf()) { it.isNotBlank() }
-        if (matchingPhoneKeys.isEmpty()) return emptyList()
-        val matchingCrmCalls = HomeTimelineLoader.crmCandidates(context.applicationContext)
-            .filter { call -> HomeCallPageLoader.noteKey(call.number) in matchingPhoneKeys }
-        return mergeServerSearchResults(matchingCrmCalls, serverResults)
+    ): HomeServerSearchResult {
+        // Clients already have their own cache-first authoritative loader. It
+        // receives the same query and filters and must not be queried through a
+        // second endpoint with a different scope.
+        if (crmContactsMode) return HomeServerSearchResult.Success(emptyList())
+        return runCatching {
+            HomeServerSearchResult.Success(searchServerCallLog(query, phoneFilter))
+        }.getOrElse { HomeServerSearchResult.Failure }
     }
 
     /** CRM Clients searches the authenticated server list, not Android's call log. */
@@ -103,28 +81,13 @@ internal class HomeSearchDataSource(
     private fun searchServerCallLog(
         query: String,
         phoneFilter: String,
-        crmMode: Boolean,
     ): List<PhoneCallRecord> {
         val config = ConfigStore.load(context.applicationContext)
-        val sharedResults = runCatching {
-            ServerCallLogSearchClient.search(
-                config = config,
-                query = query,
-                context = context.applicationContext,
-            )
-        }.getOrDefault(emptyList())
-        // Company-main notes are yellow labels fetched through history_lookup.
-        // Some server generations do not include their text in the broad Clients
-        // lookup, so CRM Call Log supplements it after the local first render.
-        val companyNoteResults = if (crmMode) {
-            ServerCompanyMainNoteSearch.search(
-                context = context.applicationContext,
-                config = config,
-                query = query,
-                calls = HomeTimelineLoader.crmCandidates(context.applicationContext),
-            )
-        } else emptyList()
-        val serverResults = (sharedResults + companyNoteResults)
+        val serverResults = ServerCallLogSearchClient.search(
+            config = config,
+            query = query,
+            context = context.applicationContext,
+        )
             .groupBy { HomeCallPageLoader.noteKey(it.number) }
             .mapNotNull { (_, rows) -> rows.firstOrNull { it.searchSnippet.isNotBlank() } ?: rows.firstOrNull() }
         val selectedKey = HomeCallPageLoader.noteKey(phoneFilter)
@@ -133,23 +96,6 @@ internal class HomeSearchDataSource(
         } else {
             serverResults.filter { row -> HomeCallPageLoader.noteKey(row.number) == selectedKey }
         }
-    }
-
-    private fun mergeServerSearchResults(
-        localResults: List<PhoneCallRecord>,
-        serverResults: List<PhoneCallRecord>,
-    ): List<PhoneCallRecord> {
-        if (serverResults.isEmpty()) return localResults
-        // A server match is a separate result, even for a number that also has
-        // a local call. This makes the fast phone results and slower server
-        // results independently visible instead of silently merging one into
-        // the other.
-        val visibleServerRows = serverResults
-            .map { row -> row.copy(searchResultSource = HomeSearchResultSource.SERVER) }
-            .distinctBy { row ->
-                "${HomeCallPageLoader.noteKey(row.number)}|${row.searchSnippet.trim()}"
-            }
-        return localResults + visibleServerRows
     }
 
     fun contactNotesForRenderedSearch(
@@ -181,23 +127,19 @@ internal class HomeSearchDataSource(
     private fun searchCrmCalls(query: String): List<PhoneCallRecord> {
         val terms = SearchQueryTerms.from(query)
         val candidates = HomeTimelineLoader.crmCandidates(context.applicationContext)
-        // This is the same durable snapshot used to paint yellow/blue notes on
-        // Home before the server returns. Search it too, so a visible cached
-        // company note is immediately findable in CRM Call Log.
+        // The durable local snapshot contains the blue notes written on this
+        // phone. Yellow company labels live in a separate server cache and are
+        // deliberately excluded here; they arrive in the server section.
         val cachedNotes = HomeNotesSnapshotCache.mergeCached(
             context,
             HomeRenderData(candidates, emptyMap(), emptyMap()),
         )
-        val cachedCompanyNotes = HomeCompanyScopeSnapshotCache.read(context)
-            .labelsByPhoneKey
         return candidates.filter { call ->
-            val phoneKey = HomeCallPageLoader.noteKey(call.number)
             HomeSearchCachedNotesMatcher.matches(
                 terms = terms,
                 call = call,
                 cachedNotes = cachedNotes,
                 localGeneralNote = ContactNoteReader.generalNoteForPhone(context, call.number),
-                companyGeneralNotes = cachedCompanyNotes[phoneKey].orEmpty(),
             )
         }
     }
@@ -221,20 +163,12 @@ internal class HomeSearchDataSource(
         )
     }
 
-    private data class SearchKey(
-        val query: String,
-        val phoneFilter: String,
-        val crmMode: Boolean,
-        val crmContactsMode: Boolean,
-        val serverFilterState: HomeCrmFilterState?,
-    )
-
-    private data class CachedSearch(
-        val key: SearchKey,
-        val calls: List<PhoneCallRecord>,
-    )
-
     private companion object {
         const val SEARCH_RESULT_SCAN_LIMIT = 500
     }
+}
+
+internal sealed interface HomeServerSearchResult {
+    data class Success(val calls: List<PhoneCallRecord>) : HomeServerSearchResult
+    object Failure : HomeServerSearchResult
 }

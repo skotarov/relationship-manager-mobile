@@ -14,6 +14,7 @@
     <string name="runtime_search_found_count">Намерени: %1$d</string>
     <string name="runtime_search_local_then_server">Локално: %1$d. Търсене на сървъра…</string>
     <string name="runtime_search_source_counts">Локално: %1$d • Сървър: %2$d</string>
+    <string name="runtime_search_server_unavailable">Локално: %1$d • Търсенето на сървъра не е налично</string>
     <string name="runtime_search_results_phone">От телефона</string>
     <string name="runtime_search_results_server">От сървъра</string>
     <string name="runtime_timeline_today">Днес</string>

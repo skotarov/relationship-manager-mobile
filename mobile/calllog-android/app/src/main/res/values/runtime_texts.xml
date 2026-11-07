@@ -16,6 +16,7 @@
     <string name="runtime_search_found_count">Found: %1$d</string>
     <string name="runtime_search_local_then_server">Local: %1$d. Searching server…</string>
     <string name="runtime_search_source_counts">Local: %1$d • Server: %2$d</string>
+    <string name="runtime_search_server_unavailable">Local: %1$d • Server search unavailable</string>
     <string name="runtime_search_results_phone">From phone</string>
     <string name="runtime_search_results_server">From server</string>
     <string name="runtime_timeline_today">Today</string>
