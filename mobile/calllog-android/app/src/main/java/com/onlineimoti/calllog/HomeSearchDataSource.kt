@@ -60,7 +60,7 @@ internal class HomeSearchDataSource(
         // same staged lookup as Call Log, but server matches may only reveal CRM
         // call rows that are already in the device timeline.
         if (crmContactsMode) return localResults
-        val serverResults = searchServerCallLog(query, phoneFilter)
+        val serverResults = searchServerCallLog(query, phoneFilter, crmMode)
         if (!crmMode) return mergeServerSearchResults(localResults, serverResults)
 
         val matchingPhoneKeys = (localResults + serverResults)
@@ -100,15 +100,33 @@ internal class HomeSearchDataSource(
         )
     }
 
-    private fun searchServerCallLog(query: String, phoneFilter: String): List<PhoneCallRecord> {
+    private fun searchServerCallLog(
+        query: String,
+        phoneFilter: String,
+        crmMode: Boolean,
+    ): List<PhoneCallRecord> {
         val config = ConfigStore.load(context.applicationContext)
-        val serverResults = runCatching {
+        val sharedResults = runCatching {
             ServerCallLogSearchClient.search(
                 config = config,
                 query = query,
                 context = context.applicationContext,
             )
         }.getOrDefault(emptyList())
+        // Company-main notes are yellow labels fetched through history_lookup.
+        // Some server generations do not include their text in the broad Clients
+        // lookup, so CRM Call Log supplements it after the local first render.
+        val companyNoteResults = if (crmMode) {
+            ServerCompanyMainNoteSearch.search(
+                context = context.applicationContext,
+                config = config,
+                query = query,
+                calls = HomeTimelineLoader.crmCandidates(context.applicationContext),
+            )
+        } else emptyList()
+        val serverResults = (sharedResults + companyNoteResults)
+            .groupBy { HomeCallPageLoader.noteKey(it.number) }
+            .mapNotNull { (_, rows) -> rows.firstOrNull { it.searchSnippet.isNotBlank() } ?: rows.firstOrNull() }
         val selectedKey = HomeCallPageLoader.noteKey(phoneFilter)
         return if (selectedKey.isBlank()) {
             serverResults

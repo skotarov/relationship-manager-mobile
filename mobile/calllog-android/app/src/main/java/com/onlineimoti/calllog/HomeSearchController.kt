@@ -79,7 +79,7 @@ internal class HomeSearchController(
             handler.post {
                 finishBusy(requestBusyToken)
                 if (!isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) return@post
-                renderLocalResults(localRenderData, localResults.size, currentPageSize, page)
+                renderLocalResults(localRenderData, localResults.size, currentPageSize)
                 onRenderComplete()
             }
 
@@ -95,7 +95,7 @@ internal class HomeSearchController(
             val mergedRenderData = renderDataFor(mergedResults, crmContactsMode, page, currentPageSize)
             handler.post {
                 if (!isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) return@post
-                renderCompletedResults(mergedRenderData, mergedResults.size, currentPageSize, page, generation, query, phoneFilter, crmMode, crmContactsMode, filterState, filterScope)
+                renderCompletedResults(mergedRenderData, localResults.size, mergedResults.size, currentPageSize, page, generation, query, phoneFilter, crmMode, crmContactsMode, filterState, filterScope)
             }
         }
     }
@@ -134,15 +134,16 @@ internal class HomeSearchController(
         )
     }
 
-    private fun renderLocalResults(data: HomeRenderData, count: Int, pageSize: Int, page: Int) {
+    private fun renderLocalResults(data: HomeRenderData, count: Int, pageSize: Int) {
         if (data.calls.isNotEmpty()) applyRenderData(data, pageSize)
         else setCurrentCalls(emptyList())
         hideInlineStatusForSearch()
-        showSearchCount(count)
+        showSearchLocalCount(count)
     }
 
     private fun renderCompletedResults(
         data: HomeRenderData,
+        localCount: Int,
         count: Int,
         pageSize: Int,
         page: Int,
@@ -163,12 +164,12 @@ internal class HomeSearchController(
             serverCallNotes.enrichAsync(data) { enriched ->
                 if (isCurrentSearch(generation, query, phoneFilter, crmMode, crmContactsMode, page, filterState, filterScope)) {
                     applyRenderData(enriched, pageSize)
-                    showSearchCount(count)
+                    showSearchSourceCounts(localCount, count)
                 }
             }
         }
         hideInlineStatusForSearch()
-        showSearchCount(count)
+        showSearchSourceCounts(localCount, count)
     }
 
     private fun isCurrentSearch(
@@ -213,6 +214,22 @@ internal class HomeSearchController(
     private fun showSearchCount(count: Int) {
         if (activeSearchQuery().isBlank()) return
         showSearchStatus(context.getString(R.string.runtime_search_found_count, count))
+    }
+
+    private fun showSearchLocalCount(count: Int) {
+        if (activeSearchQuery().isBlank()) return
+        showSearchStatus(context.getString(R.string.runtime_search_local_then_server, count))
+    }
+
+    private fun showSearchSourceCounts(localCount: Int, totalCount: Int) {
+        if (activeSearchQuery().isBlank()) return
+        showSearchStatus(
+            context.getString(
+                R.string.runtime_search_source_counts,
+                localCount,
+                (totalCount - localCount).coerceAtLeast(0),
+            ),
+        )
     }
 
     private fun showSearchStatus(text: String) {
